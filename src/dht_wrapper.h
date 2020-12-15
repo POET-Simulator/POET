@@ -1,18 +1,18 @@
 #pragma once
-#include <RInside.h> 
+#include "util/RRuntime.h"
 #include <string>
 #include <vector>
 #include <math.h>
 #include "DHT.h"
 
 using namespace std;
-using namespace Rcpp;
+using namespace poet;
 
 /*Functions*/
 uint64_t get_md5(int key_size, void* key);
-void fuzz_for_dht(RInside &R, int var_count, void *key, double dt);
-void check_dht(RInside &R, int length, std::vector<bool> &out_result_index, double *work_package);
-void fill_dht(RInside &R, int length, std::vector<bool> &result_index, double *work_package, double *results);
+void fuzz_for_dht(RRuntime R, int var_count, void *key, double dt);
+void check_dht(RRuntime R, int length, std::vector<bool> &out_result_index, double *work_package);
+void fill_dht(RRuntime R, int length, std::vector<bool> &result_index, double *work_package, double *results);
 void print_statistics();
 int table_to_file(char* filename);
 int file_to_table(char* filename);

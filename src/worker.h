@@ -1,11 +1,10 @@
 #pragma once
-#include <RInside.h>
+#include "util/RRuntime.h"
 
 using namespace std;
-using namespace Rcpp;
-
+using namespace poet;
 /*Functions*/
-void worker_function(RInside &R);
+void worker_function(RRuntime R);
 
 
 /*Globals*/

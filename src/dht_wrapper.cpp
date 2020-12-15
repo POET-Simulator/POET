@@ -1,6 +1,8 @@
 #include "dht_wrapper.h"
 #include <openssl/md5.h>
 
+using namespace poet;
+
 /*init globals*/
 bool dht_enabled;
 int dht_snaps;
@@ -37,7 +39,7 @@ uint64_t get_md5(int key_size, void *key) {
     return retval;
 }
 
-double Round_off(RInside &R, double N, double n) {
+double Round_off(RRuntime R, double N, double n) {
     double result;
     R["roundsig"] = n;
     R["roundin"] = N;
@@ -50,7 +52,7 @@ double Round_off(RInside &R, double N, double n) {
 /*
 *   Stores fuzzed version of key in fuzzing_buffer
 */
-void fuzz_for_dht(RInside &R, int var_count, void *key, double dt) {
+void fuzz_for_dht(RRuntime R, int var_count, void *key, double dt) {
     unsigned int i = 0;
     //introduce fuzzing to allow more hits in DHT
     for (i = 0; i < (unsigned int)var_count; i++) {
@@ -82,7 +84,7 @@ void fuzz_for_dht(RInside &R, int var_count, void *key, double dt) {
         fuzzing_buffer[var_count] = dt;
 }
 
-void check_dht(RInside &R, int length, std::vector<bool> &out_result_index, double *work_package) {
+void check_dht(RRuntime R, int length, std::vector<bool> &out_result_index, double *work_package) {
     void *key;
     int res;
     int var_count = prop_type_vector.size();
@@ -114,7 +116,7 @@ void check_dht(RInside &R, int length, std::vector<bool> &out_result_index, doub
     }
 }
 
-void fill_dht(RInside &R, int length, std::vector<bool> &result_index, double *work_package, double *results) {
+void fill_dht(RRuntime R, int length, std::vector<bool> &result_index, double *work_package, double *results) {
     void *key;
     void *data;
     int res;

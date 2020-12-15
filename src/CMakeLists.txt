@@ -3,12 +3,10 @@ cmake_minimum_required(VERSION 3.9)
 
 project(POET VERSION 0.1)
 
-add_executable(poet kin.cpp)
-
 # Not needed until now
 # specify the C++ standard
-#set(CMAKE_CXX_STANDARD 11)
-#set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 find_package(MPI REQUIRED)
 
@@ -87,15 +85,19 @@ find_path(R_RInside_INCLUDE_DIR RInside.h
 list(APPEND R_INCLUDE_DIRS ${R_RInside_INCLUDE_DIR})
 
 #include found directories for the whole scope (will be changed with modularization)
-include_directories(${R_INCLUDE_DIRS} ${MPI_CXX_INCLUDE_DIRS})
+include_directories(${MPI_CXX_INCLUDE_DIRS})
 
 #define program libraries
-add_library(Worker STATIC worker.cpp)
-target_link_libraries(Worker MPI::MPI_CXX)
 
-add_library(DHT STATIC DHT.cpp dht_wrapper.cpp)
-target_link_libraries(DHT crypto)
+add_library(POET_Libs OBJECT util/RRuntime.cpp dht_wrapper.cpp worker.cpp DHT.cpp)
+target_include_directories(POET_Libs PUBLIC ${R_INCLUDE_DIRS})
+target_link_libraries(POET_Libs ${R_LIBRARIES} MPI::MPI_CXX crypto)
 
-add_library(R_UTILS STATIC r_utils.cpp)
+#add_library(DHT OBJECT DHT.cpp dht_wrapper.cpp)
+#target_link_libraries(DHT crypto R_Wrapper)
 
-target_link_libraries(poet PUBLIC Worker DHT R_UTILS ${R_LIBRARIES} MPI::MPI_CXX)
+#add_library(Worker OBJECT worker.cpp)
+#target_link_libraries(Worker ${R_LIBRARIES} MPI::MPI_CXX R_Wrapper)
+
+add_executable(poet kin.cpp)
+target_link_libraries(poet PUBLIC MPI::MPI_CXX POET_Libs)
