@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 find_package(MPI REQUIRED)
 
-set(GCC_CXX_FLAGS "-D STRICT_R_HEADERS -Wall -O3")
+set(GCC_CXX_FLAGS "-D STRICT_R_HEADERS")
 add_definitions(${GCC_CXX_FLAGS})
 
 # prepare R environment (Rcpp + RInside)
@@ -89,7 +89,7 @@ include_directories(${MPI_CXX_INCLUDE_DIRS})
 
 #define program libraries
 
-add_library(POET_Libs OBJECT util/RRuntime.cpp dht_wrapper.cpp worker.cpp DHT.cpp)
+add_library(POET_Libs STATIC util/RRuntime.cpp dht_wrapper.cpp worker.cpp DHT.cpp model/Grid.cpp)
 target_include_directories(POET_Libs PUBLIC ${R_INCLUDE_DIRS})
 target_link_libraries(POET_Libs ${R_LIBRARIES} MPI::MPI_CXX crypto)
 

@@ -11,8 +11,9 @@
 #include "argh.h" // Argument handler https://github.com/adishavit/argh BSD-licenced
 #include "dht_wrapper.h"
 #include "global_buffer.h"
-#include "worker.h"
 #include "util/RRuntime.h"
+#include "worker.h"
+#include "model/Grid.h"
 
 using namespace std;
 using namespace poet;
@@ -266,8 +267,10 @@ int main(int argc, char *argv[]) {
   std::string init_chemistry_code = "mysetup <- init_chemistry(setup=mysetup)";
   R.parseEval(init_chemistry_code);
 
+  Grid grid(R);
+  grid.init();
   /* Retrieve state_C from R context for MPI buffer generation */
-  Rcpp::DataFrame state_C = R.parseEval("mysetup$state_C");
+  //Rcpp::DataFrame state_C = R.parseEval("mysetup$state_C");
 
   /* Init Parallel helper functions */
   R["n_procs"] = world_size - 1; /* worker count */
@@ -276,12 +279,12 @@ int main(int argc, char *argv[]) {
   // Removed additional field for ID in previous versions
   if (world_rank == 0) {
     mpi_buffer =
-        (double *)calloc(state_C.nrow() * (state_C.ncol()), sizeof(double));
+        (double *)calloc(grid.getRows() * grid.getCols(), sizeof(double));
   } else {
     mpi_buffer = (double *)calloc(
-        (work_package_size * (state_C.ncol())) + BUFFER_OFFSET, sizeof(double));
+        (work_package_size * (grid.getCols())) + BUFFER_OFFSET, sizeof(double));
     mpi_buffer_results =
-        (double *)calloc(work_package_size * (state_C.ncol()), sizeof(double));
+        (double *)calloc(work_package_size * (grid.getCols()), sizeof(double));
   }
 
   if (world_rank == 0) {
@@ -296,9 +299,9 @@ int main(int argc, char *argv[]) {
   if (dht_enabled) {
     // cout << "\nCreating DHT\n";
     // determine size of dht entries
-    int dht_data_size = state_C.ncol() * sizeof(double);
+    int dht_data_size = grid.getCols() * sizeof(double);
     int dht_key_size =
-        state_C.ncol() * sizeof(double) + (dt_differ * sizeof(double));
+        grid.getCols() * sizeof(double) + (dt_differ * sizeof(double));
 
     // determine bucket count for preset memory usage
     // bucket size is key + value + 1 byte for status
@@ -391,7 +394,7 @@ int main(int argc, char *argv[]) {
     // a temporary send buffer
     double *send_buffer;
     send_buffer = (double *)calloc(
-        (work_package_size * (state_C.ncol())) + BUFFER_OFFSET, sizeof(double));
+        (work_package_size * (grid.getCols())) + BUFFER_OFFSET, sizeof(double));
 
     // helper variables
     int iteration;
@@ -469,19 +472,16 @@ int main(int argc, char *argv[]) {
          */
         // R.parseEval("tmp <-
         // shuffle_field(RedModRphree::Act2pH(mysetup$state_T), ordered_ids)");
-        R.parseEval("tmp <- shuffle_field(mysetup$state_T, ordered_ids)");
-        R.setBufferDataFrame("tmp");
-        R.to_C_domain(mpi_buffer);
-        //Rcpp::DataFrame chemistry_data = R.parseEval("tmp");
-
-        //convert_R_Dataframe_2_C_buffer(mpi_buffer, chemistry_data);
+        // Rcpp::DataFrame chemistry_data = R.parseEval("tmp");
+        
+        // convert_R_Dataframe_2_C_buffer(mpi_buffer, chemistry_data);
         // cout << "CPP: shuffle_field() done" << endl;
-
+        grid.shuffleAndExport(mpi_buffer);
         /* send and receive work; this is done by counting
          * the wp */
         int pkg_to_send = n_wp;
         int pkg_to_recv = n_wp;
-        size_t colCount = R.getBufferNCol();
+        size_t colCount = grid.getCols();
         int free_workers = world_size - 1;
         double *work_pointer = mpi_buffer;
         sim_c_chemistry = MPI_Wtime();
@@ -522,7 +522,6 @@ int main(int argc, char *argv[]) {
           /* end visual progress */
 
           if (pkg_to_send > 0) {
-
             master_send_a = MPI_Wtime();
             /*search for free workers and send work*/
             for (int p = 0; p < world_size - 1; p++) {
@@ -614,14 +613,15 @@ int main(int argc, char *argv[]) {
         sim_d_chemistry = MPI_Wtime();
         cummul_workers += sim_d_chemistry - sim_c_chemistry;
 
-        //convert_C_buffer_2_R_Dataframe(mpi_buffer, chemistry_data);
-        R.from_C_domain(mpi_buffer);
+        // convert_C_buffer_2_R_Dataframe(mpi_buffer, chemistry_data);
+        //R.from_C_domain(mpi_buffer);
 
-        R["chemistry_data"] = R.getBufferDataFrame();
+        //R["chemistry_data"] = R.getBufferDataFrame();
 
-        /* unshuffle results */
-        R.parseEval("result <- unshuffle_field(chemistry_data, ordered_ids)");
+        ///* unshuffle results */
+        //R.parseEval("result <- unshuffle_field(chemistry_data, ordered_ids)");
 
+        grid.importAndUnshuffle(mpi_buffer);
         /* do master stuff */
         sim_e_chemistry = MPI_Wtime();
         R.parseEvalQ("mysetup <- master_chemistry(setup=mysetup, data=result)");
@@ -649,7 +649,7 @@ int main(int argc, char *argv[]) {
           MPI_Send(NULL, 0, MPI_DOUBLE, i, TAG_DHT_STATS, MPI_COMM_WORLD);
         }
 
-        // MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Barrier(MPI_COMM_WORLD);
 
         if (dht_snaps == 2) {
           std::stringstream outfile;
@@ -817,7 +817,7 @@ int main(int argc, char *argv[]) {
         std::cout.flush();
       }
     }
-    worker_function(R);
+    worker_function(R, grid);
     free(mpi_buffer_results);
   }
 

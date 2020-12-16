@@ -39,20 +39,20 @@ uint64_t get_md5(int key_size, void *key) {
     return retval;
 }
 
-double Round_off(RRuntime R, double N, double n) {
-    double result;
-    R["roundsig"] = n;
-    R["roundin"] = N;
-
-    result = R.parseEval("signif(roundin, digits=roundsig)");
-
-    return result;
-}
+//double Round_off(double N, double n) {
+//    double result;
+//    R["roundsig"] = n;
+//    R["roundin"] = N;
+//
+//    result = R.parseEval("signif(roundin, digits=roundsig)");
+//
+//    return result;
+//}
 
 /*
 *   Stores fuzzed version of key in fuzzing_buffer
 */
-void fuzz_for_dht(RRuntime R, int var_count, void *key, double dt) {
+void fuzz_for_dht(int var_count, void *key, double dt) {
     unsigned int i = 0;
     //introduce fuzzing to allow more hits in DHT
     for (i = 0; i < (unsigned int)var_count; i++) {
@@ -64,15 +64,12 @@ void fuzz_for_dht(RRuntime R, int var_count, void *key, double dt) {
                 else if (((double *)key)[i] == 0)
                     fuzzing_buffer[i] = 0;
                 else
-                    //fuzzing_buffer[i] = Round_off(R, std::log10(((double *)key)[i]), dht_significant_digits_vector[i] - 1);
                     fuzzing_buffer[i] = ROUND(-(std::log10(((double *)key)[i])), dht_significant_digits_vector[i]);
             } else {
                 //without log10
-                //fuzzing_buffer[i] = Round_off(R, ((double *)key)[i], dht_significant_digits_vector[i]);
                 fuzzing_buffer[i] = ROUND((((double *)key)[i]), dht_significant_digits_vector[i]);
             }
         } else if (prop_type_vector[i] == "logact") {
-            //fuzzing_buffer[i] = Round_off(R, ((double *)key)[i], dht_significant_digits_vector[i]);
             fuzzing_buffer[i] = ROUND((((double *)key)[i]), dht_significant_digits_vector[i]);
         } else if (prop_type_vector[i] == "ignore") {
             fuzzing_buffer[i] = 0;
@@ -84,19 +81,16 @@ void fuzz_for_dht(RRuntime R, int var_count, void *key, double dt) {
         fuzzing_buffer[var_count] = dt;
 }
 
-void check_dht(RRuntime R, int length, std::vector<bool> &out_result_index, double *work_package) {
+void check_dht(int length, std::vector<bool> &out_result_index, double *work_package, double dt) {
     void *key;
     int res;
     int var_count = prop_type_vector.size();
-    double dt;
-
-    dt = R.parseEval("mysetup$dt");
 
     for (int i = 0; i < length; i++) {
         key = (void *)&(work_package[i * var_count]);
 
         //fuzz data (round, logarithm etc.)
-        fuzz_for_dht(R, var_count, key, dt);
+        fuzz_for_dht(var_count, key, dt);
 
         //overwrite input with data from DHT, IF value is found in DHT
         res = DHT_read(dht_object, fuzzing_buffer, key);
@@ -116,14 +110,11 @@ void check_dht(RRuntime R, int length, std::vector<bool> &out_result_index, doub
     }
 }
 
-void fill_dht(RRuntime R, int length, std::vector<bool> &result_index, double *work_package, double *results) {
+void fill_dht(int length, std::vector<bool> &result_index, double *work_package, double *results, double dt) {
     void *key;
     void *data;
     int res;
     int var_count = prop_type_vector.size();
-    double dt;
-
-    dt = R.parseEval("mysetup$dt");
 
     for (int i = 0; i < length; i++) {
         key = (void *)&(work_package[i * var_count]);
@@ -133,7 +124,7 @@ void fill_dht(RRuntime R, int length, std::vector<bool> &result_index, double *w
             //If true -> was simulated, needs to be inserted into dht
 
             //fuzz data (round, logarithm etc.)
-            fuzz_for_dht(R, var_count, key, dt);
+            fuzz_for_dht(var_count, key, dt);
 
             res = DHT_write(dht_object, fuzzing_buffer, data);
 

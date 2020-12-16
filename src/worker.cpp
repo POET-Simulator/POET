@@ -1,15 +1,16 @@
 #include "worker.h"
 #include "dht_wrapper.h"
 #include "global_buffer.h"
+#include "model/Grid.h"
 #include "util/RRuntime.h"
+#include <Rcpp.h>
 #include <iostream>
 #include <mpi.h>
-#include <Rcpp.h>
 
 using namespace poet;
 using namespace Rcpp;
 
-void worker_function(RRuntime R) {
+void worker_function(RRuntime &R, Grid &grid) {
   int world_rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
   MPI_Status probe_status;
@@ -130,13 +131,14 @@ void worker_function(RRuntime R) {
       // }
 
       /* get df with right structure to fill in work package */
-      R.parseEvalQ("skeleton <- head(mysetup$state_C, work_package_size)");
-      // R.parseEval("print(rownames(tmp2)[1:5])");
-      // R.parseEval("print(head(tmp2, 2))");
-      // R.parseEvalQ("tmp2$id <- as.double(rownames(tmp2))");
+      // R.parseEvalQ("skeleton <- head(mysetup$state_C, work_package_size)");
+      // R["skeleton"] = grid.buildDataFrame(work_package_size);
+      //// R.parseEval("print(rownames(tmp2)[1:5])");
+      //// R.parseEval("print(head(tmp2, 2))");
+      //// R.parseEvalQ("tmp2$id <- as.double(rownames(tmp2))");
 
-      //Rcpp::DataFrame buffer = R.parseEval("tmp2");
-      R.setBufferDataFrame("skeleton");
+      ////Rcpp::DataFrame buffer = R.parseEval("tmp2");
+      // R.setBufferDataFrame("skeleton");
 
       if (dht_enabled) {
         // DEBUG
@@ -150,7 +152,7 @@ void worker_function(RRuntime R) {
         }
 
         dht_get_start = MPI_Wtime();
-        check_dht(R, local_work_package_size, dht_flags, mpi_buffer);
+        check_dht(local_work_package_size, dht_flags, mpi_buffer, dt);
         dht_get_end = MPI_Wtime();
 
         // DEBUG
@@ -160,15 +162,18 @@ void worker_function(RRuntime R) {
         // R.parseEvalQ("print(head(dht_flags))");
       }
 
+
       /* work */
-      R.from_C_domain(mpi_buffer);
-      //convert_C_buffer_2_R_Dataframe(mpi_buffer, buffer);
-      R["work_package_full"] = R.getBufferDataFrame();
+      // R.from_C_domain(mpi_buffer);
+      ////convert_C_buffer_2_R_Dataframe(mpi_buffer, buffer);
+      // R["work_package_full"] = R.getBufferDataFrame();
       // R["work_package"] = buffer;
 
       // DEBUG
       // R.parseEvalQ("print(head(work_package_full))");
       // R.parseEvalQ("print( c(length(dht_flags), nrow(work_package_full)) )");
+
+      grid.importWP(mpi_buffer, work_package_size);
 
       if (dht_enabled) {
         R.parseEvalQ("work_package <- work_package_full[dht_flags,]");
@@ -218,11 +223,12 @@ void worker_function(RRuntime R) {
         R.parseEvalQ("result_full <- result");
       }
 
-      R.setBufferDataFrame("result_full");
-      //Rcpp::DataFrame result = R.parseEval("result_full");
-      //convert_R_Dataframe_2_C_buffer(mpi_buffer_results, result);
-      R.to_C_domain(mpi_buffer_results);
+      // R.setBufferDataFrame("result_full");
+      ////Rcpp::DataFrame result = R.parseEval("result_full");
+      ////convert_R_Dataframe_2_C_buffer(mpi_buffer_results, result);
+      // R.to_C_domain(mpi_buffer_results);
 
+      grid.exportWP(mpi_buffer_results);
       /* send results to master */
       MPI_Request send_req;
       MPI_Isend(mpi_buffer_results, count, MPI_DOUBLE, 0, TAG_WORK,
@@ -230,8 +236,8 @@ void worker_function(RRuntime R) {
 
       if (dht_enabled) {
         dht_fill_start = MPI_Wtime();
-        fill_dht(R, local_work_package_size, dht_flags, mpi_buffer,
-                 mpi_buffer_results);
+        fill_dht(local_work_package_size, dht_flags, mpi_buffer,
+                 mpi_buffer_results, dt);
         dht_fill_end = MPI_Wtime();
 
         timing[1] += dht_get_end - dht_get_start;
@@ -241,6 +247,7 @@ void worker_function(RRuntime R) {
       timing[0] += phreeqc_time_end - phreeqc_time_start;
 
       MPI_Wait(&send_req, MPI_STATUS_IGNORE);
+
 
     } else if (probe_status.MPI_TAG == TAG_FINISH) { /* recv and die */
       /* before death, submit profiling/timings to master*/
@@ -262,7 +269,6 @@ void worker_function(RRuntime R) {
         MPI_Send(dht_perf, 3, MPI_UNSIGNED_LONG_LONG, 0, TAG_DHT_PERF,
                  MPI_COMM_WORLD);
       }
-
       break;
 
     } else if ((probe_status.MPI_TAG == TAG_DHT_STATS)) {
@@ -270,6 +276,7 @@ void worker_function(RRuntime R) {
                MPI_STATUS_IGNORE);
       print_statistics();
       MPI_Barrier(MPI_COMM_WORLD);
+
     } else if ((probe_status.MPI_TAG == TAG_DHT_STORE)) {
       char *outdir;
       MPI_Get_count(&probe_status, MPI_CHAR, &count);

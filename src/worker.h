@@ -1,10 +1,11 @@
 #pragma once
 #include "util/RRuntime.h"
+#include "model/Grid.h"
 
 using namespace std;
 using namespace poet;
 /*Functions*/
-void worker_function(RRuntime R);
+void worker_function(RRuntime &R, Grid &grid);
 
 
 /*Globals*/
