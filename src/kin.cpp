@@ -630,7 +630,7 @@ int main(int argc, char *argv[]) {
                     MPI_Send(NULL, 0, MPI_DOUBLE, i, TAG_DHT_STATS, MPI_COMM_WORLD);
                 }
 
-                // MPI_Barrier(MPI_COMM_WORLD);
+                MPI_Barrier(MPI_COMM_WORLD);
 
                 if (dht_snaps == 2) {
                     std::stringstream outfile;
