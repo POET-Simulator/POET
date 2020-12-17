@@ -11,9 +11,10 @@
 #include "argh.h" // Argument handler https://github.com/adishavit/argh BSD-licenced
 #include "dht_wrapper.h"
 #include "global_buffer.h"
-#include "util/RRuntime.h"
-#include "worker.h"
 #include "model/Grid.h"
+#include "util/RRuntime.h"
+#include "util/SimParams.h"
+#include "worker.h"
 
 using namespace std;
 using namespace poet;
@@ -100,41 +101,40 @@ int main(int argc, char *argv[]) {
   double sim_e_chemistry, sim_f_chemistry;
 
   argh::parser cmdl(argv);
-
+  int dht_significant_digits;
   // cout << "CPP: Start Init (MPI)" << endl;
+
+  t_simparams params;
 
   MPI_Init(&argc, &argv);
 
-  int world_size;
-  MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+  MPI_Comm_size(MPI_COMM_WORLD, &(params.world_size));
 
-  int world_rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+  MPI_Comm_rank(MPI_COMM_WORLD, &(params.world_rank));
 
   /*Create custom Communicator with all processes except 0 (the master) for DHT
    * storage*/
   // only needed if strategy == 0, but done anyway
-  MPI_Group group_world;
-  MPI_Group dht_group;
+  MPI_Group dht_group, group_world;
   MPI_Comm dht_comm;
   int *process_ranks;
 
   // make a list of processes in the new communicator
-  process_ranks = (int *)malloc(world_size * sizeof(int));
-  for (int I = 1; I < world_size; I++)
+  process_ranks = (int *)malloc(params.world_size * sizeof(int));
+  for (int I = 1; I < params.world_size; I++)
     process_ranks[I - 1] = I;
 
   // get the group under MPI_COMM_WORLD
   MPI_Comm_group(MPI_COMM_WORLD, &group_world);
   // create the new group
-  MPI_Group_incl(group_world, world_size - 1, process_ranks, &dht_group);
+  MPI_Group_incl(group_world, params.world_size - 1, process_ranks, &dht_group);
   // create the new communicator
   MPI_Comm_create(MPI_COMM_WORLD, dht_group, &dht_comm);
   free(process_ranks); // cleanup
   // cout << "Done";
 
   if (cmdl[{"help", "h"}]) {
-    if (world_rank == 0) {
+    if (params.world_rank == 0) {
       cout << "Todo" << endl
            << "See README.md for further information." << endl;
     }
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
 
   /*INIT is now done separately in an R file provided here as argument!*/
   if (!cmdl(2)) {
-    if (world_rank == 0) {
+    if (params.world_rank == 0) {
       cerr << "ERROR. Kin needs 2 positional arguments: " << endl
            << "1) the R script defining your simulation and" << endl
            << "2) the directory prefix where to save results and profiling"
@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
 
   std::list<std::string> optionsError = checkOptions(cmdl);
   if (!optionsError.empty()) {
-    if (world_rank == 0) {
+    if (params.world_rank == 0) {
       cerr << "Unrecognized option(s):\n" << endl;
       for (auto option : optionsError) {
         cerr << option << endl;
@@ -168,61 +168,61 @@ int main(int argc, char *argv[]) {
   }
 
   /*Parse DHT arguments*/
-  dht_enabled = cmdl["dht"];
+  params.dht_enabled = cmdl["dht"];
   // cout << "CPP: DHT is " << ( dht_enabled ? "ON" : "OFF" ) << '\n';
 
-  if (dht_enabled) {
-    cmdl("dht-strategy", 0) >> dht_strategy;
+  if (params.dht_enabled) {
+    cmdl("dht-strategy", 0) >> params.dht_strategy;
     // cout << "CPP: DHT strategy is " << dht_strategy << endl;
 
     cmdl("dht-signif", 5) >> dht_significant_digits;
     // cout << "CPP: DHT significant digits = " << dht_significant_digits <<
     // endl;
 
-    dht_logarithm = cmdl["dht-log"];
+    params.dht_log = cmdl["dht-log"];
     // cout << "CPP: DHT logarithm before rounding: " << ( dht_logarithm ? "ON"
     // : "OFF" ) << endl;
 
-    cmdl("dht-size", DHT_SIZE_PER_PROCESS) >> dht_size_per_process;
+    cmdl("dht-size", DHT_SIZE_PER_PROCESS) >> params.dht_size_per_process;
     // cout << "CPP: DHT size per process (Byte) = " << dht_size_per_process <<
     // endl;
 
-    cmdl("dht-snaps", 0) >> dht_snaps;
+    cmdl("dht-snaps", 0) >> params.dht_snaps;
 
-    cmdl("dht-file") >> dht_file;
+    cmdl("dht-file") >> params.dht_file;
   }
 
   /*Parse work package size*/
-  cmdl("work-package-size", WORK_PACKAGE_SIZE_DEFAULT) >> work_package_size;
+  cmdl("work-package-size", WORK_PACKAGE_SIZE_DEFAULT) >> params.wp_size;
 
   /*Parse output options*/
   store_result = !cmdl["ignore-result"];
 
-  if (world_rank == 0) {
+  if (params.world_rank == 0) {
     cout << "CPP: Complete results storage is " << (store_result ? "ON" : "OFF")
          << endl;
-    cout << "CPP: Work Package Size: " << work_package_size << endl;
-    cout << "CPP: DHT is " << (dht_enabled ? "ON" : "OFF") << '\n';
+    cout << "CPP: Work Package Size: " << params.wp_size << endl;
+    cout << "CPP: DHT is " << (params.dht_enabled ? "ON" : "OFF") << '\n';
 
-    if (dht_enabled) {
-      cout << "CPP: DHT strategy is " << dht_strategy << endl;
+    if (params.dht_enabled) {
+      cout << "CPP: DHT strategy is " << params.dht_strategy << endl;
       cout << "CPP: DHT key default digits (ignored if 'signif_vector' is "
               "defined) = "
            << dht_significant_digits << endl;
       cout << "CPP: DHT logarithm before rounding: "
-           << (dht_logarithm ? "ON" : "OFF") << endl;
-      cout << "CPP: DHT size per process (Byte) = " << dht_size_per_process
-           << endl;
-      cout << "CPP: DHT save snapshots is " << dht_snaps << endl;
-      cout << "CPP: DHT load file is " << dht_file << endl;
+           << (params.dht_log ? "ON" : "OFF") << endl;
+      cout << "CPP: DHT size per process (Byte) = "
+           << params.dht_size_per_process << endl;
+      cout << "CPP: DHT save snapshots is " << params.dht_snaps << endl;
+      cout << "CPP: DHT load file is " << params.dht_file << endl;
     }
   }
 
-  cout << "CPP: R Init (RInside) on process " << world_rank << endl;
+  cout << "CPP: R Init (RInside) on process " << params.world_rank << endl;
   RRuntime R(argc, argv);
 
   // if local_rank == 0 then master else worker
-  R["local_rank"] = world_rank;
+  R["local_rank"] = params.world_rank;
 
   /*Loading Dependencies*/
   std::string r_load_dependencies = "suppressMessages(library(Rmufits));"
@@ -236,11 +236,10 @@ int main(int argc, char *argv[]) {
   R["filesim"] = wrap(filesim);    // assign a char* (string) to 'filesim'
   R.parseEvalQ("source(filesim)"); // eval the init string, ignoring any returns
 
-  std::string out_dir;
-  if (world_rank ==
+  if (params.world_rank ==
       0) { // only rank 0 initializes goes through the whole initialization
-    cmdl(2) >> out_dir;           // <- second positional argument
-    R["fileout"] = wrap(out_dir); // assign a char* (string) to 'fileout'
+    cmdl(2) >> params.out_dir;           // <- second positional argument
+    R["fileout"] = wrap(params.out_dir); // assign a char* (string) to 'fileout'
 
     // Note: R::sim_init() checks if the directory already exists,
     // if not it makes it
@@ -252,15 +251,17 @@ int main(int argc, char *argv[]) {
     std::string master_init_code = "mysetup <- master_init(setup=setup)";
     R.parseEval(master_init_code);
 
-    dt_differ = R.parseEval("mysetup$dt_differ");
-    MPI_Bcast(&dt_differ, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
+    params.dt_differ =
+        R.parseEval("mysetup$dt_differ"); // TODO: Set in DHTWrapper
+    MPI_Bcast(&(params.dt_differ), 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
   } else { // workers will only read the setup DataFrame defined by input file
     R.parseEval("mysetup <- setup");
-    MPI_Bcast(&dt_differ, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&(params.dt_differ), 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
   }
 
-  if (world_rank == 0) {
-    cout << "CPP: R init done on process with rank " << world_rank << endl;
+  if (params.world_rank == 0) {
+    cout << "CPP: R init done on process with rank " << params.world_rank
+         << endl;
   }
 
   // initialize chemistry on all processes
@@ -270,63 +271,64 @@ int main(int argc, char *argv[]) {
   Grid grid(R);
   grid.init();
   /* Retrieve state_C from R context for MPI buffer generation */
-  //Rcpp::DataFrame state_C = R.parseEval("mysetup$state_C");
+  // Rcpp::DataFrame state_C = R.parseEval("mysetup$state_C");
 
   /* Init Parallel helper functions */
-  R["n_procs"] = world_size - 1; /* worker count */
-  R["work_package_size"] = work_package_size;
+  R["n_procs"] = params.world_size - 1; /* worker count */
+  R["work_package_size"] = params.wp_size;
 
   // Removed additional field for ID in previous versions
-  if (world_rank == 0) {
+  if (params.world_rank == 0) {
     mpi_buffer =
         (double *)calloc(grid.getRows() * grid.getCols(), sizeof(double));
   } else {
     mpi_buffer = (double *)calloc(
-        (work_package_size * (grid.getCols())) + BUFFER_OFFSET, sizeof(double));
+        (params.wp_size * (grid.getCols())) + BUFFER_OFFSET, sizeof(double));
     mpi_buffer_results =
-        (double *)calloc(work_package_size * (grid.getCols()), sizeof(double));
+        (double *)calloc(params.wp_size * (grid.getCols()), sizeof(double));
   }
 
-  if (world_rank == 0) {
+  if (params.world_rank == 0) {
     cout << "CPP: parallel init completed (buffers allocated)!" << endl;
   }
 
   // MDL: pass to R the DHT stuff (basically, only for storing of
   // simulation parameters). These 2 variables are always defined:
-  R["dht_enabled"] = dht_enabled;
-  R["dht_log"] = dht_logarithm;
+  R["dht_enabled"] = params.dht_enabled;
+  R["dht_log"] = params.dht_log;
 
-  if (dht_enabled) {
+  if (params.dht_enabled) {
     // cout << "\nCreating DHT\n";
     // determine size of dht entries
     int dht_data_size = grid.getCols() * sizeof(double);
     int dht_key_size =
-        grid.getCols() * sizeof(double) + (dt_differ * sizeof(double));
+        grid.getCols() * sizeof(double) + (params.dt_differ * sizeof(double));
 
     // determine bucket count for preset memory usage
     // bucket size is key + value + 1 byte for status
     int dht_buckets_per_process =
-        dht_size_per_process / (1 + dht_data_size + dht_key_size);
+        params.dht_size_per_process / (1 + dht_data_size + dht_key_size);
 
     // MDL : following code moved here from worker.cpp
     /*Load significance vector from R setup file (or set default)*/
     bool signif_vector_exists = R.parseEval("exists('signif_vector')");
     if (signif_vector_exists) {
-      dht_significant_digits_vector = as<std::vector<int>>(R["signif_vector"]);
+      params.dht_signif_vector = as<std::vector<int>>(R["signif_vector"]);
     } else {
-      dht_significant_digits_vector.assign(
-          dht_object->key_size / sizeof(double), dht_significant_digits);
+      params.dht_signif_vector.assign(dht_object->key_size / sizeof(double),
+                                      dht_significant_digits);
     }
 
     /*Load property type vector from R setup file (or set default)*/
     bool prop_type_vector_exists = R.parseEval("exists('prop_type')");
     if (prop_type_vector_exists) {
-      prop_type_vector = as<std::vector<string>>(R["prop_type"]);
+      params.dht_prop_type_vector = as<std::vector<string>>(R["prop_type"]);
     } else {
-      prop_type_vector.assign(dht_object->key_size / sizeof(double), "act");
+      params.dht_prop_type_vector.assign(dht_object->key_size / sizeof(double),
+                                         "act");
     }
 
-    if (world_rank == 0) {
+    if (params.world_rank == 0) {
       // print only on master, values are equal on all workes
       cout << "CPP: dht_data_size: " << dht_data_size << "\n";
       cout << "CPP: dht_key_size: " << dht_key_size << "\n";
@@ -345,12 +347,12 @@ int main(int argc, char *argv[]) {
 
       // MDL: pass to R the DHT stuff. These variables exist
       // only if dht_enabled is true
-      R["dht_final_signif"] = dht_significant_digits_vector;
-      R["dht_final_proptype"] = prop_type_vector;
+      R["dht_final_signif"] = params.dht_signif_vector;
+      R["dht_final_proptype"] = params.dht_prop_type_vector;
     }
 
-    if (dht_strategy == 0) {
-      if (world_rank != 0) {
+    if (params.dht_strategy == 0) {
+      if (params.world_rank != 0) {
         dht_object = DHT_create(dht_comm, dht_buckets_per_process,
                                 dht_data_size, dht_key_size, get_md5);
 
@@ -362,20 +364,20 @@ int main(int argc, char *argv[]) {
                               dht_data_size, dht_key_size, get_md5);
     }
 
-    if (world_rank == 0) {
+    if (params.world_rank == 0) {
       cout << "CPP: DHT successfully created!" << endl;
     }
   }
 
   // MDL: store all parameters
-  if (world_rank == 0) {
+  if (params.world_rank == 0) {
     cout << "CPP: Calling R Function to store calling parameters" << endl;
     R.parseEvalQ("StoreSetup(setup=mysetup)");
   }
 
   MPI_Barrier(MPI_COMM_WORLD);
 
-  if (world_rank == 0) { /* This is executed by the master */
+  if (params.world_rank == 0) { /* This is executed by the master */
 
     Rcpp::NumericVector master_send;
     Rcpp::NumericVector master_recv;
@@ -383,7 +385,7 @@ int main(int argc, char *argv[]) {
     sim_a_seq = MPI_Wtime();
 
     worker_struct *workerlist =
-        (worker_struct *)calloc(world_size - 1, sizeof(worker_struct));
+        (worker_struct *)calloc(params.world_size - 1, sizeof(worker_struct));
     int need_to_receive;
     MPI_Status probe_status;
     double *timings;
@@ -394,7 +396,7 @@ int main(int argc, char *argv[]) {
     // a temporary send buffer
     double *send_buffer;
     send_buffer = (double *)calloc(
-        (work_package_size * (grid.getCols())) + BUFFER_OFFSET, sizeof(double));
+        (params.wp_size * (grid.getCols())) + BUFFER_OFFSET, sizeof(double));
 
     // helper variables
     int iteration;
@@ -440,7 +442,7 @@ int main(int argc, char *argv[]) {
       /*Fallback for sequential execution*/
       sim_b_chemistry = MPI_Wtime();
 
-      if (world_size == 1) {
+      if (params.world_size == 1) {
         // MDL : the transformation of values into pH and pe
         // takes now place in master_advection() so the
         // following line is unneeded
@@ -473,7 +475,7 @@ int main(int argc, char *argv[]) {
         // R.parseEval("tmp <-
         // shuffle_field(RedModRphree::Act2pH(mysetup$state_T), ordered_ids)");
         // Rcpp::DataFrame chemistry_data = R.parseEval("tmp");
-        
+
         // convert_R_Dataframe_2_C_buffer(mpi_buffer, chemistry_data);
         // cout << "CPP: shuffle_field() done" << endl;
         grid.shuffleAndExport(mpi_buffer);
@@ -482,7 +484,7 @@ int main(int argc, char *argv[]) {
         int pkg_to_send = n_wp;
         int pkg_to_recv = n_wp;
         size_t colCount = grid.getCols();
-        int free_workers = world_size - 1;
+        int free_workers = params.world_size - 1;
         double *work_pointer = mpi_buffer;
         sim_c_chemistry = MPI_Wtime();
 
@@ -524,7 +526,7 @@ int main(int argc, char *argv[]) {
           if (pkg_to_send > 0) {
             master_send_a = MPI_Wtime();
             /*search for free workers and send work*/
-            for (int p = 0; p < world_size - 1; p++) {
+            for (int p = 0; p < params.world_size - 1; p++) {
               if (workerlist[p].has_work == 0 &&
                   pkg_to_send > 0) /* worker is free */ {
 
@@ -614,12 +616,13 @@ int main(int argc, char *argv[]) {
         cummul_workers += sim_d_chemistry - sim_c_chemistry;
 
         // convert_C_buffer_2_R_Dataframe(mpi_buffer, chemistry_data);
-        //R.from_C_domain(mpi_buffer);
+        // R.from_C_domain(mpi_buffer);
 
-        //R["chemistry_data"] = R.getBufferDataFrame();
+        // R["chemistry_data"] = R.getBufferDataFrame();
 
         ///* unshuffle results */
-        //R.parseEval("result <- unshuffle_field(chemistry_data, ordered_ids)");
+        // R.parseEval("result <- unshuffle_field(chemistry_data,
+        // ordered_ids)");
 
         grid.importAndUnshuffle(mpi_buffer);
         /* do master stuff */
@@ -644,18 +647,18 @@ int main(int argc, char *argv[]) {
            << endl
            << endl;
 
-      if (dht_enabled) {
-        for (int i = 1; i < world_size; i++) {
+      if (params.dht_enabled) {
+        for (int i = 1; i < params.world_size; i++) {
           MPI_Send(NULL, 0, MPI_DOUBLE, i, TAG_DHT_STATS, MPI_COMM_WORLD);
         }
 
         MPI_Barrier(MPI_COMM_WORLD);
 
-        if (dht_snaps == 2) {
+        if (params.dht_snaps == 2) {
           std::stringstream outfile;
-          outfile << out_dir << "/iter_" << std::setfill('0') << std::setw(3)
-                  << iter << ".dht";
-          for (int i = 1; i < world_size; i++) {
+          outfile << params.out_dir << "/iter_" << std::setfill('0')
+                  << std::setw(3) << iter << ".dht";
+          for (int i = 1; i < params.world_size; i++) {
             MPI_Send(outfile.str().c_str(), outfile.str().size(), MPI_CHAR, i,
                      TAG_DHT_STORE, MPI_COMM_WORLD);
           }
@@ -675,11 +678,11 @@ int main(int argc, char *argv[]) {
 
     sim_end = MPI_Wtime();
 
-    if (dht_enabled && dht_snaps > 0) {
+    if (params.dht_enabled && params.dht_snaps > 0) {
       cout << "CPP: Master: Instruct workers to write DHT to file ..." << endl;
       std::string outfile;
-      outfile = out_dir + ".dht";
-      for (int i = 1; i < world_size; i++) {
+      outfile = params.out_dir + ".dht";
+      for (int i = 1; i < params.world_size; i++) {
         MPI_Send(outfile.c_str(), outfile.size(), MPI_CHAR, i, TAG_DHT_STORE,
                  MPI_COMM_WORLD);
       }
@@ -697,7 +700,7 @@ int main(int argc, char *argv[]) {
 
     timings = (double *)calloc(3, sizeof(double));
 
-    if (dht_enabled) {
+    if (params.dht_enabled) {
       dht_hits = 0;
       dht_miss = 0;
       dht_collision = 0;
@@ -706,7 +709,7 @@ int main(int argc, char *argv[]) {
 
     double idle_worker_tmp;
 
-    for (int p = 0; p < world_size - 1; p++) {
+    for (int p = 0; p < params.world_size - 1; p++) {
       /* ATTENTION Worker p has rank p+1 */
       /* Send termination message to worker */
       MPI_Send(NULL, 0, MPI_DOUBLE, p + 1, TAG_FINISH, MPI_COMM_WORLD);
@@ -723,7 +726,7 @@ int main(int argc, char *argv[]) {
                MPI_COMM_WORLD, MPI_STATUS_IGNORE);
       idle_worker.push_back(idle_worker_tmp, "w" + to_string(p + 1));
 
-      if (dht_enabled) {
+      if (params.dht_enabled) {
         dht_get_time.push_back(timings[1], "w" + to_string(p + 1));
         dht_fill_time.push_back(timings[2], "w" + to_string(p + 1));
 
@@ -770,7 +773,7 @@ int main(int argc, char *argv[]) {
     R["phreeqc_count"] = phreeqc_counts;
     R.parseEvalQ("profiling$phreeqc_count <- phreeqc_count");
 
-    if (dht_enabled) {
+    if (params.dht_enabled) {
       R["dht_hits"] = dht_hits;
       R.parseEvalQ("profiling$dht_hits <- dht_hits");
       R["dht_miss"] = dht_miss;
@@ -786,47 +789,47 @@ int main(int argc, char *argv[]) {
     free(workerlist);
     free(timings);
 
-    if (dht_enabled)
+    if (params.dht_enabled)
       free(dht_perfs);
 
-    cout << "CPP: Done! Results are stored as R objects into <" << out_dir
-         << "/timings.rds>" << endl;
+    cout << "CPP: Done! Results are stored as R objects into <"
+         << params.out_dir << "/timings.rds>" << endl;
     /*exporting results and profiling data*/
 
     std::string r_vis_code;
     r_vis_code = "saveRDS(profiling, file=paste0(fileout,'/timings.rds'));";
     R.parseEval(r_vis_code);
   } else { /*This is executed by the workers*/
-    if (!dht_file.empty()) {
-      int res = file_to_table((char *)dht_file.c_str());
+    if (!params.dht_file.empty()) {
+      int res = file_to_table((char *)params.dht_file.c_str());
       if (res != DHT_SUCCESS) {
         if (res == DHT_WRONG_FILE) {
-          if (world_rank == 2)
+          if (params.world_rank == 2)
             cerr << "CPP: Worker: Wrong File" << endl;
         } else {
-          if (world_rank == 2)
+          if (params.world_rank == 2)
             cerr << "CPP: Worker: Error in loading current state of DHT from "
                     "file"
                  << endl;
         }
         return EXIT_FAILURE;
       } else {
-        if (world_rank == 2)
+        if (params.world_rank == 2)
           cout << "CPP: Worker: Successfully loaded state of DHT from file "
-               << dht_file << endl;
+               << params.dht_file << endl;
         std::cout.flush();
       }
     }
-    worker_function(R, grid);
+    worker_function(R, grid, &params);
     free(mpi_buffer_results);
   }
 
-  cout << "CPP: finished, cleanup of process " << world_rank << endl;
+  cout << "CPP: finished, cleanup of process " << params.world_rank << endl;
 
-  if (dht_enabled) {
+  if (params.dht_enabled) {
 
-    if (dht_strategy == 0) {
-      if (world_rank != 0) {
+    if (params.dht_strategy == 0) {
+      if (params.world_rank != 0) {
         DHT_free(dht_object, NULL, NULL);
       }
     } else {
@@ -837,7 +840,7 @@ int main(int argc, char *argv[]) {
   free(mpi_buffer);
   MPI_Finalize();
 
-  if (world_rank == 0) {
+  if (params.world_rank == 0) {
     cout << "CPP: done, bye!" << endl;
   }
 

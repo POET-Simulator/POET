@@ -10,7 +10,7 @@
 using namespace poet;
 using namespace Rcpp;
 
-void worker_function(RRuntime &R, Grid &grid) {
+void worker_function(RRuntime &R, Grid &grid, t_simparams *params) {
   int world_rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
   MPI_Status probe_status;
@@ -41,9 +41,9 @@ void worker_function(RRuntime &R, Grid &grid) {
   // dht_perf[2] -> collisions
   uint64_t dht_perf[3];
 
-  if (dht_enabled) {
-    dht_flags.resize(work_package_size, true); // set size
-    dht_flags.assign(work_package_size,
+  if (params->dht_enabled) {
+    dht_flags.resize(params->wp_size, true); // set size
+    dht_flags.assign(params->wp_size,
                      true); // assign all elements to true (default)
     dht_hits = 0;
     dht_miss = 0;
@@ -140,7 +140,7 @@ void worker_function(RRuntime &R, Grid &grid) {
       ////Rcpp::DataFrame buffer = R.parseEval("tmp2");
       // R.setBufferDataFrame("skeleton");
 
-      if (dht_enabled) {
+      if (params->dht_enabled) {
         // DEBUG
         // cout << "RANK " << world_rank << " start checking DHT\n";
 
@@ -152,7 +152,7 @@ void worker_function(RRuntime &R, Grid &grid) {
         }
 
         dht_get_start = MPI_Wtime();
-        check_dht(local_work_package_size, dht_flags, mpi_buffer, dt);
+        check_dht(local_work_package_size, dht_flags, mpi_buffer, dt, params);
         dht_get_end = MPI_Wtime();
 
         // DEBUG
@@ -161,7 +161,6 @@ void worker_function(RRuntime &R, Grid &grid) {
         R["dht_flags"] = as<LogicalVector>(wrap(dht_flags));
         // R.parseEvalQ("print(head(dht_flags))");
       }
-
 
       /* work */
       // R.from_C_domain(mpi_buffer);
@@ -173,9 +172,9 @@ void worker_function(RRuntime &R, Grid &grid) {
       // R.parseEvalQ("print(head(work_package_full))");
       // R.parseEvalQ("print( c(length(dht_flags), nrow(work_package_full)) )");
 
-      grid.importWP(mpi_buffer, work_package_size);
+      grid.importWP(mpi_buffer, params->wp_size);
 
-      if (dht_enabled) {
+      if (params->dht_enabled) {
         R.parseEvalQ("work_package <- work_package_full[dht_flags,]");
       } else {
         R.parseEvalQ("work_package <- work_package_full");
@@ -215,7 +214,7 @@ void worker_function(RRuntime &R, Grid &grid) {
         // cout << "Work-Package is empty, skipping phreeqc!" << endl;
       }
 
-      if (dht_enabled) {
+      if (params->dht_enabled) {
         R.parseEvalQ("result_full <- work_package_full");
         if (nrows > 0)
           R.parseEvalQ("result_full[dht_flags,] <- result");
@@ -234,10 +233,10 @@ void worker_function(RRuntime &R, Grid &grid) {
       MPI_Isend(mpi_buffer_results, count, MPI_DOUBLE, 0, TAG_WORK,
                 MPI_COMM_WORLD, &send_req);
 
-      if (dht_enabled) {
+      if (params->dht_enabled) {
         dht_fill_start = MPI_Wtime();
         fill_dht(local_work_package_size, dht_flags, mpi_buffer,
-                 mpi_buffer_results, dt);
+                 mpi_buffer_results, dt, params);
         dht_fill_end = MPI_Wtime();
 
         timing[1] += dht_get_end - dht_get_start;
@@ -247,7 +246,6 @@ void worker_function(RRuntime &R, Grid &grid) {
       timing[0] += phreeqc_time_end - phreeqc_time_start;
 
       MPI_Wait(&send_req, MPI_STATUS_IGNORE);
-
 
     } else if (probe_status.MPI_TAG == TAG_FINISH) { /* recv and die */
       /* before death, submit profiling/timings to master*/
@@ -261,7 +259,7 @@ void worker_function(RRuntime &R, Grid &grid) {
       MPI_Send(&phreeqc_count, 1, MPI_INT, 0, TAG_TIMING, MPI_COMM_WORLD);
       MPI_Send(&cummul_idle, 1, MPI_DOUBLE, 0, TAG_TIMING, MPI_COMM_WORLD);
 
-      if (dht_enabled) {
+      if (params->dht_enabled) {
         // dht_perf
         dht_perf[0] = dht_hits;
         dht_perf[1] = dht_miss;
