@@ -6,7 +6,7 @@
 using namespace std;
 using namespace poet;
 /*Functions*/
-void worker_function(RRuntime &R, Grid &grid, t_simparams *params);
+void worker_function(t_simparams *params);
 
 
 /*Globals*/

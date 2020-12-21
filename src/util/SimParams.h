@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include "RRuntime.h"
 
 typedef struct {
   int world_size;
@@ -21,6 +22,9 @@ typedef struct {
   unsigned int wp_size;
 
   std::string out_dir;
+
+  void* R;
+  void* grid;
 } t_simparams;
 
 #endif // SIMPARAMS_H

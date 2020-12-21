@@ -10,7 +10,9 @@
 using namespace poet;
 using namespace Rcpp;
 
-void worker_function(RRuntime &R, Grid &grid, t_simparams *params) {
+void worker_function(t_simparams *params) {
+  RRuntime R = *(static_cast<RRuntime *>(params->R));
+  Grid grid = *(static_cast<Grid *>(params->grid));
   int world_rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
   MPI_Status probe_status;

@@ -220,6 +220,7 @@ int main(int argc, char *argv[]) {
 
   cout << "CPP: R Init (RInside) on process " << params.world_rank << endl;
   RRuntime R(argc, argv);
+  params.R = &R;
 
   // if local_rank == 0 then master else worker
   R["local_rank"] = params.world_rank;
@@ -269,6 +270,7 @@ int main(int argc, char *argv[]) {
   R.parseEval(init_chemistry_code);
 
   Grid grid(R);
+  params.grid = &grid;
   grid.init();
   /* Retrieve state_C from R context for MPI buffer generation */
   // Rcpp::DataFrame state_C = R.parseEval("mysetup$state_C");
@@ -820,7 +822,7 @@ int main(int argc, char *argv[]) {
         std::cout.flush();
       }
     }
-    worker_function(R, grid, &params);
+    worker_function(&params);
     free(mpi_buffer_results);
   }
 
