@@ -1,20 +1,22 @@
+#include <Rcpp.h>
+#include <mpi.h>  // mpi header file
+
 #include <cstring>
 #include <iostream>
 #include <string>
 #include <vector>
 
-#include <Rcpp.h>
-
-#include <mpi.h> // mpi header file
-
-#include "DHT.h" // MPI-DHT Implementation
-#include "argh.h" // Argument handler https://github.com/adishavit/argh BSD-licenced
-#include "dht_wrapper.h"
-#include "global_buffer.h"
+// #include "DHT.h"  // MPI-DHT Implementation
+#include "argh.h"  // Argument handler https://github.com/adishavit/argh BSD-licenced
+// #include "dht_wrapper.h"
+// #include "global_buffer.h"
+#include "model/ChemSim.h"
 #include "model/Grid.h"
 #include "util/RRuntime.h"
 #include "util/SimParams.h"
-#include "worker.h"
+// #include "worker.h"
+
+#define DHT_SIZE_PER_PROCESS 1073741824
 
 using namespace std;
 using namespace poet;
@@ -59,8 +61,7 @@ std::list<std::string> checkOptions(argh::parser cmdl) {
   std::set<std::string> plist = paramList();
 
   for (auto &flag : cmdl.flags()) {
-    if (!(flist.find(flag) != flist.end()))
-      retList.push_back(flag);
+    if (!(flist.find(flag) != flist.end())) retList.push_back(flag);
   }
 
   for (auto &param : cmdl.params()) {
@@ -85,7 +86,7 @@ int main(int argc, char *argv[]) {
   double cummul_workers = 0.f;
   double cummul_chemistry_master = 0.f;
 
-  double cummul_master_seq_pre_loop = 0.f;
+  double cummul_master_seq = 0.f;
   double cummul_master_seq_loop = 0.f;
   double master_idle = 0.f;
 
@@ -121,8 +122,7 @@ int main(int argc, char *argv[]) {
 
   // make a list of processes in the new communicator
   process_ranks = (int *)malloc(params.world_size * sizeof(int));
-  for (int I = 1; I < params.world_size; I++)
-    process_ranks[I - 1] = I;
+  for (int I = 1; I < params.world_size; I++) process_ranks[I - 1] = I;
 
   // get the group under MPI_COMM_WORLD
   MPI_Comm_group(MPI_COMM_WORLD, &group_world);
@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
   MPI_Group_incl(group_world, params.world_size - 1, process_ranks, &dht_group);
   // create the new communicator
   MPI_Comm_create(MPI_COMM_WORLD, dht_group, &dht_comm);
-  free(process_ranks); // cleanup
+  free(process_ranks);  // cleanup
   // cout << "Done";
 
   if (cmdl[{"help", "h"}]) {
@@ -226,21 +226,24 @@ int main(int argc, char *argv[]) {
   R["local_rank"] = params.world_rank;
 
   /*Loading Dependencies*/
-  std::string r_load_dependencies = "suppressMessages(library(Rmufits));"
-                                    "suppressMessages(library(RedModRphree));"
-                                    "source('kin_r_library.R');"
-                                    "source('parallel_r_library.R');";
+  std::string r_load_dependencies =
+      "suppressMessages(library(Rmufits));"
+      "suppressMessages(library(RedModRphree));"
+      "source('kin_r_library.R');"
+      "source('parallel_r_library.R');";
   R.parseEvalQ(r_load_dependencies);
 
   std::string filesim;
-  cmdl(1) >> filesim;              // <- first positional argument
-  R["filesim"] = wrap(filesim);    // assign a char* (string) to 'filesim'
-  R.parseEvalQ("source(filesim)"); // eval the init string, ignoring any returns
+  cmdl(1) >> filesim;            // <- first positional argument
+  R["filesim"] = wrap(filesim);  // assign a char* (string) to 'filesim'
+  R.parseEvalQ(
+      "source(filesim)");  // eval the init string, ignoring any returns
 
   if (params.world_rank ==
-      0) { // only rank 0 initializes goes through the whole initialization
-    cmdl(2) >> params.out_dir;           // <- second positional argument
-    R["fileout"] = wrap(params.out_dir); // assign a char* (string) to 'fileout'
+      0) {  // only rank 0 initializes goes through the whole initialization
+    cmdl(2) >> params.out_dir;  // <- second positional argument
+    R["fileout"] =
+        wrap(params.out_dir);  // assign a char* (string) to 'fileout'
 
     // Note: R::sim_init() checks if the directory already exists,
     // if not it makes it
@@ -253,9 +256,9 @@ int main(int argc, char *argv[]) {
     R.parseEval(master_init_code);
 
     params.dt_differ =
-        R.parseEval("mysetup$dt_differ"); // TODO: Set in DHTWrapper
+        R.parseEval("mysetup$dt_differ");  // TODO: Set in DHTWrapper
     MPI_Bcast(&(params.dt_differ), 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
-  } else { // workers will only read the setup DataFrame defined by input file
+  } else {  // workers will only read the setup DataFrame defined by input file
     R.parseEval("mysetup <- setup");
     MPI_Bcast(&(params.dt_differ), 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
   }
@@ -280,15 +283,15 @@ int main(int argc, char *argv[]) {
   R["work_package_size"] = params.wp_size;
 
   // Removed additional field for ID in previous versions
-  if (params.world_rank == 0) {
-    mpi_buffer =
-        (double *)calloc(grid.getRows() * grid.getCols(), sizeof(double));
-  } else {
-    mpi_buffer = (double *)calloc(
-        (params.wp_size * (grid.getCols())) + BUFFER_OFFSET, sizeof(double));
-    mpi_buffer_results =
-        (double *)calloc(params.wp_size * (grid.getCols()), sizeof(double));
-  }
+  // if (params.world_rank == 0) {
+  //   mpi_buffer =
+  //       (double *)calloc(grid.getRows() * grid.getCols(), sizeof(double));
+  // } else {
+  //   mpi_buffer = (double *)calloc(
+  //       (params.wp_size * (grid.getCols())) + BUFFER_OFFSET, sizeof(double));
+  //   mpi_buffer_results =
+  //       (double *)calloc(params.wp_size * (grid.getCols()), sizeof(double));
+  // }
 
   if (params.world_rank == 0) {
     cout << "CPP: parallel init completed (buffers allocated)!" << endl;
@@ -302,14 +305,14 @@ int main(int argc, char *argv[]) {
   if (params.dht_enabled) {
     // cout << "\nCreating DHT\n";
     // determine size of dht entries
-    int dht_data_size = grid.getCols() * sizeof(double);
-    int dht_key_size =
-        grid.getCols() * sizeof(double) + (params.dt_differ * sizeof(double));
+    // int dht_data_size = grid.getCols() * sizeof(double);
+    // int dht_key_size =
+    //     grid.getCols() * sizeof(double) + (params.dt_differ * sizeof(double));
 
-    // determine bucket count for preset memory usage
-    // bucket size is key + value + 1 byte for status
-    int dht_buckets_per_process =
-        params.dht_size_per_process / (1 + dht_data_size + dht_key_size);
+    // // // determine bucket count for preset memory usage
+    // // // bucket size is key + value + 1 byte for status
+    // int dht_buckets_per_process =
+    //     params.dht_size_per_process / (1 + dht_data_size + dht_key_size);
 
     // MDL : following code moved here from worker.cpp
     /*Load significance vector from R setup file (or set default)*/
@@ -317,8 +320,8 @@ int main(int argc, char *argv[]) {
     if (signif_vector_exists) {
       params.dht_signif_vector = as<std::vector<int>>(R["signif_vector"]);
     } else {
-      params.dht_signif_vector.assign(dht_object->key_size / sizeof(double),
-                                      dht_significant_digits);
+      // params.dht_signif_vector.assign(dht_object->key_size / sizeof(double),
+      //                                 dht_significant_digits);
     }
 
     /*Load property type vector from R setup file (or set default)*/
@@ -326,22 +329,24 @@ int main(int argc, char *argv[]) {
     if (prop_type_vector_exists) {
       params.dht_prop_type_vector = as<std::vector<string>>(R["prop_type"]);
     } else {
-      params.dht_prop_type_vector.assign(dht_object->key_size / sizeof(double),
-                                         "act");
+      // params.dht_prop_type_vector.assign(dht_object->key_size /
+      // sizeof(double),
+      //                                    "act");
     }
 
     if (params.world_rank == 0) {
-      // print only on master, values are equal on all workes
-      cout << "CPP: dht_data_size: " << dht_data_size << "\n";
-      cout << "CPP: dht_key_size: " << dht_key_size << "\n";
-      cout << "CPP: dht_buckets_per_process: " << dht_buckets_per_process
-           << endl;
+      // // print only on master, values are equal on all workes
+      // cout << "CPP: dht_data_size: " << dht_data_size << "\n";
+      // cout << "CPP: dht_key_size: " << dht_key_size << "\n";
+      // cout << "CPP: dht_buckets_per_process: " << dht_buckets_per_process
+      //      << endl;
 
       // MDL: new output on signif_vector and prop_type
       if (signif_vector_exists) {
         cout << "CPP: using problem-specific rounding digits: " << endl;
-        R.parseEval("print(data.frame(prop=prop, type=prop_type, "
-                    "digits=signif_vector))");
+        R.parseEval(
+            "print(data.frame(prop=prop, type=prop_type, "
+            "digits=signif_vector))");
       } else {
         cout << "CPP: using DHT default rounding digits = "
              << dht_significant_digits << endl;
@@ -353,22 +358,22 @@ int main(int argc, char *argv[]) {
       R["dht_final_proptype"] = params.dht_prop_type_vector;
     }
 
-    if (params.dht_strategy == 0) {
-      if (params.world_rank != 0) {
-        dht_object = DHT_create(dht_comm, dht_buckets_per_process,
-                                dht_data_size, dht_key_size, get_md5);
+    // if (params.dht_strategy == 0) {
+    //   if (params.world_rank != 0) {
+    //     dht_object = DHT_create(dht_comm, dht_buckets_per_process,
+    //                             dht_data_size, dht_key_size, get_md5);
 
-        // storing for access from worker and callback functions
-        fuzzing_buffer = (double *)malloc(dht_key_size);
-      }
-    } else {
-      dht_object = DHT_create(MPI_COMM_WORLD, dht_buckets_per_process,
-                              dht_data_size, dht_key_size, get_md5);
-    }
+    //     // storing for access from worker and callback functions
+    //     fuzzing_buffer = (double *)malloc(dht_key_size);
+    //   }
+    // } else {
+    //   dht_object = DHT_create(MPI_COMM_WORLD, dht_buckets_per_process,
+    //                           dht_data_size, dht_key_size, get_md5);
+    // }
 
-    if (params.world_rank == 0) {
-      cout << "CPP: DHT successfully created!" << endl;
-    }
+    // if (params.world_rank == 0) {
+    //   cout << "CPP: DHT successfully created!" << endl;
+    // }
   }
 
   // MDL: store all parameters
@@ -380,52 +385,23 @@ int main(int argc, char *argv[]) {
   MPI_Barrier(MPI_COMM_WORLD);
 
   if (params.world_rank == 0) { /* This is executed by the master */
+    ChemMaster master(&params, R, grid);
 
     Rcpp::NumericVector master_send;
     Rcpp::NumericVector master_recv;
 
-    sim_a_seq = MPI_Wtime();
-
-    worker_struct *workerlist =
-        (worker_struct *)calloc(params.world_size - 1, sizeof(worker_struct));
-    int need_to_receive;
-    MPI_Status probe_status;
     double *timings;
     uint64_t *dht_perfs = NULL;
 
-    int local_work_package_size;
-
     // a temporary send buffer
-    double *send_buffer;
-    send_buffer = (double *)calloc(
-        (params.wp_size * (grid.getCols())) + BUFFER_OFFSET, sizeof(double));
-
-    // helper variables
-    int iteration;
-    double dt, current_sim_time;
-
-    int n_wp = 1; // holds the actual number of wp which is
-                  // computed later in R::distribute_work_packages()
-    std::vector<int> wp_sizes_vector; // vector with the sizes of
-                                      // each package
-
     sim_start = MPI_Wtime();
 
     // Iteration Count is dynamic, retrieving value from R (is only needed by
     // master for the following loop)
     uint32_t maxiter = R.parseEval("mysetup$maxiter");
 
-    sim_b_seq = MPI_Wtime();
-
-    cummul_master_seq_pre_loop += sim_b_seq - sim_a_seq;
-
     /*SIMULATION LOOP*/
     for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
-      sim_a_seq = MPI_Wtime();
-
-      cummul_master_send = 0.f;
-      cummul_master_recv = 0.f;
-
       cout << "CPP: Evaluating next time step" << endl;
       R.parseEvalQ("mysetup <- master_iteration_setup(mysetup)");
 
@@ -440,201 +416,19 @@ int main(int argc, char *argv[]) {
       R.parseEvalQ("mysetup <- master_advection(setup=mysetup)");
       sim_a_transport = MPI_Wtime();
 
+      if (iter == 1) master.prepareSimulation();
+
       cout << "CPP: Chemistry" << endl;
       /*Fallback for sequential execution*/
       sim_b_chemistry = MPI_Wtime();
 
       if (params.world_size == 1) {
-        // MDL : the transformation of values into pH and pe
-        // takes now place in master_advection() so the
-        // following line is unneeded
-        // R.parseEvalQ("mysetup$state_T <-
-        // RedModRphree::Act2pH(mysetup$state_T)");
-        R.parseEvalQ(
-            "result <- slave_chemistry(setup=mysetup, data=mysetup$state_T)");
-        R.parseEvalQ("mysetup <- master_chemistry(setup=mysetup, data=result)");
+        master.runSeq();
       } else { /*send work to workers*/
-
-        // NEW: only in the first iteration we call
-        // R::distribute_work_packages()!!
-        if (iter == 1) {
-          R.parseEvalQ(
-              "wp_ids <- distribute_work_packages(len=nrow(mysetup$state_T), "
-              "package_size=work_package_size)");
-
-          // we only sort once the vector
-          R.parseEvalQ("ordered_ids <- order(wp_ids)");
-          R.parseEvalQ("wp_sizes_vector <- compute_wp_sizes(wp_ids)");
-          n_wp = (int)R.parseEval("length(wp_sizes_vector)");
-          wp_sizes_vector = as<std::vector<int>>(R["wp_sizes_vector"]);
-          cout << "CPP: Total number of work packages: " << n_wp << endl;
-          R.parseEval("stat_wp_sizes(wp_sizes_vector)");
-        }
-
-        /* shuffle and extract data
-           MDL: we now apply :Act2pH directly in master_advection
-         */
-        // R.parseEval("tmp <-
-        // shuffle_field(RedModRphree::Act2pH(mysetup$state_T), ordered_ids)");
-        // Rcpp::DataFrame chemistry_data = R.parseEval("tmp");
-
-        // convert_R_Dataframe_2_C_buffer(mpi_buffer, chemistry_data);
-        // cout << "CPP: shuffle_field() done" << endl;
-        grid.shuffleAndExport(mpi_buffer);
-        /* send and receive work; this is done by counting
-         * the wp */
-        int pkg_to_send = n_wp;
-        int pkg_to_recv = n_wp;
-        size_t colCount = grid.getCols();
-        int free_workers = params.world_size - 1;
-        double *work_pointer = mpi_buffer;
-        sim_c_chemistry = MPI_Wtime();
-
-        /* visual progress */
-        float progress = 0.0;
-        int barWidth = 70;
-
-        // retrieve data from R runtime
-        iteration = (int)R.parseEval("mysetup$iter");
-        dt = (double)R.parseEval("mysetup$requested_dt");
-        current_sim_time =
-            (double)R.parseEval("mysetup$simulation_time-mysetup$requested_dt");
-
-        int count_pkgs = 0;
-
-        sim_b_seq = MPI_Wtime();
-
-        sim_c_chemistry = MPI_Wtime();
-
-        while (pkg_to_recv > 0) // start dispatching work packages
-        {
-          /* visual progress */
-          progress = (float)(count_pkgs + 1) / n_wp;
-
-          cout << "[";
-          int pos = barWidth * progress;
-          for (int iprog = 0; iprog < barWidth; ++iprog) {
-            if (iprog < pos)
-              cout << "=";
-            else if (iprog == pos)
-              cout << ">";
-            else
-              cout << " ";
-          }
-          std::cout << "] " << int(progress * 100.0) << " %\r";
-          std::cout.flush();
-          /* end visual progress */
-
-          if (pkg_to_send > 0) {
-            master_send_a = MPI_Wtime();
-            /*search for free workers and send work*/
-            for (int p = 0; p < params.world_size - 1; p++) {
-              if (workerlist[p].has_work == 0 &&
-                  pkg_to_send > 0) /* worker is free */ {
-
-                // to enable different work_package_size, set local copy of
-                // work_package_size to either global work_package size or
-                // remaining 'to_send' packages to_send >= work_package_size ?
-                // local_work_package_size = work_package_size :
-                // local_work_package_size = to_send;
-
-                local_work_package_size = (int)wp_sizes_vector[count_pkgs];
-                count_pkgs++;
-
-                // cout << "CPP: sending pkg n. " << count_pkgs << " with size "
-                // << local_work_package_size << endl;
-
-                /*push pointer forward to next work package, after taking the
-                 * current one*/
-                workerlist[p].send_addr = work_pointer;
-
-                int end_of_wp = local_work_package_size * colCount;
-                work_pointer = &(work_pointer[end_of_wp]);
-
-                // fill send buffer starting with work_package ...
-                std::memcpy(send_buffer, workerlist[p].send_addr,
-                            (end_of_wp) * sizeof(double));
-                // followed by: work_package_size
-                send_buffer[end_of_wp] = (double)local_work_package_size;
-                // current iteration of simulation
-                send_buffer[end_of_wp + 1] = (double)iteration;
-                // size of timestep in seconds
-                send_buffer[end_of_wp + 2] = dt;
-                // current time of simulation (age) in seconds
-                send_buffer[end_of_wp + 3] = current_sim_time;
-                // placeholder for work_package_count
-                send_buffer[end_of_wp + 4] = 0.;
-
-                /* ATTENTION Worker p has rank p+1 */
-                MPI_Send(send_buffer, end_of_wp + BUFFER_OFFSET, MPI_DOUBLE,
-                         p + 1, TAG_WORK, MPI_COMM_WORLD);
-
-                workerlist[p].has_work = 1;
-                free_workers--;
-                pkg_to_send -= 1;
-              }
-            }
-            master_send_b = MPI_Wtime();
-            cummul_master_send += master_send_b - master_send_a;
-          }
-
-          /*check if there are results to receive and receive them*/
-          need_to_receive = 1;
-          master_recv_a = MPI_Wtime();
-          while (need_to_receive && pkg_to_recv > 0) {
-
-            if (pkg_to_send > 0 && free_workers > 0)
-              MPI_Iprobe(MPI_ANY_SOURCE, TAG_WORK, MPI_COMM_WORLD,
-                         &need_to_receive, &probe_status);
-            else {
-              idle_a = MPI_Wtime();
-              MPI_Probe(MPI_ANY_SOURCE, TAG_WORK, MPI_COMM_WORLD,
-                        &probe_status);
-              idle_b = MPI_Wtime();
-              master_idle += idle_b - idle_a;
-            }
-
-            if (need_to_receive) {
-              int p = probe_status.MPI_SOURCE;
-              int size;
-              MPI_Get_count(&probe_status, MPI_DOUBLE, &size);
-              MPI_Recv(workerlist[p - 1].send_addr, size, MPI_DOUBLE, p,
-                       TAG_WORK, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-              workerlist[p - 1].has_work = 0;
-              pkg_to_recv -= 1;
-              free_workers++;
-            }
-          }
-          master_recv_b = MPI_Wtime();
-          cummul_master_recv += master_recv_b - master_recv_a;
-        }
-
-        sim_c_seq = MPI_Wtime();
-
-        // don't overwrite last progress
-        cout << endl;
-
-        sim_d_chemistry = MPI_Wtime();
-        cummul_workers += sim_d_chemistry - sim_c_chemistry;
-
-        // convert_C_buffer_2_R_Dataframe(mpi_buffer, chemistry_data);
-        // R.from_C_domain(mpi_buffer);
-
-        // R["chemistry_data"] = R.getBufferDataFrame();
-
-        ///* unshuffle results */
-        // R.parseEval("result <- unshuffle_field(chemistry_data,
-        // ordered_ids)");
-
-        grid.importAndUnshuffle(mpi_buffer);
-        /* do master stuff */
-        sim_e_chemistry = MPI_Wtime();
-        R.parseEvalQ("mysetup <- master_chemistry(setup=mysetup, data=result)");
-        sim_f_chemistry = MPI_Wtime();
-        cummul_chemistry_master += sim_f_chemistry - sim_e_chemistry;
+        master.runIteration();
       }
       sim_a_chemistry = MPI_Wtime();
-
+      double master_seq_a = MPI_Wtime();
       // MDL master_iteration_end just writes on disk state_T and
       // state_C after every iteration if the cmdline option
       // --ignore-results is not given (and thus the R variable
@@ -649,48 +443,22 @@ int main(int argc, char *argv[]) {
            << endl
            << endl;
 
-      if (params.dht_enabled) {
-        for (int i = 1; i < params.world_size; i++) {
-          MPI_Send(NULL, 0, MPI_DOUBLE, i, TAG_DHT_STATS, MPI_COMM_WORLD);
-        }
+      double master_seq_b = MPI_Wtime();
 
-        MPI_Barrier(MPI_COMM_WORLD);
+      cummul_master_seq += master.getSeqTime() + (master_seq_b - master_seq_a);
+      master_send.push_back(master.getSendTime(), "it_" + to_string(iter));
+      master_recv.push_back(master.getRecvTime(), "it_" + to_string(iter));
 
-        if (params.dht_snaps == 2) {
-          std::stringstream outfile;
-          outfile << params.out_dir << "/iter_" << std::setfill('0')
-                  << std::setw(3) << iter << ".dht";
-          for (int i = 1; i < params.world_size; i++) {
-            MPI_Send(outfile.str().c_str(), outfile.str().size(), MPI_CHAR, i,
-                     TAG_DHT_STORE, MPI_COMM_WORLD);
-          }
-          MPI_Barrier(MPI_COMM_WORLD);
-        }
+      for (int i = 1; i < params.world_size; i++) {
+        MPI_Send(NULL, 0, MPI_DOUBLE, i, TAG_DHT_ITER, MPI_COMM_WORLD);
       }
 
-      sim_d_seq = MPI_Wtime();
+      MPI_Barrier(MPI_COMM_WORLD);
 
-      cummul_master_seq_loop +=
-          ((sim_b_seq - sim_a_seq) - (sim_a_transport - sim_b_transport)) +
-          (sim_d_seq - sim_c_seq);
-      master_send.push_back(cummul_master_send, "it_" + to_string(iter));
-      master_recv.push_back(cummul_master_recv, "it_" + to_string(iter));
-
-    } // END SIMULATION LOOP
+    }  // END SIMULATION LOOP
 
     sim_end = MPI_Wtime();
-
-    if (params.dht_enabled && params.dht_snaps > 0) {
-      cout << "CPP: Master: Instruct workers to write DHT to file ..." << endl;
-      std::string outfile;
-      outfile = params.out_dir + ".dht";
-      for (int i = 1; i < params.world_size; i++) {
-        MPI_Send(outfile.c_str(), outfile.size(), MPI_CHAR, i, TAG_DHT_STORE,
-                 MPI_COMM_WORLD);
-      }
-      MPI_Barrier(MPI_COMM_WORLD);
-      cout << "CPP: Master: ... done" << endl;
-    }
+    master.finishSimulation();
 
     Rcpp::NumericVector phreeqc_time;
     Rcpp::NumericVector dht_get_time;
@@ -701,6 +469,10 @@ int main(int argc, char *argv[]) {
     int phreeqc_tmp;
 
     timings = (double *)calloc(3, sizeof(double));
+
+    int dht_hits = 0;
+    int dht_miss = 0;
+    int dht_collision = 0;
 
     if (params.dht_enabled) {
       dht_hits = 0;
@@ -748,23 +520,21 @@ int main(int argc, char *argv[]) {
     R.parseEvalQ("profiling$simtime_transport <- simtime_transport");
     R["simtime_chemistry"] = cummul_chemistry;
     R.parseEvalQ("profiling$simtime_chemistry <- simtime_chemistry");
-    R["simtime_workers"] = cummul_workers;
+    R["simtime_workers"] = master.getWorkerTime();
     R.parseEvalQ("profiling$simtime_workers <- simtime_workers");
-    R["simtime_chemistry_master"] = cummul_chemistry_master;
+    R["simtime_chemistry_master"] = master.getChemMasterTime();
     R.parseEvalQ(
         "profiling$simtime_chemistry_master <- simtime_chemistry_master");
 
-    R["seq_master_prep"] = cummul_master_seq_pre_loop;
-    R.parseEvalQ("profiling$seq_master_prep <- seq_master_prep");
-    R["seq_master_loop"] = cummul_master_seq_loop;
-    R.parseEvalQ("profiling$seq_master_loop <- seq_master_loop");
+    R["seq_master"] = cummul_master_seq;
+    R.parseEvalQ("profiling$seq_master <- seq_master");
 
     // R["master_send"] = master_send;
     // R.parseEvalQ("profiling$master_send <- master_send");
     // R["master_recv"] = master_recv;
     // R.parseEvalQ("profiling$master_recv <- master_recv");
 
-    R["idle_master"] = master_idle;
+    R["idle_master"] = master.getIdleTime();
     R.parseEvalQ("profiling$idle_master <- idle_master");
     R["idle_worker"] = idle_worker;
     R.parseEvalQ("profiling$idle_worker <- idle_worker");
@@ -788,11 +558,9 @@ int main(int argc, char *argv[]) {
       R.parseEvalQ("profiling$dht_fill_time <- dht_fill_time");
     }
 
-    free(workerlist);
     free(timings);
 
-    if (params.dht_enabled)
-      free(dht_perfs);
+    if (params.dht_enabled) free(dht_perfs);
 
     cout << "CPP: Done! Results are stored as R objects into <"
          << params.out_dir << "/timings.rds>" << endl;
@@ -802,42 +570,22 @@ int main(int argc, char *argv[]) {
     r_vis_code = "saveRDS(profiling, file=paste0(fileout,'/timings.rds'));";
     R.parseEval(r_vis_code);
   } else { /*This is executed by the workers*/
-    if (!params.dht_file.empty()) {
-      int res = file_to_table((char *)params.dht_file.c_str());
-      if (res != DHT_SUCCESS) {
-        if (res == DHT_WRONG_FILE) {
-          if (params.world_rank == 2)
-            cerr << "CPP: Worker: Wrong File" << endl;
-        } else {
-          if (params.world_rank == 2)
-            cerr << "CPP: Worker: Error in loading current state of DHT from "
-                    "file"
-                 << endl;
-        }
-        return EXIT_FAILURE;
-      } else {
-        if (params.world_rank == 2)
-          cout << "CPP: Worker: Successfully loaded state of DHT from file "
-               << params.dht_file << endl;
-        std::cout.flush();
-      }
-    }
-    worker_function(&params);
-    free(mpi_buffer_results);
+    ChemWorker worker(&params, R, grid);
+    worker.prepareSimulation(dht_comm);
+    worker.loop();
   }
 
   cout << "CPP: finished, cleanup of process " << params.world_rank << endl;
 
-  if (params.dht_enabled) {
-
-    if (params.dht_strategy == 0) {
-      if (params.world_rank != 0) {
-        DHT_free(dht_object, NULL, NULL);
-      }
-    } else {
-      DHT_free(dht_object, NULL, NULL);
-    }
-  }
+  // if (params.dht_enabled) {
+  //   if (params.dht_strategy == 0) {
+  //     if (params.world_rank != 0) {
+  //       DHT_free(dht_object, NULL, NULL);
+  //     }
+  //   } else {
+  //     DHT_free(dht_object, NULL, NULL);
+  //   }
+  // }
 
   free(mpi_buffer);
   MPI_Finalize();
