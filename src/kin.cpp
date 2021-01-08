@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
     // cout << "CPP: DHT significant digits = " << dht_significant_digits <<
     // endl;
 
-    params.dht_log = cmdl["dht-log"];
+    params.dht_log = !(cmdl["dht-nolog"]);
     // cout << "CPP: DHT logarithm before rounding: " << ( dht_logarithm ? "ON"
     // : "OFF" ) << endl;
 

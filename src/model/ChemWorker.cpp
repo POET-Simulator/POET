@@ -25,7 +25,8 @@ void ChemWorker::prepareSimulation(MPI_Comm dht_comm) {
       (double *)calloc(wp_size * (grid.getCols()), sizeof(double));
 
   if (world_rank == 1)
-    cout << "Worker: DHT usage is " << (dht_enabled ? "ON" : "OFF") << endl;
+    cout << "CPP: Worker: DHT usage is " << (dht_enabled ? "ON" : "OFF")
+         << endl;
 
   if (dht_enabled) {
     int data_size = grid.getCols() * sizeof(double);
@@ -36,7 +37,7 @@ void ChemWorker::prepareSimulation(MPI_Comm dht_comm) {
 
     if (world_rank == 1)
       cout << "CPP: Worker: data size: " << data_size << " bytes" << endl
-           << "CPP: Worker: key size: " << key_size << "bytes" << endl
+           << "CPP: Worker: key size: " << key_size << " bytes" << endl
            << "CPP: Worker: buckets per process " << dht_buckets_per_process
            << endl;
 
