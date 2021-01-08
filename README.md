@@ -1,4 +1,4 @@
-﻿
+
 <!--
     Time-stamp: "Last modified 2020-02-01 18:14:13 delucia"
 -->
@@ -6,8 +6,8 @@
 # install libraries from MDL
 
     library(devtools)
-    devtools::install_git("https://gitext.gfz-potsdam.de/delucia/RedModRphree.git")
-    devtools::install_git("https://gitext.gfz-potsdam.de/delucia/Rmufits.git")
+    devtools::install_gitlab("delucia/RedModRphree", host="https://git.gfz-potsdam.de")
+    devtools::install_gitlab("delucia/Rmufits", host="https://git.gfz-potsdam.de")
   
 # USAGE
 
