@@ -15,15 +15,40 @@ ChemMaster::ChemMaster(t_simparams *params, RRuntime &R_, Grid &grid_)
     : ChemSim(params, R_, grid_) {
   this->wp_size = params->wp_size;
   this->out_dir = params->out_dir;
+
+  workerlist = (worker_struct *)calloc(world_size - 1, sizeof(worker_struct));
+  send_buffer = (double *)calloc((wp_size * (grid.getCols())) + BUFFER_OFFSET,
+                                 sizeof(double));
+
+  R.parseEvalQ(
+      "wp_ids <- distribute_work_packages(len=nrow(mysetup$state_C), "
+      "package_size=work_package_size)");
+
+  // we only sort once the vector
+  R.parseEvalQ("ordered_ids <- order(wp_ids)");
+  R.parseEvalQ("wp_sizes_vector <- compute_wp_sizes(wp_ids)");
+  R.parseEval("stat_wp_sizes(wp_sizes_vector)");
+  wp_sizes_vector = as<std::vector<int>>(R["wp_sizes_vector"]);
+
+  mpi_buffer =
+      (double *)calloc(grid.getRows() * grid.getCols(), sizeof(double));
 }
 
-void ChemMaster::runIteration() {
+ChemMaster::~ChemMaster() {
+  free(mpi_buffer);
+  free(workerlist);
+}
+
+void ChemMaster::runPar() {
+  double chem_a, chem_b;
   double seq_a, seq_b, seq_c, seq_d;
   double worker_chemistry_a, worker_chemistry_b;
   double sim_e_chemistry, sim_f_chemistry;
   int pkg_to_send, pkg_to_recv;
   int free_workers;
   int i_pkgs;
+
+  chem_a = MPI_Wtime();
 
   seq_a = MPI_Wtime();
   grid.shuffleAndExport(mpi_buffer);
@@ -68,6 +93,9 @@ void ChemMaster::runIteration() {
   chem_master += sim_f_chemistry - sim_e_chemistry;
   seq_d = MPI_Wtime();
   seq_t += seq_d - seq_c;
+
+  chem_b = MPI_Wtime();
+  chem_t += chem_b - chem_a;
 }
 
 void ChemMaster::sendPkgs(int &pkg_to_send, int &count_pkgs,
@@ -178,30 +206,6 @@ void ChemMaster::printProgressbar(int count_pkgs, int n_wp, int barWidth) {
   std::cout << "] " << int(progress * 100.0) << " %\r";
   std::cout.flush();
   /* end visual progress */
-}
-
-void ChemMaster::prepareSimulation() {
-  workerlist = (worker_struct *)calloc(world_size - 1, sizeof(worker_struct));
-  send_buffer = (double *)calloc((wp_size * (grid.getCols())) + BUFFER_OFFSET,
-                                 sizeof(double));
-
-  R.parseEvalQ(
-      "wp_ids <- distribute_work_packages(len=nrow(mysetup$state_T), "
-      "package_size=work_package_size)");
-
-  // we only sort once the vector
-  R.parseEvalQ("ordered_ids <- order(wp_ids)");
-  R.parseEvalQ("wp_sizes_vector <- compute_wp_sizes(wp_ids)");
-  R.parseEval("stat_wp_sizes(wp_sizes_vector)");
-  wp_sizes_vector = as<std::vector<int>>(R["wp_sizes_vector"]);
-
-  mpi_buffer =
-      (double *)calloc(grid.getRows() * grid.getCols(), sizeof(double));
-}
-
-void ChemMaster::finishSimulation() {
-  free(mpi_buffer);
-  free(workerlist);
 }
 
 double ChemMaster::getSendTime() { return this->send_t; }

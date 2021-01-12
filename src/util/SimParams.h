@@ -21,7 +21,10 @@ typedef struct {
 
   unsigned int wp_size;
 
+  std::string filesim;
   std::string out_dir;
+
+  bool store_result;
 
   void* R;
   void* grid;

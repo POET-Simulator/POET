@@ -1,9 +1,12 @@
 #include "ChemSim.h"
+
+#include <Rcpp.h>
+#include <mpi.h>
+
+#include <iostream>
+
 #include "../util/RRuntime.h"
 #include "Grid.h"
-#include <Rcpp.h>
-#include <iostream>
-#include <mpi.h>
 
 using namespace Rcpp;
 using namespace poet;
@@ -17,7 +20,16 @@ ChemSim::ChemSim(t_simparams *params, RRuntime &R_, Grid &grid_)
 }
 
 void ChemSim::runSeq() {
+  double chem_a, chem_b;
+
+  chem_a = MPI_Wtime();
+
   R.parseEvalQ(
       "result <- slave_chemistry(setup=mysetup, data=mysetup$state_T)");
   R.parseEvalQ("mysetup <- master_chemistry(setup=mysetup, data=result)");
+
+  chem_b = MPI_Wtime();
+  chem_t += chem_b - chem_a;
 }
+
+double ChemSim::getChemistryTime() { return this->chem_t; }

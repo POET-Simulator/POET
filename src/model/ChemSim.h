@@ -22,7 +22,9 @@ namespace poet {
 class ChemSim {
 public:
   ChemSim(t_simparams *params, RRuntime &R_, Grid &grid_);
+  
   void runSeq();
+  double getChemistryTime();
 
 protected:
   double current_sim_time = 0;
@@ -47,16 +49,17 @@ protected:
   worker_struct *workerlist;
 
   double *mpi_buffer;
+
+  double chem_t = 0.f;
 };
 
 class ChemMaster : public ChemSim {
 public:
   ChemMaster(t_simparams *params, RRuntime &R_, Grid &grid_);
+  ~ChemMaster();
 
-  void prepareSimulation();
-  void finishSimulation();
-
-  void runIteration();
+  void runPar();
+  void profile();
 
   double getSendTime();
   double getRecvTime();
@@ -83,9 +86,9 @@ private:
 
 class ChemWorker : public ChemSim {
 public:
-  ChemWorker(t_simparams *params_, RRuntime &R_, Grid &grid_);
+  ChemWorker(t_simparams *params_, RRuntime &R_, Grid &grid_, MPI_Comm dht_comm);
+  ~ChemWorker();
 
-  void prepareSimulation(MPI_Comm dht_comm);
   void loop();
 
 private:

@@ -10,15 +10,15 @@ using namespace poet;
 using namespace std;
 using namespace Rcpp;
 
-ChemWorker::ChemWorker(t_simparams *params_, RRuntime &R_, Grid &grid_)
+ChemWorker::ChemWorker(t_simparams *params_, RRuntime &R_, Grid &grid_,
+                       MPI_Comm dht_comm)
     : params(params_), ChemSim(params_, R_, grid_) {
   this->dt_differ = params->dt_differ;
   this->dht_enabled = params->dht_enabled;
   this->dht_size_per_process = params->dht_size_per_process;
   this->dht_file = params->dht_file;
-}
+  this->dht_snaps = params->dht_snaps;
 
-void ChemWorker::prepareSimulation(MPI_Comm dht_comm) {
   mpi_buffer = (double *)calloc((wp_size * (grid.getCols())) + BUFFER_OFFSET,
                                 sizeof(double));
   mpi_buffer_results =
@@ -59,6 +59,12 @@ void ChemWorker::prepareSimulation(MPI_Comm dht_comm) {
   timing[2] = 0.0;
 }
 
+ChemWorker::~ChemWorker() {
+  free(mpi_buffer);
+  free(mpi_buffer_results);
+  delete dht;
+}
+
 void ChemWorker::loop() {
   MPI_Status probe_status;
   while (1) {
@@ -69,11 +75,11 @@ void ChemWorker::loop() {
     if (probe_status.MPI_TAG == TAG_WORK) {
       idle_t += idle_b - idle_a;
       doWork(probe_status);
+    } else if (probe_status.MPI_TAG == TAG_DHT_ITER) {
+      postIter();
     } else if (probe_status.MPI_TAG == TAG_FINISH) {
       finishWork();
       break;
-    } else if (probe_status.MPI_TAG == TAG_DHT_ITER) {
-      postIter();
     }
   }
 }
@@ -265,11 +271,12 @@ void ChemWorker::postIter() {
 }
 
 void ChemWorker::writeFile() {
+  cout.flush();
   std::stringstream out;
   out << out_dir << "/iter_" << setfill('0') << setw(3) << iteration << ".dht";
   int res = dht->tableToFile(out.str().c_str());
   if (res != DHT_SUCCESS && world_rank == 2)
-    cerr << "CPP: Worker: Errir in writing current state of DHT to file."
+    cerr << "CPP: Worker: Error in writing current state of DHT to file."
          << endl;
   else if (world_rank == 2)
     cout << "CPP: Worker: Successfully written DHT to file " << out.str()
@@ -298,9 +305,6 @@ void ChemWorker::readFile() {
 }
 
 void ChemWorker::finishWork() {
-  if (dht_enabled && dht_snaps > 0) writeFile();
-
-  double dht_perf[3];
   /* before death, submit profiling/timings to master*/
   MPI_Recv(NULL, 0, MPI_DOUBLE, 0, TAG_FINISH, MPI_COMM_WORLD,
            MPI_STATUS_IGNORE);
@@ -313,6 +317,7 @@ void ChemWorker::finishWork() {
 
   if (dht_enabled) {
     // dht_perf
+    double dht_perf[3];
     dht_perf[0] = dht->getHits();
     dht_perf[1] = dht->getMisses();
     dht_perf[2] = dht->getEvictions();
@@ -320,7 +325,9 @@ void ChemWorker::finishWork() {
              MPI_COMM_WORLD);
   }
 
-  free(mpi_buffer);
-  free(mpi_buffer_results);
-  delete dht;
+  if (dht_enabled && dht_snaps > 0) writeFile();
+
+  // free(mpi_buffer);
+  // free(mpi_buffer_results);
+  // delete dht;
 }

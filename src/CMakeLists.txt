@@ -89,7 +89,7 @@ include_directories(${MPI_CXX_INCLUDE_DIRS})
 
 #define program libraries
 
-add_library(POET_Libs STATIC util/RRuntime.cpp model/Grid.cpp model/ChemSim.cpp model/ChemMaster.cpp model/ChemWorker.cpp DHT/DHT_Wrapper.cpp DHT/DHT.cpp)
+add_library(POET_Libs STATIC util/RRuntime.cpp model/Grid.cpp model/ChemSim.cpp model/ChemMaster.cpp model/ChemWorker.cpp DHT/DHT_Wrapper.cpp DHT/DHT.cpp util/Parser.cpp model/TransportSim.cpp)
 target_include_directories(POET_Libs PUBLIC ${R_INCLUDE_DIRS})
 target_link_libraries(POET_Libs ${R_LIBRARIES} MPI::MPI_CXX crypto)
 
