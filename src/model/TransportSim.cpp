@@ -4,7 +4,7 @@
 
 using namespace poet;
 
-TransportSim::TransportSim(RRuntime &R_) : R(_R) {}
+TransportSim::TransportSim(RRuntime &R_) : R(R_) {}
 
 void TransportSim::runIteration() {
   double sim_a_transport, sim_b_transport;
@@ -16,4 +16,4 @@ void TransportSim::runIteration() {
   transport_t += sim_a_transport - sim_b_transport;
 }
 
-double TransportSim::getTransportTime { return this->transport_t; }
+double TransportSim::getTransportTime() { return this->transport_t; }
