@@ -12,8 +12,6 @@
 #define ROUND(value, signif) \
   (((int)(pow(10.0, (double)signif) * value)) * pow(10.0, (double)-signif))
 
-uint64_t get_md5(int key_size, void *key);
-
 namespace poet {
 class DHT_Wrapper {
  public:

@@ -1,10 +1,14 @@
 #include "DHT_Wrapper.h"
-#include "DHT.h"
+
 #include <openssl/md5.h>
+
 #include <iostream>
+
+#include "DHT.h"
 
 using namespace poet;
 using namespace std;
+
 uint64_t get_md5(int key_size, void *key) {
   MD5_CTX ctx;
   unsigned char sum[MD5_DIGEST_LENGTH];
@@ -105,10 +109,11 @@ int DHT_Wrapper::tableToFile(const char *filename) {
 
 int DHT_Wrapper::fileToTable(const char *filename) {
   int res = DHT_from_file(dht_object, filename);
-  if (res != DHT_SUCCESS)
-    return res;
+  if (res != DHT_SUCCESS) return res;
 
+#ifdef DHT_STATISTICS
   DHT_print_statistics(dht_object);
+#endif
 
   return DHT_SUCCESS;
 }
@@ -116,7 +121,9 @@ int DHT_Wrapper::fileToTable(const char *filename) {
 void DHT_Wrapper::printStatistics() {
   int res;
 
+#ifdef DHT_STATISTICS
   res = DHT_print_statistics(dht_object);
+#endif
 
   if (res != DHT_SUCCESS) {
     // MPI ERROR ... WHAT TO DO NOW?
@@ -160,6 +167,5 @@ void DHT_Wrapper::fuzzForDHT(int var_count, void *key, double dt) {
            << endl;
     }
   }
-  if (dt_differ)
-    fuzzing_buffer[var_count] = dt;
+  if (dt_differ) fuzzing_buffer[var_count] = dt;
 }
