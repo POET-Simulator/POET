@@ -317,11 +317,12 @@ void ChemWorker::finishWork() {
 
   if (dht_enabled) {
     // dht_perf
-    double dht_perf[3];
+    int dht_perf[3];
     dht_perf[0] = dht->getHits();
     dht_perf[1] = dht->getMisses();
+    cout << "Worker " << world_rank << " had " << dht_perf[1] << " misses" << endl;
     dht_perf[2] = dht->getEvictions();
-    MPI_Send(dht_perf, 3, MPI_UNSIGNED_LONG_LONG, 0, TAG_DHT_PERF,
+    MPI_Send(dht_perf, 3, MPI_INT, 0, TAG_DHT_PERF,
              MPI_COMM_WORLD);
   }
 
