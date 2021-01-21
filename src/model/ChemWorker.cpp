@@ -1,5 +1,4 @@
 #include <Rcpp.h>
-#include <mpi.h>
 
 #include <iostream>
 #include <string>
@@ -62,7 +61,7 @@ ChemWorker::ChemWorker(t_simparams *params_, RRuntime &R_, Grid &grid_,
 ChemWorker::~ChemWorker() {
   free(mpi_buffer);
   free(mpi_buffer_results);
-  delete dht;
+  if (dht_enabled) delete dht;
 }
 
 void ChemWorker::loop() {
@@ -320,10 +319,8 @@ void ChemWorker::finishWork() {
     int dht_perf[3];
     dht_perf[0] = dht->getHits();
     dht_perf[1] = dht->getMisses();
-    cout << "Worker " << world_rank << " had " << dht_perf[1] << " misses" << endl;
     dht_perf[2] = dht->getEvictions();
-    MPI_Send(dht_perf, 3, MPI_INT, 0, TAG_DHT_PERF,
-             MPI_COMM_WORLD);
+    MPI_Send(dht_perf, 3, MPI_INT, 0, TAG_DHT_PERF, MPI_COMM_WORLD);
   }
 
   if (dht_enabled && dht_snaps > 0) writeFile();
