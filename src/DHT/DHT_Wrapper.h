@@ -1,13 +1,16 @@
 #ifndef DHT_WRAPPER_H
 #define DHT_WRAPPER_H
 
-#include <mpi.h>
+#include <SimParams.h>
 
 #include <string>
 #include <vector>
 
-#include "../util/SimParams.h"
-#include "DHT.h"
+extern "C" {
+#include <DHT.h>
+}
+
+#include <mpi.h>
 
 #define ROUND(value, signif) \
   (((int)(pow(10.0, (double)signif) * value)) * pow(10.0, (double)-signif))

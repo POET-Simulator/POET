@@ -1,10 +1,9 @@
 #include "DHT_Wrapper.h"
 
+#include <math.h>
 #include <openssl/md5.h>
 
 #include <iostream>
-
-#include "DHT.h"
 
 using namespace poet;
 using namespace std;
@@ -60,7 +59,7 @@ void DHT_Wrapper::checkDHT(int length, std::vector<bool> &out_result_index,
       // flag that this line is replaced by DHT-value, do not simulate!!
       out_result_index[i] = false;
       dht_hits++;
-    } else if (res == DHT_READ_ERROR) {
+    } else if (res == DHT_READ_MISS) {
       // this line is untouched, simulation is needed
       out_result_index[i] = true;
       dht_miss++;

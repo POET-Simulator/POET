@@ -5,22 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/**
- * @brief Determine destination rank and index.
- *
- * This is done by looping over all possbile indices. First of all, set a
- * temporary index to zero and copy count of bytes for each index into the
- * memory area of the temporary index. After that the current index is
- * calculated by the temporary index modulo the table size. The destination rank
- * of the process is simply determined by hash modulo the communicator size.
- *
- * @param hash Calculated 64 bit hash.
- * @param comm_size Communicator size.
- * @param table_size Count of buckets per process.
- * @param dest_rank Reference to the destination rank variable.
- * @param index Pointer to the array index.
- * @param index_count Count of possible indeces.
- */
 static void determine_dest(uint64_t hash, int comm_size,
                            unsigned int table_size, unsigned int *dest_rank,
                            unsigned int *index, unsigned int index_count) {
@@ -36,27 +20,11 @@ static void determine_dest(uint64_t hash, int comm_size,
   *dest_rank = (unsigned int)(hash % comm_size);
 }
 
-/**
- * @brief Set the occupied flag.
- *
- * This will set the first bit of a bucket to 1.
- *
- * @param flag_byte First byte of a bucket.
- */
 static void set_flag(char *flag_byte) {
   *flag_byte = 0;
   *flag_byte |= (1 << 0);
 }
 
-/**
- * @brief Get the occupied flag.
- *
- * This function determines whether the occupied flag of a bucket was set or
- * not.
- *
- * @param flag_byte First byte of a bucket.
- * @return int Returns 1 for true or 0 for false.
- */
 static int read_flag(char flag_byte) {
   if ((flag_byte & 0x01) == 0x01) {
     return 1;
@@ -228,7 +196,7 @@ int DHT_read(DHT *table, void *send_key, void *destination) {
 #endif
       // unlock window and return
       if (MPI_Win_unlock(dest_rank, table->window) != 0) return DHT_MPI_ERROR;
-      return DHT_READ_ERROR;
+      return DHT_READ_MISS;
     }
 
     // ... or key doesn't match passed by key and last index reached.
@@ -241,7 +209,7 @@ int DHT_read(DHT *table, void *send_key, void *destination) {
 #endif
         // unlock window an return
         if (MPI_Win_unlock(dest_rank, table->window) != 0) return DHT_MPI_ERROR;
-        return DHT_READ_ERROR;
+        return DHT_READ_MISS;
       }
     } else
       break;
@@ -344,7 +312,7 @@ int DHT_from_file(DHT *table, const char *filename) {
   // seek behind header of DHT file
   if (MPI_File_seek(file, DHT_FILEHEADER_SIZE, MPI_SEEK_SET) != 0)
     return DHT_FILE_IO_ERROR;
-  
+
   // current position is rank * bucket_size + OFFSET
   cur_pos = DHT_FILEHEADER_SIZE + (rank * bucket_size);
 

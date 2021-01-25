@@ -3,6 +3,7 @@
 
 #include <RInside.h>
 #include <Rcpp.h>
+
 #include <string>
 
 namespace poet {
@@ -14,8 +15,7 @@ namespace poet {
  * If an instance of RRuntime is created a R runtime will also be spawned.
  */
 class RRuntime : public RInside {
-
-public:
+ public:
   /**
    * Constructor of class RRuntime calling constructor of RInside.
    */
@@ -29,8 +29,8 @@ public:
   size_t getBufferNCol();
   size_t getBufferNRow();
 
-private:
+ private:
   Rcpp::DataFrame dfbuff;
 };
-} // namespace poet
-#endif // RRUNTIME_H
+}  // namespace poet
+#endif  // RRUNTIME_H

@@ -1,15 +1,17 @@
 #ifndef CHEMSIM_H
 #define CHEMSIM_H
 
-#include "../DHT/DHT_Wrapper.h"
-#include "../util/RRuntime.h"
-#include "../util/SimParams.h"
-#include "Grid.h"
-
+#include <DHT_Wrapper.h>
+#include <RRuntime.h>
+#include <SimParams.h>
 #include <mpi.h>
+
 #include <vector>
 
+#include "Grid.h"
+
 #define BUFFER_OFFSET 5
+
 #define TAG_WORK 42
 #define TAG_FINISH 43
 #define TAG_TIMING 44
@@ -20,13 +22,15 @@
 
 namespace poet {
 class ChemSim {
-public:
+ public:
   ChemSim(t_simparams *params, RRuntime &R_, Grid &grid_);
-  
-  void runSeq();
+
+  virtual void run();
+  virtual void end();
+
   double getChemistryTime();
 
-protected:
+ protected:
   double current_sim_time = 0;
   int iteration = 0;
   int dt = 0;
@@ -54,12 +58,12 @@ protected:
 };
 
 class ChemMaster : public ChemSim {
-public:
+ public:
   ChemMaster(t_simparams *params, RRuntime &R_, Grid &grid_);
   ~ChemMaster();
 
-  void runPar();
-  void profile();
+  void run() override;
+  void end() override;
 
   double getSendTime();
   double getRecvTime();
@@ -68,11 +72,12 @@ public:
   double getChemMasterTime();
   double getSeqTime();
 
-private:
+ private:
   void printProgressbar(int count_pkgs, int n_wp, int barWidth = 70);
   void sendPkgs(int &pkg_to_send, int &count_pkgs, int &free_workers);
   void recvPkgs(int &pkg_to_recv, bool to_send, int &free_workers);
 
+  bool dht_enabled;
   unsigned int wp_size;
   double *work_pointer;
 
@@ -85,13 +90,14 @@ private:
 };
 
 class ChemWorker : public ChemSim {
-public:
-  ChemWorker(t_simparams *params_, RRuntime &R_, Grid &grid_, MPI_Comm dht_comm);
+ public:
+  ChemWorker(t_simparams *params_, RRuntime &R_, Grid &grid_,
+             MPI_Comm dht_comm);
   ~ChemWorker();
 
   void loop();
 
-private:
+ private:
   void doWork(MPI_Status &probe_status);
   void postIter();
   void finishWork();
@@ -114,5 +120,5 @@ private:
   double idle_t = 0.f;
   int phreeqc_count = 0;
 };
-} // namespace poet
-#endif // CHEMSIM_H
+}  // namespace poet
+#endif  // CHEMSIM_H

@@ -1,14 +1,15 @@
 #ifndef TRANSPORT_SIM_H
 #define TRANSPORT_SIM_H
 
-#include "../util/RRuntime.h"
+#include <RRuntime.h>
 
 namespace poet {
 class TransportSim {
  public:
   TransportSim(RRuntime &R);
 
-  void runIteration();
+  void run();
+  void end();
 
   double getTransportTime();
 

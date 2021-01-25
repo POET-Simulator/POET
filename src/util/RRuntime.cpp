@@ -1,6 +1,8 @@
 #include "RRuntime.h"
+
 #include <RInside.h>
 #include <Rcpp.h>
+
 #include <string>
 
 using namespace poet;

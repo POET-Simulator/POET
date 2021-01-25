@@ -1,12 +1,8 @@
 #include "ChemSim.h"
 
 #include <Rcpp.h>
-#include <mpi.h>
 
 #include <iostream>
-
-#include "../util/RRuntime.h"
-#include "Grid.h"
 
 using namespace Rcpp;
 using namespace poet;
@@ -19,7 +15,7 @@ ChemSim::ChemSim(t_simparams *params, RRuntime &R_, Grid &grid_)
   this->out_dir = params->out_dir;
 }
 
-void ChemSim::runSeq() {
+void ChemSim::run() {
   double chem_a, chem_b;
 
   chem_a = MPI_Wtime();
@@ -30,6 +26,11 @@ void ChemSim::runSeq() {
 
   chem_b = MPI_Wtime();
   chem_t += chem_b - chem_a;
+}
+
+void ChemSim::end() {
+  R["simtime_chemistry"] = chem_t;
+  R.parseEvalQ("profiling$simtime_chemistry <- simtime_chemistry");
 }
 
 double ChemSim::getChemistryTime() { return this->chem_t; }

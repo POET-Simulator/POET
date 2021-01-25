@@ -3,7 +3,6 @@
 
 #include <string>
 #include <vector>
-#include "RRuntime.h"
 
 typedef struct {
   int world_size;
@@ -26,8 +25,8 @@ typedef struct {
 
   bool store_result;
 
-  void* R;
-  void* grid;
+  // void* R;
+  // void* grid;
 } t_simparams;
 
-#endif // SIMPARAMS_H
+#endif  // SIMPARAMS_H

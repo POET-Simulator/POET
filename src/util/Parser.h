@@ -1,11 +1,12 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include <RRuntime.h>
+
 #include <string>
 
-#include "../argh.h"
-#include "RRuntime.h"
 #include "SimParams.h"
+#include "argh.h"
 
 #define PARSER_OK 0
 #define PARSER_ERROR 1
@@ -27,8 +28,8 @@ class Parser {
   std::list<std::string> checkOptions(argh::parser cmdl);
   std::set<std::string> flaglist{"ignore-result", "dht", "dht-nolog"};
   std::set<std::string> paramlist{"work-package-size", "dht-signif",
-                               "dht-strategy",      "dht-size",
-                               "dht-snaps",         "dht-file"};
+                                  "dht-strategy",      "dht-size",
+                                  "dht-snaps",         "dht-file"};
   argh::parser cmdl;
 
   t_simparams simparams;

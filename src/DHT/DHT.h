@@ -20,7 +20,7 @@
 /** Returned if some error in MPI routine occurs. */
 #define DHT_MPI_ERROR -1
 /** Returned by a call of DHT_read if no bucket with given key was found. */
-#define DHT_READ_ERROR -2
+#define DHT_READ_MISS -2
 /** Returned by DHT_write if a bucket was evicted. */
 #define DHT_WRITE_SUCCESS_WITH_COLLISION -3
 /** Returned when no errors occured. */
@@ -202,7 +202,7 @@ extern int DHT_to_file(DHT* table, const char* filename);
  * @param table Pointer to the \a DHT-object.
  * @param filename Name of the file to read from.
  * @return int Returns DHT_SUCCESS on succes, DHT_FILE_IO_ERROR if file can't be
- * opened/closed, DHT_READ_ERROR if file is not readable or DHT_WRONG_FILE if
+ * opened/closed, DHT_READ_MISS if file is not readable or DHT_WRONG_FILE if
  * file doesn't match expectation. This is possible if the data size or key size
  * is different.
  */
@@ -235,7 +235,7 @@ extern int DHT_free(DHT* table, int* eviction_counter, int* readerror_counter);
  *  -# free buckets (in respect to the memory of this process)
  *  -# calls of DHT_write (w_access)
  *  -# calls of DHT_read (r_access)
- *  -# read misses (see DHT_READ_ERROR)
+ *  -# read misses (see DHT_READ_MISS)
  *  -# collisions (see DHT_WRITE_SUCCESS_WITH_COLLISION)
  * 3-6 will reset with every call of this function finally the amount of new
  * written entries is printed out (since the last call of this funtion).
@@ -250,9 +250,48 @@ extern int DHT_free(DHT* table, int* eviction_counter, int* readerror_counter);
  * @return int Returns DHT_SUCCESS on success or DHT_MPI_ERROR on internal MPI
  * error.
  */
-
 #ifdef DHT_STATISTICS
 extern int DHT_print_statistics(DHT* table);
 #endif
+
+/**
+ * @brief Determine destination rank and index.
+ *
+ * This is done by looping over all possbile indices. First of all, set a
+ * temporary index to zero and copy count of bytes for each index into the
+ * memory area of the temporary index. After that the current index is
+ * calculated by the temporary index modulo the table size. The destination rank
+ * of the process is simply determined by hash modulo the communicator size.
+ *
+ * @param hash Calculated 64 bit hash.
+ * @param comm_size Communicator size.
+ * @param table_size Count of buckets per process.
+ * @param dest_rank Reference to the destination rank variable.
+ * @param index Pointer to the array index.
+ * @param index_count Count of possible indeces.
+ */
+static void determine_dest(uint64_t hash, int comm_size,
+                           unsigned int table_size, unsigned int* dest_rank,
+                           unsigned int* index, unsigned int index_count);
+
+/**
+ * @brief Set the occupied flag.
+ *
+ * This will set the first bit of a bucket to 1.
+ *
+ * @param flag_byte First byte of a bucket.
+ */
+static void set_flag(char* flag_byte);
+
+/**
+ * @brief Get the occupied flag.
+ *
+ * This function determines whether the occupied flag of a bucket was set or
+ * not.
+ *
+ * @param flag_byte First byte of a bucket.
+ * @return int Returns 1 for true or 0 for false.
+ */
+static int read_flag(char flag_byte);
 
 #endif /* DHT_H */

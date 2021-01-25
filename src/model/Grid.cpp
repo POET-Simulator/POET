@@ -1,5 +1,4 @@
 #include "Grid.h"
-#include "Rcpp.h"
 
 using namespace poet;
 using namespace Rcpp;
