@@ -1,8 +1,17 @@
-add_library(DHT SHARED DHT.c DHT.h)
-target_include_directories(DHT PRIVATE ${MPI_C_INCLUDE_DIRS})
-target_link_libraries(DHT MPI::MPI_C)
+add_library(DHT DHT.c DHT.h)
+target_include_directories(DHT PUBLIC ${MPI_C_INCLUDE_DIRS})
+target_link_libraries(DHT PRIVATE MPI::MPI_C)
 target_compile_definitions(DHT PUBLIC OMPI_SKIP_MPICXX)
 
-add_library(DHT_Wrapper STATIC DHT_Wrapper.cpp DHT_Wrapper.h)
+set(DHT_Debug FALSE CACHE BOOL "Toggle output of stastic table for each iteration")
+
+if (DHT_Debug)
+  target_compile_definitions(DHT PUBLIC DHT_STATISTICS)
+endif()
+
+find_library(MATH_LIBRARY m)
+find_library(CRYPTO_LIBRARY crypto)
+
+add_library(DHT_Wrapper DHT_Wrapper.cpp DHT_Wrapper.h)
 target_include_directories(DHT_Wrapper PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(DHT_Wrapper DHT m crypto POET_Util)
+target_link_libraries(DHT_Wrapper PRIVATE DHT ${MATH_LIBRARY} ${CRYPTO_LIBRARY} POET_Util)
