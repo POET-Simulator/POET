@@ -95,7 +95,7 @@ typedef struct {
   /** Count of evictions over all time. */
   int evictions;
   /** Array of indeces where a bucket can be stored. */
-  unsigned int* index;
+  uint64_t* index;
   /** Count of possible indeces. */
   unsigned int index_count;
 #ifdef DHT_STATISTICS
@@ -124,8 +124,8 @@ typedef struct {
  * @return DHT* The returned value is the \a DHT-object which serves as a handle
  * for all DHT operations. If an error occured NULL is returned.
  */
-extern DHT* DHT_create(MPI_Comm comm, unsigned int size_per_process,
-                       int data_size, int key_size,
+extern DHT* DHT_create(MPI_Comm comm, uint64_t size_per_process,
+                       unsigned int data_size, unsigned int key_size,
                        uint64_t (*hash_func)(int, void*));
 
 /**
@@ -272,7 +272,7 @@ extern int DHT_print_statistics(DHT* table);
  */
 static void determine_dest(uint64_t hash, int comm_size,
                            unsigned int table_size, unsigned int* dest_rank,
-                           unsigned int* index, unsigned int index_count);
+                           uint64_t* index, unsigned int index_count);
 
 /**
  * @brief Set the occupied flag.

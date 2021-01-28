@@ -4,18 +4,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
+#include <unistd.h>
 
 static void determine_dest(uint64_t hash, int comm_size,
                            unsigned int table_size, unsigned int *dest_rank,
-                           unsigned int *index, unsigned int index_count) {
+                           uint64_t *index, unsigned int index_count) {
   /** temporary index */
   uint64_t tmp_index;
-  /** how many bytes for one index? */
-  int index_size = 9 - index_count;
-  for (unsigned int i = 0; i < index_count; i++) {
+  /** how many bytes do we need for one index? */
+  int index_size = sizeof(double) - (index_count - 1);
+  for (int i = 0; i < index_count; i++) {
     tmp_index = 0;
-    memcpy(&tmp_index, (unsigned char *)&hash + i, index_size);
-    index[i] = (unsigned int)(tmp_index % table_size);
+    memcpy(&tmp_index, (char *)&hash + i, index_size);
+    index[i] = (uint64_t)(tmp_index % table_size);
   }
   *dest_rank = (unsigned int)(hash % comm_size);
 }
@@ -32,8 +34,8 @@ static int read_flag(char flag_byte) {
     return 0;
 }
 
-DHT *DHT_create(MPI_Comm comm, unsigned int size, int data_size, int key_size,
-                uint64_t (*hash_func)(int, void *)) {
+DHT *DHT_create(MPI_Comm comm, uint64_t size, unsigned int data_size,
+                unsigned int key_size, uint64_t (*hash_func)(int, void *)) {
   DHT *object;
   MPI_Win window;
   void *mem_alloc;
@@ -77,7 +79,7 @@ DHT *DHT_create(MPI_Comm comm, unsigned int size, int data_size, int key_size,
   object->recv_entry = malloc(1 + data_size + key_size);
   object->send_entry = malloc(1 + data_size + key_size);
   object->index_count = 9 - (index_bytes / 8);
-  object->index = (unsigned int *)malloc((9 - (index_bytes / 8)) * sizeof(int));
+  object->index = (uint64_t*)malloc((object->index_count) * sizeof(uint64_t));
   object->mem_alloc = mem_alloc;
 
   // if set, initialize dht_stats
