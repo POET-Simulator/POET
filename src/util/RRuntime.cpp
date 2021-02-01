@@ -7,11 +7,6 @@
 
 using namespace poet;
 
-/**
- * Convert a R dataframe into a C continious memory area.
- *
- * @param varname Name of the R internal variable name.
- */
 void RRuntime::to_C_domain(double *buffer) {
   size_t rowCount = dfbuff.nrow();
   size_t colCount = dfbuff.ncol();
@@ -25,15 +20,6 @@ void RRuntime::to_C_domain(double *buffer) {
   }
 }
 
-/**
- * Convert continious C memory area into R dataframe and puts it into R runtime.
- *
- * @param buffer Pointer to memory area which should be converted into R
- * dataframe.
- * @param skeleton Defines the raw data frame structure and muste be defined
- * inside the R runtime beforehand.
- * @param varname Name of the R internal variable name.
- */
 void RRuntime::from_C_domain(double *buffer) {
   size_t rowCount = dfbuff.nrow();
   size_t colCount = dfbuff.ncol();
