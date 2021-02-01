@@ -250,9 +250,7 @@ extern int DHT_free(DHT* table, int* eviction_counter, int* readerror_counter);
  * @return int Returns DHT_SUCCESS on success or DHT_MPI_ERROR on internal MPI
  * error.
  */
-#ifdef DHT_STATISTICS
 extern int DHT_print_statistics(DHT* table);
-#endif
 
 /**
  * @brief Determine destination rank and index.

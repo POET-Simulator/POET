@@ -8,7 +8,7 @@
 using namespace poet;
 using namespace std;
 
-uint64_t get_md5(int key_size, void *key) {
+static uint64_t get_md5(int key_size, void *key) {
   MD5_CTX ctx;
   unsigned char sum[MD5_DIGEST_LENGTH];
   uint64_t retval, *v1, *v2;
@@ -120,9 +120,7 @@ int DHT_Wrapper::fileToTable(const char *filename) {
 void DHT_Wrapper::printStatistics() {
   int res;
 
-#ifdef DHT_STATISTICS
   res = DHT_print_statistics(dht_object);
-#endif
 
   if (res != DHT_SUCCESS) {
     // MPI ERROR ... WHAT TO DO NOW?
@@ -143,11 +141,12 @@ void DHT_Wrapper::fuzzForDHT(int var_count, void *key, double dt) {
     if (dht_prop_type_vector[i] == "act") {
       // with log10
       if (dht_log) {
-        if (((double *)key)[i] < 0)
+        if (((double *)key)[i] < 0) {
           cerr << "dht_wrapper.cpp::fuzz_for_dht(): Warning! Negative value in "
                   "key!"
                << endl;
-        else if (((double *)key)[i] == 0)
+          fuzzing_buffer[i] = 0;
+        } else if (((double *)key)[i] == 0)
           fuzzing_buffer[i] = 0;
         else
           fuzzing_buffer[i] =
