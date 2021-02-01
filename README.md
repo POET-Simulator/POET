@@ -1,4 +1,4 @@
-﻿
+
 <!--
     Time-stamp: "Last modified 2020-02-01 18:14:13 delucia"
 -->
@@ -23,7 +23,7 @@ DHT:
 
 --dht                   ... enable dht (default is off)
 
---dht-log               ... enable logarithm application before rounding (default is off)
+--dht-nolog               ... enable logarithm application before rounding (default is off)
 
 --dht-signif=<1-n>      ... set rounding to number of significant digits (default 5) 
                             (only used if no vector is given in setup file)
