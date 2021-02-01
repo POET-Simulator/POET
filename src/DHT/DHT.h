@@ -22,7 +22,7 @@
 /** Returned by a call of DHT_read if no bucket with given key was found. */
 #define DHT_READ_MISS -2
 /** Returned by DHT_write if a bucket was evicted. */
-#define DHT_WRITE_SUCCESS_WITH_COLLISION -3
+#define DHT_WRITE_SUCCESS_WITH_EVICTION -3
 /** Returned when no errors occured. */
 #define DHT_SUCCESS 0
 
@@ -236,7 +236,7 @@ extern int DHT_free(DHT* table, int* eviction_counter, int* readerror_counter);
  *  -# calls of DHT_write (w_access)
  *  -# calls of DHT_read (r_access)
  *  -# read misses (see DHT_READ_MISS)
- *  -# collisions (see DHT_WRITE_SUCCESS_WITH_COLLISION)
+ *  -# collisions (see DHT_WRITE_SUCCESS_WITH_EVICTION)
  * 3-6 will reset with every call of this function finally the amount of new
  * written entries is printed out (since the last call of this funtion).
  *

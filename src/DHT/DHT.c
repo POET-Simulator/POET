@@ -141,7 +141,7 @@ int DHT_write(DHT *table, void *send_key, void *send_data) {
 #ifdef DHT_STATISTICS
           table->stats->evictions += 1;
 #endif
-          result = DHT_WRITE_SUCCESS_WITH_COLLISION;
+          result = DHT_WRITE_SUCCESS_WITH_EVICTION;
           break;
         }
       } else
