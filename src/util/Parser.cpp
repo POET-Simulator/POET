@@ -34,11 +34,13 @@ int Parser::parseCmdl() {
     return PARSER_ERROR;
   }
 
-  std::list<std::string> optionsError = checkOptions(cmdl);
-  if (!optionsError.empty()) {
+  // collect all parameters which are not known, print them to stderr and return
+  // with PARSER_ERROR
+  std::list<std::string> unknownOptions = validateOptions();
+  if (!unknownOptions.empty()) {
     if (world_rank == 0) {
       cerr << "Unrecognized option(s):\n" << endl;
-      for (auto option : optionsError) {
+      for (auto option : unknownOptions) {
         cerr << option << endl;
       }
       cerr << "\nMake sure to use available options. Exiting!" << endl;
@@ -76,6 +78,7 @@ int Parser::parseCmdl() {
   /*Parse output options*/
   simparams.store_result = !cmdl["ignore-result"];
 
+  /* rank 0 will summarize all extracted values to stdout */
   if (world_rank == 0) {
     cout << "CPP: Complete results storage is "
          << (simparams.store_result ? "ON" : "OFF") << endl;
@@ -126,15 +129,16 @@ void Parser::parseR(RRuntime &R) {
 
 t_simparams Parser::getParams() { return this->simparams; }
 
-std::list<std::string> Parser::checkOptions(argh::parser cmdl) {
+std::list<std::string> Parser::validateOptions() {
+  /* store all unknown parameters here */
   std::list<std::string> retList;
-  //   std::set<std::string> flist = flagList();
-  //   std::set<std::string> plist = paramList();
 
+  /* loop over all flags and compare to given flaglist*/
   for (auto &flag : cmdl.flags()) {
     if (!(flaglist.find(flag) != flaglist.end())) retList.push_back(flag);
   }
 
+  /* and loop also over params and compare to given paramlist */
   for (auto &param : cmdl.params()) {
     if (!(paramlist.find(param.first) != paramlist.end()))
       retList.push_back(param.first);
