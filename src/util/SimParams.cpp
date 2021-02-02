@@ -129,19 +129,6 @@ int SimParams::parseFromCmdl(char *argv[], RRuntime &R) {
 
 void SimParams::initVectorParams(RRuntime &R, int col_count) {
   if (simparams.dht_enabled) {
-    // cout << "\nCreating DHT\n";
-    // determine size of dht entries
-    // int dht_data_size = grid.getCols() * sizeof(double);
-    // int dht_key_size =
-    //     grid.getCols() * sizeof(double) + (params.dt_differ *
-    //     sizeof(double));
-
-    // // // determine bucket count for preset memory usage
-    // // // bucket size is key + value + 1 byte for status
-    // int dht_buckets_per_process =
-    //     params.dht_size_per_process / (1 + dht_data_size + dht_key_size);
-
-    // MDL : following code moved here from worker.cpp
     /*Load significance vector from R setup file (or set default)*/
     bool signif_vector_exists = R.parseEval("exists('signif_vector')");
     if (signif_vector_exists) {
@@ -159,12 +146,6 @@ void SimParams::initVectorParams(RRuntime &R, int col_count) {
     }
 
     if (simparams.world_rank == 0) {
-      // // print only on master, values are equal on all workes
-      // cout << "CPP: dht_data_size: " << dht_data_size << "\n";
-      // cout << "CPP: dht_key_size: " << dht_key_size << "\n";
-      // cout << "CPP: dht_buckets_per_process: " << dht_buckets_per_process
-      //      << endl;
-
       // MDL: new output on signif_vector and prop_type
       if (signif_vector_exists) {
         cout << "CPP: using problem-specific rounding digits: " << endl;
@@ -183,28 +164,6 @@ void SimParams::initVectorParams(RRuntime &R, int col_count) {
     }
   }
 }
-
-// void SimParams::parseR(RRuntime &R) {
-//   // if local_rank == 0 then master else worker
-//   R["local_rank"] = simparams.world_rank;
-//   // assign a char* (string) to 'filesim'
-//   R["filesim"] = wrap(simparams.filesim);
-//   // assign a char* (string) to 'fileout'
-//   R["fileout"] = wrap(simparams.out_dir);
-//   // pass the boolean "store_result" to the R process
-//   R["store_result"] = simparams.store_result;
-//   // worker count
-//   R["n_procs"] = simparams.world_size - 1;
-//   // work package size
-//   R["work_package_size"] = simparams.wp_size;
-//   // dht enabled?
-//   R["dht_enabled"] = simparams.dht_enabled;
-//   // log before rounding?
-//   R["dht_log"] = simparams.dht_log;
-
-//   // eval the init string, ignoring any returns
-//   R.parseEvalQ("source(filesim)");
-// }
 
 void SimParams::setDtDiffer(bool dt_differ) { simparams.dt_differ = dt_differ; }
 

@@ -87,17 +87,88 @@ class SimParams {
    */
   int parseFromCmdl(char *argv[], RRuntime &R);
 
+  /**
+   * @brief Init std::vector values
+   *
+   * This will initialize dht_signif_vector and dht_prop_type_vector internally
+   * depending on whether vectors are defined by R-Simulation file or not.
+   * 'init_chemistry' must be run beforehand.
+   *
+   * @param R R runtime
+   * @param col_count Count of variables per grid cell (typically the count of
+   * columns of each grid cell)
+   */
   void initVectorParams(RRuntime &R, int col_count);
 
+  /**
+   * @brief Set if dt differs
+   *
+   * Set a boolean variable if the timestep differs between iterations of
+   * simulation.
+   *
+   * @param dt_differ Boolean value, if dt differs
+   */
   void setDtDiffer(bool dt_differ);
 
+  /**
+   * @brief Get the numerical params struct
+   *
+   * Returns a struct which contains all numerical or boolean simulation
+   * parameters.
+   *
+   * @return t_simparams Parameter struct
+   */
   t_simparams getNumParams();
 
+  /**
+   * @brief Get the DHT_Signif_Vector
+   *
+   * Returns a vector indicating which significant values are used for each
+   * variable of a grid cell.
+   *
+   * @return std::vector<int> Vector of integers containing information about
+   * significant digits
+   */
   std::vector<int> getDHTSignifVector();
+
+  /**
+   * @brief Get the DHT_Prop_Type_Vector
+   *
+   * Returns a vector indicating of which type a variable of a grid cell is.
+   *
+   * @return std::vector<std::string> Vector if strings defining a type of a
+   * variable
+   */
   std::vector<std::string> getDHTPropTypeVector();
+
+  /**
+   * @brief Return name of DHT snapshot.
+   *
+   * Name of the DHT file which is used to initialize the DHT with a previously
+   * written snapshot.
+   *
+   * @return std::string Absolute paht to the DHT snapshot
+   */
   std::string getDHTFile();
 
+  /**
+   * @brief Get the filesim name
+   *
+   * Returns a string containing the absolute path to a R file defining the
+   * simulation.
+   *
+   * @return std::string Absolute path to R file
+   */
   std::string getFilesim();
+
+  /**
+   * @brief Get the output directory
+   *
+   * Returns the name of an absolute path where all output files should be
+   * stored.
+   *
+   * @return std::string Absolute path to output path
+   */
   std::string getOutDir();
 
  private:
@@ -135,11 +206,34 @@ class SimParams {
    */
   t_simparams simparams;
 
+  /**
+   * @brief Defines significant digits for each variable of a grid cell
+   *
+   */
   std::vector<int> dht_signif_vector;
+
+  /**
+   * @brief Defines the type of a variable
+   *
+   */
   std::vector<std::string> dht_prop_type_vector;
+
+  /**
+   * @brief Absolute path to a DHT snapshot
+   *
+   */
   std::string dht_file;
 
+  /**
+   * @brief Absolute path to R file containing simulation definitions
+   *
+   */
   std::string filesim;
+
+  /**
+   * @brief Absolute path to output dir
+   *
+   */
   std::string out_dir;
 };
 }  // namespace poet
