@@ -18,7 +18,7 @@ extern "C" {
 namespace poet {
 class DHT_Wrapper {
  public:
-  DHT_Wrapper(t_simparams *params, MPI_Comm dht_comm, int buckets_per_process,
+  DHT_Wrapper(SimParams &params, MPI_Comm dht_comm, int buckets_per_process,
               int data_size, int key_size);
   ~DHT_Wrapper();
 

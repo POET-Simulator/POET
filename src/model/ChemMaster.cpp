@@ -8,13 +8,14 @@ using namespace poet;
 using namespace std;
 using namespace Rcpp;
 
-#define TAG_WORK 42
-
-ChemMaster::ChemMaster(t_simparams *params, RRuntime &R_, Grid &grid_)
+ChemMaster::ChemMaster(SimParams &params, RRuntime &R_, Grid &grid_)
     : ChemSim(params, R_, grid_) {
-  this->wp_size = params->wp_size;
-  this->out_dir = params->out_dir;
-  this->dht_enabled = params->dht_enabled;
+  t_simparams tmp = params.getNumParams();
+
+  this->wp_size = tmp.wp_size;
+  this->dht_enabled = tmp.dht_enabled;
+
+  this->out_dir = params.getOutDir();
 
   workerlist = (worker_struct *)calloc(world_size - 1, sizeof(worker_struct));
   send_buffer = (double *)calloc((wp_size * (grid.getCols())) + BUFFER_OFFSET,

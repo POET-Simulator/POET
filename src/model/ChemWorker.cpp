@@ -9,14 +9,17 @@ using namespace poet;
 using namespace std;
 using namespace Rcpp;
 
-ChemWorker::ChemWorker(t_simparams *params_, RRuntime &R_, Grid &grid_,
+ChemWorker::ChemWorker(SimParams &params, RRuntime &R_, Grid &grid_,
                        MPI_Comm dht_comm)
-    : params(params_), ChemSim(params_, R_, grid_) {
-  this->dt_differ = params->dt_differ;
-  this->dht_enabled = params->dht_enabled;
-  this->dht_size_per_process = params->dht_size_per_process;
-  this->dht_file = params->dht_file;
-  this->dht_snaps = params->dht_snaps;
+    : ChemSim(params, R_, grid_) {
+  t_simparams tmp = params.getNumParams();
+
+  this->dt_differ = tmp.dt_differ;
+  this->dht_enabled = tmp.dht_enabled;
+  this->dht_size_per_process = tmp.dht_size_per_process;
+  this->dht_snaps = tmp.dht_snaps;
+
+  this->dht_file = params.getDHTFile();
 
   mpi_buffer = (double *)calloc((wp_size * (grid.getCols())) + BUFFER_OFFSET,
                                 sizeof(double));
@@ -49,9 +52,9 @@ ChemWorker::ChemWorker(t_simparams *params_, RRuntime &R_, Grid &grid_,
   if (!dht_file.empty()) readFile();
 
   // set size
-  dht_flags.resize(params->wp_size, true);
+  dht_flags.resize(wp_size, true);
   // assign all elements to true (default)
-  dht_flags.assign(params->wp_size, true);
+  dht_flags.assign(wp_size, true);
 
   timing[0] = 0.0;
   timing[1] = 0.0;
@@ -178,9 +181,9 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   // R.parseEvalQ("print(head(work_package_full))");
   // R.parseEvalQ("print( c(length(dht_flags), nrow(work_package_full)) )");
 
-  grid.importWP(mpi_buffer, params->wp_size);
+  grid.importWP(mpi_buffer, wp_size);
 
-  if (params->dht_enabled) {
+  if (dht_enabled) {
     R.parseEvalQ("work_package <- work_package_full[dht_flags,]");
   } else {
     R.parseEvalQ("work_package <- work_package_full");
