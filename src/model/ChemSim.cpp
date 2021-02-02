@@ -19,13 +19,16 @@ ChemSim::ChemSim(SimParams &params, RRuntime &R_, Grid &grid_)
 void ChemSim::run() {
   double chem_a, chem_b;
 
+  /* start time measuring */
   chem_a = MPI_Wtime();
 
   R.parseEvalQ(
       "result <- slave_chemistry(setup=mysetup, data=mysetup$state_T)");
   R.parseEvalQ("mysetup <- master_chemistry(setup=mysetup, data=result)");
 
+  /* end time measuring */
   chem_b = MPI_Wtime();
+
   chem_t += chem_b - chem_a;
 }
 

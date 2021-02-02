@@ -18,24 +18,37 @@
 /** Standard work package size */
 #define WORK_PACKAGE_SIZE_DEFAULT 5
 
+namespace poet {
+
+/**
+ * @brief Defining all simulation parameters
+ *
+ */
 typedef struct {
+  /** Count of processes in MPI_COMM_WORLD */
   int world_size;
+  /** rank of proces in MPI_COMM_WORLD */
   int world_rank;
-
+  /** indicates if DHT should be used */
   bool dht_enabled;
+  /** apply logarithm to key before rounding */
   bool dht_log;
+  /** indicates if timestep dt differs between iterations */
   bool dt_differ;
+  /** Indicates, when a DHT snapshot should be written */
   int dht_snaps;
+  /** <b>not implemented</b>: How a DHT is distributed over processes */
   int dht_strategy;
+  /** Size of DHt per process in byter */
   unsigned int dht_size_per_process;
+  /** Default significant digit for rounding */
   int dht_significant_digits;
-
+  /** Default work package size */
   unsigned int wp_size;
-
+  /** indicates if resulting grid should be stored after every iteration */
   bool store_result;
 } t_simparams;
 
-namespace poet {
 /**
  * @brief Reads information from program arguments and R runtime
  *

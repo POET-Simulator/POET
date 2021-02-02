@@ -47,14 +47,13 @@ ChemWorker::ChemWorker(SimParams &params, RRuntime &R_, Grid &grid_,
                           key_size);
 
     if (world_rank == 1) cout << "CPP: Worker: DHT created!" << endl;
+
+    if (!dht_file.empty()) readFile();
+    // set size
+    dht_flags.resize(wp_size, true);
+    // assign all elements to true (default)
+    dht_flags.assign(wp_size, true);
   }
-
-  if (!dht_file.empty()) readFile();
-
-  // set size
-  dht_flags.resize(wp_size, true);
-  // assign all elements to true (default)
-  dht_flags.assign(wp_size, true);
 
   timing[0] = 0.0;
   timing[1] = 0.0;
@@ -74,12 +73,17 @@ void ChemWorker::loop() {
     MPI_Probe(0, MPI_ANY_TAG, MPI_COMM_WORLD, &probe_status);
     double idle_b = MPI_Wtime();
 
+    /* there is a work package to receive */
     if (probe_status.MPI_TAG == TAG_WORK) {
       idle_t += idle_b - idle_a;
       doWork(probe_status);
-    } else if (probe_status.MPI_TAG == TAG_DHT_ITER) {
+    }
+    /* end of iteration */
+    else if (probe_status.MPI_TAG == TAG_DHT_ITER) {
       postIter();
-    } else if (probe_status.MPI_TAG == TAG_FINISH) {
+    }
+    /* end of simulation */
+    else if (probe_status.MPI_TAG == TAG_FINISH) {
       finishWork();
       break;
     }
@@ -94,17 +98,18 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   double phreeqc_time_start, phreeqc_time_end;
   double dht_fill_start, dht_fill_end;
 
-  /* get number of doubles sent */
+  /* get number of doubles to be received */
   MPI_Get_count(&probe_status, MPI_DOUBLE, &count);
 
   /* receive */
   MPI_Recv(mpi_buffer, count, MPI_DOUBLE, 0, TAG_WORK, MPI_COMM_WORLD,
            MPI_STATUS_IGNORE);
 
-  // decrement count of work_package by BUFFER_OFFSET
+  /* decrement count of work_package by BUFFER_OFFSET */
   count -= BUFFER_OFFSET;
-  // check for changes on all additional variables given by the 'header' of
-  // mpi_buffer
+  
+  /* check for changes on all additional variables given by the 'header' of
+   * mpi_buffer */
 
   // work_package_size
   if (mpi_buffer[count] != local_work_package_size) {  // work_package_size
@@ -139,48 +144,24 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   //     R["mysetup$placeholder"] = placeholder;
   // }
 
-  /* get df with right structure to fill in work package */
-  // R.parseEvalQ("skeleton <- head(mysetup$state_C, work_package_size)");
-  // R["skeleton"] = grid.buildDataFrame(work_package_size);
-  //// R.parseEval("print(rownames(tmp2)[1:5])");
-  //// R.parseEval("print(head(tmp2, 2))");
-  //// R.parseEvalQ("tmp2$id <- as.double(rownames(tmp2))");
-
-  ////Rcpp::DataFrame buffer = R.parseEval("tmp2");
-  // R.setBufferDataFrame("skeleton");
-
   if (dht_enabled) {
-    // DEBUG
-    // cout << "RANK " << world_rank << " start checking DHT\n";
-
-    // resize helper vector dht_flags of work_package_size changes
+    /* resize helper vector dht_flags of work_package_size changes */
     if ((int)dht_flags.size() != local_work_package_size) {
       dht_flags.resize(local_work_package_size, true);  // set size
       dht_flags.assign(local_work_package_size,
                        true);  // assign all elements to true (default)
     }
 
+    /* check for values in DHT */
     dht_get_start = MPI_Wtime();
     dht->checkDHT(local_work_package_size, dht_flags, mpi_buffer, dt);
     dht_get_end = MPI_Wtime();
 
-    // DEBUG
-    // cout << "RANK " << world_rank << " checking DHT complete \n";
-
+    /* distribute dht_flags to R Runtime */
     R["dht_flags"] = as<LogicalVector>(wrap(dht_flags));
-    // R.parseEvalQ("print(head(dht_flags))");
   }
 
-  /* work */
-  // R.from_C_domain(mpi_buffer);
-  ////convert_C_buffer_2_R_Dataframe(mpi_buffer, buffer);
-  // R["work_package_full"] = R.getBufferDataFrame();
-  // R["work_package"] = buffer;
-
-  // DEBUG
-  // R.parseEvalQ("print(head(work_package_full))");
-  // R.parseEvalQ("print( c(length(dht_flags), nrow(work_package_full)) )");
-
+  /* Convert grid to R runtime */
   grid.importWP(mpi_buffer, wp_size);
 
   if (dht_enabled) {
@@ -189,14 +170,6 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
     R.parseEvalQ("work_package <- work_package_full");
   }
 
-  // DEBUG
-  // R.parseEvalQ("print(head(work_package),2)");
-
-  // R.parseEvalQ("rownames(work_package) <- work_package$id");
-  // R.parseEval("print(paste('id %in% colnames(work_package)', 'id' %in%
-  // colnames(work_package)"); R.parseEvalQ("id_store <-
-  // rownames(work_package)"); //"[, ncol(work_package)]");
-  // R.parseEvalQ("work_package$id <- NULL");
   R.parseEvalQ("work_package <- as.matrix(work_package)");
 
   unsigned int nrows = R.parseEval("nrow(work_package)");
@@ -209,21 +182,17 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
           "work_package <- work_package[rep(1:nrow(work_package), "
           "times = 2), ]");
     }
-
-    phreeqc_count++;
-
+    /* Run PHREEQC */
     phreeqc_time_start = MPI_Wtime();
-    // MDL
-    // R.parseEvalQ("print('Work_package:\n'); print(head(work_package ,
-    // 2)); cat('RCpp: worker_function:', local_rank, ' \n')");
     R.parseEvalQ(
         "result <- as.data.frame(slave_chemistry(setup=mysetup, "
         "data = work_package))");
     phreeqc_time_end = MPI_Wtime();
-    // R.parseEvalQ("result$id <- id_store");
   } else {
-    // cout << "Work-Package is empty, skipping phreeqc!" << endl;
+    // undefined behaviour, isn't it?
   }
+
+  phreeqc_count++;
 
   if (dht_enabled) {
     R.parseEvalQ("result_full <- work_package_full");
@@ -232,11 +201,7 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
     R.parseEvalQ("result_full <- result");
   }
 
-  // R.setBufferDataFrame("result_full");
-  ////Rcpp::DataFrame result = R.parseEval("result_full");
-  ////convert_R_Dataframe_2_C_buffer(mpi_buffer_results, result);
-  // R.to_C_domain(mpi_buffer_results);
-
+  /* convert grid to C domain */
   grid.exportWP(mpi_buffer_results);
   /* send results to master */
   MPI_Request send_req;
@@ -244,6 +209,7 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
             &send_req);
 
   if (dht_enabled) {
+    /* write results to DHT */
     dht_fill_start = MPI_Wtime();
     dht->fillDHT(local_work_package_size, dht_flags, mpi_buffer,
                  mpi_buffer_results, dt);
@@ -327,8 +293,4 @@ void ChemWorker::finishWork() {
   }
 
   if (dht_enabled && dht_snaps > 0) writeFile();
-
-  // free(mpi_buffer);
-  // free(mpi_buffer_results);
-  // delete dht;
 }
