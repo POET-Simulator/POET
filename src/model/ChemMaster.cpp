@@ -125,6 +125,11 @@ void ChemMaster::run() {
   /* end time measurement of whole chemistry simulation */
   chem_b = MPI_Wtime();
   chem_t += chem_b - chem_a;
+
+  /* advise workers to end chemistry iteration */
+  for (int i = 1; i < world_size; i++) {
+    MPI_Send(NULL, 0, MPI_DOUBLE, i, TAG_DHT_ITER, MPI_COMM_WORLD);
+  }
 }
 
 void ChemMaster::sendPkgs(int &pkg_to_send, int &count_pkgs,

@@ -4,7 +4,8 @@
 #include <string>
 
 #include "RRuntime.h"
-#include "argh.h"
+#include "argh.h"  // Argument handler https://github.com/adishavit/argh
+// BSD-licenced
 
 /** Return value if no error occured */
 #define PARSER_OK 0
