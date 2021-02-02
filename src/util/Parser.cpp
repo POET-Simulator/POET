@@ -54,7 +54,7 @@ int Parser::parseCmdl() {
     cmdl("dht-strategy", 0) >> simparams.dht_strategy;
     // cout << "CPP: DHT strategy is " << dht_strategy << endl;
 
-    cmdl("dht-signif", 5) >> dht_significant_digits;
+    cmdl("dht-signif", 5) >> simparams.dht_significant_digits;
     // cout << "CPP: DHT significant digits = " << dht_significant_digits <<
     // endl;
 
@@ -86,7 +86,7 @@ int Parser::parseCmdl() {
       cout << "CPP: DHT strategy is " << simparams.dht_strategy << endl;
       cout << "CPP: DHT key default digits (ignored if 'signif_vector' is "
               "defined) = "
-           << dht_significant_digits << endl;
+           << simparams.dht_significant_digits << endl;
       cout << "CPP: DHT logarithm before rounding: "
            << (simparams.dht_log ? "ON" : "OFF") << endl;
       cout << "CPP: DHT size per process (Byte) = "

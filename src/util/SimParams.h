@@ -14,6 +14,7 @@ typedef struct {
   int dht_snaps;
   int dht_strategy;
   unsigned int dht_size_per_process;
+  int dht_significant_digits;
   std::vector<int> dht_signif_vector;
   std::vector<std::string> dht_prop_type_vector;
   std::string dht_file;

@@ -36,8 +36,7 @@ class Parser {
 
   int world_rank;
   int world_size;
-
-  int dht_significant_digits;
+  
 };
 }  // namespace poet
 #endif  // PARSER_H

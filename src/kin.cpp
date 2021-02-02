@@ -85,8 +85,8 @@ int main(int argc, char *argv[]) {
   double cummul_chemistry = 0.f;
   double cummul_master_seq = 0.f;
 
-  argh::parser cmdl(argv);
-  int dht_significant_digits;
+  // argh::parser cmdl(argv);
+  // int dht_significant_digits;
   // cout << "CPP: Start Init (MPI)" << endl;
 
   t_simparams params;
@@ -315,7 +315,7 @@ int main(int argc, char *argv[]) {
     if (signif_vector_exists) {
       params.dht_signif_vector = as<std::vector<int>>(R["signif_vector"]);
     } else {
-      params.dht_signif_vector.assign(grid.getCols(), dht_significant_digits);
+      params.dht_signif_vector.assign(grid.getCols(), params.dht_significant_digits);
     }
 
     /*Load property type vector from R setup file (or set default)*/
@@ -341,7 +341,7 @@ int main(int argc, char *argv[]) {
             "digits=signif_vector))");
       } else {
         cout << "CPP: using DHT default rounding digits = "
-             << dht_significant_digits << endl;
+             << params.dht_significant_digits << endl;
       }
 
       // MDL: pass to R the DHT stuff. These variables exist
