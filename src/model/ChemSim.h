@@ -23,7 +23,7 @@
 namespace poet {
 class ChemSim {
  public:
-  ChemSim(t_simparams *params, RRuntime &R_, Grid &grid_);
+  ChemSim(SimParams &params, RRuntime &R_, Grid &grid_);
 
   virtual void run();
   virtual void end();
@@ -59,7 +59,7 @@ class ChemSim {
 
 class ChemMaster : public ChemSim {
  public:
-  ChemMaster(t_simparams *params, RRuntime &R_, Grid &grid_);
+  ChemMaster(SimParams &params, RRuntime &R_, Grid &grid_);
   ~ChemMaster();
 
   void run() override;
@@ -91,8 +91,7 @@ class ChemMaster : public ChemSim {
 
 class ChemWorker : public ChemSim {
  public:
-  ChemWorker(t_simparams *params_, RRuntime &R_, Grid &grid_,
-             MPI_Comm dht_comm);
+  ChemWorker(SimParams &params, RRuntime &R_, Grid &grid_, MPI_Comm dht_comm);
   ~ChemWorker();
 
   void loop();
@@ -110,7 +109,6 @@ class ChemWorker : public ChemSim {
   std::string dht_file;
   unsigned int dht_size_per_process;
   std::vector<bool> dht_flags;
-  t_simparams *params;
 
   double *mpi_buffer_results;
 

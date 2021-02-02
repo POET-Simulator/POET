@@ -51,14 +51,14 @@ class DHT_Wrapper {
    * calling DHT_create with all given parameters. Also the fuzzing buffer will
    * be allocated and all needed parameters extracted from simparams struct.
    *
-   * @param params Simulation parameter struct returned at initialization
+   * @param params Simulation parameter object
    * @param dht_comm Communicator which addresses all participating DHT
    * processes
    * @param buckets_per_process Count of buckets to allocate for each process
    * @param data_size Size of data in bytes
    * @param key_size Size of key in bytes
    */
-  DHT_Wrapper(t_simparams *params, MPI_Comm dht_comm, int buckets_per_process,
+  DHT_Wrapper(SimParams &params, MPI_Comm dht_comm, int buckets_per_process,
               int data_size, int key_size);
   /**
    * @brief Destroy the dht wrapper object
@@ -82,7 +82,8 @@ class DHT_Wrapper {
    * marked with false ('not to be simulated').
    *
    * @param length Count of grid cells inside work package
-   * @param[out] out_result_index Indexing work packages which should be simulated
+   * @param[out] out_result_index Indexing work packages which should be
+   * simulated
    * @param[in,out] work_package Pointer to current work package
    * @param dt Current timestep of simulation
    */

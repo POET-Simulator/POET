@@ -7,12 +7,13 @@
 using namespace Rcpp;
 using namespace poet;
 
-ChemSim::ChemSim(t_simparams *params, RRuntime &R_, Grid &grid_)
+ChemSim::ChemSim(SimParams &params, RRuntime &R_, Grid &grid_)
     : R(R_), grid(grid_) {
-  this->world_rank = params->world_rank;
-  this->world_size = params->world_size;
-  this->wp_size = params->wp_size;
-  this->out_dir = params->out_dir;
+  t_simparams tmp = params.getNumParams();
+  this->world_rank = tmp.world_rank;
+  this->world_size = tmp.world_size;
+  this->wp_size = tmp.wp_size;
+  this->out_dir = params.getOutDir();
 }
 
 void ChemSim::run() {

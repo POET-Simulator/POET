@@ -26,20 +26,22 @@ uint64_t poet::get_md5(int key_size, void *key) {
   return retval;
 }
 
-DHT_Wrapper::DHT_Wrapper(t_simparams *params, MPI_Comm dht_comm,
+DHT_Wrapper::DHT_Wrapper(SimParams &params, MPI_Comm dht_comm,
                          int buckets_per_process, int data_size, int key_size) {
   // initialize DHT object
   dht_object =
-      DHT_create(dht_comm, buckets_per_process, data_size, key_size, &poet::get_md5);
-
+      DHT_create(dht_comm, buckets_per_process, data_size, key_size, &get_md5);
   // allocate memory for fuzzing buffer
   fuzzing_buffer = (double *)malloc(key_size);
 
   // extract needed values from sim_param struct
-  this->dt_differ = params->dt_differ;
-  this->dht_log = params->dht_log;
-  this->dht_signif_vector = params->dht_signif_vector;
-  this->dht_prop_type_vector = params->dht_prop_type_vector;
+  t_simparams tmp = params.getNumParams();
+
+  this->dt_differ = tmp.dt_differ;
+  this->dht_log = tmp.dht_log;
+
+  this->dht_signif_vector = params.getDHTSignifVector();
+  this->dht_prop_type_vector = params.getDHTPropTypeVector();
 }
 
 DHT_Wrapper::~DHT_Wrapper() {
@@ -139,9 +141,7 @@ int DHT_Wrapper::fileToTable(const char *filename) {
 void DHT_Wrapper::printStatistics() {
   int res;
 
-#ifdef DHT_STATISTICS
   res = DHT_print_statistics(dht_object);
-#endif
 
   if (res != DHT_SUCCESS) {
     // MPI ERROR ... WHAT TO DO NOW?

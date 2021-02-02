@@ -1,10 +1,10 @@
 #include "DHT.h"
 
+#include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <inttypes.h>
 #include <unistd.h>
 
 static void determine_dest(uint64_t hash, int comm_size,
@@ -79,7 +79,7 @@ DHT *DHT_create(MPI_Comm comm, uint64_t size, unsigned int data_size,
   object->recv_entry = malloc(1 + data_size + key_size);
   object->send_entry = malloc(1 + data_size + key_size);
   object->index_count = 9 - (index_bytes / 8);
-  object->index = (uint64_t*)malloc((object->index_count) * sizeof(uint64_t));
+  object->index = (uint64_t *)malloc((object->index_count) * sizeof(uint64_t));
   object->mem_alloc = mem_alloc;
 
   // if set, initialize dht_stats
@@ -375,8 +375,8 @@ int DHT_free(DHT *table, int *eviction_counter, int *readerror_counter) {
   return DHT_SUCCESS;
 }
 
-#ifdef DHT_STATISTICS
 int DHT_print_statistics(DHT *table) {
+#ifdef DHT_STATISTICS
   int *written_buckets;
   int *read_misses, sum_read_misses;
   int *evictions, sum_evictions;
@@ -476,5 +476,5 @@ int DHT_print_statistics(DHT *table) {
 
   MPI_Barrier(table->communicator);
   return DHT_SUCCESS;
-}
 #endif
+}
