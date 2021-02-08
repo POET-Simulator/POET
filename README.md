@@ -134,12 +134,14 @@ mv poet WORK_DIR
 
 The correspondending directory tree would be look like this:
 
+``` sh
 .
 └── WORK_DIR/
     ├── poet
     ├── kin_r_library.R
     ├── parallel_r_library.R
     └── SimDol2D.R
+```
 
 Now, to start the simulation with 4 processes `cd` into `WORK_DIR` and run `mpirun -n 4 ./poet
 SimDol2D.R output`. 
