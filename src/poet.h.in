@@ -1,0 +1,7 @@
+#ifndef POET_H
+#define POET_H
+
+const int poet_version_major = @POET_VERSION_MAJOR@;
+const int poet_version_minor = @POET_VERSION_MINOR@;
+
+#endif // POET_H

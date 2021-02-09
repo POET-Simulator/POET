@@ -30,6 +30,8 @@
 #include <string>
 #include <vector>
 
+#include <poet.h>
+
 using namespace std;
 using namespace poet;
 using namespace Rcpp;
@@ -55,15 +57,20 @@ int main(int argc, char *argv[]) {
     MPI_Comm_split(MPI_COMM_WORLD, 1, world_rank, &dht_comm);
   }
 
+  if (world_rank == 0) {
+    cout << "Running POET in version " << poet_version_major << "."
+         << poet_version_minor << endl
+         << endl;
+  }
+
   /* initialize R runtime */
   RRuntime R(argc, argv);
 
   /*Loading Dependencies*/
-  std::string r_load_dependencies =
-    "suppressMessages(library(Rmufits));"
-    "suppressMessages(library(RedModRphree));"
-    "source('kin_r_library.R');"
-    "source('parallel_r_library.R');";
+  std::string r_load_dependencies = "suppressMessages(library(Rmufits));"
+                                    "suppressMessages(library(RedModRphree));"
+                                    "source('kin_r_library.R');"
+                                    "source('parallel_r_library.R');";
   R.parseEvalQ(r_load_dependencies);
 
   SimParams params(world_rank, world_size);
@@ -168,7 +175,7 @@ int main(int argc, char *argv[]) {
 
       MPI_Barrier(MPI_COMM_WORLD);
 
-    }  // END SIMULATION LOOP
+    } // END SIMULATION LOOP
 
     cout << "CPP: finished simulation loop" << endl;
 
