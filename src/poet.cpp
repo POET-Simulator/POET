@@ -69,8 +69,8 @@ int main(int argc, char *argv[]) {
   /*Loading Dependencies*/
   std::string r_load_dependencies = "suppressMessages(library(Rmufits));"
                                     "suppressMessages(library(RedModRphree));"
-                                    "source('kin_r_library.R');"
-                                    "source('parallel_r_library.R');";
+                                    "source('../R_lib/kin_r_library.R');"
+                                    "source('../R_lib/parallel_r_library.R');";
   R.parseEvalQ(r_load_dependencies);
 
   SimParams params(world_rank, world_size);
