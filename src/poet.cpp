@@ -15,12 +15,7 @@ using namespace poet;
 using namespace Rcpp;
 
 int main(int argc, char *argv[]) {
-  double sim_start, sim_b_transport, sim_a_transport, sim_b_chemistry,
-      sim_a_chemistry, sim_end;
-
-  double cummul_transport = 0.f;
-  double cummul_chemistry = 0.f;
-  double cummul_master_seq = 0.f;
+  double sim_start, sim_end;
 
   int world_size, world_rank;
 
@@ -45,10 +40,10 @@ int main(int argc, char *argv[]) {
 
   /*Loading Dependencies*/
   std::string r_load_dependencies =
-      "suppressMessages(library(Rmufits));"
-      "suppressMessages(library(RedModRphree));"
-      "source('kin_r_library.R');"
-      "source('parallel_r_library.R');";
+    "suppressMessages(library(Rmufits));"
+    "suppressMessages(library(RedModRphree));"
+    "source('kin_r_library.R');"
+    "source('parallel_r_library.R');";
   R.parseEvalQ(r_load_dependencies);
 
   SimParams params(world_rank, world_size);
