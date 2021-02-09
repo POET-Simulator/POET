@@ -7,6 +7,8 @@ project(POET VERSION 0.1 LANGUAGES CXX C)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 list(APPEND CMAKE_MODULE_PATH "${POET_SOURCE_DIR}/CMake")
 
 # set(GCC_CXX_FLAGS "-D STRICT_R_HEADERS")
@@ -19,3 +21,5 @@ find_package(Rcpp REQUIRED)
 find_package(RInside REQUIRED)
 
 add_subdirectory(src)
+add_subdirectory(R_lib)
+add_subdirectory(data)
