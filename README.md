@@ -172,7 +172,7 @@ mpirun -n 4 ./poet -dht SimDol2D.R output
 
 - **SimDol2D.R** - simple chemistry (Calcite/Dolomite) on a 50x50 2D grid, 20
 time steps 2)
-- ~~ **SimDolKtz.R** - simple chemistry (Calcite/Dolomite) on Ketzin grid (~650k
+- ~~**SimDolKtz.R** - simple chemistry (Calcite/Dolomite) on Ketzin grid (~650k
 elements), 20 time steps The flow snapshots are **NOT INCLUDED** in project
 directory but must be provided separately.~~ At this moment **SimDolKtz.R** is
 not supported.
