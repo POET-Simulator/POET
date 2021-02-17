@@ -25,6 +25,9 @@ To compile POET you need several software to be installed:
 - R language and environment 
 - CMake 3.9+
 
+If documantiation should be build during compilation `doxygen`and `graphviz`
+must be provided too.
+
 The following R libraries must then be installed:
 
 - [devtools](https://www.r-project.org/nosvn/pandoc/devtools.html)
@@ -51,7 +54,9 @@ During the generation of Makefiles, various options can be specified via `cmake
 
 - **DHT_Debug**=*boolean* - toggles the output of detailed statistics about DHT
   usage (`cmake -D DHT_Debug=ON`). Defaults to *OFF*.
-  
+- **BUIL_DOC**=*boolean* - toggles the generation of documantiation during
+  compilation process. Defaults to *ON*.
+
 ### Example: Build from scratch
 
 Assuming that only the C/C++ compiler, MPI libraries, R runtime environment and
@@ -81,7 +86,7 @@ This will install a POET project structure into `/home/<user>/poet` which is
 called hereinafter `<POET_INSTALL_DIR>`. With this version of POET I would not
 recommend to install to hierarchies like `/usr/local/` etc.
 
-The correspondending directory tree would be look like this:
+The correspondending directory tree would look like this:
 
 ``` sh
 .
@@ -90,6 +95,10 @@ The correspondending directory tree would be look like this:
     │   └── poet
     ├── data/
     │   └── SimDol2D.R
+    ├── docs/ 
+    │    └── html/
+    │       ├── index.html
+    │       └── ...
     └── R_lib/
         ├── kin_r_library.R
         └── parallel_r_library.R
@@ -99,6 +108,9 @@ The R libraries will be read in during runtime and the paths are hardcoded
 absolute paths inside `poet.cpp`. So, if you consider to move `bin/poet` either
 change paths of the R source files and recompile POET or also move `R_lib/*`
 according to the binary.
+
+To display the generetated html documentation just open `docs/html/index.html`
+with the browser of your choice.
 
 ## Running
 
@@ -184,9 +196,3 @@ informations from the OpenMPI Man Page:
 For example, on platforms that support it, the clock_gettime() function will be
 used to obtain a monotonic clock value with whatever precision is supported on
 that platform (e.g., nanoseconds).
-
-## External Libraries
-
-We use external libraries:
-
-- **argh** - https://github.com/adishavit/argh (BSD license)
