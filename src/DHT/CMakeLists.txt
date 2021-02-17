@@ -3,7 +3,7 @@ target_include_directories(DHT PUBLIC ${MPI_C_INCLUDE_DIRS})
 target_link_libraries(DHT PRIVATE MPI::MPI_C)
 target_compile_definitions(DHT PUBLIC OMPI_SKIP_MPICXX)
 
-set(DHT_Debug FALSE CACHE BOOL "Toggle output of stastic table for each iteration")
+option(DHT_Debug "Toggle output of stastic table for each iteration" OFF)
 
 if (DHT_Debug)
   target_compile_definitions(DHT PUBLIC DHT_STATISTICS)

@@ -286,12 +286,9 @@ void ChemMaster::end() {
 
   int dht_hits = 0;
   int dht_miss = 0;
-  int dht_collision = 0;
+  int dht_evictions = 0;
 
   if (dht_enabled) {
-    dht_hits = 0;
-    dht_miss = 0;
-    dht_collision = 0;
     dht_perfs = (int *)calloc(3, sizeof(int));
   }
 
@@ -324,7 +321,7 @@ void ChemMaster::end() {
                MPI_STATUS_IGNORE);
       dht_hits += dht_perfs[0];
       dht_miss += dht_perfs[1];
-      dht_collision += dht_perfs[2];
+      dht_evictions += dht_perfs[2];
     }
   }
 
@@ -356,8 +353,8 @@ void ChemMaster::end() {
     R.parseEvalQ("profiling$dht_hits <- dht_hits");
     R["dht_miss"] = dht_miss;
     R.parseEvalQ("profiling$dht_miss <- dht_miss");
-    R["dht_collision"] = dht_collision;
-    R.parseEvalQ("profiling$dht_collisions <- dht_collision");
+    R["dht_evictions"] = dht_evictions;
+    R.parseEvalQ("profiling$dht_evictions <- dht_evictions");
     R["dht_get_time"] = dht_get_time;
     R.parseEvalQ("profiling$dht_get_time <- dht_get_time");
     R["dht_fill_time"] = dht_fill_time;
