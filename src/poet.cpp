@@ -58,9 +58,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (world_rank == 0) {
-    cout << "Running POET in version " << poet_version_major << "."
-         << poet_version_minor << endl
-         << endl;
+    cout << "Running POET in version " << poet_version << endl << endl;
   }
 
   /* initialize R runtime */

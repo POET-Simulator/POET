@@ -63,7 +63,7 @@ USE_MDFILE_AS_MAINPAGE = @PROJECT_SOURCE_DIR@/./README.md
 # Note that relative paths are relative to the directory from which doxygen is
 # run.
 
-EXCLUDE                = @PROJECT_SOURCE_DIR@/src/util/argh.h
+EXCLUDE                = @SRC_CODE_DIR@/./util/argh.h
 
 #---------------------------------------------------------------------------
 # Project related configuration options
