@@ -17,7 +17,7 @@ POET will place all simulation data and other files inside the given
 
 ## Description
 
-All `.rds` file can be read inside a R runtime using e.g.
+All `.rds` file can be read into an R runtime using e.g.
 `readRDS("<FILE>")`. The following description can be given to the
 files:
 
@@ -54,7 +54,7 @@ If running parallel there are also measured timings which are subsets of
 
 ### DHT usage {#DHT-usage}
 
-If running parallel and with DHT activated two more timings and also
+If running in parallel and with activated DHT, two more timings and also
 some profiling about the DHT usage are given:
 
 | Value           | Description                                             |
