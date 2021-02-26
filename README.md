@@ -1,4 +1,4 @@
-﻿
+
 <!--
     Time-stamp: "Last modified 2021-02-08 13:46:00 mluebke"
 -->
@@ -194,7 +194,7 @@ mpirun -n 4 ./poet --dht SimDol2D.R output
 ## About the usage of MPI_Wtime()
 
 Implemented time measurement functions uses `MPI_Wtime()`. Some important
-informations from the OpenMPI Man Page:
+information from the OpenMPI Man Page:
 
 For example, on platforms that support it, the clock_gettime() function will be
 used to obtain a monotonic clock value with whatever precision is supported on
