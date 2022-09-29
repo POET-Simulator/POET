@@ -1,18 +1,12 @@
-set(SRC_CODE_DIR
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    CACHE INTERNAL "directory indicating which source code version is used")
+file(GLOB poet_lib_SRC
+  CONFIGURE_DEPENDS
+  "*.cpp" "*.c")
 
-get_poet_version()
+find_library(MATH_LIBRARY m)
+find_library(CRYPTO_LIBRARY crypto)
 
-configure_file(poet.h.in poet.h)
-
-add_executable(poet poet.cpp)
-target_include_directories(poet PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
-target_link_libraries(poet PUBLIC POET_Model POET_Util MPI::MPI_C)
-target_compile_definitions(poet PRIVATE OMPI_SKIP_MPICXX)
-
-install(TARGETS poet DESTINATION bin)
-
-add_subdirectory(DHT)
-add_subdirectory(model)
-add_subdirectory(util)
+add_library(poet_lib ${poet_lib_SRC})
+target_include_directories(poet_lib PUBLIC ${PROJECT_SOURCE_DIR}/include ${R_INCLUDE_DIRS})
+target_link_libraries(poet_lib PUBLIC
+  MPI::MPI_C ${MATH_LIBRARY} ${CRYPTO_LIBRARY} ${R_LIBRARIES})
+target_compile_definitions(poet_lib PUBLIC STRICT_R_HEADERS OMPI_SKIP_MPICXX)

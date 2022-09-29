@@ -23,6 +23,7 @@ find_package(RInside REQUIRED)
 add_subdirectory(src)
 add_subdirectory(R_lib)
 add_subdirectory(data)
+add_subdirectory(app)
 
 option(BUILD_DOC "Build documentation with doxygen" ON)
 

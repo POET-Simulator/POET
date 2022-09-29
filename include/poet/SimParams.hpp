@@ -23,8 +23,8 @@
 
 #include <string>
 
-#include "RRuntime.h"
-#include "argh.h"  // Argument handler https://github.com/adishavit/argh
+#include "RRuntime.hpp"
+#include "argh.hpp"  // Argument handler https://github.com/adishavit/argh
 // BSD-licenced
 
 /** Return value if no error occured */

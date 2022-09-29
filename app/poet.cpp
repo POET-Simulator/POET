@@ -18,12 +18,12 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include <ChemSim.h>
-#include <Grid.h>
-#include <RRuntime.h>
 #include <Rcpp.h>
-#include <SimParams.h>
-#include <TransportSim.h>
+#include <poet/ChemSim.hpp>
+#include <poet/Grid.hpp>
+#include <poet/TransportSim.hpp>
+#include <poet/RRuntime.hpp>
+#include <poet/SimParams.hpp>
 
 #include <cstring>
 #include <iostream>

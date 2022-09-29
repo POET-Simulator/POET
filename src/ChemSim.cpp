@@ -18,7 +18,7 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "ChemSim.h"
+#include <poet/ChemSim.hpp>
 
 #include <Rcpp.h>
 

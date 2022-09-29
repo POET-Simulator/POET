@@ -23,7 +23,7 @@
 #include <iostream>
 #include <string>
 
-#include "ChemSim.h"
+#include <poet/ChemSim.hpp>
 
 using namespace poet;
 using namespace std;

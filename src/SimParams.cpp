@@ -18,7 +18,7 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "SimParams.h"
+#include <poet/SimParams.hpp>
 
 #include <Rcpp.h>
 

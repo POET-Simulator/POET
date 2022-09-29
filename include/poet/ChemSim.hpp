@@ -21,14 +21,14 @@
 #ifndef CHEMSIM_H
 #define CHEMSIM_H
 
-#include <DHT_Wrapper.h>
-#include <RRuntime.h>
-#include <SimParams.h>
+#include "DHT_Wrapper.hpp"
+#include "RRuntime.hpp"
+#include "SimParams.hpp"
+#include "Grid.hpp"
 #include <mpi.h>
 
 #include <vector>
 
-#include "Grid.h"
 
 /** Number of data elements that are kept free at each work package */
 #define BUFFER_OFFSET 5
@@ -53,7 +53,7 @@ namespace poet {
  *
  */
 class ChemSim {
- public:
+public:
   /**
    * @brief Construct a new ChemSim object
    *
@@ -93,7 +93,7 @@ class ChemSim {
    */
   double getChemistryTime();
 
- protected:
+protected:
   /**
    * @brief Current simulation time or 'age' of simulation
    *
@@ -202,7 +202,7 @@ class ChemSim {
  *
  */
 class ChemMaster : public ChemSim {
- public:
+public:
   /**
    * @brief Construct a new ChemMaster object
    *
@@ -308,7 +308,7 @@ class ChemMaster : public ChemSim {
    */
   double getSeqTime();
 
- private:
+private:
   /**
    * @brief Print a progressbar
    *
@@ -415,7 +415,7 @@ class ChemMaster : public ChemSim {
  *
  */
 class ChemWorker : public ChemSim {
- public:
+public:
   /**
    * @brief Construct a new ChemWorker object
    *
@@ -449,7 +449,7 @@ class ChemWorker : public ChemSim {
    */
   void loop();
 
- private:
+private:
   /**
    * @brief Evaluating message to receive as work package
    *
@@ -569,5 +569,5 @@ class ChemWorker : public ChemSim {
    */
   int phreeqc_count = 0;
 };
-}  // namespace poet
-#endif  // CHEMSIM_H
+} // namespace poet
+#endif // CHEMSIM_H

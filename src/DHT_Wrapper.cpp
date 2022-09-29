@@ -18,7 +18,7 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "DHT_Wrapper.h"
+#include <poet/DHT_Wrapper.hpp>
 
 #include <math.h>
 #include <openssl/md5.h>

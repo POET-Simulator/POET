@@ -21,7 +21,7 @@
 #ifndef TRANSPORT_SIM_H
 #define TRANSPORT_SIM_H
 
-#include <RRuntime.h>
+#include "RRuntime.hpp"
 
 namespace poet {
 /**

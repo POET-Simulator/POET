@@ -18,7 +18,7 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "Grid.h"
+#include <poet/Grid.hpp>
 
 using namespace poet;
 using namespace Rcpp;

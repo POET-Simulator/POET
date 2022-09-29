@@ -18,7 +18,7 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "RRuntime.h"
+#include <poet/RRuntime.hpp>
 
 #include <RInside.h>
 #include <Rcpp.h>

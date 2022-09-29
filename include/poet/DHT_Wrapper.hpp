@@ -21,13 +21,13 @@
 #ifndef DHT_WRAPPER_H
 #define DHT_WRAPPER_H
 
-#include <SimParams.h>
+#include "SimParams.hpp"
 
 #include <string>
 #include <vector>
 
 extern "C" {
-#include <DHT.h>
+#include "DHT.h"
 }
 
 #include <mpi.h>

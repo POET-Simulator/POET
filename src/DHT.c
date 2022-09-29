@@ -15,7 +15,7 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "DHT.h"
+#include <poet/DHT.h>
 
 #include <inttypes.h>
 #include <math.h>

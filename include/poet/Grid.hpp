@@ -21,7 +21,7 @@
 #ifndef GRID_H
 #define GRID_H
 
-#include <RRuntime.h>
+#include "RRuntime.hpp"
 #include <Rcpp.h>
 
 namespace poet {
