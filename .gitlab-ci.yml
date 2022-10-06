@@ -21,6 +21,9 @@ image: git.gfz-potsdam.de:5000/sec34/port:builder
 stages:          # List of stages for jobs, and their order of execution
   - build
 
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
 build-poet:       # This job runs in the build stage, which runs first.
   stage: build
   script:
