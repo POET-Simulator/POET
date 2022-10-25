@@ -88,7 +88,7 @@ void DiffusionModule::initialize(poet::DiffusionParams args) {
   this->alpha = local_alpha;
 
   // initialize field
-  field.reserve(this->n_cells_per_prop * this->prop_count);
+  field.resize(this->n_cells_per_prop * this->prop_count);
   for (uint32_t i = 0; i < this->prop_count; i++) {
     std::vector<double> prop_vec =
         grid.getSpeciesByName(this->prop_names[i]);
