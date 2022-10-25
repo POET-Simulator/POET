@@ -148,7 +148,13 @@ void DiffusionModule::initialize(poet::DiffusionParams args) {
         if (vecinj_i[j] == 0) {
           continue;
         }
-        curr_bc(side, j) = {tug::bc::BC_TYPE_CONSTANT, bc_vec[vecinj_i[j] - 1]};
+        if (this->dim == this->DIM_2D) {
+          curr_bc(side, j) = {tug::bc::BC_TYPE_CONSTANT,
+                              bc_vec[vecinj_i[j] - 1]};
+        }
+        if (this->dim == this->DIM_1D) {
+          curr_bc(side) = {tug::bc::BC_TYPE_CONSTANT, bc_vec[vecinj_i[j] - 1]};
+        }
       }
     }
   }
