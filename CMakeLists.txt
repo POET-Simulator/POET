@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.9)
 project(POET CXX C)
 
 # specify the C++ standard
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -22,6 +22,8 @@ add_subdirectory(src)
 add_subdirectory(R_lib)
 add_subdirectory(data)
 add_subdirectory(app)
+
+add_subdirectory(ext/tug EXCLUDE_FROM_ALL)
 
 option(BUILD_DOC "Build documentation with doxygen" OFF)
 

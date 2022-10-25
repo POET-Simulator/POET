@@ -41,19 +41,19 @@ ChemWorker::ChemWorker(SimParams &params, RRuntime &R_, Grid &grid_,
 
   this->dht_file = params.getDHTFile();
 
-  mpi_buffer = (double *)calloc((wp_size * (grid.getCols())) + BUFFER_OFFSET,
+  mpi_buffer = (double *)calloc((wp_size * (grid.getSpeciesCount())) + BUFFER_OFFSET,
                                 sizeof(double));
   mpi_buffer_results =
-      (double *)calloc(wp_size * (grid.getCols()), sizeof(double));
+      (double *)calloc(wp_size * (grid.getSpeciesCount()), sizeof(double));
 
   if (world_rank == 1)
     cout << "CPP: Worker: DHT usage is " << (dht_enabled ? "ON" : "OFF")
          << endl;
 
   if (dht_enabled) {
-    int data_size = grid.getCols() * sizeof(double);
+    int data_size = grid.getSpeciesCount() * sizeof(double);
     int key_size =
-        grid.getCols() * sizeof(double) + (dt_differ * sizeof(double));
+        grid.getSpeciesCount() * sizeof(double) + (dt_differ * sizeof(double));
     int dht_buckets_per_process =
         dht_size_per_process / (1 + data_size + key_size);
 

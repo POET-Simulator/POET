@@ -100,6 +100,8 @@ myboundmat <- cbind(cbound,boundinit)
 myboundmat[cbound==1, c(2:7)] <- vecinj
 colnames(myboundmat) <- c("cbound", names(vecinj))
 
+# TODO: dt and iterations
+
 setup <- list(n=2500,
               bound=myboundmat,   
               base=base,

@@ -2,7 +2,7 @@
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
 **
-** Copyright (C) 2018-2021 Marco De Lucia (GFZ Potsdam)
+** Copyright (C) 2018-2022 Marco De Lucia, Max Luebke (GFZ Potsdam)
 **
 ** POET is free software; you can redistribute it and/or modify it under the
 ** terms of the GNU General Public License as published by the Free Software
@@ -21,10 +21,14 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include <bits/stdint-uintn.h>
 #include <string>
+#include <vector>
 
 #include "RRuntime.hpp"
-#include "argh.hpp"  // Argument handler https://github.com/adishavit/argh
+#include "Rcpp/DataFrame.h"
+#include "argh.hpp" // Argument handler https://github.com/adishavit/argh
+#include <Rcpp.h>
 // BSD-licenced
 
 /** Return value if no error occured */
@@ -70,6 +74,32 @@ typedef struct {
   bool store_result;
 } t_simparams;
 
+using GridParams = struct s_GridParams {
+  std::vector<uint32_t> n_cells;
+  std::vector<double> s_cells;
+
+  std::string type;
+
+  Rcpp::DataFrame init_df;
+  std::string init_sim;
+
+  std::vector<std::string> props;
+
+  s_GridParams(poet::RRuntime &R);
+};
+
+using DiffusionParams = struct s_DiffusionParams {
+  std::vector<std::string> prop_names;
+
+  Rcpp::NumericVector alpha;
+  Rcpp::NumericMatrix vecinj_inner;
+
+  Rcpp::DataFrame vecinj;
+  Rcpp::DataFrame vecinj_index;
+
+  s_DiffusionParams(poet::RRuntime &R);
+};
+
 /**
  * @brief Reads information from program arguments and R runtime
  *
@@ -81,7 +111,7 @@ typedef struct {
  *
  */
 class SimParams {
- public:
+public:
   /**
    * @brief Construct a new SimParams object
    *
@@ -205,7 +235,7 @@ class SimParams {
    */
   std::string getOutDir();
 
- private:
+private:
   /**
    * @brief Validate program parameters and flags
    *
@@ -270,5 +300,5 @@ class SimParams {
    */
   std::string out_dir;
 };
-}  // namespace poet
-#endif  // PARSER_H
+} // namespace poet
+#endif // PARSER_H

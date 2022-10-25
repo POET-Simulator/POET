@@ -3,6 +3,14 @@
     Time-stamp: "Last modified 2021-02-08 13:46:00 mluebke"
 -->
 
+**Po**tsdamer R**e**active **D**iffusion
+
+
+# Forked Project
+
+POED is a forked project of POET, which aims to replace the advection transport
+by diffusion. The following README is also applicable for this project.
+
 # POET
 
 POET is a coupled reactive transport simulator implementing a parallel

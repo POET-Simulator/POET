@@ -2,7 +2,7 @@
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
 **
-** Copyright (C) 2018-2021 Marco De Lucia (GFZ Potsdam)
+** Copyright (C) 2018-2022 Marco De Lucia, Max Luebke (GFZ Potsdam)
 **
 ** POET is free software; you can redistribute it and/or modify it under the
 ** terms of the GNU General Public License as published by the Free Software
@@ -21,9 +21,9 @@
 #include <Rcpp.h>
 #include <poet/ChemSim.hpp>
 #include <poet/Grid.hpp>
-#include <poet/TransportSim.hpp>
 #include <poet/RRuntime.hpp>
 #include <poet/SimParams.hpp>
+#include <poet/DiffusionModule.hpp>
 
 #include <cstring>
 #include <iostream>
@@ -65,6 +65,7 @@ int main(int argc, char *argv[]) {
   RRuntime R(argc, argv);
 
   /*Loading Dependencies*/
+  // TODO: kann raus
   std::string r_load_dependencies = "suppressMessages(library(Rmufits));"
                                     "suppressMessages(library(RedModRphree));"
                                     "source('../R_lib/kin_r_library.R');"
@@ -84,32 +85,40 @@ int main(int argc, char *argv[]) {
 
   cout << "CPP: R Init (RInside) on process " << world_rank << endl;
 
-  bool dt_differ;
-  if (world_rank == 0) {
-    // get timestep vector from grid_init function ...
+  // HACK: we disable master_init and dt_differ propagation here for testing
+  // purposes
+  //
+  // bool dt_differ;
+  if (world_rank == 0) { // get timestep vector from
+                         // grid_init function ... //
     std::string master_init_code = "mysetup <- master_init(setup=setup)";
     R.parseEval(master_init_code);
 
-    dt_differ = R.parseEval("mysetup$dt_differ");
-    // ... and broadcast it to every other rank unequal to 0
-    MPI_Bcast(&dt_differ, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
-  }
-  /* workers will only read the setup DataFrame defined by input file */
-  else {
-    R.parseEval("mysetup <- setup");
-    MPI_Bcast(&dt_differ, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
+    //   dt_differ = R.parseEval("mysetup$dt_differ");
+    //   // ... and broadcast it to every other rank unequal to 0
+    //   MPI_Bcast(&dt_differ, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
+    // }
+    // /* workers will only read the setup DataFrame defined by input file */
+    // else {
+    //   R.parseEval("mysetup <- setup");
+    //   MPI_Bcast(&dt_differ, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
   }
 
-  params.setDtDiffer(dt_differ);
+  // params.setDtDiffer(dt_differ);
 
   // initialize chemistry on all processes
-  std::string init_chemistry_code = "mysetup <- init_chemistry(setup=mysetup)";
-  R.parseEval(init_chemistry_code);
+  // TODO: einlesen einer initial matrix (DataFrame)
+  // std::string init_chemistry_code = "mysetup <-
+  // init_chemistry(setup=mysetup)"; R.parseEval(init_chemistry_code);
 
-  Grid grid(R);
-  grid.init();
+  // TODO: Grid anpassen
 
-  params.initVectorParams(R, grid.getCols());
+  R.parseEvalQ("mysetup <- setup");
+
+  Grid grid(R, poet::GridParams(R));
+  // grid.init_from_R();
+
+  params.initVectorParams(R, grid.getSpeciesCount());
 
   // MDL: store all parameters
   if (world_rank == 0) {
@@ -126,18 +135,24 @@ int main(int argc, char *argv[]) {
   /* THIS IS EXECUTED BY THE MASTER */
   if (world_rank == 0) {
     ChemMaster master(params, R, grid);
-    TransportSim trans(R);
+    DiffusionModule diffusion(poet::DiffusionParams(R), grid);
+
+    // diffusion.initialize();
 
     sim_start = MPI_Wtime();
 
     /* Iteration Count is dynamic, retrieving value from R (is only needed by
      * master for the following loop) */
-    uint32_t maxiter = R.parseEval("mysetup$maxiter");
+    uint32_t maxiter = R.parseEval("mysetup$iterations");
 
     /* SIMULATION LOOP */
     for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
-      cout << "CPP: Evaluating next time step" << endl;
-      R.parseEvalQ("mysetup <- master_iteration_setup(mysetup)");
+      // cout << "CPP: Evaluating next time step" << endl;
+      // R.parseEvalQ("mysetup <- master_iteration_setup(mysetup)");
+
+      double dt = Rcpp::as<double>(
+          R.parseEval("mysetup$timesteps[" + std::to_string(iter) + "]"));
+      cout << "CPP: Next time step is " << dt << "[s]" << endl;
 
       /* displaying iteration number, with C++ and R iterator */
       cout << "CPP: Going through iteration " << iter << endl;
@@ -147,11 +162,13 @@ int main(int argc, char *argv[]) {
       cout << "CPP: Calling Advection" << endl;
 
       /* run transport */
-      trans.run();
+      // TODO: transport to diffusion
+      diffusion.simulate(dt);
 
       cout << "CPP: Chemistry" << endl;
 
       /* Fallback for sequential execution */
+      // TODO: use new grid
       if (world_size == 1) {
         master.ChemSim::run();
       }
@@ -186,7 +203,7 @@ int main(int argc, char *argv[]) {
     R["simtime"] = sim_end - sim_start;
     R.parseEvalQ("profiling$simtime <- simtime");
 
-    trans.end();
+    diffusion.end();
 
     if (world_size == 1) {
       master.ChemSim::end();

@@ -2,7 +2,7 @@
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
 **
-** Copyright (C) 2018-2021 Marco De Lucia (GFZ Potsdam)
+** Copyright (C) 2018-2021 Marco De Lucia, Max Luebke (GFZ Potsdam)
 **
 ** POET is free software; you can redistribute it and/or modify it under the
 ** terms of the GNU General Public License as published by the Free Software
@@ -22,13 +22,14 @@
 #define CHEMSIM_H
 
 #include "DHT_Wrapper.hpp"
+#include "Grid.hpp"
 #include "RRuntime.hpp"
 #include "SimParams.hpp"
-#include "Grid.hpp"
+#include <cstdint>
 #include <mpi.h>
 
+#include <string>
 #include <vector>
-
 
 /** Number of data elements that are kept free at each work package */
 #define BUFFER_OFFSET 5
@@ -52,7 +53,10 @@ namespace poet {
  * containing basic parameters for simulation.
  *
  */
+constexpr const char *CHEMISTRY_MODULE_NAME = "state_c";
+
 class ChemSim {
+
 public:
   /**
    * @brief Construct a new ChemSim object
@@ -192,6 +196,10 @@ protected:
    *
    */
   double chem_t = 0.f;
+
+  poet::StateMemory *state;
+  uint32_t n_cells_per_prop;
+  std::vector<std::string> prop_names;
 };
 
 /**

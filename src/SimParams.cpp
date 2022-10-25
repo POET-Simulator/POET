@@ -2,7 +2,7 @@
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
 **
-** Copyright (C) 2018-2021 Marco De Lucia (GFZ Potsdam)
+** Copyright (C) 2018-2022 Marco De Lucia, Max Luebke (GFZ Potsdam)
 **
 ** POET is free software; you can redistribute it and/or modify it under the
 ** terms of the GNU General Public License as published by the Free Software
@@ -18,15 +18,48 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include "poet/RRuntime.hpp"
+#include <bits/stdint-uintn.h>
 #include <poet/SimParams.hpp>
 
 #include <Rcpp.h>
 
 #include <iostream>
+#include <string>
+#include <vector>
 
 using namespace poet;
 using namespace std;
 using namespace Rcpp;
+
+poet::GridParams::s_GridParams(poet::RRuntime &R) {
+  this->n_cells =
+      Rcpp::as<std::vector<uint32_t>>(R.parseEval("mysetup$grid$n_cells"));
+  this->s_cells =
+      Rcpp::as<std::vector<double>>(R.parseEval("mysetup$grid$s_cells"));
+  this->type = Rcpp::as<std::string>(R.parseEval("mysetup$grid$type"));
+  this->init_df =
+      Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$grid$init_cell"));
+  this->props =
+      Rcpp::as<std::vector<std::string>>(R.parseEval("mysetup$grid$props"));
+  // this->init_sim =
+  // Rcpp::as<std::string>(R.parseEval("mysetup$grid$init_sim"));
+}
+
+poet::DiffusionParams::s_DiffusionParams(poet::RRuntime &R) {
+  this->prop_names = Rcpp::as<std::vector<std::string>>(
+      R.parseEval("names(mysetup$diffusion$init)"));
+  this->alpha =
+      Rcpp::as<Rcpp::NumericVector>(R.parseEval("mysetup$diffusion$alpha"));
+  if (Rcpp::as<bool>(R.parseEval("exists('mysetup$diffusion$vecinj_inner')"))) {
+    this->vecinj_inner = Rcpp::as<Rcpp::NumericMatrix>(
+        R.parseEval("mysetup$diffusion$vecinj_inner"));
+  }
+  this->vecinj =
+      Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$diffusion$vecinj"));
+  this->vecinj_index =
+      Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$diffusion$vecinj_index"));
+}
 
 SimParams::SimParams(int world_rank_, int world_size_) {
   this->simparams.world_rank = world_rank_;
@@ -169,9 +202,8 @@ void SimParams::initVectorParams(RRuntime &R, int col_count) {
       // MDL: new output on signif_vector and prop_type
       if (signif_vector_exists) {
         cout << "CPP: using problem-specific rounding digits: " << endl;
-        R.parseEval(
-            "print(data.frame(prop=prop, type=prop_type, "
-            "digits=signif_vector))");
+        R.parseEval("print(data.frame(prop=prop, type=prop_type, "
+                    "digits=signif_vector))");
       } else {
         cout << "CPP: using DHT default rounding digits = "
              << simparams.dht_significant_digits << endl;
@@ -206,7 +238,8 @@ std::list<std::string> SimParams::validateOptions(argh::parser cmdl) {
 
   /* loop over all flags and compare to given flaglist*/
   for (auto &flag : cmdl.flags()) {
-    if (!(flaglist.find(flag) != flaglist.end())) retList.push_back(flag);
+    if (!(flaglist.find(flag) != flaglist.end()))
+      retList.push_back(flag);
   }
 
   /* and loop also over params and compare to given paramlist */

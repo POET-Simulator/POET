@@ -2,7 +2,7 @@
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
 **
-** Copyright (C) 2018-2021 Marco De Lucia (GFZ Potsdam)
+** Copyright (C) 2018-2022 Marco De Lucia, Max Luebke (GFZ Potsdam)
 **
 ** POET is free software; you can redistribute it and/or modify it under the
 ** terms of the GNU General Public License as published by the Free Software
@@ -18,10 +18,17 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#ifndef TRANSPORT_SIM_H
-#define TRANSPORT_SIM_H
+#ifndef DIFFUSION_MODULE_H
+#define DIFFUSION_MODULE_H
 
-#include "RRuntime.hpp"
+#include "poet/SimParams.hpp"
+#include <array>
+#include <bits/stdint-uintn.h>
+#include <poet/Grid.hpp>
+#include <string>
+#include <tug/BoundaryCondition.hpp>
+#include <tug/Diffusion.hpp>
+#include <vector>
 
 namespace poet {
 /**
@@ -30,8 +37,11 @@ namespace poet {
  * Offers simple methods to run an iteration and end the simulation.
  *
  */
-class TransportSim {
- public:
+
+constexpr const char *DIFFUSION_MODULE_NAME = "state_t";
+
+class DiffusionModule {
+public:
   /**
    * @brief Construct a new TransportSim object
    *
@@ -39,7 +49,7 @@ class TransportSim {
    *
    * @param R RRuntime object
    */
-  TransportSim(RRuntime &R);
+  DiffusionModule(poet::DiffusionParams diffu_args, Grid &grid_);
 
   /**
    * @brief Run simulation for one iteration
@@ -47,7 +57,7 @@ class TransportSim {
    * This will simply call the R function 'master_advection'
    *
    */
-  void run();
+  void simulate(double dt);
 
   /**
    * @brief End simulation
@@ -64,12 +74,31 @@ class TransportSim {
    */
   double getTransportTime();
 
- private:
+private:
   /**
    * @brief Instance of RRuntime
    *
    */
-  RRuntime &R;
+  // RRuntime &R;
+
+  enum { DIM_1D = 1, DIM_2D };
+
+  void initialize(poet::DiffusionParams args);
+
+  Grid &grid;
+  uint8_t dim;
+
+  uint32_t prop_count;
+
+  tug::diffusion::TugInput diff_input;
+  std::vector<double> alpha;
+  std::vector<uint32_t> index_constant_cells;
+  std::vector<std::string> prop_names;
+
+  std::vector<tug::bc::BoundaryCondition> bc_vec;
+  poet::StateMemory *state;
+
+  uint32_t n_cells_per_prop;
 
   /**
    * @brief time spent for transport
@@ -77,6 +106,6 @@ class TransportSim {
    */
   double transport_t = 0.f;
 };
-}  // namespace poet
+} // namespace poet
 
-#endif  // TRANSPORT_SIM_H
+#endif // DIFFUSION_MODULE_H

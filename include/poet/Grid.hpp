@@ -2,7 +2,7 @@
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
 **
-** Copyright (C) 2018-2021 Marco De Lucia (GFZ Potsdam)
+** Copyright (C) 2018-2022 Marco De Lucia, Max Luebke (GFZ Potsdam)
 **
 ** POET is free software; you can redistribute it and/or modify it under the
 ** terms of the GNU General Public License as published by the Free Software
@@ -22,9 +22,29 @@
 #define GRID_H
 
 #include "RRuntime.hpp"
+#include "poet/SimParams.hpp"
 #include <Rcpp.h>
+#include <array>
+#include <bits/stdint-intn.h>
+#include <bits/stdint-uintn.h>
+#include <cstdint>
+#include <map>
+#include <string>
+#include <vector>
+
+#define MAX_DIM 2
 
 namespace poet {
+
+enum { GRID_X_DIR, GRID_Y_DIR, GRID_Z_DIR };
+
+using StateMemory = struct s_StateMemory {
+  std::vector<double> mem;
+  std::vector<std::string> props;
+};
+
+constexpr const char *GRID_MODULE_NAME = "grid_init";
+
 /**
  * @brief Class describing the grid
  *
@@ -35,7 +55,10 @@ namespace poet {
  *
  */
 class Grid {
- public:
+private:
+  using prop_vec = std::vector<std::string>;
+
+public:
   /**
    * @brief Construct a new Grid object
    *
@@ -44,8 +67,9 @@ class Grid {
    *
    * @param R
    */
-  Grid(RRuntime &R) : R(R){};
+  Grid(RRuntime &R, poet::GridParams grid_args);
 
+  ~Grid();
   /**
    * @brief Init the grid
    *
@@ -54,21 +78,24 @@ class Grid {
    * is done by the R runtime. This may change in the future.
    *
    */
-  void init();
+  void init_from_R();
 
-  /**
-   * @brief Returns the number of elements for each gridcell
-   *
-   * @return unsigned int Number of elements
-   */
-  unsigned int getCols();
+  auto getGridDimension() -> uint8_t;
+  auto getTotalCellCount() -> uint32_t;
+  auto getGridCellsCount(uint8_t direction) -> uint32_t;
+  auto getDomainSize(uint8_t dircetion) -> uint32_t;
 
-  /**
-   * @brief Returns the number of grid cells
-   *
-   * @return unsigned int Number of grid cells
-   */
-  unsigned int getRows();
+  StateMemory *registerState(std::string module_name,
+                             std::vector<std::string> props);
+  StateMemory *getStatePointer(std::string module_name);
+  void deregisterState(std::string module_name);
+
+  auto getSpeciesCount() -> uint32_t;
+  auto getPropNames() -> prop_vec;
+
+  auto getSpeciesByName(std::string name,
+                        std::string module_name = poet::GRID_MODULE_NAME)
+      -> std::vector<double>;
 
   /**
    * @brief Shuffle the grid and export it to C memory area
@@ -112,24 +139,25 @@ class Grid {
    */
   void exportWP(double *buffer);
 
- private:
+private:
   /**
    * @brief Instance of RRuntime
    *
    */
   RRuntime R;
 
-  /**
-   * @brief Number of columns of grid
-   *
-   */
-  unsigned int ncol;
+  // uint32_t species_count;
 
-  /**
-   * @brief Number of rows of grid
-   *
-   */
-  unsigned int nrow;
+  std::uint8_t dim;
+  std::array<std::uint32_t, MAX_DIM> d_spatial;
+  std::array<std::uint32_t, MAX_DIM> n_cells;
+
+  std::map<std::string, StateMemory *> state_register;
+  // std::map<std::string, std::vector<std::string>> prop_register;
+
+  prop_vec prop_names;
+
+  std::map<std::string, std::vector<double>> grid_init;
 
   /**
    * @brief Get a SkeletonDataFrame
@@ -142,5 +170,5 @@ class Grid {
    */
   Rcpp::DataFrame getSkeletonDataFrame(unsigned int rows);
 };
-}  // namespace poet
-#endif  // GRID_H
+} // namespace poet
+#endif // GRID_H

@@ -23,6 +23,7 @@
 #include <iostream>
 
 #include <poet/ChemSim.hpp>
+#include <poet/Grid.hpp>
 
 using namespace poet;
 using namespace std;
@@ -39,15 +40,15 @@ ChemMaster::ChemMaster(SimParams &params, RRuntime &R_, Grid &grid_)
 
   /* allocate memory */
   workerlist = (worker_struct *)calloc(world_size - 1, sizeof(worker_struct));
-  send_buffer = (double *)calloc((wp_size * (grid.getCols())) + BUFFER_OFFSET,
-                                 sizeof(double));
-  mpi_buffer =
-      (double *)calloc(grid.getRows() * grid.getCols(), sizeof(double));
+  send_buffer = (double *)calloc(
+      (wp_size * (grid.getSpeciesCount())) + BUFFER_OFFSET, sizeof(double));
+  mpi_buffer = (double *)calloc(grid.getGridCellsCount(GRID_Y_DIR) *
+                                    grid.getGridCellsCount(GRID_X_DIR),
+                                sizeof(double));
 
   /* calculate distribution of work packages */
-  R.parseEvalQ(
-      "wp_ids <- distribute_work_packages(len=nrow(mysetup$state_C), "
-      "package_size=work_package_size)");
+  R.parseEvalQ("wp_ids <- distribute_work_packages(len=length(mysetup$prop), "
+               "package_size=work_package_size)");
 
   // we only sort once the vector
   R.parseEvalQ("ordered_ids <- order(wp_ids)");
@@ -175,7 +176,7 @@ void ChemMaster::sendPkgs(int &pkg_to_send, int &count_pkgs,
       workerlist[p].send_addr = work_pointer;
 
       /* push work pointer to next work package */
-      end_of_wp = local_work_package_size * grid.getCols();
+      end_of_wp = local_work_package_size * grid.getSpeciesCount();
       work_pointer = &(work_pointer[end_of_wp]);
 
       // fill send buffer starting with work_package ...
@@ -364,7 +365,8 @@ void ChemMaster::end() {
   /* do some cleanup */
   free(timings);
 
-  if (dht_enabled) free(dht_perfs);
+  if (dht_enabled)
+    free(dht_perfs);
 }
 
 double ChemMaster::getSendTime() { return this->send_t; }
