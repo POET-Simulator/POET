@@ -152,7 +152,7 @@ auto Grid::getGridDimension() -> uint8_t { return this->dim; }
 auto Grid::getTotalCellCount() -> uint32_t {
   uint32_t sum = 1;
   for (auto const &dim : this->n_cells) {
-    sum *= dim;
+    sum *= (dim != 0 ? dim : 1);
   }
 
   return sum;
