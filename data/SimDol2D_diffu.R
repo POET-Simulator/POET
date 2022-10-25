@@ -156,6 +156,8 @@ selout <- c(
 
 # TODO: dt and iterations
 
+iterations <- 10
+
 setup <- list(
   # bound = myboundmat,
   base = base,
@@ -181,8 +183,8 @@ setup <- list(
   s_grid = c(n, m),
   n_grid = c(n, m),
   dt = 1,
-  iterations = 1,
-  timesteps = rep(1, 10)
+  iterations = iterations,
+  timesteps = rep(1, iterations)
 )
 
 # not needed yet

@@ -18,6 +18,7 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include "poet/ChemSim.hpp"
 #include "poet/SimParams.hpp"
 #include "tug/BoundaryCondition.hpp"
 #include "tug/Diffusion.hpp"
@@ -90,8 +91,7 @@ void DiffusionModule::initialize(poet::DiffusionParams args) {
   // initialize field
   field.resize(this->n_cells_per_prop * this->prop_count);
   for (uint32_t i = 0; i < this->prop_count; i++) {
-    std::vector<double> prop_vec =
-        grid.getSpeciesByName(this->prop_names[i]);
+    std::vector<double> prop_vec = grid.getSpeciesByName(this->prop_names[i]);
     std::copy(prop_vec.begin(), prop_vec.end(),
               field.begin() + (i * this->n_cells_per_prop));
     if (this->dim == this->DIM_2D) {
@@ -106,7 +106,7 @@ void DiffusionModule::initialize(poet::DiffusionParams args) {
 
   // apply inner grid constant cells
   // NOTE: opening a scope here for distinguish variable names
-  if (args.vecinj_inner.rows() != 0){
+  if (args.vecinj_inner.rows() != 0) {
     // get indices of constant grid cells
     Rcpp::NumericVector indices_const_cells = args.vecinj_inner(Rcpp::_, 0);
     this->index_constant_cells =
@@ -159,7 +159,21 @@ void DiffusionModule::simulate(double dt) {
 
   sim_b_transport = MPI_Wtime();
 
-  auto *field = this->state->mem.data();
+  std::vector<double> &curr_field = this->state->mem;
+
+  for (uint32_t i = 0; i < this->prop_names.size(); i++) {
+    try {
+      std::vector<double> t_prop_vec = this->grid.getSpeciesByName(
+          this->prop_names[i], poet::CHEMISTRY_MODULE_NAME);
+
+      std::copy(t_prop_vec.begin(), t_prop_vec.end(),
+                curr_field.begin() + (i * this->n_cells_per_prop));
+    } catch (...) {
+      continue;
+    }
+  }
+
+  auto *field = curr_field.data();
 
   this->diff_input.setTimestep(dt);
 

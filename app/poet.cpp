@@ -89,6 +89,7 @@ int main(int argc, char *argv[]) {
   // purposes
   //
   // bool dt_differ;
+  R.parseEvalQ("mysetup <- setup");
   if (world_rank == 0) { // get timestep vector from
                          // grid_init function ... //
     std::string master_init_code = "mysetup <- master_init(setup=setup)";
@@ -113,7 +114,6 @@ int main(int argc, char *argv[]) {
 
   // TODO: Grid anpassen
 
-  R.parseEvalQ("mysetup <- setup");
 
   Grid grid(R, poet::GridParams(R));
   // grid.init_from_R();
