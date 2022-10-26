@@ -58,7 +58,7 @@ ChemSim::ChemSim(SimParams &params, RRuntime &R_, Grid &grid_)
   }
 }
 
-void ChemSim::run() {
+void ChemSim::run(double dt) {
   double chem_a, chem_b;
 
   /* start time measuring */

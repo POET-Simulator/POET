@@ -2,7 +2,7 @@
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
 **
-** Copyright (C) 2018-2021 Marco De Lucia, Max Luebke (GFZ Potsdam)
+** Copyright (C) 2018-2022 Marco De Lucia, Max Luebke (GFZ Potsdam)
 **
 ** POET is free software; you can redistribute it and/or modify it under the
 ** terms of the GNU General Public License as published by the Free Software
@@ -25,6 +25,7 @@
 #include "Grid.hpp"
 #include "RRuntime.hpp"
 #include "SimParams.hpp"
+#include <bits/stdint-uintn.h>
 #include <cstdint>
 #include <mpi.h>
 
@@ -79,7 +80,7 @@ public:
    * @todo change function name. Maybe 'slave' to 'seq'.
    *
    */
-  virtual void run();
+  virtual void run(double dt);
 
   /**
    * @brief End simulation
@@ -150,7 +151,7 @@ protected:
    * @brief Stores information about size of the current work package
    *
    */
-  std::vector<int> wp_sizes_vector;
+  std::vector<uint32_t> wp_sizes_vector;
 
   /**
    * @brief Absolute path to output path
@@ -249,7 +250,7 @@ public:
    * The main tasks are instrumented with time measurements.
    *
    */
-  void run() override;
+  void run(double dt) override;
 
   /**
    * @brief End chemistry simulation.
@@ -360,6 +361,12 @@ private:
    * free workers
    */
   void recvPkgs(int &pkg_to_recv, bool to_send, int &free_workers);
+
+  void shuffleField(const std::vector<double> &in_field, uint32_t size_per_prop,
+                    uint32_t prop_count, double *out_buffer);
+
+  void unshuffleField(const double *in_buffer, uint32_t size_per_prop,
+                      uint32_t prop_count, std::vector<double> &out_field);
 
   /**
    * @brief Indicating usage of DHT

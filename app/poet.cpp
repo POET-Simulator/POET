@@ -20,10 +20,10 @@
 
 #include <Rcpp.h>
 #include <poet/ChemSim.hpp>
+#include <poet/DiffusionModule.hpp>
 #include <poet/Grid.hpp>
 #include <poet/RRuntime.hpp>
 #include <poet/SimParams.hpp>
-#include <poet/DiffusionModule.hpp>
 
 #include <cstring>
 #include <iostream>
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
   // HACK: we disable master_init and dt_differ propagation here for testing
   // purposes
   //
-  // bool dt_differ;
+  bool dt_differ = false;
   R.parseEvalQ("mysetup <- setup");
   if (world_rank == 0) { // get timestep vector from
                          // grid_init function ... //
@@ -97,15 +97,15 @@ int main(int argc, char *argv[]) {
 
     //   dt_differ = R.parseEval("mysetup$dt_differ");
     //   // ... and broadcast it to every other rank unequal to 0
-    //   MPI_Bcast(&dt_differ, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
-    // }
-    // /* workers will only read the setup DataFrame defined by input file */
-    // else {
-    //   R.parseEval("mysetup <- setup");
-    //   MPI_Bcast(&dt_differ, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&dt_differ, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
+  }
+  /* workers will only read the setup DataFrame defined by input file */
+  else {
+    // R.parseEval("mysetup <- setup");
+    MPI_Bcast(&dt_differ, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
   }
 
-  // params.setDtDiffer(dt_differ);
+  params.setDtDiffer(dt_differ);
 
   // initialize chemistry on all processes
   // TODO: einlesen einer initial matrix (DataFrame)
@@ -113,7 +113,6 @@ int main(int argc, char *argv[]) {
   // init_chemistry(setup=mysetup)"; R.parseEval(init_chemistry_code);
 
   // TODO: Grid anpassen
-
 
   Grid grid(R, poet::GridParams(R));
   // grid.init_from_R();
@@ -170,11 +169,11 @@ int main(int argc, char *argv[]) {
       /* Fallback for sequential execution */
       // TODO: use new grid
       if (world_size == 1) {
-        master.ChemSim::run();
+        master.ChemSim::run(dt);
       }
       /* otherwise run parallel */
       else {
-        master.run();
+        master.run(dt);
       }
 
       // MDL master_iteration_end just writes on disk state_T and

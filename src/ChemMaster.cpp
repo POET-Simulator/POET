@@ -2,7 +2,7 @@
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
 **
-** Copyright (C) 2018-2021 Marco De Lucia (GFZ Potsdam)
+** Copyright (C) 2018-2022 Marco De Lucia, Max Luebke (GFZ Potsdam)
 **
 ** POET is free software; you can redistribute it and/or modify it under the
 ** terms of the GNU General Public License as published by the Free Software
@@ -18,12 +18,16 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include "poet/DiffusionModule.hpp"
 #include <Rcpp.h>
 
+#include <bits/stdint-uintn.h>
 #include <iostream>
 
 #include <poet/ChemSim.hpp>
 #include <poet/Grid.hpp>
+#include <string>
+#include <vector>
 
 using namespace poet;
 using namespace std;
@@ -38,23 +42,34 @@ ChemMaster::ChemMaster(SimParams &params, RRuntime &R_, Grid &grid_)
 
   this->out_dir = params.getOutDir();
 
+  uint32_t grid_size = grid.getTotalCellCount() * this->prop_names.size();
+
   /* allocate memory */
   workerlist = (worker_struct *)calloc(world_size - 1, sizeof(worker_struct));
   send_buffer = (double *)calloc(
-      (wp_size * (grid.getSpeciesCount())) + BUFFER_OFFSET, sizeof(double));
-  mpi_buffer = (double *)calloc(grid.getGridCellsCount(GRID_Y_DIR) *
-                                    grid.getGridCellsCount(GRID_X_DIR),
-                                sizeof(double));
+      (wp_size * this->prop_names.size()) + BUFFER_OFFSET, sizeof(double));
+  mpi_buffer = (double *)calloc(grid_size, sizeof(double));
+
+  // R.parseEvalQ("wp_ids <- distribute_work_packages(len=length(mysetup$prop),
+  // "
+  //              "package_size=work_package_size)");
+
+  // // we only sort once the vector
+  // R.parseEvalQ("ordered_ids <- order(wp_ids)");
+  // R.parseEvalQ("wp_sizes_vector <- compute_wp_sizes(wp_ids)");
+  // R.parseEval("stat_wp_sizes(wp_sizes_vector)");
+  // wp_sizes_vector = as<std::vector<int>>(R["wp_sizes_vector"]);
 
   /* calculate distribution of work packages */
-  R.parseEvalQ("wp_ids <- distribute_work_packages(len=length(mysetup$prop), "
-               "package_size=work_package_size)");
+  uint32_t mod_pkgs = grid_size % this->wp_size;
+  uint32_t n_packages = (uint32_t)(grid.getTotalCellCount() / this->wp_size) +
+                        (mod_pkgs != 0 ? 1 : 0);
 
-  // we only sort once the vector
-  R.parseEvalQ("ordered_ids <- order(wp_ids)");
-  R.parseEvalQ("wp_sizes_vector <- compute_wp_sizes(wp_ids)");
-  R.parseEval("stat_wp_sizes(wp_sizes_vector)");
-  wp_sizes_vector = as<std::vector<int>>(R["wp_sizes_vector"]);
+  this->wp_sizes_vector =
+      std::vector<uint32_t>(n_packages - mod_pkgs, this->wp_size);
+  for (uint32_t i = 0; i < mod_pkgs; i++) {
+    this->wp_sizes_vector.push_back(this->wp_size - 1);
+  }
 }
 
 ChemMaster::~ChemMaster() {
@@ -62,7 +77,7 @@ ChemMaster::~ChemMaster() {
   free(workerlist);
 }
 
-void ChemMaster::run() {
+void ChemMaster::run(double dt) {
   /* declare most of the needed variables here */
   double chem_a, chem_b;
   double seq_a, seq_b, seq_c, seq_d;
@@ -78,14 +93,37 @@ void ChemMaster::run() {
   /* start time measurement of sequential part */
   seq_a = MPI_Wtime();
 
+  std::vector<double> &field = this->state->mem;
+
+  for (uint32_t i = 0; i < this->prop_names.size(); i++) {
+    try {
+      std::vector<double> t_prop_vec = this->grid.getSpeciesByName(
+          this->prop_names[i], poet::DIFFUSION_MODULE_NAME);
+
+      std::copy(t_prop_vec.begin(), t_prop_vec.end(),
+                field.begin() + (i * this->n_cells_per_prop));
+    } catch (...) {
+      continue;
+    }
+  }
+
+  // HACK: transfer the field into R data structure serving as input for phreeqc
+  R["TMP_T"] = field;
+
+  R.parseEvalQ("mysetup$state_T <- setNames(data.frame(matrix(TMP_T, "
+               "ncol=length(mysetup$grid$props), nrow=" +
+               std::to_string(this->n_cells_per_prop) +
+               ")), mysetup$grid$props)");
+
   /* shuffle grid */
-  grid.shuffleAndExport(mpi_buffer);
+  // grid.shuffleAndExport(mpi_buffer);
+  this->shuffleField(field, this->n_cells_per_prop, this->prop_names.size(),
+                     mpi_buffer);
 
   /* retrieve needed data from R runtime */
   iteration = (int)R.parseEval("mysetup$iter");
-  dt = (double)R.parseEval("mysetup$requested_dt");
-  current_sim_time =
-      (double)R.parseEval("mysetup$simulation_time-mysetup$requested_dt");
+  // dt = (double)R.parseEval("mysetup$requested_dt");
+  current_sim_time = (double)R.parseEval("mysetup$simulation_time") - dt;
 
   /* setup local variables */
   pkg_to_send = wp_sizes_vector.size();
@@ -126,14 +164,23 @@ void ChemMaster::run() {
   seq_c = MPI_Wtime();
 
   /* unshuffle grid */
-  grid.importAndUnshuffle(mpi_buffer);
+  // grid.importAndUnshuffle(mpi_buffer);
+  this->unshuffleField(mpi_buffer, this->n_cells_per_prop,
+                       this->prop_names.size(), field);
 
   /* do master stuff */
 
   /* start time measurement of master chemistry */
   sim_e_chemistry = MPI_Wtime();
 
-  R.parseEvalQ("mysetup <- master_chemistry(setup=mysetup, data=result)");
+  // HACK: We don't need to call master_chemistry here since our result is
+  // already written to the memory as a data frame
+
+  // R.parseEvalQ("mysetup <- master_chemistry(setup=mysetup, data=result)");
+  R["TMP_T"] = Rcpp::wrap(field);
+  R.parseEval(std::string("mysetup$state_C <- setNames(data.frame(matrix(TMP_T, nrow=" +
+                          to_string(this->n_cells_per_prop) +
+                          ")), mysetup$grid$props)"));
 
   /* end time measurement of master chemistry */
   sim_f_chemistry = MPI_Wtime();
@@ -367,6 +414,39 @@ void ChemMaster::end() {
 
   if (dht_enabled)
     free(dht_perfs);
+}
+
+void ChemMaster::shuffleField(const std::vector<double> &in_field,
+                              uint32_t size_per_prop, uint32_t prop_count,
+                              double *out_buffer) {
+  uint32_t wp_count = this->wp_sizes_vector.size();
+  uint32_t write_i = 0;
+  for (uint32_t i = 0; i < wp_count; i++) {
+    for (uint32_t j = i; j < size_per_prop; j += wp_count) {
+      for (uint32_t k = 0; k < prop_count; k++) {
+        out_buffer[(write_i * prop_count) + k] =
+            in_field[(k * size_per_prop) + j];
+      }
+      write_i++;
+    }
+  }
+}
+
+void ChemMaster::unshuffleField(const double *in_buffer, uint32_t size_per_prop,
+                                uint32_t prop_count,
+                                std::vector<double> &out_field) {
+  uint32_t wp_count = this->wp_sizes_vector.size();
+  uint32_t read_i = 0;
+
+  for (uint32_t i = 0; i < wp_count; i++) {
+    for (uint32_t j = i; j < size_per_prop; j += wp_count) {
+      for (uint32_t k = 0; k < prop_count; k++) {
+        out_field[(k * size_per_prop) + j] =
+            in_buffer[(read_i * prop_count) + k];
+      }
+      read_i++;
+    }
+  }
 }
 
 double ChemMaster::getSendTime() { return this->send_t; }

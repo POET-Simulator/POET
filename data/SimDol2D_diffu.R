@@ -3,8 +3,8 @@
 ##                     Grid initialization                     ##
 #################################################################
 
-n <- 5
-m <- 5
+n <- 50
+m <- 50
 
 types <- c("scratch", "phreeqc", "rds")
 
@@ -45,7 +45,7 @@ init_cell <- list(
 
 grid <- list(
   n_cells = c(n, m),
-  s_cells = c(1,1),
+  s_cells = c(n,m),
   type = types[1],
   init_cell = as.data.frame(init_cell),
   props = names(init_cell),
@@ -156,7 +156,7 @@ selout <- c(
 
 # TODO: dt and iterations
 
-iterations <- 500
+iterations <- 10
 
 setup <- list(
   # bound = myboundmat,

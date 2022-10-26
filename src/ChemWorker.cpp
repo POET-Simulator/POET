@@ -18,12 +18,15 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include "poet/SimParams.hpp"
 #include <Rcpp.h>
 
 #include <iostream>
+#include <ostream>
 #include <string>
 
 #include <poet/ChemSim.hpp>
+#include <vector>
 
 using namespace poet;
 using namespace std;
@@ -41,19 +44,19 @@ ChemWorker::ChemWorker(SimParams &params, RRuntime &R_, Grid &grid_,
 
   this->dht_file = params.getDHTFile();
 
-  mpi_buffer = (double *)calloc((wp_size * (grid.getSpeciesCount())) + BUFFER_OFFSET,
-                                sizeof(double));
+  mpi_buffer = (double *)calloc(
+      (wp_size * (this->prop_names.size())) + BUFFER_OFFSET, sizeof(double));
   mpi_buffer_results =
-      (double *)calloc(wp_size * (grid.getSpeciesCount()), sizeof(double));
+      (double *)calloc(wp_size * (this->prop_names.size()), sizeof(double));
 
   if (world_rank == 1)
     cout << "CPP: Worker: DHT usage is " << (dht_enabled ? "ON" : "OFF")
          << endl;
 
   if (dht_enabled) {
-    int data_size = grid.getSpeciesCount() * sizeof(double);
+    int data_size = this->prop_names.size() * sizeof(double);
     int key_size =
-        grid.getSpeciesCount() * sizeof(double) + (dt_differ * sizeof(double));
+        this->prop_names.size() * sizeof(double) + (dt_differ * sizeof(double));
     int dht_buckets_per_process =
         dht_size_per_process / (1 + data_size + key_size);
 
@@ -66,9 +69,11 @@ ChemWorker::ChemWorker(SimParams &params, RRuntime &R_, Grid &grid_,
     dht = new DHT_Wrapper(params, dht_comm, dht_buckets_per_process, data_size,
                           key_size);
 
-    if (world_rank == 1) cout << "CPP: Worker: DHT created!" << endl;
+    if (world_rank == 1)
+      cout << "CPP: Worker: DHT created!" << endl;
 
-    if (!dht_file.empty()) readFile();
+    if (!dht_file.empty())
+      readFile();
     // set size
     dht_flags.resize(wp_size, true);
     // assign all elements to true (default)
@@ -83,7 +88,8 @@ ChemWorker::ChemWorker(SimParams &params, RRuntime &R_, Grid &grid_,
 ChemWorker::~ChemWorker() {
   free(mpi_buffer);
   free(mpi_buffer_results);
-  if (dht_enabled) delete dht;
+  if (dht_enabled)
+    delete dht;
 }
 
 void ChemWorker::loop() {
@@ -114,6 +120,8 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   int count;
   int local_work_package_size = 0;
 
+  static int counter = 1;
+
   double dht_get_start, dht_get_end;
   double phreeqc_time_start, phreeqc_time_end;
   double dht_fill_start, dht_fill_end;
@@ -127,12 +135,12 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
 
   /* decrement count of work_package by BUFFER_OFFSET */
   count -= BUFFER_OFFSET;
-  
+
   /* check for changes on all additional variables given by the 'header' of
    * mpi_buffer */
 
   // work_package_size
-  if (mpi_buffer[count] != local_work_package_size) {  // work_package_size
+  if (mpi_buffer[count] != local_work_package_size) { // work_package_size
     local_work_package_size = mpi_buffer[count];
     R["work_package_size"] = local_work_package_size;
     R.parseEvalQ("mysetup$work_package_size <- work_package_size");
@@ -167,9 +175,9 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   if (dht_enabled) {
     /* resize helper vector dht_flags of work_package_size changes */
     if ((int)dht_flags.size() != local_work_package_size) {
-      dht_flags.resize(local_work_package_size, true);  // set size
+      dht_flags.resize(local_work_package_size, true); // set size
       dht_flags.assign(local_work_package_size,
-                       true);  // assign all elements to true (default)
+                       true); // assign all elements to true (default)
     }
 
     /* check for values in DHT */
@@ -182,7 +190,19 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   }
 
   /* Convert grid to R runtime */
-  grid.importWP(mpi_buffer, wp_size);
+  // grid.importWP(mpi_buffer, wp_size);
+  size_t rowCount = local_work_package_size;
+  size_t colCount = this->prop_names.size();
+
+  std::vector<std::vector<double>> input(colCount);
+
+  for (size_t i = 0; i < rowCount; i++) {
+    for (size_t j = 0; j < colCount; j++) {
+      input[j].push_back(mpi_buffer[i * colCount + j]);
+    }
+  }
+
+  R["work_package_full"] = Rcpp::as<Rcpp::DataFrame>(Rcpp::wrap(input));
 
   if (dht_enabled) {
     R.parseEvalQ("work_package <- work_package_full[dht_flags,]");
@@ -198,15 +218,13 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
     /*Single Line error Workaround*/
     if (nrows <= 1) {
       // duplicate line to enable correct simmulation
-      R.parseEvalQ(
-          "work_package <- work_package[rep(1:nrow(work_package), "
-          "times = 2), ]");
+      R.parseEvalQ("work_package <- work_package[rep(1:nrow(work_package), "
+                   "times = 2), ]");
     }
     /* Run PHREEQC */
     phreeqc_time_start = MPI_Wtime();
-    R.parseEvalQ(
-        "result <- as.data.frame(slave_chemistry(setup=mysetup, "
-        "data = work_package))");
+    R.parseEvalQ("result <- as.data.frame(slave_chemistry(setup=mysetup, "
+                 "data = work_package))");
     phreeqc_time_end = MPI_Wtime();
   } else {
     // undefined behaviour, isn't it?
@@ -216,7 +234,8 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
 
   if (dht_enabled) {
     R.parseEvalQ("result_full <- work_package_full");
-    if (nrows > 0) R.parseEvalQ("result_full[dht_flags,] <- result");
+    if (nrows > 0)
+      R.parseEvalQ("result_full[dht_flags,] <- result");
   } else {
     R.parseEvalQ("result_full <- result");
   }
@@ -312,5 +331,6 @@ void ChemWorker::finishWork() {
     MPI_Send(dht_perf, 3, MPI_INT, 0, TAG_DHT_PERF, MPI_COMM_WORLD);
   }
 
-  if (dht_enabled && dht_snaps > 0) writeFile();
+  if (dht_enabled && dht_snaps > 0)
+    writeFile();
 }
