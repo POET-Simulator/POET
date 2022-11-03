@@ -33,7 +33,7 @@ using namespace poet;
 using namespace std;
 using namespace Rcpp;
 
-ChemMaster::ChemMaster(SimParams &params, RRuntime &R_, Grid &grid_)
+ChemMaster::ChemMaster(SimParams &params, RInside &R_, Grid &grid_)
     : ChemSim(params, R_, grid_) {
   t_simparams tmp = params.getNumParams();
 

@@ -18,11 +18,11 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include <RInside.h>
 #include <Rcpp.h>
 #include <poet/ChemSim.hpp>
 #include <poet/DiffusionModule.hpp>
 #include <poet/Grid.hpp>
-#include <poet/RRuntime.hpp>
 #include <poet/SimParams.hpp>
 
 #include <cstring>
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* initialize R runtime */
-  RRuntime R(argc, argv);
+  RInside R(argc, argv);
 
   /*Loading Dependencies*/
   // TODO: kann raus
@@ -114,7 +114,8 @@ int main(int argc, char *argv[]) {
 
   // TODO: Grid anpassen
 
-  Grid grid(R, poet::GridParams(R));
+  GridParams grid_params = GridParams(R);
+  Grid grid(grid_params);
   // grid.init_from_R();
 
   params.initVectorParams(R, grid.getSpeciesCount());

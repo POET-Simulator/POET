@@ -23,7 +23,7 @@
 
 #include "DHT_Wrapper.hpp"
 #include "Grid.hpp"
-#include "RRuntime.hpp"
+#include "RInside.h"
 #include "SimParams.hpp"
 #include <bits/stdint-uintn.h>
 #include <cstdint>
@@ -69,7 +69,7 @@ public:
    * @param R_ R runtime
    * @param grid_ Initialized grid
    */
-  ChemSim(SimParams &params, RRuntime &R_, Grid &grid_);
+  ChemSim(SimParams &params, RInside &R_, Grid &grid_);
 
   /**
    * @brief Run iteration of simulation in sequential mode
@@ -139,7 +139,7 @@ protected:
    * @brief Instance of RRuntime object
    *
    */
-  RRuntime &R;
+  RInside &R;
 
   /**
    * @brief Initialized grid object
@@ -224,7 +224,7 @@ public:
    * @param R_ R runtime
    * @param grid_ Grid object
    */
-  ChemMaster(SimParams &params, RRuntime &R_, Grid &grid_);
+  ChemMaster(SimParams &params, RInside &R_, Grid &grid_);
 
   /**
    * @brief Destroy the ChemMaster object
@@ -445,7 +445,7 @@ public:
    * @param grid_ Grid object
    * @param dht_comm Communicator addressing all processes marked as worker
    */
-  ChemWorker(SimParams &params, RRuntime &R_, Grid &grid_, MPI_Comm dht_comm);
+  ChemWorker(SimParams &params, RInside &R_, Grid &grid_, MPI_Comm dht_comm);
 
   /**
    * @brief Destroy the ChemWorker object

@@ -25,9 +25,8 @@
 #include <string>
 #include <vector>
 
-#include "RRuntime.hpp"
-#include "Rcpp/DataFrame.h"
 #include "argh.hpp" // Argument handler https://github.com/adishavit/argh
+#include <RInside.h>
 #include <Rcpp.h>
 // BSD-licenced
 
@@ -85,7 +84,7 @@ using GridParams = struct s_GridParams {
 
   std::vector<std::string> props;
 
-  s_GridParams(poet::RRuntime &R);
+  s_GridParams(RInside &R);
 };
 
 using DiffusionParams = struct s_DiffusionParams {
@@ -97,7 +96,7 @@ using DiffusionParams = struct s_DiffusionParams {
   Rcpp::DataFrame vecinj;
   Rcpp::DataFrame vecinj_index;
 
-  s_DiffusionParams(poet::RRuntime &R);
+  s_DiffusionParams(RInside &R);
 };
 
 /**
@@ -149,7 +148,7 @@ public:
    * @return int Returns with 0 if no error occured, otherwise value less than 0
    * is returned.
    */
-  int parseFromCmdl(char *argv[], RRuntime &R);
+  int parseFromCmdl(char *argv[], RInside &R);
 
   /**
    * @brief Init std::vector values
@@ -162,7 +161,7 @@ public:
    * @param col_count Count of variables per grid cell (typically the count of
    * columns of each grid cell)
    */
-  void initVectorParams(RRuntime &R, int col_count);
+  void initVectorParams(RInside &R, int col_count);
 
   /**
    * @brief Set if dt differs

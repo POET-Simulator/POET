@@ -32,7 +32,7 @@ using namespace poet;
 using namespace std;
 using namespace Rcpp;
 
-ChemWorker::ChemWorker(SimParams &params, RRuntime &R_, Grid &grid_,
+ChemWorker::ChemWorker(SimParams &params, RInside &R_, Grid &grid_,
                        MPI_Comm dht_comm)
     : ChemSim(params, R_, grid_) {
   t_simparams tmp = params.getNumParams();

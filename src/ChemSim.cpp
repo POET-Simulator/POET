@@ -33,7 +33,7 @@
 using namespace Rcpp;
 using namespace poet;
 
-ChemSim::ChemSim(SimParams &params, RRuntime &R_, Grid &grid_)
+ChemSim::ChemSim(SimParams &params, RInside &R_, Grid &grid_)
     : R(R_), grid(grid_) {
   t_simparams tmp = params.getNumParams();
   this->world_rank = tmp.world_rank;

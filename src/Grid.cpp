@@ -49,9 +49,8 @@ static inline int8_t get_type_id(std::string type) {
   return -1;
 }
 
-Grid::Grid(RRuntime &R, poet::GridParams grid_args) : R(R) {
+Grid::Grid(poet::GridParams grid_args) {
   // get dimension of grid
-  // this->dim = R.parseEval("length(mysetup$grid$n_cells)");
   this->dim = grid_args.n_cells.size();
 
   // assert that dim is 1 or 2
@@ -204,35 +203,4 @@ auto poet::Grid::getSpeciesByName(std::string name, std::string module_name)
 
   return std::vector<double>(module_memory->mem.begin() + begin_vec,
                              module_memory->mem.begin() + end_vec);
-}
-
-void Grid::shuffleAndExport(double *buffer) {
-  R.parseEval("tmp <- shuffle_field(mysetup$state_T, ordered_ids)");
-  R.setBufferDataFrame("tmp");
-  R.to_C_domain(buffer);
-}
-
-void Grid::importAndUnshuffle(double *buffer) {
-  R.setBufferDataFrame("GRID_TMP");
-  R.from_C_domain(buffer);
-  R["GRID_CHEM_DATA"] = R.getBufferDataFrame();
-  R.parseEval("result <- unshuffle_field(GRID_CHEM_DATA, ordered_ids)");
-}
-
-void Grid::importWP(double *buffer, unsigned int wp_size) {
-  R["GRID_WP_SKELETON"] = getSkeletonDataFrame(wp_size);
-  R.setBufferDataFrame("GRID_WP_SKELETON");
-  R.from_C_domain(buffer);
-  R["work_package_full"] = R.getBufferDataFrame();
-}
-void Grid::exportWP(double *buffer) {
-  R.setBufferDataFrame("result_full");
-  R.to_C_domain(buffer);
-}
-
-Rcpp::DataFrame Grid::getSkeletonDataFrame(unsigned int rows) {
-  R["GRID_ROWS"] = rows;
-
-  Rcpp::DataFrame tmp = R.parseEval("head(GRID_TMP,GRID_ROWS)");
-  return tmp;
 }

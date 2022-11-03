@@ -18,10 +18,10 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "poet/RRuntime.hpp"
 #include <bits/stdint-uintn.h>
 #include <poet/SimParams.hpp>
 
+#include <RInside.h>
 #include <Rcpp.h>
 
 #include <iostream>
@@ -32,7 +32,7 @@ using namespace poet;
 using namespace std;
 using namespace Rcpp;
 
-poet::GridParams::s_GridParams(poet::RRuntime &R) {
+poet::GridParams::s_GridParams(RInside &R) {
   this->n_cells =
       Rcpp::as<std::vector<uint32_t>>(R.parseEval("mysetup$grid$n_cells"));
   this->s_cells =
@@ -46,7 +46,7 @@ poet::GridParams::s_GridParams(poet::RRuntime &R) {
   // Rcpp::as<std::string>(R.parseEval("mysetup$grid$init_sim"));
 }
 
-poet::DiffusionParams::s_DiffusionParams(poet::RRuntime &R) {
+poet::DiffusionParams::s_DiffusionParams(RInside &R) {
   this->prop_names = Rcpp::as<std::vector<std::string>>(
       R.parseEval("names(mysetup$diffusion$init)"));
   this->alpha =
@@ -66,7 +66,7 @@ SimParams::SimParams(int world_rank_, int world_size_) {
   this->simparams.world_size = world_size_;
 }
 
-int SimParams::parseFromCmdl(char *argv[], RRuntime &R) {
+int SimParams::parseFromCmdl(char *argv[], RInside &R) {
   // initialize argh object
   argh::parser cmdl(argv);
 
@@ -180,7 +180,7 @@ int SimParams::parseFromCmdl(char *argv[], RRuntime &R) {
   return PARSER_OK;
 }
 
-void SimParams::initVectorParams(RRuntime &R, int col_count) {
+void SimParams::initVectorParams(RInside &R, int col_count) {
   if (simparams.dht_enabled) {
     /*Load significance vector from R setup file (or set default)*/
     bool signif_vector_exists = R.parseEval("exists('signif_vector')");
