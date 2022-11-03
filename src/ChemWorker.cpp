@@ -240,7 +240,17 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   }
 
   /* convert grid to C domain */
-  grid.exportWP(mpi_buffer_results);
+
+  std::vector<std::vector<double>> output =
+      Rcpp::as<std::vector<std::vector<double>>>(R.parseEval("result_full"));
+
+  for (size_t i = 0; i < rowCount; i++) {
+    for (size_t j = 0; j < colCount; j++) {
+      mpi_buffer_results[i * colCount + j] = output[j][i];
+    }
+  }
+
+  //grid.exportWP(mpi_buffer_results);
   /* send results to master */
   MPI_Request send_req;
   MPI_Isend(mpi_buffer_results, count, MPI_DOUBLE, 0, TAG_WORK, MPI_COMM_WORLD,
