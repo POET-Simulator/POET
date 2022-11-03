@@ -50,16 +50,6 @@ ChemMaster::ChemMaster(SimParams &params, RRuntime &R_, Grid &grid_)
       (wp_size * this->prop_names.size()) + BUFFER_OFFSET, sizeof(double));
   mpi_buffer = (double *)calloc(grid_size, sizeof(double));
 
-  // R.parseEvalQ("wp_ids <- distribute_work_packages(len=length(mysetup$prop),
-  // "
-  //              "package_size=work_package_size)");
-
-  // // we only sort once the vector
-  // R.parseEvalQ("ordered_ids <- order(wp_ids)");
-  // R.parseEvalQ("wp_sizes_vector <- compute_wp_sizes(wp_ids)");
-  // R.parseEval("stat_wp_sizes(wp_sizes_vector)");
-  // wp_sizes_vector = as<std::vector<int>>(R["wp_sizes_vector"]);
-
   /* calculate distribution of work packages */
   uint32_t mod_pkgs = grid_size % this->wp_size;
   uint32_t n_packages = (uint32_t)(grid.getTotalCellCount() / this->wp_size) +
@@ -77,7 +67,7 @@ ChemMaster::~ChemMaster() {
   free(workerlist);
 }
 
-void ChemMaster::run(double dt) {
+void ChemMaster::simulate(double dt) {
   /* declare most of the needed variables here */
   double chem_a, chem_b;
   double seq_a, seq_b, seq_c, seq_d;

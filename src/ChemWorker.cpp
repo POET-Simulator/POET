@@ -190,7 +190,6 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   }
 
   /* Convert grid to R runtime */
-  // grid.importWP(mpi_buffer, wp_size);
   size_t rowCount = local_work_package_size;
   size_t colCount = this->prop_names.size();
 

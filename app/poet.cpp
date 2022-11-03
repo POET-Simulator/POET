@@ -158,8 +158,6 @@ int main(int argc, char *argv[]) {
       cout << "CPP: R's $iter: " << ((uint32_t)(R.parseEval("mysetup$iter")))
            << ". Iteration" << endl;
 
-      cout << "CPP: Calling Advection" << endl;
-
       /* run transport */
       // TODO: transport to diffusion
       diffusion.simulate(dt);
@@ -169,11 +167,11 @@ int main(int argc, char *argv[]) {
       /* Fallback for sequential execution */
       // TODO: use new grid
       if (world_size == 1) {
-        master.ChemSim::run(dt);
+        master.ChemSim::simulate(dt);
       }
       /* otherwise run parallel */
       else {
-        master.run(dt);
+        master.simulate(dt);
       }
 
       // MDL master_iteration_end just writes on disk state_T and

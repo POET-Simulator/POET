@@ -25,6 +25,7 @@
 #include <Rcpp.h>
 #include <algorithm>
 #include <cstdint>
+#include <ostream>
 #include <poet/DiffusionModule.hpp>
 #include <poet/Grid.hpp>
 
@@ -78,19 +79,18 @@ void DiffusionModule::initialize(poet::DiffusionParams args) {
 
   this->state =
       this->grid.registerState(DIFFUSION_MODULE_NAME, this->prop_names);
-  auto &field = this->state->mem;
 
-  // get alphas - we cannot assume alphas are provided in same order as initial
-  // input
-  std::vector<double> local_alpha(this->prop_count);
-  for (uint32_t i = 0; i < this->prop_count; i++) {
-    local_alpha[i] = args.alpha[this->prop_names[i]];
-  }
-  this->alpha = local_alpha;
+  std::vector<double> &field = this->state->mem;
 
-  // initialize field
+  // initialize field and alphas
   field.resize(this->n_cells_per_prop * this->prop_count);
+  this->alpha.reserve(this->prop_count);
+
   for (uint32_t i = 0; i < this->prop_count; i++) {
+    // get alphas - we cannot assume alphas are provided in same order as
+    // initial input
+    this->alpha.push_back(args.alpha[this->prop_names[i]]);
+
     std::vector<double> prop_vec = grid.getSpeciesByName(this->prop_names[i]);
     std::copy(prop_vec.begin(), prop_vec.end(),
               field.begin() + (i * this->n_cells_per_prop));
@@ -101,6 +101,30 @@ void DiffusionModule::initialize(poet::DiffusionParams args) {
     } else {
       tug::bc::BoundaryCondition bc(this->grid.getGridCellsCount(GRID_X_DIR));
       this->bc_vec.push_back(bc);
+    }
+  }
+
+  // apply boundary conditions to each ghost node
+  uint8_t bc_size = (this->dim == this->DIM_1D ? 2 : 4);
+  for (uint8_t i = 0; i < bc_size; i++) {
+    const auto &side = borders[i];
+    std::vector<uint32_t> vecinj_i = Rcpp::as<std::vector<uint32_t>>(
+        args.vecinj_index[convert_bc_to_config_file(side)]);
+    for (int i = 0; i < this->prop_count; i++) {
+      std::vector<double> bc_vec = args.vecinj[this->prop_names[i]];
+      tug::bc::BoundaryCondition &curr_bc = *(this->bc_vec.begin() + i);
+      for (int j = 0; j < vecinj_i.size(); j++) {
+        if (vecinj_i[j] == 0) {
+          continue;
+        }
+        if (this->dim == this->DIM_2D) {
+          curr_bc(side, j) = {tug::bc::BC_TYPE_CONSTANT,
+                              bc_vec[vecinj_i[j] - 1]};
+        }
+        if (this->dim == this->DIM_1D) {
+          curr_bc(side) = {tug::bc::BC_TYPE_CONSTANT, bc_vec[vecinj_i[j] - 1]};
+        }
+      }
     }
   }
 
@@ -134,30 +158,6 @@ void DiffusionModule::initialize(poet::DiffusionParams args) {
       }
     }
   }
-
-  // apply boundary conditions to each ghost node
-  uint8_t bc_size = (this->dim == this->DIM_1D ? 2 : 4);
-  for (uint8_t i = 0; i < bc_size; i++) {
-    const auto &side = borders[i];
-    std::vector<uint32_t> vecinj_i = Rcpp::as<std::vector<uint32_t>>(
-        args.vecinj_index[convert_bc_to_config_file(side)]);
-    for (int i = 0; i < this->prop_count; i++) {
-      std::vector<double> bc_vec = args.vecinj[this->prop_names[i]];
-      tug::bc::BoundaryCondition &curr_bc = *(this->bc_vec.begin() + i);
-      for (int j = 0; j < vecinj_i.size(); j++) {
-        if (vecinj_i[j] == 0) {
-          continue;
-        }
-        if (this->dim == this->DIM_2D) {
-          curr_bc(side, j) = {tug::bc::BC_TYPE_CONSTANT,
-                              bc_vec[vecinj_i[j] - 1]};
-        }
-        if (this->dim == this->DIM_1D) {
-          curr_bc(side) = {tug::bc::BC_TYPE_CONSTANT, bc_vec[vecinj_i[j] - 1]};
-        }
-      }
-    }
-  }
 }
 
 void DiffusionModule::simulate(double dt) {
@@ -165,8 +165,13 @@ void DiffusionModule::simulate(double dt) {
 
   sim_b_transport = MPI_Wtime();
 
+  std::cout << "DiffusionModule::simulate(): Starting diffusion ..."
+            << std::flush;
+
   std::vector<double> &curr_field = this->state->mem;
 
+  // copy output of another module (in this case there is only the chemistry
+  // module) as input for diffusion
   for (uint32_t i = 0; i < this->prop_names.size(); i++) {
     try {
       std::vector<double> t_prop_vec = this->grid.getSpeciesByName(
@@ -175,16 +180,16 @@ void DiffusionModule::simulate(double dt) {
       std::copy(t_prop_vec.begin(), t_prop_vec.end(),
                 curr_field.begin() + (i * this->n_cells_per_prop));
     } catch (...) {
+      // TODO: there might be something wrong ...
       continue;
     }
   }
 
-  auto *field = curr_field.data();
-
   this->diff_input.setTimestep(dt);
 
+  double *field = curr_field.data();
   for (int i = 0; i < this->prop_count; i++) {
-    auto *in_field = &field[i * this->n_cells_per_prop];
+    double *in_field = &field[i * this->n_cells_per_prop];
     std::vector<double> in_alpha(this->n_cells_per_prop, this->alpha[i]);
     this->diff_input.setBoundaryCondition(this->bc_vec[i]);
 
@@ -194,6 +199,8 @@ void DiffusionModule::simulate(double dt) {
       tug::diffusion::ADI_2D(this->diff_input, in_field, in_alpha.data());
     }
   }
+
+  std::cout << " done!\n";
 
   sim_a_transport = MPI_Wtime();
 

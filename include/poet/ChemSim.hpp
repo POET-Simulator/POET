@@ -80,7 +80,7 @@ public:
    * @todo change function name. Maybe 'slave' to 'seq'.
    *
    */
-  virtual void run(double dt);
+  virtual void simulate(double dt);
 
   /**
    * @brief End simulation
@@ -250,7 +250,7 @@ public:
    * The main tasks are instrumented with time measurements.
    *
    */
-  void run(double dt) override;
+  void simulate(double dt) override;
 
   /**
    * @brief End chemistry simulation.

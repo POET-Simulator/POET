@@ -46,7 +46,7 @@ ChemSim::ChemSim(SimParams &params, RRuntime &R_, Grid &grid_)
   this->n_cells_per_prop = this->grid.getTotalCellCount();
   this->state =
       this->grid.registerState(poet::CHEMISTRY_MODULE_NAME, this->prop_names);
-  auto &field = this->state->mem;
+  std::vector<double> &field = this->state->mem;
 
   field.resize(this->n_cells_per_prop * this->prop_names.size());
   for (uint32_t i = 0; i < this->prop_names.size(); i++) {
@@ -58,7 +58,7 @@ ChemSim::ChemSim(SimParams &params, RRuntime &R_, Grid &grid_)
   }
 }
 
-void ChemSim::run(double dt) {
+void ChemSim::simulate(double dt) {
   double chem_a, chem_b;
 
   /* start time measuring */
