@@ -146,7 +146,10 @@ selout <- c(
   "-kinetic_reactants Calcite Dolomite", "-equilibrium O2g"
 )
 
-# TODO: dt and iterations
+# Needed when using DHT
+signif_vector <- c(7, 7, 7, 7, 7, 7, 7, 5, 5)
+prop_type <- c("act", "act", "act", "act", "logact", "logact", "ignore", "act", "act")
+prop <- names(init_cell)
 
 iterations <- 500
 
@@ -158,7 +161,7 @@ setup <- list(
   # Cf = 1,
   grid = grid,
   diffusion = diffusion,
-  prop = names(init_cell),
+  prop = prop,
   immobile = c(7, 8, 9),
   kin = c(8, 9),
   ann = list(O2g = -0.1675),
@@ -175,7 +178,3 @@ setup <- list(
   iterations = iterations,
   timesteps = rep(10, iterations)
 )
-
-# not needed yet
-# signif_vector <- c(7, 7, 7, 7, 7, 7, 7, 5, 5)
-# prop_type <- c("act", "act", "act", "act", "logact", "logact", "ignore", "act", "act")
