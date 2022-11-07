@@ -76,7 +76,7 @@ int SimParams::parseFromCmdl(char *argv[], RInside &R) {
       cout << "Todo" << endl
            << "See README.md for further information." << endl;
     }
-    return PARSER_HELP;
+    return poet::PARSER_HELP;
   }
   // if positional arguments are missing
   else if (!cmdl(2)) {
@@ -86,7 +86,7 @@ int SimParams::parseFromCmdl(char *argv[], RInside &R) {
            << "2) the directory prefix where to save results and profiling"
            << endl;
     }
-    return PARSER_ERROR;
+    return poet::PARSER_ERROR;
   }
 
   // collect all parameters which are not known, print them to stderr and return
@@ -100,7 +100,7 @@ int SimParams::parseFromCmdl(char *argv[], RInside &R) {
       }
       cerr << "\nMake sure to use available options. Exiting!" << endl;
     }
-    return PARSER_ERROR;
+    return poet::PARSER_ERROR;
   }
 
   /*Parse DHT arguments*/
@@ -177,7 +177,7 @@ int SimParams::parseFromCmdl(char *argv[], RInside &R) {
   // eval the init string, ignoring any returns
   R.parseEvalQ("source(filesim)");
 
-  return PARSER_OK;
+  return poet::PARSER_OK;
 }
 
 void SimParams::initVectorParams(RInside &R, int col_count) {

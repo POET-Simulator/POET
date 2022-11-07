@@ -30,19 +30,14 @@
 #include <Rcpp.h>
 // BSD-licenced
 
-/** Return value if no error occured */
-#define PARSER_OK 0
-/** Return value if error occured during parsing of program arguments */
-#define PARSER_ERROR -1
-/** Return value if user asked for help message with program parameter */
-#define PARSER_HELP -2
-
 /** Standard DHT Size (Defaults to 1 GiB) */
 #define DHT_SIZE_PER_PROCESS 1073741824
 /** Standard work package size */
 #define WORK_PACKAGE_SIZE_DEFAULT 5
 
 namespace poet {
+
+enum { PARSER_OK, PARSER_ERROR, PARSER_HELP };
 
 /**
  * @brief Defining all simulation parameters

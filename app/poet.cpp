@@ -74,10 +74,10 @@ int main(int argc, char *argv[]) {
   SimParams params(world_rank, world_size);
   int pret = params.parseFromCmdl(argv, R);
 
-  if (pret == PARSER_ERROR) {
+  if (pret == poet::PARSER_ERROR) {
     MPI_Finalize();
     return EXIT_FAILURE;
-  } else if (pret == PARSER_HELP) {
+  } else if (pret == poet::PARSER_HELP) {
     MPI_Finalize();
     return EXIT_SUCCESS;
   }

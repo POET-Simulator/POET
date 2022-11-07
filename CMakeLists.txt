@@ -24,6 +24,7 @@ add_subdirectory(data)
 add_subdirectory(app)
 
 add_subdirectory(ext/tug EXCLUDE_FROM_ALL)
+add_subdirectory(ext/phreeqcrm EXCLUDE_FROM_ALL)
 
 option(BUILD_DOC "Build documentation with doxygen" OFF)
 

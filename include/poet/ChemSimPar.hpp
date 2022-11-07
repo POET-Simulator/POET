@@ -26,6 +26,7 @@
 #include "Grid.hpp"
 #include "RInside.h"
 #include "SimParams.hpp"
+#include <PhreeqcRM.h>
 #include <array>
 #include <bits/stdint-uintn.h>
 #include <cstdint>
