@@ -24,7 +24,7 @@
 #include <bits/stdint-uintn.h>
 #include <iostream>
 
-#include <poet/ChemSim.hpp>
+#include <poet/ChemSimPar.hpp>
 #include <poet/Grid.hpp>
 #include <string>
 #include <vector>
@@ -67,7 +67,7 @@ ChemMaster::~ChemMaster() {
   free(workerlist);
 }
 
-void ChemMaster::simulate(double dt) {
+void ChemMaster::masterLoop(double dt) {
   /* declare most of the needed variables here */
   double chem_a, chem_b;
   double seq_a, seq_b, seq_c, seq_d;
@@ -118,7 +118,7 @@ void ChemMaster::simulate(double dt) {
   /* setup local variables */
   pkg_to_send = wp_sizes_vector.size();
   pkg_to_recv = wp_sizes_vector.size();
-  work_pointer = mpi_buffer;
+  double *work_pointer = mpi_buffer;
   free_workers = world_size - 1;
   i_pkgs = 0;
 
@@ -137,7 +137,7 @@ void ChemMaster::simulate(double dt) {
     // while there are still packages to send
     if (pkg_to_send > 0) {
       // send packages to all free workers ...
-      sendPkgs(pkg_to_send, i_pkgs, free_workers);
+      sendPkgs(pkg_to_send, i_pkgs, free_workers, work_pointer, dt);
     }
     // ... and try to receive them from workers who has finished their work
     recvPkgs(pkg_to_recv, pkg_to_send > 0, free_workers);
@@ -168,9 +168,9 @@ void ChemMaster::simulate(double dt) {
 
   // R.parseEvalQ("mysetup <- master_chemistry(setup=mysetup, data=result)");
   R["TMP_T"] = Rcpp::wrap(field);
-  R.parseEval(std::string("mysetup$state_C <- setNames(data.frame(matrix(TMP_T, nrow=" +
-                          to_string(this->n_cells_per_prop) +
-                          ")), mysetup$grid$props)"));
+  R.parseEval(std::string(
+      "mysetup$state_C <- setNames(data.frame(matrix(TMP_T, nrow=" +
+      to_string(this->n_cells_per_prop) + ")), mysetup$grid$props)"));
 
   /* end time measurement of master chemistry */
   sim_f_chemistry = MPI_Wtime();
@@ -190,8 +190,9 @@ void ChemMaster::simulate(double dt) {
   }
 }
 
-void ChemMaster::sendPkgs(int &pkg_to_send, int &count_pkgs,
-                          int &free_workers) {
+inline void ChemMaster::sendPkgs(int &pkg_to_send, int &count_pkgs,
+                                 int &free_workers, double *work_pointer,
+                                 const double &dt) {
   /* declare variables */
   double master_send_a, master_send_b;
   int local_work_package_size;
@@ -244,7 +245,8 @@ void ChemMaster::sendPkgs(int &pkg_to_send, int &count_pkgs,
   send_t += master_send_b - master_send_a;
 }
 
-void ChemMaster::recvPkgs(int &pkg_to_recv, bool to_send, int &free_workers) {
+inline void ChemMaster::recvPkgs(int &pkg_to_recv, bool to_send,
+                                 int &free_workers) {
   /* declare most of the variables here */
   int need_to_receive = 1;
   double master_recv_a, master_recv_b;
@@ -304,7 +306,7 @@ void ChemMaster::printProgressbar(int count_pkgs, int n_wp, int barWidth) {
   /* end visual progress */
 }
 
-void ChemMaster::end() {
+void ChemMaster::endLoop() {
   /* call end() from base class */
   ChemSim::end();
 

@@ -18,7 +18,6 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "poet/ChemSim.hpp"
 #include "poet/SimParams.hpp"
 #include "tug/BoundaryCondition.hpp"
 #include "tug/Diffusion.hpp"
@@ -26,6 +25,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <ostream>
+#include <poet/ChemSimSeq.hpp>
 #include <poet/DiffusionModule.hpp>
 #include <poet/Grid.hpp>
 

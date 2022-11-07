@@ -19,7 +19,7 @@
 */
 
 #include "poet/DiffusionModule.hpp"
-#include <poet/ChemSim.hpp>
+#include <poet/ChemSimSeq.hpp>
 #include <poet/Grid.hpp>
 
 #include <Rcpp.h>

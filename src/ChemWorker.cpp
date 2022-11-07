@@ -25,7 +25,7 @@
 #include <ostream>
 #include <string>
 
-#include <poet/ChemSim.hpp>
+#include <poet/ChemSimPar.hpp>
 #include <vector>
 
 using namespace poet;
@@ -125,6 +125,8 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   double dht_get_start, dht_get_end;
   double phreeqc_time_start, phreeqc_time_end;
   double dht_fill_start, dht_fill_end;
+
+  double dt;
 
   /* get number of doubles to be received */
   MPI_Get_count(&probe_status, MPI_DOUBLE, &count);
@@ -250,7 +252,7 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
     }
   }
 
-  //grid.exportWP(mpi_buffer_results);
+  // grid.exportWP(mpi_buffer_results);
   /* send results to master */
   MPI_Request send_req;
   MPI_Isend(mpi_buffer_results, count, MPI_DOUBLE, 0, TAG_WORK, MPI_COMM_WORLD,
@@ -326,7 +328,8 @@ void ChemWorker::finishWork() {
            MPI_STATUS_IGNORE);
 
   // timings
-  MPI_Send(timing, 3, MPI_DOUBLE, 0, TAG_TIMING, MPI_COMM_WORLD);
+  MPI_Send(timing.data(), timing.size(), MPI_DOUBLE, 0, TAG_TIMING,
+           MPI_COMM_WORLD);
 
   MPI_Send(&phreeqc_count, 1, MPI_INT, 0, TAG_TIMING, MPI_COMM_WORLD);
   MPI_Send(&idle_t, 1, MPI_DOUBLE, 0, TAG_TIMING, MPI_COMM_WORLD);

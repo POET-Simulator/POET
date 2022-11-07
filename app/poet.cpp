@@ -20,7 +20,8 @@
 
 #include <RInside.h>
 #include <Rcpp.h>
-#include <poet/ChemSim.hpp>
+#include <poet/ChemSimPar.hpp>
+#include <poet/ChemSimSeq.hpp>
 #include <poet/DiffusionModule.hpp>
 #include <poet/Grid.hpp>
 #include <poet/SimParams.hpp>
@@ -166,11 +167,11 @@ int main(int argc, char *argv[]) {
       /* Fallback for sequential execution */
       // TODO: use new grid
       if (world_size == 1) {
-        master.ChemSim::simulate(dt);
+        master.simulate(dt);
       }
       /* otherwise run parallel */
       else {
-        master.simulate(dt);
+        master.masterLoop(dt);
       }
 
       // MDL master_iteration_end just writes on disk state_T and
@@ -202,9 +203,9 @@ int main(int argc, char *argv[]) {
     diffusion.end();
 
     if (world_size == 1) {
-      master.ChemSim::end();
-    } else {
       master.end();
+    } else {
+      master.endLoop();
     }
 
     string r_vis_code;
