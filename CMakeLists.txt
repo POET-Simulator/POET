@@ -23,7 +23,7 @@ add_subdirectory(R_lib)
 add_subdirectory(data)
 add_subdirectory(app)
 
-option(BUILD_DOC "Build documentation with doxygen" ON)
+option(BUILD_DOC "Build documentation with doxygen" OFF)
 
 if(BUILD_DOC)
   add_subdirectory(docs)
