@@ -16,9 +16,7 @@ list(APPEND CMAKE_MODULE_PATH "${POET_SOURCE_DIR}/CMake")
 
 find_package(MPI REQUIRED)
 
-find_package(R REQUIRED)
-find_package(Rcpp REQUIRED)
-find_package(RInside REQUIRED)
+find_package(RRuntime REQUIRED)
 
 add_subdirectory(src)
 add_subdirectory(R_lib)

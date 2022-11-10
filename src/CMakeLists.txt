@@ -6,7 +6,7 @@ find_library(MATH_LIBRARY m)
 find_library(CRYPTO_LIBRARY crypto)
 
 add_library(poet_lib ${poet_lib_SRC})
-target_include_directories(poet_lib PUBLIC ${PROJECT_SOURCE_DIR}/include ${R_INCLUDE_DIRS})
+target_include_directories(poet_lib PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(poet_lib PUBLIC
-  MPI::MPI_C ${MATH_LIBRARY} ${CRYPTO_LIBRARY} ${R_LIBRARIES})
+  MPI::MPI_C ${MATH_LIBRARY} ${CRYPTO_LIBRARY} RRuntime)
 target_compile_definitions(poet_lib PUBLIC STRICT_R_HEADERS OMPI_SKIP_MPICXX)
