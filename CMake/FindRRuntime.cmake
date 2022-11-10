@@ -12,12 +12,12 @@ if(R_EXE)
   find_path(
     R_INCLUDE_DIR R.h
     HINTS ${R_ROOT_DIR}
-    PATHS /usr/inlcude /usr/local/include /usr/share
+    PATHS /usr/include /usr/local/include /usr/share
     PATH_SUFFIXES include/R R/include
   )
 
   find_library(
-    R_LIBRARY R
+    R_LIBRARY libR.so
     HINTS ${R_ROOT_DIR}/lib
   )
 else()
@@ -30,8 +30,7 @@ set(R_LIBRARIES ${R_LIBRARY})
 set(R_INCLUDE_DIRS ${R_INCLUDE_DIR})
 
 # find Rcpp include directory
-execute_process(COMMAND echo "cat(find.package('Rcpp'))"
-  COMMAND ${R_EXE} --vanilla --slave
+execute_process(COMMAND Rscript -e "cat(system.file(package='Rcpp'))"
   RESULT_VARIABLE RCPP_NOT_FOUND
   ERROR_QUIET
   OUTPUT_VARIABLE RCPP_PATH
@@ -51,8 +50,7 @@ mark_as_advanced(R_Rcpp_INCLUDE_DIR)
 list(APPEND R_INCLUDE_DIRS ${R_Rcpp_INCLUDE_DIR})
 
 # find RInside libraries and include path
-execute_process(COMMAND echo "cat(find.package('RInside'))"
-  COMMAND ${R_EXE} --vanilla --slave
+execute_process(COMMAND Rscript -e "cat(system.file(package='RInside'))"
   RESULT_VARIABLE RINSIDE_NOT_FOUND
   ERROR_QUIET
   OUTPUT_VARIABLE RINSIDE_PATH
