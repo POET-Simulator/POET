@@ -90,6 +90,8 @@ ChemWorker::~ChemWorker() {
   free(mpi_buffer_results);
   if (dht_enabled)
     delete dht;
+
+  delete this->dht;
 }
 
 void ChemWorker::loop() {
