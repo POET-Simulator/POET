@@ -19,6 +19,7 @@
 */
 
 #include "poet/DiffusionModule.hpp"
+#include "poet/SimParams.hpp"
 #include <Rcpp.h>
 
 #include <bits/stdint-uintn.h>
@@ -33,8 +34,9 @@ using namespace poet;
 using namespace std;
 using namespace Rcpp;
 
-ChemMaster::ChemMaster(SimParams &params, RInside &R_, Grid &grid_)
-    : ChemSim(params, R_, grid_) {
+ChemMaster::ChemMaster(SimParams &params, RInside &R_, Grid &grid_,
+                       poet::ChemistryParams chem_params)
+    : ChemSim(params, R_, grid_, chem_params) {
   t_simparams tmp = params.getNumParams();
 
   this->wp_size = tmp.wp_size;

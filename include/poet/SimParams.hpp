@@ -75,7 +75,8 @@ using GridParams = struct s_GridParams {
   std::string type;
 
   Rcpp::DataFrame init_df;
-  std::string init_sim;
+  std::string input_script;
+  std::string database_path;
 
   std::vector<std::string> props;
 
@@ -92,6 +93,13 @@ using DiffusionParams = struct s_DiffusionParams {
   Rcpp::DataFrame vecinj_index;
 
   s_DiffusionParams(RInside &R);
+};
+
+using ChemistryParams = struct s_ChemistryParams {
+  std::string database_path;
+  std::string input_script;
+
+  s_ChemistryParams(RInside &R);
 };
 
 /**

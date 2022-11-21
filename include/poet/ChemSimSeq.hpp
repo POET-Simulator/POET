@@ -23,6 +23,7 @@
 
 #include "DHT_Wrapper.hpp"
 #include "Grid.hpp"
+#include "PhreeqcWrapper.hpp"
 #include "RInside.h"
 #include "SimParams.hpp"
 #include <bits/stdint-uintn.h>
@@ -69,7 +70,8 @@ public:
    * @param R_ R runtime
    * @param grid_ Initialized grid
    */
-  ChemSim(SimParams &params, RInside &R_, Grid &grid_);
+  ChemSim(SimParams &params, RInside &R_, Grid &grid_,
+          poet::ChemistryParams chem_params);
 
   /**
    * @brief Run iteration of simulation in sequential mode
@@ -119,6 +121,9 @@ protected:
   uint32_t n_cells_per_prop;
   std::vector<std::string> prop_names;
   std::vector<uint32_t> wp_sizes_vector;
+
+  PhreeqcWrapper *phreeqc_rm;
+
 };
 
 } // namespace poet

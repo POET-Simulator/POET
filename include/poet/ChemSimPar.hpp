@@ -26,6 +26,7 @@
 #include "Grid.hpp"
 #include "RInside.h"
 #include "SimParams.hpp"
+#include "poet/PhreeqcWrapper.hpp"
 #include <PhreeqcRM.h>
 #include <array>
 #include <bits/stdint-uintn.h>
@@ -72,7 +73,8 @@ public:
    * @param R_ R runtime
    * @param grid_ Grid object
    */
-  ChemMaster(SimParams &params, RInside &R_, Grid &grid_);
+  ChemMaster(SimParams &params, RInside &R_, Grid &grid_,
+             poet::ChemistryParams chem_params);
 
   /**
    * @brief Destroy the ChemMaster object
@@ -217,7 +219,8 @@ public:
    * @param grid_ Grid object
    * @param dht_comm Communicator addressing all processes marked as worker
    */
-  ChemWorker(SimParams &params, RInside &R_, Grid &grid_, MPI_Comm dht_comm);
+  ChemWorker(SimParams &params, RInside &R_, Grid &grid_, MPI_Comm dht_comm,
+             poet::ChemistryParams chem_params);
 
   /**
    * @brief Destroy the ChemWorker object
@@ -257,6 +260,8 @@ private:
   int phreeqc_count = 0;
 
   double *mpi_buffer;
+
+  uint32_t ncomps;
 };
 } // namespace poet
 #endif // CHEMSIMPAR_H

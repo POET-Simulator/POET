@@ -42,8 +42,10 @@ poet::GridParams::s_GridParams(RInside &R) {
       Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$grid$init_cell"));
   this->props =
       Rcpp::as<std::vector<std::string>>(R.parseEval("mysetup$grid$props"));
-  // this->init_sim =
-  // Rcpp::as<std::string>(R.parseEval("mysetup$grid$init_sim"));
+  this->input_script =
+  Rcpp::as<std::string>(R.parseEval("mysetup$grid$input_script"));
+  this->database_path =
+  Rcpp::as<std::string>(R.parseEval("mysetup$grid$database"));
 }
 
 poet::DiffusionParams::s_DiffusionParams(RInside &R) {
@@ -59,6 +61,13 @@ poet::DiffusionParams::s_DiffusionParams(RInside &R) {
       Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$diffusion$vecinj"));
   this->vecinj_index =
       Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$diffusion$vecinj_index"));
+}
+
+poet::ChemistryParams::s_ChemistryParams(RInside &R) {
+  this->database_path = Rcpp::as<std::string>(
+      R.parseEval("mysetup$chemistry$database"));
+  this->input_script = Rcpp::as<std::string>(
+      R.parseEval("mysetup$chemistry$input_script"));
 }
 
 SimParams::SimParams(int world_rank_, int world_size_) {

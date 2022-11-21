@@ -19,6 +19,7 @@
 */
 
 #include "poet/DiffusionModule.hpp"
+#include "poet/SimParams.hpp"
 #include <poet/ChemSimSeq.hpp>
 #include <poet/Grid.hpp>
 
@@ -33,7 +34,8 @@
 using namespace Rcpp;
 using namespace poet;
 
-ChemSim::ChemSim(SimParams &params, RInside &R_, Grid &grid_)
+ChemSim::ChemSim(SimParams &params, RInside &R_, Grid &grid_,
+                 poet::ChemistryParams chem_params)
     : R(R_), grid(grid_) {
   t_simparams tmp = params.getNumParams();
   this->world_rank = tmp.world_rank;
@@ -56,6 +58,10 @@ ChemSim::ChemSim(SimParams &params, RInside &R_, Grid &grid_)
     std::copy(prop_vec.begin(), prop_vec.end(),
               field.begin() + (i * this->n_cells_per_prop));
   }
+  this->phreeqc_rm = new PhreeqcWrapper(this->n_cells_per_prop);
+
+  this->phreeqc_rm->SetupAndLoadDB(chem_params);
+  this->phreeqc_rm->InitFromFile(chem_params.input_script);
 }
 
 void ChemSim::simulate(double dt) {
@@ -86,20 +92,23 @@ void ChemSim::simulate(double dt) {
                std::to_string(this->n_cells_per_prop) +
                ")), mysetup$grid$props)");
 
-  R.parseEvalQ(
-      "result <- slave_chemistry(setup=mysetup, data=mysetup$state_T)");
-  R.parseEvalQ("mysetup <- master_chemistry(setup=mysetup, data=result)");
+  this->phreeqc_rm->SetInternalsFromWP(field, this->n_cells_per_prop);
+  this->phreeqc_rm->SetTime(0);
+  this->phreeqc_rm->SetTimeStep(dt);
+  this->phreeqc_rm->RunCells();
 
-  // HACK: copy R data structure back to C++ field
-  Rcpp::DataFrame result = R.parseEval("mysetup$state_C");
+  // HACK: we will copy resulting field into global grid field. Maybe we will
+  // find a more performant way here ...
+  std::vector<double> vecSimResult =
+      this->phreeqc_rm->GetWPFromInternals(this->n_cells_per_prop);
+  std::copy(vecSimResult.begin(), vecSimResult.end(), field.begin());
 
-  for (uint32_t i = 0; i < this->prop_names.size(); i++) {
-    std::vector<double> c_prop =
-        Rcpp::as<std::vector<double>>(result[this->prop_names[i].c_str()]);
+  R["TMP_C"] = field;
 
-    std::copy(c_prop.begin(), c_prop.end(),
-              field.begin() + (i * this->n_cells_per_prop));
-  }
+  R.parseEvalQ("mysetup$state_C <- setNames(data.frame(matrix(TMP_C, "
+               "ncol=length(mysetup$grid$props), nrow=" +
+               std::to_string(this->n_cells_per_prop) +
+               ")), mysetup$grid$props)");
 
   /* end time measuring */
   chem_b = MPI_Wtime();

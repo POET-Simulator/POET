@@ -131,9 +131,11 @@ int main(int argc, char *argv[]) {
 
   MPI_Barrier(MPI_COMM_WORLD);
 
+  poet::ChemistryParams chem_params(R);
+
   /* THIS IS EXECUTED BY THE MASTER */
   if (world_rank == 0) {
-    ChemMaster master(params, R, grid);
+    ChemMaster master(params, R, grid, chem_params);
     DiffusionModule diffusion(poet::DiffusionParams(R), grid);
 
     // diffusion.initialize();
@@ -217,7 +219,7 @@ int main(int argc, char *argv[]) {
   }
   /* THIS IS EXECUTED BY THE WORKERS */
   else {
-    ChemWorker worker(params, R, grid, dht_comm);
+    ChemWorker worker(params, R, grid, dht_comm, chem_params);
     worker.loop();
   }
 

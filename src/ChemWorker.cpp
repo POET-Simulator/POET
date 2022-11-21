@@ -33,8 +33,8 @@ using namespace std;
 using namespace Rcpp;
 
 ChemWorker::ChemWorker(SimParams &params, RInside &R_, Grid &grid_,
-                       MPI_Comm dht_comm)
-    : ChemSim(params, R_, grid_) {
+                       MPI_Comm dht_comm, poet::ChemistryParams chem_args)
+    : ChemSim(params, R_, grid_, chem_args) {
   t_simparams tmp = params.getNumParams();
 
   this->dt_differ = tmp.dt_differ;
