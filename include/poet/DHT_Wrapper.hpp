@@ -23,6 +23,7 @@
 
 #include "SimParams.hpp"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -38,8 +39,8 @@ extern "C" {
  * Macro to round a double value by cutting every digit after significant digit
  *
  */
-#define ROUND(value, signif) \
-  (((int)(pow(10.0, (double)signif) * value)) * pow(10.0, (double)-signif))
+// #define ROUND(value, signif)                                                   \
+//   (((int)(pow(10.0, (double)signif) * value)) * pow(10.0, (double)-signif))
 
 namespace poet {
 /**
@@ -63,7 +64,7 @@ static uint64_t get_md5(int key_size, void *key);
  *
  */
 class DHT_Wrapper {
- public:
+public:
   /**
    * @brief Construct a new dht wrapper object
    *
@@ -107,8 +108,9 @@ class DHT_Wrapper {
    * @param[in,out] work_package Pointer to current work package
    * @param dt Current timestep of simulation
    */
-  void checkDHT(int length, std::vector<bool> &out_result_index,
-                double *work_package, double dt);
+  auto checkDHT(int length, std::vector<bool> &out_result_index,
+                double *work_package, double dt)
+      -> std::vector<std::vector<double>>;
 
   /**
    * @brief Write simulated values into DHT
@@ -181,7 +183,7 @@ class DHT_Wrapper {
    */
   uint64_t getEvictions();
 
- private:
+private:
   /**
    * @brief Transform given workpackage into DHT key
    *
@@ -209,7 +211,7 @@ class DHT_Wrapper {
    * @param key Pointer to work package handled as the key
    * @param dt Current time step of the simulation
    */
-  void fuzzForDHT(int var_count, void *key, double dt);
+  std::vector<double> fuzzForDHT(int var_count, void *key, double dt);
 
   /**
    * @brief DHT handle
@@ -295,6 +297,6 @@ class DHT_Wrapper {
    */
   std::vector<std::string> dht_prop_type_vector;
 };
-}  // namespace poet
+} // namespace poet
 
-#endif  // DHT_WRAPPER_H
+#endif // DHT_WRAPPER_H

@@ -100,8 +100,8 @@ void ChemSeq::Simulate(double dt) {
 
   // HACK: we will copy resulting field into global grid field. Maybe we will
   // find a more performant way here ...
-  std::vector<double> vecSimResult =
-      this->phreeqc_rm->GetWPFromInternals(this->n_cells_per_prop);
+  std::vector<double> vecSimResult;
+  this->phreeqc_rm->GetWPFromInternals(vecSimResult, this->n_cells_per_prop);
   std::copy(vecSimResult.begin(), vecSimResult.end(), field.begin());
 
   R["TMP_C"] = field;

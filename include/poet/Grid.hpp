@@ -21,11 +21,10 @@
 #ifndef GRID_H
 #define GRID_H
 
+#include "PhreeqcRM.h"
 #include "poet/SimParams.hpp"
 #include <Rcpp.h>
 #include <array>
-#include <bits/stdint-intn.h>
-#include <bits/stdint-uintn.h>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -97,16 +96,22 @@ public:
       -> std::vector<double>;
 
 private:
+  PhreeqcRM *initPhreeqc(const poet::GridParams &params);
 
   std::uint8_t dim;
   std::array<std::uint32_t, MAX_DIM> d_spatial;
   std::array<std::uint32_t, MAX_DIM> n_cells;
 
   std::map<std::string, StateMemory *> state_register;
+  std::map<std::string, std::vector<double>> grid_init;
 
   prop_vec prop_names;
 
-  std::map<std::string, std::vector<double>> grid_init;
+  PhreeqcRM *phreeqc_rm = std::nullptr_t();
+
+  void initFromPhreeqc(const poet::GridParams &grid_args);
+  void initFromRDS(const poet::GridParams &grid_args);
+  void initFromScratch(const poet::GridParams &grid_args);
 };
 } // namespace poet
 #endif // GRID_H

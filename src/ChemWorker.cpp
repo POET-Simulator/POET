@@ -18,15 +18,16 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include "poet/ChemSimPar.hpp"
 #include "poet/SimParams.hpp"
 #include <Rcpp.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
+#include <mpi.h>
 #include <ostream>
 #include <string>
-
-#include <poet/ChemSimPar.hpp>
 #include <vector>
 
 using namespace poet;
@@ -57,8 +58,8 @@ ChemWorker::ChemWorker(SimParams &params, RInside &R_, Grid &grid_,
 
   if (this->dht_enabled) {
     int data_size = this->prop_names.size() * sizeof(double);
-    int key_size =
-        this->prop_names.size() * sizeof(double) + (dt_differ * sizeof(double));
+    int key_size = (this->prop_names.size() - 1) * sizeof(double) +
+                   (dt_differ * sizeof(double));
     int dht_buckets_per_process =
         dht_size_per_process / (1 + data_size + key_size);
 
@@ -78,8 +79,6 @@ ChemWorker::ChemWorker(SimParams &params, RInside &R_, Grid &grid_,
       readFile();
     // set size
     dht_flags.resize(wp_size, true);
-    // assign all elements to true (default)
-    dht_flags.assign(wp_size, true);
   }
 
   this->timing.fill(0.0);
@@ -139,6 +138,8 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
 
   double dt;
 
+  bool bNoPhreeqc = false;
+
   /* get number of doubles to be received */
   MPI_Get_count(&probe_status, MPI_DOUBLE, &count);
 
@@ -153,125 +154,86 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
    * mpi_buffer */
 
   // work_package_size
-  if (mpi_buffer[count] != local_work_package_size) { // work_package_size
-    local_work_package_size = mpi_buffer[count];
-    R["work_package_size"] = local_work_package_size;
-    R.parseEvalQ("mysetup$work_package_size <- work_package_size");
-  }
+  local_work_package_size = mpi_buffer[count];
 
   // current iteration of simulation
   this->iteration = mpi_buffer[count + 1];
-  R["iter"] = this->iteration;
-  R.parseEvalQ("mysetup$iter <- iter");
 
   // current timestep size
-  if (mpi_buffer[count + 2] != dt) {
-    dt = mpi_buffer[count + 2];
-    R["dt"] = dt;
-    R.parseEvalQ("mysetup$dt <- dt");
-  }
+  dt = mpi_buffer[count + 2];
 
   // current simulation time ('age' of simulation)
-  if (mpi_buffer[count + 3] != current_sim_time) {
-    current_sim_time = mpi_buffer[count + 3];
-    R["simulation_time"] = current_sim_time;
-    R.parseEvalQ("mysetup$simulation_time <- simulation_time");
-  }
+  current_sim_time = mpi_buffer[count + 3];
+
   /* 4th double value is currently a placeholder */
-  // if (mpi_buffer[count+4] != placeholder) {
-  //     placeholder = mpi_buffer[count+4];
-  //     R["mysetup$placeholder"] = placeholder;
-  // }
+  // placeholder = mpi_buffer[count+4];
+
+  std::vector<double> vecCurrWP(
+      mpi_buffer,
+      mpi_buffer + (local_work_package_size * this->prop_names.size()));
+
+  std::vector<int32_t> vecMappingWP(this->wp_size);
+  std::vector<std::vector<double>> vecDHTResults;
+  std::vector<double> vecDHTKeys;
+  std::vector<bool> vecNeedPhreeqc(this->wp_size, true);
+
+  for (uint32_t i = 0; i < local_work_package_size; i++) {
+    vecMappingWP[i] = i;
+  }
+
+  if (local_work_package_size != this->wp_size) {
+    std::vector<double> vecFiller(
+        (this->wp_size - local_work_package_size) * this->prop_names.size(), 0);
+    vecCurrWP.insert(vecCurrWP.end(), vecFiller.begin(), vecFiller.end());
+
+    // set all remaining cells to inactive
+    for (int i = local_work_package_size; i < this->wp_size; i++) {
+      vecMappingWP[i] = -1;
+    }
+  }
 
   if (dht_enabled) {
-    /* resize helper vector dht_flags of work_package_size changes */
-    if ((int)dht_flags.size() != local_work_package_size) {
-      dht_flags.resize(local_work_package_size, true); // set size
-      dht_flags.assign(local_work_package_size,
-                       true); // assign all elements to true (default)
-    }
-
     /* check for values in DHT */
     dht_get_start = MPI_Wtime();
-    dht->checkDHT(local_work_package_size, dht_flags, mpi_buffer, dt);
+    vecDHTKeys = this->phreeqc_rm->ReplaceTotalsByPotentials(
+        vecCurrWP, local_work_package_size);
+    vecDHTResults = dht->checkDHT(local_work_package_size, vecNeedPhreeqc,
+                                  vecDHTKeys.data(), dt);
     dht_get_end = MPI_Wtime();
 
-    /* distribute dht_flags to R Runtime */
-    R["dht_flags"] = as<LogicalVector>(wrap(dht_flags));
-  }
-
-  /* Convert grid to R runtime */
-  size_t rowCount = local_work_package_size;
-  size_t colCount = this->prop_names.size();
-
-  std::vector<std::vector<double>> input(colCount);
-
-  for (size_t i = 0; i < rowCount; i++) {
-    for (size_t j = 0; j < colCount; j++) {
-      input[j].push_back(mpi_buffer[i * colCount + j]);
+    uint32_t iMappingIndex = 0;
+    for (uint32_t i = 0; i < local_work_package_size; i++) {
+      if (vecMappingWP[i] == -1) {
+        continue;
+      }
+      vecMappingWP[i] = (vecNeedPhreeqc[i] ? iMappingIndex++ : -1);
     }
   }
 
-  R["work_package_full"] = Rcpp::as<Rcpp::DataFrame>(Rcpp::wrap(input));
+  phreeqc_time_start = MPI_Wtime();
+  this->phreeqc_rm->RunWorkPackage(vecCurrWP, vecMappingWP, current_sim_time,
+                                   dt);
+  phreeqc_time_end = MPI_Wtime();
 
   if (dht_enabled) {
-    R.parseEvalQ("work_package <- work_package_full[dht_flags,]");
-  } else {
-    R.parseEvalQ("work_package <- work_package_full");
-  }
-
-  R.parseEvalQ("work_package <- as.matrix(work_package)");
-
-  unsigned int nrows = R.parseEval("nrow(work_package)");
-
-  if (nrows > 0) {
-    /*Single Line error Workaround*/
-    if (nrows <= 1) {
-      // duplicate line to enable correct simmulation
-      R.parseEvalQ("work_package <- work_package[rep(1:nrow(work_package), "
-                   "times = 2), ]");
-    }
-    /* Run PHREEQC */
-    phreeqc_time_start = MPI_Wtime();
-    R.parseEvalQ("result <- as.data.frame(slave_chemistry(setup=mysetup, "
-                 "data = work_package))");
-    phreeqc_time_end = MPI_Wtime();
-  } else {
-    // undefined behaviour, isn't it?
-  }
-
-  phreeqc_count++;
-
-  if (dht_enabled) {
-    R.parseEvalQ("result_full <- work_package_full");
-    if (nrows > 0)
-      R.parseEvalQ("result_full[dht_flags,] <- result");
-  } else {
-    R.parseEvalQ("result_full <- result");
-  }
-
-  /* convert grid to C domain */
-
-  std::vector<std::vector<double>> output =
-      Rcpp::as<std::vector<std::vector<double>>>(R.parseEval("result_full"));
-
-  for (size_t i = 0; i < rowCount; i++) {
-    for (size_t j = 0; j < colCount; j++) {
-      mpi_buffer_results[i * colCount + j] = output[j][i];
+    for (uint32_t i = 0; i < local_work_package_size; i++) {
+      if (!vecNeedPhreeqc[i]) {
+        std::copy(vecDHTResults[i].begin(), vecDHTResults[i].end(),
+                  vecCurrWP.begin() + (this->prop_names.size() * i));
+      }
     }
   }
 
-  // grid.exportWP(mpi_buffer_results);
   /* send results to master */
   MPI_Request send_req;
-  MPI_Isend(mpi_buffer_results, count, MPI_DOUBLE, 0, TAG_WORK, MPI_COMM_WORLD,
+  MPI_Isend(vecCurrWP.data(), count, MPI_DOUBLE, 0, TAG_WORK, MPI_COMM_WORLD,
             &send_req);
 
   if (dht_enabled) {
     /* write results to DHT */
     dht_fill_start = MPI_Wtime();
-    dht->fillDHT(local_work_package_size, dht_flags, mpi_buffer,
-                 mpi_buffer_results, dt);
+    dht->fillDHT(local_work_package_size, vecNeedPhreeqc, vecDHTKeys.data(),
+                 vecCurrWP.data(), dt);
     dht_fill_end = MPI_Wtime();
 
     timing[1] += dht_get_end - dht_get_start;

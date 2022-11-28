@@ -20,6 +20,7 @@
 
 #include "poet/HashFunctions.hpp"
 #include <cstddef>
+#include <cmath>
 #include <cstdint>
 #include <openssl/evp.h>
 #include <poet/DHT_Wrapper.hpp>
@@ -27,10 +28,15 @@
 #include <math.h>
 
 #include <iostream>
-#include <stdexcept>
+#include <vector>
 
 using namespace poet;
 using namespace std;
+
+inline double round_signif(double value, int32_t signif) {
+  const double multiplier = std::pow(10.0, signif);
+  return .0 + std::trunc(value * multiplier) / multiplier;
+}
 
 DHT_Wrapper::DHT_Wrapper(SimParams &params, MPI_Comm dht_comm,
                          int buckets_per_process, int data_size, int key_size) {
@@ -59,40 +65,43 @@ DHT_Wrapper::~DHT_Wrapper() {
   poet::freeHashCtx();
 }
 
-void DHT_Wrapper::checkDHT(int length, std::vector<bool> &out_result_index,
-                           double *work_package, double dt) {
+auto DHT_Wrapper::checkDHT(int length, std::vector<bool> &out_result_index,
+                           double *work_package, double dt)
+    -> std::vector<std::vector<double>> {
   void *key;
   int res;
   // var count -> count of variables per grid cell
-  int var_count = dht_prop_type_vector.size();
+  int var_count = dht_prop_type_vector.size() - 1;
+  std::vector<std::vector<double>> data(length);
   // loop over every grid cell contained in work package
   for (int i = 0; i < length; i++) {
     // point to current grid cell
     key = (void *)&(work_package[i * var_count]);
+    data[i].resize(dht_prop_type_vector.size());
 
     // fuzz data (round, logarithm etc.)
-    fuzzForDHT(var_count, key, dt);
+    std::vector<double> vecFuzz = fuzzForDHT(var_count, key, dt);
 
     // overwrite input with data from DHT, IF value is found in DHT
-    res = DHT_read(dht_object, fuzzing_buffer, key);
+    res = DHT_read(dht_object, vecFuzz.data(), data[i].data());
 
     // if DHT_SUCCESS value was found ...
     if (res == DHT_SUCCESS) {
       // ... and grid cell will be marked as 'not to be simulating'
       out_result_index[i] = false;
       dht_hits++;
-
     }
     // ... otherwise ...
     else if (res == DHT_READ_MISS) {
       // grid cell needs to be simulated by PHREEQC
-      out_result_index[i] = true;
       dht_miss++;
     } else {
       // MPI ERROR ... WHAT TO DO NOW?
       // RUNNING CIRCLES WHILE SCREAMING
     }
   }
+
+  return data;
 }
 
 void DHT_Wrapper::fillDHT(int length, std::vector<bool> &result_index,
@@ -104,16 +113,16 @@ void DHT_Wrapper::fillDHT(int length, std::vector<bool> &result_index,
   int var_count = dht_prop_type_vector.size();
   // loop over every grid cell contained in work package
   for (int i = 0; i < length; i++) {
-    key = (void *)&(work_package[i * var_count]);
+    key = (void *)&(work_package[i * (var_count - 1)]);
     data = (void *)&(results[i * var_count]);
 
     // If true grid cell was simulated, needs to be inserted into dht
     if (result_index[i]) {
       // fuzz data (round, logarithm etc.)
-      fuzzForDHT(var_count, key, dt);
+      std::vector<double> vecFuzz = fuzzForDHT(var_count - 1, key, dt);
 
       // insert simulated data with fuzzed key into DHT
-      res = DHT_write(dht_object, fuzzing_buffer, data);
+      res = DHT_write(dht_object, vecFuzz.data(), data);
 
       // if data was successfully written ...
       if (res != DHT_SUCCESS) {
@@ -164,7 +173,10 @@ uint64_t DHT_Wrapper::getMisses() { return this->dht_miss; }
 
 uint64_t DHT_Wrapper::getEvictions() { return this->dht_evictions; }
 
-void DHT_Wrapper::fuzzForDHT(int var_count, void *key, double dt) {
+std::vector<double> DHT_Wrapper::fuzzForDHT(int var_count, void *key,
+                                            double dt) {
+
+  std::vector<double> vecFuzz(var_count, .0);
   unsigned int i = 0;
   // introduce fuzzing to allow more hits in DHT
   // loop over every variable of grid cell
@@ -179,34 +191,37 @@ void DHT_Wrapper::fuzzForDHT(int var_count, void *key, double dt) {
           cerr << "dht_wrapper.cpp::fuzz_for_dht(): Warning! Negative value in "
                   "key!"
                << endl;
-          fuzzing_buffer[i] = 0;
+          vecFuzz[i] = 0;
         }
         // if variable is 0 set fuzzing buffer to 0
         else if (((double *)key)[i] == 0)
-          fuzzing_buffer[i] = 0;
+          vecFuzz[i] = 0;
         // otherwise ...
-        else
+        else {
           // round current variable value by applying log with base 10, negate
           // (since the actual values will be between 0 and 1) and cut result
           // after significant digit
-          fuzzing_buffer[i] =
-              ROUND(-(std::log10(((double *)key)[i])), dht_signif_vector[i]);
+          vecFuzz[i] = round_signif(-(std::log10(((double *)key)[i])),
+                                    dht_signif_vector[i]);
+        }
       }
       // if log is disabled
       else {
         // just round by cutting after signifanct digit
-        fuzzing_buffer[i] = ROUND((((double *)key)[i]), dht_signif_vector[i]);
+        vecFuzz[i] = round_signif((((double *)key)[i]), dht_signif_vector[i]);
       }
+    } else if (dht_prop_type_vector[i] == "charge") {
+      vecFuzz[i] = round_signif(((double *)key)[i], dht_signif_vector[i]);
     }
     // if variable is defined as 'logact' (log was already applied e.g. pH)
     else if (dht_prop_type_vector[i] == "logact") {
       // just round by cutting after signifanct digit
-      fuzzing_buffer[i] = ROUND((((double *)key)[i]), dht_signif_vector[i]);
+      vecFuzz[i] = round_signif((((double *)key)[i]), dht_signif_vector[i]);
     }
     // if defined ass 'ignore' ...
     else if (dht_prop_type_vector[i] == "ignore") {
       // ... just set fuzzing buffer to 0
-      fuzzing_buffer[i] = 0;
+      vecFuzz[i] = 0;
     }
     // and finally, if type is not defined, print error message
     else {
@@ -217,6 +232,9 @@ void DHT_Wrapper::fuzzForDHT(int var_count, void *key, double dt) {
   }
   // if timestep differs over iterations set current current time step at the
   // end of fuzzing buffer
-  if (dt_differ)
-    fuzzing_buffer[var_count] = dt;
+  if (dt_differ) {
+    vecFuzz[var_count] = dt;
+  }
+
+  return vecFuzz;
 }

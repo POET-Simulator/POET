@@ -32,8 +32,8 @@
 #include <string>
 #include <vector>
 
-#include <poet.h>
 #include <mpi.h>
+#include <poet.h>
 
 using namespace std;
 using namespace poet;
@@ -52,7 +52,7 @@ inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
   C.InitModule(chem_params);
   /* SIMULATION LOOP */
 
-  double ret_time = MPI_Wtime();
+  double dStartTime = MPI_Wtime();
   for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
     // cout << "CPP: Evaluating next time step" << endl;
     // R.parseEvalQ("mysetup <- master_iteration_setup(mysetup)");
@@ -93,11 +93,11 @@ inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
   C.End();
   diffusion.end();
 
-  return ret_time;
+  return MPI_Wtime() - dStartTime;
 }
 
 int main(int argc, char *argv[]) {
-  double sim_start, sim_end;
+  double dSimTime, sim_end;
 
   int world_size, world_rank;
 
@@ -195,18 +195,16 @@ int main(int argc, char *argv[]) {
   /* THIS IS EXECUTED BY THE MASTER */
   if (world_rank == 0) {
     if (world_size == 1) {
-      sim_start = RunMasterLoop<ChemSeq>(params, R, grid, chem_params);
+      dSimTime = RunMasterLoop<ChemSeq>(params, R, grid, chem_params);
     } else {
-      sim_start = RunMasterLoop<ChemMaster>(params, R, grid, chem_params);
+      dSimTime = RunMasterLoop<ChemMaster>(params, R, grid, chem_params);
     }
 
     cout << "CPP: finished simulation loop" << endl;
 
-    sim_end = MPI_Wtime();
-
     cout << "CPP: start timing profiling" << endl;
 
-    R["simtime"] = sim_end - sim_start;
+    R["simtime"] = dSimTime;
     R.parseEvalQ("profiling$simtime <- simtime");
 
     string r_vis_code;

@@ -18,12 +18,12 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include "PhreeqcRM.h"
 #include "poet/SimParams.hpp"
 #include <Rcpp.h>
 #include <algorithm>
-#include <bits/stdint-intn.h>
-#include <bits/stdint-uintn.h>
 #include <cassert>
+#include <cstdint>
 #include <new>
 #include <numeric>
 #include <poet/Grid.hpp>
@@ -98,6 +98,9 @@ Grid::Grid(poet::GridParams grid_args) {
 Grid::~Grid() {
   for (auto &[key, val] : this->state_register) {
     delete val;
+  }
+  if (this->phreeqc_rm != nullptr) {
+    delete this->phreeqc_rm;
   }
 }
 
@@ -203,4 +206,54 @@ auto poet::Grid::getSpeciesByName(std::string name, std::string module_name)
 
   return std::vector<double>(module_memory->mem.begin() + begin_vec,
                              module_memory->mem.begin() + end_vec);
+}
+
+PhreeqcRM *poet::Grid::initPhreeqc(const poet::GridParams &params) {
+  PhreeqcRM *chem_model = new PhreeqcRM(this->getTotalCellCount(), 1);
+
+  // FIXME: hardcoded options ...
+  chem_model->SetErrorHandlerMode(1);
+  chem_model->SetComponentH2O(false);
+  chem_model->SetRebalanceFraction(0.5);
+  chem_model->SetRebalanceByCell(true);
+  chem_model->UseSolutionDensityVolume(false);
+  chem_model->SetPartitionUZSolids(false);
+
+  // Set concentration units
+  // 1, mg/L; 2, mol/L; 3, kg/kgs
+  chem_model->SetUnitsSolution(2);
+  // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
+  chem_model->SetUnitsPPassemblage(1);
+  // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
+  chem_model->SetUnitsExchange(1);
+  // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
+  chem_model->SetUnitsSurface(1);
+  // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
+  chem_model->SetUnitsGasPhase(1);
+  // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
+  chem_model->SetUnitsSSassemblage(1);
+  // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
+  chem_model->SetUnitsKinetics(1);
+
+  // Set representative volume
+  std::vector<double> rv;
+  rv.resize(this->getTotalCellCount(), 1.0);
+  chem_model->SetRepresentativeVolume(rv);
+
+  // Set initial porosity
+  std::vector<double> por;
+  por.resize(this->getTotalCellCount(), 0.05);
+  chem_model->SetPorosity(por);
+
+  // Set initial saturation
+  std::vector<double> sat;
+  sat.resize(this->getTotalCellCount(), 1.0);
+  chem_model->SetSaturation(sat);
+
+  // Load database
+  chem_model->LoadDatabase(params.database_path);
+  chem_model->RunFile(true, true, true, params.input_script);
+  chem_model->RunString(true, false, true, "DELETE; -all");
+
+  return chem_model;
 }

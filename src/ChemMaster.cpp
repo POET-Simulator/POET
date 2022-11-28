@@ -18,17 +18,16 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include "poet/ChemSimPar.hpp"
 #include "poet/ChemSimSeq.hpp"
 #include "poet/DiffusionModule.hpp"
+#include "poet/Grid.hpp"
 #include "poet/SimParams.hpp"
+
 #include <Rcpp.h>
-
 #include <array>
-#include <bits/stdint-uintn.h>
+#include <cstring>
 #include <iostream>
-
-#include <poet/ChemSimPar.hpp>
-#include <poet/Grid.hpp>
 #include <string>
 #include <vector>
 
@@ -47,19 +46,35 @@ ChemMaster::ChemMaster(SimParams &params, RInside &R_, Grid &grid_)
 
   /* allocate memory */
   this->workerlist = new worker_struct[this->world_size - 1];
+  std::memset(this->workerlist, '\0', sizeof(worker_struct) * (world_size - 1));
   this->send_buffer =
       new double[this->wp_size * this->prop_names.size() + BUFFER_OFFSET];
   this->mpi_buffer = new double[grid_size];
 
   /* calculate distribution of work packages */
-  uint32_t mod_pkgs = grid_size % this->wp_size;
+  uint32_t mod_pkgs = grid.getTotalCellCount() % this->wp_size;
   uint32_t n_packages = (uint32_t)(grid.getTotalCellCount() / this->wp_size) +
                         (mod_pkgs != 0 ? 1 : 0);
 
-  this->wp_sizes_vector =
-      std::vector<uint32_t>(n_packages - mod_pkgs, this->wp_size);
-  for (uint32_t i = 0; i < mod_pkgs; i++) {
-    this->wp_sizes_vector.push_back(this->wp_size - 1);
+  this->wp_sizes_vector = std::vector<uint32_t>(n_packages, this->wp_size);
+  if (mod_pkgs) {
+    auto itEndVector = this->wp_sizes_vector.end() - 1;
+    for (uint32_t i = 0; i < this->wp_size - mod_pkgs; i++) {
+      *(itEndVector - i) -= 1;
+    }
+  }
+
+  this->state = this->grid.registerState(
+      poet::BaseChemModule::CHEMISTRY_MODULE_NAME, this->prop_names);
+  std::vector<double> &field = this->state->mem;
+
+  field.resize(this->n_cells_per_prop * this->prop_names.size());
+  for (uint32_t i = 0; i < this->prop_names.size(); i++) {
+    std::vector<double> prop_vec =
+        this->grid.getSpeciesByName(this->prop_names[i]);
+
+    std::copy(prop_vec.begin(), prop_vec.end(),
+              field.begin() + (i * this->n_cells_per_prop));
   }
 }
 
@@ -116,7 +131,6 @@ void ChemMaster::Simulate(double dt) {
   /* retrieve needed data from R runtime */
   iteration = (int)R.parseEval("mysetup$iter");
   // dt = (double)R.parseEval("mysetup$requested_dt");
-  current_sim_time = (double)R.parseEval("mysetup$simulation_time") - dt;
 
   /* setup local variables */
   pkg_to_send = wp_sizes_vector.size();
@@ -191,10 +205,12 @@ void ChemMaster::Simulate(double dt) {
   for (int i = 1; i < world_size; i++) {
     MPI_Send(NULL, 0, MPI_DOUBLE, i, TAG_DHT_ITER, MPI_COMM_WORLD);
   }
+
+  this->current_sim_time += dt;
 }
 
 inline void ChemMaster::sendPkgs(int &pkg_to_send, int &count_pkgs,
-                                 int &free_workers, double *work_pointer,
+                                 int &free_workers, double *&work_pointer,
                                  const double &dt, const uint32_t iteration) {
   /* declare variables */
   double master_send_a, master_send_b;

@@ -164,8 +164,8 @@ selout <- c(
 
 
 # Needed when using DHT
-signif_vector <- c(7, 7, 7, 7, 7, 7, 7, 5, 5)
-prop_type <- c("act", "act", "act", "act", "logact", "logact", "ignore", "act", "act")
+signif_vector <- c(7, 7, 7, 7, 7, 7, 7, 5, 5, 7)
+prop_type <- c("act", "act", "act", "act", "logact", "logact", "ignore", "act", "act", "act")
 prop <- names(init_cell)
 
 chemistry <- list(

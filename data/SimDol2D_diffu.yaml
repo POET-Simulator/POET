@@ -1,0 +1,13 @@
+phreeqc:
+  RebalanceByCell: True
+  RebalanceFraction: 0.5
+  SolutionDensityVolume: False
+  PartitionUZSolids: False
+  Units:
+    Solution: "mg/L"
+    PPassamblage: "mol/L"
+    Exchange: "mol/L"
+    Surface: "mol/L"
+    GasPhase: "mol/L"
+    SSassemblage: "mol/L"
+    Kinetics: "mol/L"

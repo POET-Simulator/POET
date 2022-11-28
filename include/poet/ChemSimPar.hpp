@@ -27,12 +27,10 @@
 #include "RInside.h"
 #include "SimParams.hpp"
 #include "poet/PhreeqcWrapper.hpp"
-#include <PhreeqcRM.h>
+
 #include <array>
-#include <bits/stdint-uintn.h>
 #include <cstdint>
 #include <mpi.h>
-
 #include <string>
 #include <vector>
 
@@ -169,7 +167,7 @@ public:
 private:
   void printProgressbar(int count_pkgs, int n_wp, int barWidth = 70);
   inline void sendPkgs(int &pkg_to_send, int &count_pkgs, int &free_workers,
-                       double *work_pointer, const double &dt,
+                       double *&work_pointer, const double &dt,
                        const uint32_t iteration);
   inline void recvPkgs(int &pkg_to_recv, bool to_send, int &free_workers);
   void shuffleField(const std::vector<double> &in_field, uint32_t size_per_prop,
@@ -251,6 +249,7 @@ private:
   uint32_t wp_size;
   uint32_t dht_size_per_process;
   uint32_t iteration = 0;
+
   bool dht_enabled;
   bool dt_differ;
   int dht_snaps;
