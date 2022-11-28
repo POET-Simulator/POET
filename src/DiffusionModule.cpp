@@ -175,7 +175,7 @@ void DiffusionModule::simulate(double dt) {
   for (uint32_t i = 0; i < this->prop_names.size(); i++) {
     try {
       std::vector<double> t_prop_vec = this->grid.getSpeciesByName(
-          this->prop_names[i], poet::CHEMISTRY_MODULE_NAME);
+          this->prop_names[i], poet::BaseChemModule::CHEMISTRY_MODULE_NAME);
 
       std::copy(t_prop_vec.begin(), t_prop_vec.end(),
                 curr_field.begin() + (i * this->n_cells_per_prop));

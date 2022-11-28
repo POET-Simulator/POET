@@ -59,7 +59,7 @@ namespace poet {
  * a loop to send and recv pkgs from workers is implemented.
  *
  */
-class ChemMaster : public ChemSim {
+class ChemMaster : public BaseChemModule {
 public:
   /**
    * @brief Construct a new ChemMaster object
@@ -73,8 +73,7 @@ public:
    * @param R_ R runtime
    * @param grid_ Grid object
    */
-  ChemMaster(SimParams &params, RInside &R_, Grid &grid_,
-             poet::ChemistryParams chem_params);
+  ChemMaster(SimParams &params, RInside &R_, Grid &grid_);
 
   /**
    * @brief Destroy the ChemMaster object
@@ -100,7 +99,7 @@ public:
    * The main tasks are instrumented with time measurements.
    *
    */
-  void masterLoop(double dt);
+  void Simulate(double dt);
 
   /**
    * @brief End chemistry simulation.
@@ -111,7 +110,7 @@ public:
    * Finally he will write all data to the R runtime and return this function.
    *
    */
-  void endLoop();
+  void End();
 
   /**
    * @brief Get the send time
@@ -170,15 +169,16 @@ public:
 private:
   void printProgressbar(int count_pkgs, int n_wp, int barWidth = 70);
   inline void sendPkgs(int &pkg_to_send, int &count_pkgs, int &free_workers,
-                       double *work_pointer, const double &dt);
+                       double *work_pointer, const double &dt,
+                       const uint32_t iteration);
   inline void recvPkgs(int &pkg_to_recv, bool to_send, int &free_workers);
   void shuffleField(const std::vector<double> &in_field, uint32_t size_per_prop,
                     uint32_t prop_count, double *out_buffer);
   void unshuffleField(const double *in_buffer, uint32_t size_per_prop,
                       uint32_t prop_count, std::vector<double> &out_field);
 
+  uint32_t wp_size;
   bool dht_enabled;
-  unsigned int wp_size;
 
   double send_t = 0.f;
   double recv_t = 0.f;
@@ -195,6 +195,8 @@ private:
   worker_struct *workerlist;
   double *send_buffer;
   double *mpi_buffer;
+  std::vector<uint32_t> wp_sizes_vector;
+  poet::StateMemory *state;
 };
 
 /**
@@ -203,7 +205,7 @@ private:
  * Providing mainly a function to loop and wait for messages from the master.
  *
  */
-class ChemWorker : public ChemSim {
+class ChemWorker : public BaseChemModule {
 public:
   /**
    * @brief Construct a new ChemWorker object
@@ -219,9 +221,9 @@ public:
    * @param grid_ Grid object
    * @param dht_comm Communicator addressing all processes marked as worker
    */
-  ChemWorker(SimParams &params, RInside &R_, Grid &grid_, MPI_Comm dht_comm,
-             poet::ChemistryParams chem_params);
+  ChemWorker(SimParams &params, RInside &R_, Grid &grid_, MPI_Comm dht_comm);
 
+  void InitModule(poet::ChemistryParams &chem_params);
   /**
    * @brief Destroy the ChemWorker object
    *
@@ -246,22 +248,27 @@ private:
   void writeFile();
   void readFile();
 
+  uint32_t wp_size;
+  uint32_t dht_size_per_process;
+  uint32_t iteration = 0;
   bool dht_enabled;
   bool dt_differ;
   int dht_snaps;
   std::string dht_file;
-  unsigned int dht_size_per_process;
   std::vector<bool> dht_flags;
   double *mpi_buffer_results;
   DHT_Wrapper *dht;
 
   std::array<double, 3> timing;
   double idle_t = 0.f;
-  int phreeqc_count = 0;
+  uint32_t phreeqc_count = 0;
 
   double *mpi_buffer;
 
   uint32_t ncomps;
+  std::string out_dir;
+
+  PhreeqcWrapper *phreeqc_rm = std::nullptr_t();
 };
 } // namespace poet
 #endif // CHEMSIMPAR_H

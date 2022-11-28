@@ -21,6 +21,7 @@
 #include "poet/SimParams.hpp"
 #include <Rcpp.h>
 
+#include <cstdint>
 #include <iostream>
 #include <ostream>
 #include <string>
@@ -33,9 +34,11 @@ using namespace std;
 using namespace Rcpp;
 
 ChemWorker::ChemWorker(SimParams &params, RInside &R_, Grid &grid_,
-                       MPI_Comm dht_comm, poet::ChemistryParams chem_args)
-    : ChemSim(params, R_, grid_, chem_args) {
+                       MPI_Comm dht_comm)
+    : BaseChemModule(params, R_, grid_) {
   t_simparams tmp = params.getNumParams();
+  this->wp_size = tmp.wp_size;
+  this->out_dir = params.getOutDir();
 
   this->dt_differ = tmp.dt_differ;
   this->dht_enabled = tmp.dht_enabled;
@@ -44,16 +47,15 @@ ChemWorker::ChemWorker(SimParams &params, RInside &R_, Grid &grid_,
 
   this->dht_file = params.getDHTFile();
 
-  mpi_buffer = (double *)calloc(
-      (wp_size * (this->prop_names.size())) + BUFFER_OFFSET, sizeof(double));
-  mpi_buffer_results =
-      (double *)calloc(wp_size * (this->prop_names.size()), sizeof(double));
+  this->mpi_buffer =
+      new double[(this->wp_size * this->prop_names.size()) + BUFFER_OFFSET];
+  this->mpi_buffer_results = new double[wp_size * this->prop_names.size()];
 
   if (world_rank == 1)
     cout << "CPP: Worker: DHT usage is " << (dht_enabled ? "ON" : "OFF")
          << endl;
 
-  if (dht_enabled) {
+  if (this->dht_enabled) {
     int data_size = this->prop_names.size() * sizeof(double);
     int key_size =
         this->prop_names.size() * sizeof(double) + (dt_differ * sizeof(double));
@@ -80,18 +82,18 @@ ChemWorker::ChemWorker(SimParams &params, RInside &R_, Grid &grid_,
     dht_flags.assign(wp_size, true);
   }
 
-  timing[0] = 0.0;
-  timing[1] = 0.0;
-  timing[2] = 0.0;
+  this->timing.fill(0.0);
 }
 
 ChemWorker::~ChemWorker() {
-  free(mpi_buffer);
-  free(mpi_buffer_results);
+  delete this->mpi_buffer;
+  delete this->mpi_buffer_results;
   if (dht_enabled)
-    delete dht;
+    delete this->dht;
 
-  delete this->dht;
+  if (this->phreeqc_rm) {
+    delete this->phreeqc_rm;
+  }
 }
 
 void ChemWorker::loop() {
@@ -116,6 +118,13 @@ void ChemWorker::loop() {
       break;
     }
   }
+}
+
+void poet::ChemWorker::InitModule(poet::ChemistryParams &chem_params) {
+  this->phreeqc_rm = new PhreeqcWrapper(this->wp_size);
+
+  this->phreeqc_rm->SetupAndLoadDB(chem_params);
+  this->phreeqc_rm->InitFromFile(chem_params.input_script);
 }
 
 void ChemWorker::doWork(MPI_Status &probe_status) {
@@ -151,11 +160,9 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   }
 
   // current iteration of simulation
-  if (mpi_buffer[count + 1] != iteration) {
-    iteration = mpi_buffer[count + 1];
-    R["iter"] = iteration;
-    R.parseEvalQ("mysetup$iter <- iter");
-  }
+  this->iteration = mpi_buffer[count + 1];
+  R["iter"] = this->iteration;
+  R.parseEvalQ("mysetup$iter <- iter");
 
   // current timestep size
   if (mpi_buffer[count + 2] != dt) {
@@ -293,7 +300,8 @@ void ChemWorker::postIter() {
 void ChemWorker::writeFile() {
   cout.flush();
   std::stringstream out;
-  out << out_dir << "/iter_" << setfill('0') << setw(3) << iteration << ".dht";
+  out << out_dir << "/iter_" << setfill('0') << setw(3) << this->iteration
+      << ".dht";
   int res = dht->tableToFile(out.str().c_str());
   if (res != DHT_SUCCESS && world_rank == 2)
     cerr << "CPP: Worker: Error in writing current state of DHT to file."

@@ -18,10 +18,12 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include "poet/ChemSimSeq.hpp"
 #include "poet/DiffusionModule.hpp"
 #include "poet/SimParams.hpp"
 #include <Rcpp.h>
 
+#include <array>
 #include <bits/stdint-uintn.h>
 #include <iostream>
 
@@ -34,23 +36,20 @@ using namespace poet;
 using namespace std;
 using namespace Rcpp;
 
-ChemMaster::ChemMaster(SimParams &params, RInside &R_, Grid &grid_,
-                       poet::ChemistryParams chem_params)
-    : ChemSim(params, R_, grid_, chem_params) {
+ChemMaster::ChemMaster(SimParams &params, RInside &R_, Grid &grid_)
+    : BaseChemModule(params, R_, grid_) {
   t_simparams tmp = params.getNumParams();
 
   this->wp_size = tmp.wp_size;
   this->dht_enabled = tmp.dht_enabled;
 
-  this->out_dir = params.getOutDir();
-
   uint32_t grid_size = grid.getTotalCellCount() * this->prop_names.size();
 
   /* allocate memory */
-  workerlist = (worker_struct *)calloc(world_size - 1, sizeof(worker_struct));
-  send_buffer = (double *)calloc(
-      (wp_size * this->prop_names.size()) + BUFFER_OFFSET, sizeof(double));
-  mpi_buffer = (double *)calloc(grid_size, sizeof(double));
+  this->workerlist = new worker_struct[this->world_size - 1];
+  this->send_buffer =
+      new double[this->wp_size * this->prop_names.size() + BUFFER_OFFSET];
+  this->mpi_buffer = new double[grid_size];
 
   /* calculate distribution of work packages */
   uint32_t mod_pkgs = grid_size % this->wp_size;
@@ -65,11 +64,12 @@ ChemMaster::ChemMaster(SimParams &params, RInside &R_, Grid &grid_,
 }
 
 ChemMaster::~ChemMaster() {
-  free(mpi_buffer);
-  free(workerlist);
+  delete this->workerlist;
+  delete this->send_buffer;
+  delete this->mpi_buffer;
 }
 
-void ChemMaster::masterLoop(double dt) {
+void ChemMaster::Simulate(double dt) {
   /* declare most of the needed variables here */
   double chem_a, chem_b;
   double seq_a, seq_b, seq_c, seq_d;
@@ -78,6 +78,7 @@ void ChemMaster::masterLoop(double dt) {
   int pkg_to_send, pkg_to_recv;
   int free_workers;
   int i_pkgs;
+  uint32_t iteration;
 
   /* start time measurement of whole chemistry simulation */
   chem_a = MPI_Wtime();
@@ -139,7 +140,7 @@ void ChemMaster::masterLoop(double dt) {
     // while there are still packages to send
     if (pkg_to_send > 0) {
       // send packages to all free workers ...
-      sendPkgs(pkg_to_send, i_pkgs, free_workers, work_pointer, dt);
+      sendPkgs(pkg_to_send, i_pkgs, free_workers, work_pointer, dt, iteration);
     }
     // ... and try to receive them from workers who has finished their work
     recvPkgs(pkg_to_recv, pkg_to_send > 0, free_workers);
@@ -194,7 +195,7 @@ void ChemMaster::masterLoop(double dt) {
 
 inline void ChemMaster::sendPkgs(int &pkg_to_send, int &count_pkgs,
                                  int &free_workers, double *work_pointer,
-                                 const double &dt) {
+                                 const double &dt, const uint32_t iteration) {
   /* declare variables */
   double master_send_a, master_send_b;
   int local_work_package_size;
@@ -308,13 +309,9 @@ void ChemMaster::printProgressbar(int count_pkgs, int n_wp, int barWidth) {
   /* end visual progress */
 }
 
-void ChemMaster::endLoop() {
-  /* call end() from base class */
-  ChemSim::end();
-
-  /* now we get to the part of the master */
-  double *timings;
-  int *dht_perfs;
+void ChemMaster::End() {
+  R["simtime_chemistry"] = chem_t;
+  R.parseEvalQ("profiling$simtime_chemistry <- simtime_chemistry");
 
   Rcpp::NumericVector phreeqc_time;
   Rcpp::NumericVector dht_get_time;
@@ -324,15 +321,12 @@ void ChemMaster::endLoop() {
 
   int phreeqc_tmp;
 
-  timings = (double *)calloc(3, sizeof(double));
+  std::array<double, 3> timings;
+  std::array<int, 3> dht_perfs;
 
   int dht_hits = 0;
   int dht_miss = 0;
   int dht_evictions = 0;
-
-  if (dht_enabled) {
-    dht_perfs = (int *)calloc(3, sizeof(int));
-  }
 
   double idle_worker_tmp;
 
@@ -343,7 +337,7 @@ void ChemMaster::endLoop() {
     MPI_Send(NULL, 0, MPI_DOUBLE, p + 1, TAG_FINISH, MPI_COMM_WORLD);
 
     /* ... and receive all timings and metrics from each worker */
-    MPI_Recv(timings, 3, MPI_DOUBLE, p + 1, TAG_TIMING, MPI_COMM_WORLD,
+    MPI_Recv(timings.data(), 3, MPI_DOUBLE, p + 1, TAG_TIMING, MPI_COMM_WORLD,
              MPI_STATUS_IGNORE);
     phreeqc_time.push_back(timings[0], "w" + to_string(p + 1));
 
@@ -359,8 +353,8 @@ void ChemMaster::endLoop() {
       dht_get_time.push_back(timings[1], "w" + to_string(p + 1));
       dht_fill_time.push_back(timings[2], "w" + to_string(p + 1));
 
-      MPI_Recv(dht_perfs, 3, MPI_INT, p + 1, TAG_DHT_PERF, MPI_COMM_WORLD,
-               MPI_STATUS_IGNORE);
+      MPI_Recv(dht_perfs.data(), 3, MPI_INT, p + 1, TAG_DHT_PERF,
+               MPI_COMM_WORLD, MPI_STATUS_IGNORE);
       dht_hits += dht_perfs[0];
       dht_miss += dht_perfs[1];
       dht_evictions += dht_perfs[2];
@@ -402,12 +396,6 @@ void ChemMaster::endLoop() {
     R["dht_fill_time"] = dht_fill_time;
     R.parseEvalQ("profiling$dht_fill_time <- dht_fill_time");
   }
-
-  /* do some cleanup */
-  free(timings);
-
-  if (dht_enabled)
-    free(dht_perfs);
 }
 
 void ChemMaster::shuffleField(const std::vector<double> &in_field,

@@ -27,6 +27,7 @@
 #include "RInside.h"
 #include "SimParams.hpp"
 #include <bits/stdint-uintn.h>
+#include <cstddef>
 #include <cstdint>
 #include <mpi.h>
 
@@ -55,9 +56,28 @@ namespace poet {
  * containing basic parameters for simulation.
  *
  */
-constexpr const char *CHEMISTRY_MODULE_NAME = "state_c";
+class BaseChemModule {
+public:
+  BaseChemModule(SimParams &params, RInside &R_, Grid &grid_);
 
-class ChemSim {
+  virtual void InitModule(poet::ChemistryParams &chem_params){};
+
+  static constexpr const char *CHEMISTRY_MODULE_NAME = "state_c";
+
+protected:
+  int world_rank;
+  int world_size;
+  RInside &R;
+
+  Grid &grid;
+  double chem_t = 0.f;
+  double current_sim_time = 0;
+
+  uint32_t n_cells_per_prop;
+  std::vector<std::string> prop_names;
+};
+
+class ChemSeq : public BaseChemModule {
 
 public:
   /**
@@ -70,9 +90,11 @@ public:
    * @param R_ R runtime
    * @param grid_ Initialized grid
    */
-  ChemSim(SimParams &params, RInside &R_, Grid &grid_,
-          poet::ChemistryParams chem_params);
+  ChemSeq(SimParams &params, RInside &R_, Grid &grid_);
 
+  ~ChemSeq();
+
+  void InitModule(poet::ChemistryParams &chem_params);
   /**
    * @brief Run iteration of simulation in sequential mode
    *
@@ -82,7 +104,7 @@ public:
    * @todo change function name. Maybe 'slave' to 'seq'.
    *
    */
-  virtual void simulate(double dt);
+  void Simulate(double dt);
 
   /**
    * @brief End simulation
@@ -91,7 +113,7 @@ public:
    * R runtime.
    *
    */
-  virtual void end();
+  void End();
 
   /**
    * @brief Get the Chemistry Time
@@ -100,30 +122,9 @@ public:
    */
   double getChemistryTime();
 
-protected:
-  double current_sim_time = 0;
-  int iteration = 0;
-
-  int world_rank;
-  int world_size;
-
-  unsigned int wp_size;
-
-  RInside &R;
-
-  Grid &grid;
-
-  std::string out_dir;
-
-  double chem_t = 0.f;
-
+private:
   poet::StateMemory *state;
-  uint32_t n_cells_per_prop;
-  std::vector<std::string> prop_names;
-  std::vector<uint32_t> wp_sizes_vector;
-
-  PhreeqcWrapper *phreeqc_rm;
-
+  PhreeqcWrapper *phreeqc_rm = std::nullptr_t();
 };
 
 } // namespace poet

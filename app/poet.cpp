@@ -20,6 +20,7 @@
 
 #include <RInside.h>
 #include <Rcpp.h>
+#include <cstdint>
 #include <poet/ChemSimPar.hpp>
 #include <poet/ChemSimSeq.hpp>
 #include <poet/DiffusionModule.hpp>
@@ -32,10 +33,68 @@
 #include <vector>
 
 #include <poet.h>
+#include <mpi.h>
 
 using namespace std;
 using namespace poet;
 using namespace Rcpp;
+
+template <class ChemistryInstance>
+inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
+                            ChemistryParams &chem_params) {
+
+  DiffusionModule diffusion(poet::DiffusionParams(R), grid);
+  /* Iteration Count is dynamic, retrieving value from R (is only needed by
+   * master for the following loop) */
+  uint32_t maxiter = R.parseEval("mysetup$iterations");
+
+  ChemistryInstance C(params, R, grid);
+  C.InitModule(chem_params);
+  /* SIMULATION LOOP */
+
+  double ret_time = MPI_Wtime();
+  for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
+    // cout << "CPP: Evaluating next time step" << endl;
+    // R.parseEvalQ("mysetup <- master_iteration_setup(mysetup)");
+
+    double dt = Rcpp::as<double>(
+        R.parseEval("mysetup$timesteps[" + std::to_string(iter) + "]"));
+    cout << "CPP: Next time step is " << dt << "[s]" << endl;
+
+    /* displaying iteration number, with C++ and R iterator */
+    cout << "CPP: Going through iteration " << iter << endl;
+    cout << "CPP: R's $iter: " << ((uint32_t)(R.parseEval("mysetup$iter")))
+         << ". Iteration" << endl;
+
+    /* run transport */
+    // TODO: transport to diffusion
+    diffusion.simulate(dt);
+
+    cout << "CPP: Chemistry" << endl;
+
+    C.Simulate(dt);
+
+    // MDL master_iteration_end just writes on disk state_T and
+    // state_C after every iteration if the cmdline option
+    // --ignore-results is not given (and thus the R variable
+    // store_result is TRUE)
+    R.parseEvalQ("mysetup <- master_iteration_end(setup=mysetup)");
+
+    cout << endl
+         << "CPP: End of *coupling* iteration " << iter << "/" << maxiter
+         << endl
+         << endl;
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+  } // END SIMULATION LOOP
+
+  R.parseEvalQ("profiling <- list()");
+  C.End();
+  diffusion.end();
+
+  return ret_time;
+}
 
 int main(int argc, char *argv[]) {
   double sim_start, sim_end;
@@ -135,61 +194,11 @@ int main(int argc, char *argv[]) {
 
   /* THIS IS EXECUTED BY THE MASTER */
   if (world_rank == 0) {
-    ChemMaster master(params, R, grid, chem_params);
-    DiffusionModule diffusion(poet::DiffusionParams(R), grid);
-
-    // diffusion.initialize();
-
-    sim_start = MPI_Wtime();
-
-    /* Iteration Count is dynamic, retrieving value from R (is only needed by
-     * master for the following loop) */
-    uint32_t maxiter = R.parseEval("mysetup$iterations");
-
-    /* SIMULATION LOOP */
-    for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
-      // cout << "CPP: Evaluating next time step" << endl;
-      // R.parseEvalQ("mysetup <- master_iteration_setup(mysetup)");
-
-      double dt = Rcpp::as<double>(
-          R.parseEval("mysetup$timesteps[" + std::to_string(iter) + "]"));
-      cout << "CPP: Next time step is " << dt << "[s]" << endl;
-
-      /* displaying iteration number, with C++ and R iterator */
-      cout << "CPP: Going through iteration " << iter << endl;
-      cout << "CPP: R's $iter: " << ((uint32_t)(R.parseEval("mysetup$iter")))
-           << ". Iteration" << endl;
-
-      /* run transport */
-      // TODO: transport to diffusion
-      diffusion.simulate(dt);
-
-      cout << "CPP: Chemistry" << endl;
-
-      /* Fallback for sequential execution */
-      // TODO: use new grid
-      if (world_size == 1) {
-        master.simulate(dt);
-      }
-      /* otherwise run parallel */
-      else {
-        master.masterLoop(dt);
-      }
-
-      // MDL master_iteration_end just writes on disk state_T and
-      // state_C after every iteration if the cmdline option
-      // --ignore-results is not given (and thus the R variable
-      // store_result is TRUE)
-      R.parseEvalQ("mysetup <- master_iteration_end(setup=mysetup)");
-
-      cout << endl
-           << "CPP: End of *coupling* iteration " << iter << "/" << maxiter
-           << endl
-           << endl;
-
-      MPI_Barrier(MPI_COMM_WORLD);
-
-    } // END SIMULATION LOOP
+    if (world_size == 1) {
+      sim_start = RunMasterLoop<ChemSeq>(params, R, grid, chem_params);
+    } else {
+      sim_start = RunMasterLoop<ChemMaster>(params, R, grid, chem_params);
+    }
 
     cout << "CPP: finished simulation loop" << endl;
 
@@ -197,18 +206,8 @@ int main(int argc, char *argv[]) {
 
     cout << "CPP: start timing profiling" << endl;
 
-    R.parseEvalQ("profiling <- list()");
-
     R["simtime"] = sim_end - sim_start;
     R.parseEvalQ("profiling$simtime <- simtime");
-
-    diffusion.end();
-
-    if (world_size == 1) {
-      master.end();
-    } else {
-      master.endLoop();
-    }
 
     string r_vis_code;
     r_vis_code = "saveRDS(profiling, file=paste0(fileout,'/timings.rds'));";
@@ -219,7 +218,8 @@ int main(int argc, char *argv[]) {
   }
   /* THIS IS EXECUTED BY THE WORKERS */
   else {
-    ChemWorker worker(params, R, grid, dht_comm, chem_params);
+    ChemWorker worker(params, R, grid, dht_comm);
+    worker.InitModule(chem_params);
     worker.loop();
   }
 

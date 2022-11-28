@@ -34,20 +34,11 @@
 using namespace Rcpp;
 using namespace poet;
 
-ChemSim::ChemSim(SimParams &params, RInside &R_, Grid &grid_,
-                 poet::ChemistryParams chem_params)
-    : R(R_), grid(grid_) {
-  t_simparams tmp = params.getNumParams();
-  this->world_rank = tmp.world_rank;
-  this->world_size = tmp.world_size;
-  this->wp_size = tmp.wp_size;
-  this->out_dir = params.getOutDir();
+ChemSeq::ChemSeq(SimParams &params, RInside &R_, Grid &grid_)
+    : BaseChemModule(params, R_, grid_) {
 
-  this->prop_names = this->grid.getPropNames();
-
-  this->n_cells_per_prop = this->grid.getTotalCellCount();
-  this->state =
-      this->grid.registerState(poet::CHEMISTRY_MODULE_NAME, this->prop_names);
+  this->state = this->grid.registerState(
+      poet::BaseChemModule::CHEMISTRY_MODULE_NAME, this->prop_names);
   std::vector<double> &field = this->state->mem;
 
   field.resize(this->n_cells_per_prop * this->prop_names.size());
@@ -58,13 +49,23 @@ ChemSim::ChemSim(SimParams &params, RInside &R_, Grid &grid_,
     std::copy(prop_vec.begin(), prop_vec.end(),
               field.begin() + (i * this->n_cells_per_prop));
   }
+}
+
+poet::ChemSeq::~ChemSeq() {
+  this->grid.deregisterState(poet::BaseChemModule::CHEMISTRY_MODULE_NAME);
+  if (this->phreeqc_rm) {
+    delete this->phreeqc_rm;
+  }
+}
+
+void poet::ChemSeq::InitModule(poet::ChemistryParams &chem_params) {
   this->phreeqc_rm = new PhreeqcWrapper(this->n_cells_per_prop);
 
   this->phreeqc_rm->SetupAndLoadDB(chem_params);
   this->phreeqc_rm->InitFromFile(chem_params.input_script);
 }
 
-void ChemSim::simulate(double dt) {
+void ChemSeq::Simulate(double dt) {
   double chem_a, chem_b;
 
   /* start time measuring */
@@ -116,9 +117,9 @@ void ChemSim::simulate(double dt) {
   chem_t += chem_b - chem_a;
 }
 
-void ChemSim::end() {
-  R["simtime_chemistry"] = chem_t;
+void ChemSeq::End() {
+  R["simtime_chemistry"] = this->chem_t;
   R.parseEvalQ("profiling$simtime_chemistry <- simtime_chemistry");
 }
 
-double ChemSim::getChemistryTime() { return this->chem_t; }
+double ChemSeq::getChemistryTime() { return this->chem_t; }
