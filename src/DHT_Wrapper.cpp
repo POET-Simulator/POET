@@ -18,39 +18,26 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include "poet/HashFunctions.hpp"
+#include <cstddef>
+#include <cstdint>
+#include <openssl/evp.h>
 #include <poet/DHT_Wrapper.hpp>
 
 #include <math.h>
-#include <openssl/md5.h>
 
 #include <iostream>
+#include <stdexcept>
 
 using namespace poet;
 using namespace std;
 
-uint64_t poet::get_md5(int key_size, void *key) {
-  MD5_CTX ctx;
-  unsigned char sum[MD5_DIGEST_LENGTH];
-  uint64_t retval, *v1, *v2;
-
-  // calculate md5 using MD5 functions
-  MD5_Init(&ctx);
-  MD5_Update(&ctx, key, key_size);
-  MD5_Final(sum, &ctx);
-
-  // divide hash in 2 64 bit parts and XOR them
-  v1 = (uint64_t *)&sum[0];
-  v2 = (uint64_t *)&sum[8];
-  retval = *v1 ^ *v2;
-
-  return retval;
-}
-
 DHT_Wrapper::DHT_Wrapper(SimParams &params, MPI_Comm dht_comm,
                          int buckets_per_process, int data_size, int key_size) {
+  poet::initHashCtx(EVP_md5());
   // initialize DHT object
-  dht_object =
-      DHT_create(dht_comm, buckets_per_process, data_size, key_size, &get_md5);
+  dht_object = DHT_create(dht_comm, buckets_per_process, data_size, key_size,
+                          &poet::hashDHT);
   // allocate memory for fuzzing buffer
   fuzzing_buffer = (double *)malloc(key_size);
 
@@ -69,6 +56,7 @@ DHT_Wrapper::~DHT_Wrapper() {
   DHT_free(dht_object, NULL, NULL);
   // free fuzzing buffer
   free(fuzzing_buffer);
+  poet::freeHashCtx();
 }
 
 void DHT_Wrapper::checkDHT(int length, std::vector<bool> &out_result_index,
@@ -149,7 +137,8 @@ int DHT_Wrapper::tableToFile(const char *filename) {
 
 int DHT_Wrapper::fileToTable(const char *filename) {
   int res = DHT_from_file(dht_object, filename);
-  if (res != DHT_SUCCESS) return res;
+  if (res != DHT_SUCCESS)
+    return res;
 
 #ifdef DHT_STATISTICS
   DHT_print_statistics(dht_object);
@@ -228,5 +217,6 @@ void DHT_Wrapper::fuzzForDHT(int var_count, void *key, double dt) {
   }
   // if timestep differs over iterations set current current time step at the
   // end of fuzzing buffer
-  if (dt_differ) fuzzing_buffer[var_count] = dt;
+  if (dt_differ)
+    fuzzing_buffer[var_count] = dt;
 }
