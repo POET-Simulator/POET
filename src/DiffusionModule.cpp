@@ -130,29 +130,28 @@ void DiffusionModule::initialize(poet::DiffusionParams args) {
 
   // apply inner grid constant cells
   // NOTE: opening a scope here for distinguish variable names
-  if (args.vecinj_inner.rows() != 0) {
+  if (args.vecinj_inner.size() != 0) {
     // get indices of constant grid cells
-    Rcpp::NumericVector indices_const_cells = args.vecinj_inner(Rcpp::_, 0);
-    this->index_constant_cells =
-        Rcpp::as<std::vector<uint32_t>>(indices_const_cells);
+    // Rcpp::NumericVector indices_const_cells = args.vecinj_inner(Rcpp::_, 0);
+    // this->index_constant_cells =
+    //     Rcpp::as<std::vector<uint32_t>>(indices_const_cells);
 
-    // get indices to vecinj for constant cells
-    Rcpp::NumericVector vecinj_indices = args.vecinj_inner(Rcpp::_, 1);
+    // // get indices to vecinj for constant cells
+    // Rcpp::NumericVector vecinj_indices = args.vecinj_inner(Rcpp::_, 1);
 
     // apply inner constant cells for every concentration
     for (int i = 0; i < this->prop_count; i++) {
       std::vector<double> bc_vec = args.vecinj[this->prop_names[i]];
       tug::bc::BoundaryCondition &curr_bc = *(this->bc_vec.begin() + i);
-      for (int j = 0; j < indices_const_cells.size(); j++) {
+      for (int j = 0; j < args.vecinj_inner.size(); j++) {
+        std::vector<double> inner_tuple =
+            Rcpp::as<std::vector<double>>(args.vecinj_inner[j]);
         tug::bc::boundary_condition bc = {tug::bc::BC_TYPE_CONSTANT,
-                                          bc_vec[vecinj_indices[j] - 1]};
+                                          bc_vec[inner_tuple[0] - 1]};
 
-        uint32_t x = this->index_constant_cells[j] %
-                     this->grid.getGridCellsCount(GRID_X_DIR);
-        uint32_t y = (this->dim == this->DIM_1D
-                          ? 0
-                          : this->index_constant_cells[j] /
-                                this->grid.getGridCellsCount(GRID_Y_DIR));
+        this->index_constant_cells.push_back(inner_tuple[1]);
+        uint32_t x = inner_tuple[1];
+        uint32_t y = (this->dim == this->DIM_1D ? 0 : inner_tuple[2]);
 
         curr_bc.setInnerBC(bc, x, y);
       }

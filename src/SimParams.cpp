@@ -43,9 +43,9 @@ poet::GridParams::s_GridParams(RInside &R) {
   this->props =
       Rcpp::as<std::vector<std::string>>(R.parseEval("mysetup$grid$props"));
   this->input_script =
-  Rcpp::as<std::string>(R.parseEval("mysetup$grid$input_script"));
+      Rcpp::as<std::string>(R.parseEval("mysetup$grid$input_script"));
   this->database_path =
-  Rcpp::as<std::string>(R.parseEval("mysetup$grid$database"));
+      Rcpp::as<std::string>(R.parseEval("mysetup$grid$database"));
 }
 
 poet::DiffusionParams::s_DiffusionParams(RInside &R) {
@@ -53,9 +53,10 @@ poet::DiffusionParams::s_DiffusionParams(RInside &R) {
       R.parseEval("names(mysetup$diffusion$init)"));
   this->alpha =
       Rcpp::as<Rcpp::NumericVector>(R.parseEval("mysetup$diffusion$alpha"));
-  if (Rcpp::as<bool>(R.parseEval("exists('mysetup$diffusion$vecinj_inner')"))) {
-    this->vecinj_inner = Rcpp::as<Rcpp::NumericMatrix>(
-        R.parseEval("mysetup$diffusion$vecinj_inner"));
+  if (Rcpp::as<bool>(
+          R.parseEval("'vecinj_inner' %in% names(mysetup$diffusion)"))) {
+    this->vecinj_inner =
+        Rcpp::as<Rcpp::List>(R.parseEval("mysetup$diffusion$vecinj_inner"));
   }
   this->vecinj =
       Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$diffusion$vecinj"));
@@ -64,10 +65,10 @@ poet::DiffusionParams::s_DiffusionParams(RInside &R) {
 }
 
 poet::ChemistryParams::s_ChemistryParams(RInside &R) {
-  this->database_path = Rcpp::as<std::string>(
-      R.parseEval("mysetup$chemistry$database"));
-  this->input_script = Rcpp::as<std::string>(
-      R.parseEval("mysetup$chemistry$input_script"));
+  this->database_path =
+      Rcpp::as<std::string>(R.parseEval("mysetup$chemistry$database"));
+  this->input_script =
+      Rcpp::as<std::string>(R.parseEval("mysetup$chemistry$input_script"));
 }
 
 SimParams::SimParams(int world_rank_, int world_size_) {

@@ -87,7 +87,7 @@ using DiffusionParams = struct s_DiffusionParams {
   std::vector<std::string> prop_names;
 
   Rcpp::NumericVector alpha;
-  Rcpp::NumericMatrix vecinj_inner;
+  Rcpp::List vecinj_inner;
 
   Rcpp::DataFrame vecinj;
   Rcpp::DataFrame vecinj_index;

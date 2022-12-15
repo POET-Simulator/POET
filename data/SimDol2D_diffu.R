@@ -95,13 +95,17 @@ vecinj_diffu <- list(
   )
 )
 
-inner_index <- c(5, 15, 25)
-inner_vecinj_index <- rep(1, 3)
+#inner_index <- c(5, 15, 25)
+#inner_vecinj_index <- rep(1, 3)
+#
+#vecinj_inner <- cbind(inner_index, inner_vecinj_index)
+vecinj_inner <- list(
+  l1 = c(1,2,2)
+)
 
-vecinj_inner <- cbind(inner_index, inner_vecinj_index)
 
 boundary <- list(
-  "N" = rep(1, n),
+  "N" = rep(0, n),
   "E" = rep(0, n),
   "S" = rep(0, n),
   "W" = rep(0, n)
@@ -112,7 +116,7 @@ diffu_list <- names(alpha_diffu)
 diffusion <- list(
   init = init_diffu,
   vecinj = do.call(rbind.data.frame, vecinj_diffu),
-  # vecinj_inner = vecinj_inner,
+  vecinj_inner = vecinj_inner,
   vecinj_index = boundary,
   alpha = alpha_diffu
 )
