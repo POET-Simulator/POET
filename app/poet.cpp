@@ -126,8 +126,7 @@ int main(int argc, char *argv[]) {
 
   /*Loading Dependencies*/
   // TODO: kann raus
-  std::string r_load_dependencies = "suppressMessages(library(RedModRphree));"
-                                    "source('../R_lib/kin_r_library.R');";
+  std::string r_load_dependencies = "source('../R_lib/kin_r_library.R');";
   R.parseEvalQ(r_load_dependencies);
 
   SimParams params(world_rank, world_size);

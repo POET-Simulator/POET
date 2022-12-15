@@ -1,6 +1,6 @@
 ## Simple library of functions to assess and visualize the results of the coupled simulations
 
-## Time-stamp: "Last modified 2020-02-04 23:21:37 delucia"
+## Time-stamp: "Last modified 2022-12-15 11:30:55 delucia"
 
 require(RedModRphree)
 require(Rmufits)  ## essentially for PlotCartCellData 
@@ -25,8 +25,7 @@ ReadAllDHT <- function(dir) {
 }
 
 ## function which reads one .dht file and gives a matrix
-ReadDHT <- function(file)
-{
+ReadDHT <- function(file) {
     conn <- file(file, "rb")  ## open for reading in binary mode
     if (!isSeekable(conn))
         stop("Connection not seekable")
@@ -51,8 +50,7 @@ ReadDHT <- function(file)
 }
 
 ## Scatter plots of each variable in the iteration 
-PlotScatter <- function(sam1, sam2, which=NULL, labs=c("NO DHT", "DHT"), pch=".", cols=3, ...)
-{
+PlotScatter <- function(sam1, sam2, which=NULL, labs=c("NO DHT", "DHT"), pch=".", cols=3, ...) {
     if ((!is.data.frame(sam1)) & ("T" %in% names(sam1)))
         sam1 <- sam1$C
     if ((!is.data.frame(sam2)) & ("T" %in% names(sam2)))
@@ -104,8 +102,7 @@ AppliedFun <- function(a, b, .fun) mapply(.fun, as.list(a$C), as.list(b$C))
 
 ## Compute the diffs between two simulation, iter by iter,
 ## with a given metric (passed in form of function name to this function)
-ComputeErrors <- function(sim1, sim2, FUN=RMSE)
-{
+ComputeErrors <- function(sim1, sim2, FUN=RMSE) {
     if (length(sim1)!= length(sim2)) {
         cat("The simulations do not have the same length, subsetting to the shortest\n")
         a <- min(length(sim1), length(sim2))
@@ -121,8 +118,7 @@ ComputeErrors <- function(sim1, sim2, FUN=RMSE)
 }
 
 ## Function to display the error progress between 2 simulations
-ErrorProgress <- function(mat, ignore, colors, metric, ...)
-{
+ErrorProgress <- function(mat, ignore, colors, metric, ...) {
     if (missing(colors))
         colors <- sample(rainbow(ncol(mat)))
 
@@ -145,7 +141,7 @@ ErrorProgress <- function(mat, ignore, colors, metric, ...)
 
 ## Function which exports all simulations to ParaView's .vtu Requires
 ## package RcppVTK
-ExportToParaview <- function(vtu, nameout, results){
+ExportToParaview <- function(vtu, nameout, results) {
     require(RcppVTK)
     n <- length(results)
     vars <- colnames(results[[1]])
@@ -165,8 +161,7 @@ ExportToParaview <- function(vtu, nameout, results){
 ## "breaks" for color coding of 2D simulations
 Plot2DCellData <- function (data, grid, nx, ny, contour = TRUE,
                             nlevels = 12, breaks, palette = "heat.colors",
-                            rev.palette = TRUE, scale = TRUE, ...) 
-{
+                            rev.palette = TRUE, scale = TRUE, ...) {
     if (!missing(grid)) {
         xc <- unique(sort(grid$cell$XCOORD))
         yc <- unique(sort(grid$cell$YCOORD))
@@ -174,8 +169,7 @@ Plot2DCellData <- function (data, grid, nx, ny, contour = TRUE,
         ny <- length(yc)
         if (!length(data) == nx * ny) 
             stop("Wrong nx, ny or grid")
-    }
-    else {
+    } else {
         xc <- seq(1, nx)
         yc <- seq(1, ny)
     }
