@@ -60,13 +60,13 @@ master_iteration_end <- function(setup) {
   #    if (iter %in% setup$out_save) {
   nameout <- paste0(fileout, "/iter_", sprintf("%03d", iter), ".rds")
   info <- list(
-    tr_req_dt = as.integer(setup$requested_dt),
-    tr_allow_dt = setup$allowed_dt,
-    tr_inniter = as.integer(setup$inniter)
+    tr_req_dt = as.integer(setup$req_dt)
+#    tr_allow_dt = setup$allowed_dt,
+#    tr_inniter = as.integer(setup$inniter)
   )
   saveRDS(list(
     T = setup$state_T, C = setup$state_C,
-    simtime = as.integer(setup$simulation_time),
+    simtime = as.integer(setup$simtime),
     tr_info = info
   ), file = nameout)
   msgm("results stored in <", nameout, ">")

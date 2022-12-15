@@ -48,6 +48,8 @@ inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
    * master for the following loop) */
   uint32_t maxiter = R.parseEval("mysetup$iterations");
 
+  double sim_time = .0;
+
   ChemistryInstance C(params, R, grid);
   C.InitModule(chem_params);
   /* SIMULATION LOOP */
@@ -73,6 +75,12 @@ inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
     cout << "CPP: Chemistry" << endl;
 
     C.Simulate(dt);
+
+    R["req_dt"] = dt;
+    R["simtime"] = (sim_time += dt);
+
+    R.parseEval("mysetup$req_dt <- req_dt");
+    R.parseEval("mysetup$simtime <- simtime");
 
     // MDL master_iteration_end just writes on disk state_T and
     // state_C after every iteration if the cmdline option
