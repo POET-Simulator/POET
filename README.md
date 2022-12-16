@@ -1,15 +1,13 @@
-
 <!--
     Time-stamp: "Last modified 2021-02-08 13:46:00 mluebke"
 -->
 
-**Po**tsdamer R**e**active **D**iffusion
+**Po**tsdamer **R**eactive **T**ransport
 
 
 # Forked Project
 
-POED is a forked project of POET, which aims to replace the advection transport
-by diffusion. The following README is also applicable for this project.
+PORT is a fork of [POET](https://doi.org/10.5281/zenodo.4757913) integrating a standalone component for transport computations and leveraging PHREEQC_RM as geochemical solver. The following README is also applicable for this project.
 
 # POET
 
