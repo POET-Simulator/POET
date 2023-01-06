@@ -19,8 +19,8 @@
 */
 
 #include "poet/HashFunctions.hpp"
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <openssl/evp.h>
 #include <poet/DHT_Wrapper.hpp>
@@ -38,14 +38,16 @@ inline double round_signif(double value, int32_t signif) {
   return .0 + std::trunc(value * multiplier) / multiplier;
 }
 
-DHT_Wrapper::DHT_Wrapper(SimParams &params, MPI_Comm dht_comm,
-                         int buckets_per_process, int data_size, int key_size) {
+DHT_Wrapper::DHT_Wrapper(const poet::SimParams &params, MPI_Comm dht_comm,
+                         uint32_t dht_size, uint32_t key_count,
+                         uint32_t data_count) {
   poet::initHashCtx(EVP_md5());
   // initialize DHT object
+  uint32_t key_size = key_count * sizeof(double);
+  uint32_t data_size = data_count * sizeof(double);
+  uint32_t buckets_per_process = dht_size / (1 + data_size + key_size);
   dht_object = DHT_create(dht_comm, buckets_per_process, data_size, key_size,
                           &poet::hashDHT);
-  // allocate memory for fuzzing buffer
-  fuzzing_buffer = (double *)malloc(key_size);
 
   // extract needed values from sim_param struct
   t_simparams tmp = params.getNumParams();

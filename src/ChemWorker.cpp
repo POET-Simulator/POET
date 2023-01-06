@@ -19,10 +19,12 @@
 */
 
 #include "poet/ChemSimPar.hpp"
+#include "poet/DHT_Wrapper.hpp"
 #include "poet/SimParams.hpp"
 #include <Rcpp.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <mpi.h>
@@ -57,20 +59,20 @@ ChemWorker::ChemWorker(SimParams &params, RInside &R_, Grid &grid_,
          << endl;
 
   if (this->dht_enabled) {
-    int data_size = this->prop_names.size() * sizeof(double);
-    int key_size = (this->prop_names.size() - 1) * sizeof(double) +
-                   (dt_differ * sizeof(double));
-    int dht_buckets_per_process =
-        dht_size_per_process / (1 + data_size + key_size);
+
+    uint32_t iKeyCount = this->prop_names.size() - 1 + (dt_differ);
+    uint32_t iDataCount = this->prop_names.size();
 
     if (world_rank == 1)
-      cout << "CPP: Worker: data size: " << data_size << " bytes" << endl
-           << "CPP: Worker: key size: " << key_size << " bytes" << endl
-           << "CPP: Worker: buckets per process " << dht_buckets_per_process
-           << endl;
+      cout << "CPP: Worker: data count: " << iDataCount << " entries" << endl
+           << "CPP: Worker: key count: " << iKeyCount << " entries" << endl
+           << "CPP: Worker: memory per process "
+           << params.getNumParams().dht_size_per_process / std::pow(10, 6)
+           << " MByte" << endl;
 
-    dht = new DHT_Wrapper(params, dht_comm, dht_buckets_per_process, data_size,
-                          key_size);
+    dht = new DHT_Wrapper(params, dht_comm,
+                          params.getNumParams().dht_size_per_process, iKeyCount,
+                          iDataCount);
 
     if (world_rank == 1)
       cout << "CPP: Worker: DHT created!" << endl;

@@ -76,11 +76,11 @@ public:
    * @param dht_comm Communicator which addresses all participating DHT
    * processes
    * @param buckets_per_process Count of buckets to allocate for each process
-   * @param data_size Size of data in bytes
-   * @param key_size Size of key in bytes
+   * @param key_count Count of key entries
+   * @param data_count Count of data entries
    */
-  DHT_Wrapper(SimParams &params, MPI_Comm dht_comm, int buckets_per_process,
-              int data_size, int key_size);
+  DHT_Wrapper(const poet::SimParams &params, MPI_Comm dht_comm,
+              uint32_t dht_size, uint32_t key_count, uint32_t data_count);
   /**
    * @brief Destroy the dht wrapper object
    *
