@@ -33,16 +33,14 @@ extern "C" {
 
 #include <mpi.h>
 
-/**
- * @brief Cut double value after signif digit
- *
- * Macro to round a double value by cutting every digit after significant digit
- *
- */
-// #define ROUND(value, signif)                                                   \
-//   (((int)(pow(10.0, (double)signif) * value)) * pow(10.0, (double)-signif))
-
 namespace poet {
+
+using DHT_Keyelement = struct keyelem {
+  std::uint8_t sign : 1;
+  std::int8_t exp : 7;
+  std::uint64_t significant : 56;
+};
+
 /**
  * @brief Return user-defined md5sum
  *
@@ -211,7 +209,7 @@ private:
    * @param key Pointer to work package handled as the key
    * @param dt Current time step of the simulation
    */
-  std::vector<double> fuzzForDHT(int var_count, void *key, double dt);
+  std::vector<DHT_Keyelement> fuzzForDHT(int var_count, void *key, double dt);
 
   /**
    * @brief DHT handle

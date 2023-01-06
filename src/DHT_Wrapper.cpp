@@ -19,9 +19,11 @@
 */
 
 #include "poet/HashFunctions.hpp"
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <openssl/evp.h>
 #include <poet/DHT_Wrapper.hpp>
 
@@ -33,9 +35,16 @@
 using namespace poet;
 using namespace std;
 
-inline double round_signif(double value, int32_t signif) {
-  const double multiplier = std::pow(10.0, signif);
-  return .0 + std::trunc(value * multiplier) / multiplier;
+inline DHT_Keyelement round_key_element(double value, std::uint32_t signif) {
+  std::int8_t exp = (std::int8_t)std::floor(std::log10(std::fabs(value)));
+  std::uint64_t significant = value * std::pow(10, signif - exp);
+
+  DHT_Keyelement elem;
+  elem.sign = value < 0.;
+  elem.exp = exp;
+  elem.significant = significant;
+
+  return elem;
 }
 
 DHT_Wrapper::DHT_Wrapper(const poet::SimParams &params, MPI_Comm dht_comm,
@@ -43,7 +52,7 @@ DHT_Wrapper::DHT_Wrapper(const poet::SimParams &params, MPI_Comm dht_comm,
                          uint32_t data_count) {
   poet::initHashCtx(EVP_md5());
   // initialize DHT object
-  uint32_t key_size = key_count * sizeof(double);
+  uint32_t key_size = key_count * sizeof(DHT_Keyelement);
   uint32_t data_size = data_count * sizeof(double);
   uint32_t buckets_per_process = dht_size / (1 + data_size + key_size);
   dht_object = DHT_create(dht_comm, buckets_per_process, data_size, key_size,
@@ -82,7 +91,7 @@ auto DHT_Wrapper::checkDHT(int length, std::vector<bool> &out_result_index,
     data[i].resize(dht_prop_type_vector.size());
 
     // fuzz data (round, logarithm etc.)
-    std::vector<double> vecFuzz = fuzzForDHT(var_count, key, dt);
+    auto vecFuzz = fuzzForDHT(var_count, key, dt);
 
     // overwrite input with data from DHT, IF value is found in DHT
     res = DHT_read(dht_object, vecFuzz.data(), data[i].data());
@@ -121,7 +130,7 @@ void DHT_Wrapper::fillDHT(int length, std::vector<bool> &result_index,
     // If true grid cell was simulated, needs to be inserted into dht
     if (result_index[i]) {
       // fuzz data (round, logarithm etc.)
-      std::vector<double> vecFuzz = fuzzForDHT(var_count - 1, key, dt);
+      auto vecFuzz = fuzzForDHT(var_count - 1, key, dt);
 
       // insert simulated data with fuzzed key into DHT
       res = DHT_write(dht_object, vecFuzz.data(), data);
@@ -175,67 +184,25 @@ uint64_t DHT_Wrapper::getMisses() { return this->dht_miss; }
 
 uint64_t DHT_Wrapper::getEvictions() { return this->dht_evictions; }
 
-std::vector<double> DHT_Wrapper::fuzzForDHT(int var_count, void *key,
-                                            double dt) {
+std::vector<DHT_Keyelement> DHT_Wrapper::fuzzForDHT(int var_count, void *key,
+                                                    double dt) {
 
-  std::vector<double> vecFuzz(var_count, .0);
+  std::vector<DHT_Keyelement> vecFuzz(var_count);
+  std::memset(&vecFuzz[0], 0, sizeof(DHT_Keyelement) * var_count);
+
   unsigned int i = 0;
   // introduce fuzzing to allow more hits in DHT
   // loop over every variable of grid cell
   for (i = 0; i < (unsigned int)var_count; i++) {
-    // check if variable is defined as 'act'
-    if (dht_prop_type_vector[i] == "act") {
-      // if log is enabled (default)
-      if (dht_log) {
-        // if variable is smaller than 0, which would be a strange result,
-        // warn the user and set fuzzing_buffer to 0 at this index
-        if (((double *)key)[i] < 0) {
-          cerr << "dht_wrapper.cpp::fuzz_for_dht(): Warning! Negative value in "
-                  "key!"
-               << endl;
-          vecFuzz[i] = 0;
-        }
-        // if variable is 0 set fuzzing buffer to 0
-        else if (((double *)key)[i] == 0)
-          vecFuzz[i] = 0;
-        // otherwise ...
-        else {
-          // round current variable value by applying log with base 10, negate
-          // (since the actual values will be between 0 and 1) and cut result
-          // after significant digit
-          vecFuzz[i] = round_signif(-(std::log10(((double *)key)[i])),
-                                    dht_signif_vector[i]);
-        }
-      }
-      // if log is disabled
-      else {
-        // just round by cutting after signifanct digit
-        vecFuzz[i] = round_signif((((double *)key)[i]), dht_signif_vector[i]);
-      }
-    } else if (dht_prop_type_vector[i] == "charge") {
-      vecFuzz[i] = round_signif(((double *)key)[i], dht_signif_vector[i]);
-    }
-    // if variable is defined as 'logact' (log was already applied e.g. pH)
-    else if (dht_prop_type_vector[i] == "logact") {
-      // just round by cutting after signifanct digit
-      vecFuzz[i] = round_signif((((double *)key)[i]), dht_signif_vector[i]);
-    }
-    // if defined ass 'ignore' ...
-    else if (dht_prop_type_vector[i] == "ignore") {
-      // ... just set fuzzing buffer to 0
-      vecFuzz[i] = 0;
-    }
-    // and finally, if type is not defined, print error message
-    else {
-      cerr << "dht_wrapper.cpp::fuzz_for_dht(): Warning! Probably wrong "
-              "prop_type!"
-           << endl;
+    double &curr_key = ((double *)key)[i];
+    if (curr_key != 0) {
+      vecFuzz[i] = round_key_element(curr_key, dht_signif_vector[i]);
     }
   }
   // if timestep differs over iterations set current current time step at the
   // end of fuzzing buffer
   if (dt_differ) {
-    vecFuzz[var_count] = dt;
+    vecFuzz[var_count] = round_key_element(dt, 55);
   }
 
   return vecFuzz;
