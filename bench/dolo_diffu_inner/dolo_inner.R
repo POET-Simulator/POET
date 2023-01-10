@@ -1,0 +1,35 @@
+SELECTED_OUTPUT
+         -high_precision true
+         -reset false
+         -time
+         -soln
+         -temperature true
+         -water true
+         -pH
+         -pe
+         -totals C Ca Cl Mg
+         -kinetic_reactants Calcite Dolomite
+         -equilibrium O2g
+
+SOLUTION 1
+         units mol/kgw
+         temp 25.0
+         water 1
+         pH 9.91 charge
+         pe 4.0
+         C   1.2279E-04
+         Ca  1.2279E-04
+         Cl 1E-12
+         Mg 1E-12
+PURE 1
+         O2g -0.1675 10
+KINETICS 1
+         Calcite
+            -m      0.00020
+            -parms  0.05
+            -tol    1e-10
+         Dolomite
+            -m      0.0
+            -parms  0.005
+            -tol    1e-10
+END

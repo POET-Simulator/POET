@@ -1,6 +1,6 @@
 ## Simple library of functions to assess and visualize the results of the coupled simulations
 
-## Time-stamp: "Last modified 2020-02-04 23:21:37 delucia"
+## Time-stamp: "Last modified 2022-12-16 17:38:12 delucia"
 
 require(RedModRphree)
 require(Rmufits)  ## essentially for PlotCartCellData 
@@ -178,7 +178,7 @@ ExportToParaview <- function(vtu, nameout, results) {
 ## "breaks" for color coding of 2D simulations
 Plot2DCellData <- function (data, grid, nx, ny, contour = TRUE,
                             nlevels = 12, breaks, palette = "heat.colors",
-                            rev.palette = TRUE, scale = TRUE, ...) {
+                            rev.palette = TRUE, scale = TRUE, plot.axes=TRUE, ...) {
     if (!missing(grid)) {
         xc <- unique(sort(grid$cell$XCOORD))
         yc <- unique(sort(grid$cell$YCOORD))
@@ -207,11 +207,14 @@ Plot2DCellData <- function (data, grid, nx, ny, contour = TRUE,
             1))
     }
     par(las = 1, mar = c(5, 5, 3, 1))
-    image(xc, yc, pp, xlab = "X [m]", ylab = "Y[m]", las = 1, 
-        asp = 1, breaks = breaks, col = colors, axes = FALSE, 
-        ...)
-    axis(1)
-    axis(2)
+    image(xc, yc, pp, xlab = "X [m]", ylab = "Y[m]", las = 1, asp = 1,
+          breaks = breaks, col = colors, axes = FALSE, ann=plot.axes,
+          ...)
+
+    if (plot.axes) {
+        axis(1)
+        axis(2)
+    }
     if (contour) 
         contour(unique(sort(xc)), unique(sort(yc)), pp, breaks = breaks, 
             add = TRUE)
