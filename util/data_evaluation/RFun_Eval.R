@@ -1,10 +1,18 @@
 ## Simple library of functions to assess and visualize the results of the coupled simulations
 
-## Time-stamp: "Last modified 2022-12-15 11:30:55 delucia"
+## Time-stamp: "Last modified 2020-02-04 23:21:37 delucia"
 
 require(RedModRphree)
 require(Rmufits)  ## essentially for PlotCartCellData 
 
+require(Rcpp)
+
+sourceCpp(file = "./interpret_keys.cpp")
+
+# Wrapper around previous sourced Rcpp function
+ConvertDHTKey <- function(value) {
+  rcpp_key_convert(value)
+}
 
 ## function which reads all simulation results in a given directory
 ReadRTSims <- function(dir) {
@@ -16,16 +24,16 @@ ReadRTSims <- function(dir) {
 }
 
 ## function which reads all successive DHT stored in a given directory
-ReadAllDHT <- function(dir) {
+ReadAllDHT <- function(dir, new_scheme = T) {
     files_full <- list.files(dir, pattern="iter.*dht", full.names=TRUE)
     files_name <- list.files(dir, pattern="iter.*dht", full.names=FALSE)
-    res <- lapply(files_full, ReadDHT)
+    res <- lapply(files_full, ReadDHT, new_scheme = new_scheme)
     names(res) <- gsub(".rds","",files_name, fixed=TRUE)
     return(res)
 }
 
 ## function which reads one .dht file and gives a matrix
-ReadDHT <- function(file) {
+ReadDHT <- function(file, new_scheme = T) {
     conn <- file(file, "rb")  ## open for reading in binary mode
     if (!isSeekable(conn))
         stop("Connection not seekable")
@@ -46,6 +54,15 @@ ReadDHT <- function(file) {
     ## close connection
     close(conn)
     res <- matrix(buff, nrow=nrow, ncol=ncol, byrow=TRUE)
+
+    if (new_scheme) {
+      nkeys <- dims[1] / 8
+      keys <- res[, 1:nkeys]
+
+      conv <- apply(keys, 2, ConvertDHTKey)
+      res[, 1:nkeys] <- conv
+    }
+
     return(res)
 }
 
