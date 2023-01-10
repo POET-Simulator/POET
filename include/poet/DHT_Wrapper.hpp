@@ -36,9 +36,8 @@ extern "C" {
 namespace poet {
 
 using DHT_Keyelement = struct keyelem {
-  std::uint8_t sign : 1;
-  std::int8_t exp : 7;
-  std::uint64_t significant : 56;
+  std::int8_t exp : 8;
+  std::int64_t significant : 56;
 };
 
 /**

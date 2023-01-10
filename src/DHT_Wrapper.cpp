@@ -37,10 +37,9 @@ using namespace std;
 
 inline DHT_Keyelement round_key_element(double value, std::uint32_t signif) {
   std::int8_t exp = (std::int8_t)std::floor(std::log10(std::fabs(value)));
-  std::uint64_t significant = value * std::pow(10, signif - exp);
+  std::int64_t significant = value * std::pow(10, signif - exp);
 
   DHT_Keyelement elem;
-  elem.sign = value < 0.;
   elem.exp = exp;
   elem.significant = significant;
 
