@@ -60,7 +60,7 @@ ChemWorker::ChemWorker(SimParams &params, RInside &R_, Grid &grid_,
 
   if (this->dht_enabled) {
 
-    uint32_t iKeyCount = this->prop_names.size() - 1 + (dt_differ);
+    uint32_t iKeyCount = this->prop_names.size() + (dt_differ);
     uint32_t iDataCount = this->prop_names.size();
 
     if (world_rank == 1)
@@ -173,10 +173,10 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   std::vector<double> vecCurrWP(
       mpi_buffer,
       mpi_buffer + (local_work_package_size * this->prop_names.size()));
+  std::vector<double> vecDHTKeys = vecCurrWP;
 
   std::vector<int32_t> vecMappingWP(this->wp_size);
   std::vector<std::vector<double>> vecDHTResults;
-  std::vector<double> vecDHTKeys;
   std::vector<bool> vecNeedPhreeqc(this->wp_size, true);
 
   for (uint32_t i = 0; i < local_work_package_size; i++) {
@@ -197,8 +197,8 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   if (dht_enabled) {
     /* check for values in DHT */
     dht_get_start = MPI_Wtime();
-    vecDHTKeys = this->phreeqc_rm->ReplaceTotalsByPotentials(
-        vecCurrWP, local_work_package_size);
+    // vecDHTKeys = this->phreeqc_rm->ReplaceTotalsByPotentials(
+    //     vecCurrWP, local_work_package_size);
     vecDHTResults =
         dht->checkDHT(local_work_package_size, vecNeedPhreeqc, vecDHTKeys, dt);
     dht_get_end = MPI_Wtime();

@@ -81,7 +81,7 @@ auto DHT_Wrapper::checkDHT(int length, std::vector<bool> &out_result_index,
   void *key;
   int res;
   // var count -> count of variables per grid cell
-  int var_count = dht_prop_type_vector.size() - 1;
+  int var_count = dht_prop_type_vector.size();
   std::vector<std::vector<double>> data(length);
   // loop over every grid cell contained in work package
   for (int i = 0; i < length; i++) {
@@ -124,13 +124,13 @@ void DHT_Wrapper::fillDHT(int length, const std::vector<bool> &result_index,
   int var_count = dht_prop_type_vector.size();
   // loop over every grid cell contained in work package
   for (int i = 0; i < length; i++) {
-    key = (void *)&(work_package[i * (var_count - 1)]);
+    key = (void *)&(work_package[i * var_count]);
     data = (void *)&(results[i * var_count]);
 
     // If true grid cell was simulated, needs to be inserted into dht
     if (result_index[i]) {
       // fuzz data (round, logarithm etc.)
-      auto vecFuzz = fuzzForDHT(var_count - 1, key, dt);
+      auto vecFuzz = fuzzForDHT(var_count, key, dt);
 
       // insert simulated data with fuzzed key into DHT
       res = DHT_write(dht_object, vecFuzz.data(), data);
