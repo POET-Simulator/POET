@@ -76,7 +76,7 @@ DHT_Wrapper::~DHT_Wrapper() {
 }
 
 auto DHT_Wrapper::checkDHT(int length, std::vector<bool> &out_result_index,
-                           double *work_package, double dt)
+                           const std::vector<double> &work_package, double dt)
     -> std::vector<std::vector<double>> {
   void *key;
   int res;
@@ -114,8 +114,9 @@ auto DHT_Wrapper::checkDHT(int length, std::vector<bool> &out_result_index,
   return data;
 }
 
-void DHT_Wrapper::fillDHT(int length, std::vector<bool> &result_index,
-                          double *work_package, double *results, double dt) {
+void DHT_Wrapper::fillDHT(int length, const std::vector<bool> &result_index,
+                          const std::vector<double> &work_package,
+                          const std::vector<double> &results, double dt) {
   void *key;
   void *data;
   int res;

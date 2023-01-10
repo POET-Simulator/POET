@@ -106,7 +106,7 @@ public:
    * @param dt Current timestep of simulation
    */
   auto checkDHT(int length, std::vector<bool> &out_result_index,
-                double *work_package, double dt)
+                const std::vector<double> &work_package, double dt)
       -> std::vector<std::vector<double>>;
 
   /**
@@ -125,8 +125,9 @@ public:
    * outputs of the PHREEQC simulation
    * @param dt Current timestep of simulation
    */
-  void fillDHT(int length, std::vector<bool> &result_index,
-               double *work_package, double *results, double dt);
+  void fillDHT(int length, const std::vector<bool> &result_index,
+               const std::vector<double> &work_package,
+               const std::vector<double> &results, double dt);
 
   /**
    * @brief Dump current DHT state into file.

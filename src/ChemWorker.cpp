@@ -199,8 +199,8 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
     dht_get_start = MPI_Wtime();
     vecDHTKeys = this->phreeqc_rm->ReplaceTotalsByPotentials(
         vecCurrWP, local_work_package_size);
-    vecDHTResults = dht->checkDHT(local_work_package_size, vecNeedPhreeqc,
-                                  vecDHTKeys.data(), dt);
+    vecDHTResults =
+        dht->checkDHT(local_work_package_size, vecNeedPhreeqc, vecDHTKeys, dt);
     dht_get_end = MPI_Wtime();
 
     uint32_t iMappingIndex = 0;
@@ -234,8 +234,8 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   if (dht_enabled) {
     /* write results to DHT */
     dht_fill_start = MPI_Wtime();
-    dht->fillDHT(local_work_package_size, vecNeedPhreeqc, vecDHTKeys.data(),
-                 vecCurrWP.data(), dt);
+    dht->fillDHT(local_work_package_size, vecNeedPhreeqc, vecDHTKeys, vecCurrWP,
+                 dt);
     dht_fill_end = MPI_Wtime();
 
     timing[1] += dht_get_end - dht_get_start;
