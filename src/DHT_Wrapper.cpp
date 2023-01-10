@@ -186,6 +186,7 @@ uint64_t DHT_Wrapper::getEvictions() { return this->dht_evictions; }
 
 std::vector<DHT_Keyelement> DHT_Wrapper::fuzzForDHT(int var_count, void *key,
                                                     double dt) {
+  constexpr double zero_val = 10E-14;
 
   std::vector<DHT_Keyelement> vecFuzz(var_count);
   std::memset(&vecFuzz[0], 0, sizeof(DHT_Keyelement) * var_count);
@@ -196,6 +197,12 @@ std::vector<DHT_Keyelement> DHT_Wrapper::fuzzForDHT(int var_count, void *key,
   for (i = 0; i < (unsigned int)var_count; i++) {
     double &curr_key = ((double *)key)[i];
     if (curr_key != 0) {
+      if (curr_key < zero_val && this->dht_prop_type_vector[i] == "act") {
+        continue;
+      }
+      if (this->dht_prop_type_vector[i] == "ignore") {
+        continue;
+      }
       vecFuzz[i] = round_key_element(curr_key, dht_signif_vector[i]);
     }
   }
