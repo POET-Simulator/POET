@@ -1,5 +1,5 @@
-database <- normalizePath("../data/phreeqc_kin.dat")
-input_script <- normalizePath("../data/dol.pqi")
+database <- normalizePath("../share/poet/examples/phreeqc_kin.dat")
+input_script <- normalizePath("../share/poet/examples/dol.pqi")
 
 #################################################################
 ##                          Section 1                          ##

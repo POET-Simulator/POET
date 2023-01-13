@@ -1,7 +1,7 @@
 ## Time-stamp: "Last modified 2023-01-10 13:51:40 delucia"
 
-database <- normalizePath("../data/phreeqc_kin.dat")
-input_script <- normalizePath("./dolo_inner.pqi")
+database <- normalizePath("../share/poet/examples/phreeqc_kin.dat")
+input_script <- normalizePath("../share/poet/bench/dolo_inner.pqi")
 
 #################################################################
 ##                          Section 1                          ##
