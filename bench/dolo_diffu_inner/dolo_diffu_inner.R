@@ -117,9 +117,9 @@ diffusion <- list(
 
 
 ## # Needed when using DHT
-## signif_vector <- c(7, 7, 7, 7, 7, 7, 7, 5, 5)
-## prop_type <- c("act", "act", "act", "act", "logact", "logact", "ignore", "act", "act")
-## prop <- names(init_cell)
+signif_vector <- c(10, 10, 2, 5, 5, 5, 5, 0, 5, 5)
+prop_type <- c("", "", "", "act", "act", "act", "act", "ignore", "", "")
+prop <- names(init_cell)
 
 chemistry <- list(
   database = database,
