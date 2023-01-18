@@ -66,7 +66,8 @@ void poet::PhreeqcWrapper::SetupAndLoadDB(
 
 void poet::PhreeqcWrapper::InitFromFile(const std::string &strInputFile) {
   this->RunFile(true, true, false, strInputFile);
-  this->RunString(true, false, true, "DELETE; -all");
+  // MDL: this is run only by the workers
+  this->RunString(true, false, true, "DELETE; -all; PRINT; -warnings 0;");
 
   this->FindComponents();
 

@@ -1,6 +1,6 @@
 ## Simple library of functions to assess and visualize the results of the coupled simulations
 
-## Time-stamp: "Last modified 2022-12-16 17:38:12 delucia"
+## Time-stamp: "Last modified 2023-01-17 19:12:13 delucia"
 
 require(RedModRphree)
 require(Rmufits)  ## essentially for PlotCartCellData 
@@ -24,7 +24,7 @@ ReadRTSims <- function(dir) {
 }
 
 ## function which reads all successive DHT stored in a given directory
-ReadAllDHT <- function(dir, new_scheme = T) {
+ReadAllDHT <- function(dir, new_scheme = TRUE) {
     files_full <- list.files(dir, pattern="iter.*dht", full.names=TRUE)
     files_name <- list.files(dir, pattern="iter.*dht", full.names=FALSE)
     res <- lapply(files_full, ReadDHT, new_scheme = new_scheme)
@@ -33,7 +33,7 @@ ReadAllDHT <- function(dir, new_scheme = T) {
 }
 
 ## function which reads one .dht file and gives a matrix
-ReadDHT <- function(file, new_scheme = T) {
+ReadDHT <- function(file, new_scheme = TRUE) {
     conn <- file(file, "rb")  ## open for reading in binary mode
     if (!isSeekable(conn))
         stop("Connection not seekable")
@@ -91,27 +91,27 @@ PlotScatter <- function(sam1, sam2, which=NULL, labs=c("NO DHT", "DHT"), pch="."
 ##### Some metrics for relative comparison
 
 ## Using range as norm
-RranRMSE <- function (pred, obs)
+RranRMSE <- function(pred, obs)
     sqrt(mean((pred - obs)^2))/abs(max(pred) - min(pred))
 
 ## Using max val as norm
-RmaxRMSE <- function (pred, obs)
+RmaxRMSE <- function(pred, obs)
     sqrt(mean((pred - obs)^2)/abs(max(pred)))
 
 ## Using sd as norm
-RsdRMSE <- function (pred, obs)
+RsdRMSE <- function(pred, obs)
     sqrt(mean((pred - obs)^2))/sd(pred)
 
 ## Using mean as norm
-RmeanRMSE <- function (pred, obs)
+RmeanRMSE <- function(pred, obs)
     sqrt(mean((pred - obs)^2))/mean(pred)
 
 ## Using mean as norm
-RAEmax <- function (pred, obs)
+RAEmax <- function(pred, obs)
     mean(abs(pred - obs))/max(pred)
 
 ## Max absolute error
-MAE <- function (pred, obs)
+MAE <- function(pred, obs)
     max(abs(pred - obs))
 
 ## workhorse function for ComputeErrors and its use with mapply
