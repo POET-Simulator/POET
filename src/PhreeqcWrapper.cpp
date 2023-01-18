@@ -52,7 +52,7 @@ void poet::PhreeqcWrapper::SetupAndLoadDB(
 
   // Set initial porosity
   std::vector<double> por;
-  por.resize(this->iWPSize, 0.05);
+  por.resize(this->iWPSize, 1);
   this->SetPorosity(por);
 
   // Set initial saturation
