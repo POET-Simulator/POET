@@ -1,5 +1,5 @@
 <!--
-    Time-stamp: "Last modified 2021-02-08 13:46:00 mluebke"
+    Time-stamp: "Last modified 2023-01-19 12:06:10 delucia"
 -->
 
 **Po**tsdamer **R**eactive **T**ransport
@@ -7,7 +7,12 @@
 
 # Forked Project
 
-PORT is a fork of [POET](https://doi.org/10.5281/zenodo.4757913) integrating a standalone component for transport computations and leveraging PHREEQC_RM as geochemical solver. The following README is also applicable for this project.
+*PORT* is a fork of [POET](https://doi.org/10.5281/zenodo.4757913)
+integrating a standalone component for transport computations and
+leveraging PHREEQC_RM as geochemical solver. The following README is
+also applicable for this project.
+
+![PORT's Coupling Scheme](./docs/20221216_Scheme_PORT_en.svg)
 
 # POET
 
@@ -31,9 +36,11 @@ To compile POET you need several software to be installed:
 - R language and environment
 - CMake 3.9+
 
-If you want to build documentation during compilation, `doxygen`and `graphviz` must be provided too.
+If you want to build documentation during compilation, `doxygen`and
+`graphviz` must be provided too.
 
-The following R libraries must then be installed, which will get the needed dependencies automatically:
+The following R libraries must then be installed, which will get the
+needed dependencies automatically:
 
 - [devtools](https://www.r-project.org/nosvn/pandoc/devtools.html)
 - [Rcpp](https://cran.r-project.org/web/packages/Rcpp/index.html)
@@ -43,17 +50,21 @@ The following R libraries must then be installed, which will get the needed depe
 
 ### Compiling source code
 
-The generation of makefiles is done with CMake. If you obtained POET from git, you should be able to generate Makefiles by running
+The generation of makefiles is done with CMake. If you obtained POET
+from git, you should be able to generate Makefiles by running
 
 ```sh
 mkdir build && cd build
 cmake ..
 ```
 
-This will create the directory `build` and processes the CMake files and generate Makefiles from it. You're now able to run `make` to start build
-process.
+This will create the directory `build` and processes the CMake files
+and generate Makefiles from it. You're now able to run `make` to start
+build process.
 
-If POET was obtained from the official SVN repository or the redmine at <https://redmine.cs.uni-potsdam.de/projects/poet> the branch or tag to be used have to be set via
+If POET was obtained from the official SVN repository or the redmine
+at <https://redmine.cs.uni-potsdam.de/projects/poet> the branch or tag
+to be used have to be set via
 
 ```sh
 mkdir build && cd build
@@ -64,20 +75,26 @@ where currently available branches/tags are:
 
 - dev
 
-If everything went well you'll find the executable at `build/src/poet`, but it is recommended to install the POET project structure to a desired `CMAKE_INSTALL_PREFIX` with `make install`.
+If everything went well you'll find the executable at
+`build/src/poet`, but it is recommended to install the POET project
+structure to a desired `CMAKE_INSTALL_PREFIX` with `make install`.
 
-During the generation of Makefiles, various options can be specified via `cmake -D <option>=<value> [...]`. Currently there are the following available options:
+During the generation of Makefiles, various options can be specified
+via `cmake -D <option>=<value> [...]`. Currently there are the
+following available options:
 
-- **DHT_Debug**=_boolean_ - toggles the output of detailed statistics about DHT
-  usage (`cmake -D DHT_Debug=ON`). Defaults to _OFF_.
-- **BUILD_DOC**=_boolean_ - toggles the generation of documantiation during
-  compilation process. Defaults to _ON_.
-- _only from svn version:_ **POET_SET_BRANCH**=_string_ - set branch or tag whose code is used
+- **DHT_Debug**=_boolean_ - toggles the output of detailed statistics
+  about DHT usage (`cmake -D DHT_Debug=ON`). Defaults to _OFF_.
+- **BUILD_DOC**=_boolean_ - toggles the generation of documantiation
+  during compilation process. Defaults to _ON_.
+- _only from svn version:_ **POET_SET_BRANCH**=_string_ - set branch
+  or tag whose code is used
 
 ### Example: Build from scratch
 
-Assuming that only the C/C++ compiler, MPI libraries, R runtime environment and
-CMake have been installed, POET can be installed as follows:
+Assuming that only the C/C++ compiler, MPI libraries, R runtime
+environment and CMake have been installed, POET can be installed as
+follows:
 
 ```sh
 # start R environment
@@ -99,9 +116,10 @@ $ make -j<max_numprocs>
 $ make install
 ```
 
-This will install a POET project structure into `/home/<user>/poet` which is
-called hereinafter `<POET_INSTALL_DIR>`. With this version of POET we **do not
-recommend** to install to hierarchies like `/usr/local/` etc.
+This will install a POET project structure into `/home/<user>/poet`
+which is called hereinafter `<POET_INSTALL_DIR>`. With this version of
+POET we **do not recommend** to install to hierarchies like
+`/usr/local/` etc.
 
 The correspondending directory tree would look like this:
 
@@ -122,21 +140,23 @@ The correspondending directory tree would look like this:
 ```
 
 The R libraries will be loaded at runtime and the paths are hardcoded
-absolute paths inside `poet.cpp`. So, if you consider to move `bin/poet` either
-change paths of the R source files and recompile POET or also move `R_lib/*`
-according to the binary.
+absolute paths inside `poet.cpp`. So, if you consider to move
+`bin/poet` either change paths of the R source files and recompile
+POET or also move `R_lib/*` according to the binary.
 
-To display the generated html documentation just open `docs/html/index.html`
-with the browser of your choice.
+To display the generated html documentation just open
+`docs/html/index.html` with the browser of your choice.
 
 ## Running
 
-Before POET is ready to run, a working directory must be created. In this
-directory you should find the executable file, the R scripts
-`<POET_ROOT>/R_lib/kin_r_library.R` and `<POET_ROOT>/R_lib/parallel_r_library.R`
-and the simulation description e.g. `<POET_ROOT>/data/chem_problems/SimDol2D.R`.
+Before POET is ready to run, a working directory must be created. In
+this directory you should find the executable file, the R scripts
+`<POET_ROOT>/R_lib/kin_r_library.R` and
+`<POET_ROOT>/R_lib/parallel_r_library.R` and the simulation
+description e.g. `<POET_ROOT>/data/chem_problems/SimDol2D.R`.
 
-Run POET by `mpirun ./poet <OPTIONS> <SIMFILE> <OUTPUT_DIRECTORY>` where:
+Run POET by `mpirun ./poet <OPTIONS> <SIMFILE> <OUTPUT_DIRECTORY>`
+where:
 
 - **OPTIONS** - runtime parameters (explained below)
 - **SIMFILE** - simulation described as R script (currently supported:
@@ -161,8 +181,8 @@ The following parameters can be set:
 
 #### Additions to `dht-signif`
 
-Only used if no vector is given in setup file. For individual values per column
-use R vector `signif_vector` in `SIMFILE`.
+Only used if no vector is given in setup file. For individual values
+per column use R vector `signif_vector` in `SIMFILE`.
 
 #### Additions to `dht-snaps`
 
@@ -176,22 +196,24 @@ Following values can be set:
 
 ### Example: Running from scratch
 
-We will continue the above example and start a simulation with `SimDol2D.R`,
-which is the only simulation supported at this moment. The required flow velocities 
-snapshots are included in the R package Rmufits. It's a 2D, 50x50 grid, with 20 time 
-steps. To start the simulation with 4 processes `cd` into your previously installed 
+We will continue the above example and start a simulation with
+`SimDol2D.R`, which is the only simulation supported at this moment.
+The required flow velocities snapshots are included in the R package
+Rmufits. It's a 2D, 50x50 grid, with 20 time steps. To start the
+simulation with 4 processes `cd` into your previously installed
 POET-dir `<POET_INSTALL_DIR>/bin` and run:
 
 ```sh
 mpirun -n 4 ./poet ../data/SimDol2D.R output
 ```
 
-After a finished simulation all data generated by POET will be found in the
-directory `output`.
+After a finished simulation all data generated by POET will be found
+in the directory `output`.
 
 You might want to use the DHT to cache previously simulated data and
-reuse them in further time-steps. Just append `--dht` to the options of POET to
-activate the usage of the DHT. The resulting call would look like this:
+reuse them in further time-steps. Just append `--dht` to the options
+of POET to activate the usage of the DHT. The resulting call would
+look like this:
 
 ```sh
 mpirun -n 4 ./poet --dht SimDol2D.R output
@@ -199,9 +221,9 @@ mpirun -n 4 ./poet --dht SimDol2D.R output
 
 ## About the usage of MPI_Wtime()
 
-Implemented time measurement functions uses `MPI_Wtime()`. Some important
-information from the OpenMPI Man Page:
+Implemented time measurement functions uses `MPI_Wtime()`. Some
+important information from the OpenMPI Man Page:
 
-For example, on platforms that support it, the clock_gettime() function will be
-used to obtain a monotonic clock value with whatever precision is supported on
-that platform (e.g., nanoseconds).
+For example, on platforms that support it, the clock_gettime()
+function will be used to obtain a monotonic clock value with whatever
+precision is supported on that platform (e.g., nanoseconds).

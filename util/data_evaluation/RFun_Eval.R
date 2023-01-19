@@ -1,13 +1,15 @@
 ## Simple library of functions to assess and visualize the results of the coupled simulations
 
-## Time-stamp: "Last modified 2023-01-17 19:12:13 delucia"
+## Time-stamp: "Last modified 2023-01-18 16:02:58 delucia"
 
 require(RedModRphree)
 require(Rmufits)  ## essentially for PlotCartCellData 
-
 require(Rcpp)
 
-sourceCpp(file = "./interpret_keys.cpp")
+curdir <- dirname(sys.frame(1)$ofile) ##path.expand(".")
+
+print(paste("RFun_Eval.R is in ", curdir))
+sourceCpp(file = paste0(curdir, "/interpret_keys.cpp"))
 
 # Wrapper around previous sourced Rcpp function
 ConvertDHTKey <- function(value) {
