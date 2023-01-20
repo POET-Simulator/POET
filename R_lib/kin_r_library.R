@@ -264,3 +264,8 @@ StoreSetup <- function(setup) {
   saveRDS(to_store, file = paste0(fileout, "/setup.rds"))
   msgm("initialization stored in ", paste0(fileout, "/setup.rds"))
 }
+
+GetWorkPackageSizesVector <- function(n_packages, package_size, len) {
+  ids <- rep(1:n_packages, times=package_size, each = 1)[1:len]
+  return(as.integer(table(ids)))
+}
