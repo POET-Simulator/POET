@@ -46,9 +46,31 @@ inline DHT_Keyelement round_key_element(double value, std::uint32_t signif) {
   return elem;
 }
 
+void poet::DHT_ResultObject::ResultsToMapping(
+    std::vector<int32_t> &curr_mapping) {
+  uint32_t iMappingIndex = 0;
+  for (uint32_t i = 0; i < this->length; i++) {
+    if (curr_mapping[i] == -1) {
+      continue;
+    }
+    curr_mapping[i] = (this->needPhreeqc[i] ? iMappingIndex++ : -1);
+  }
+}
+
+void poet::DHT_ResultObject::ResultsToWP(std::vector<double> &curr_wp) {
+  for (uint32_t i = 0; i < this->length; i++) {
+    if (!this->needPhreeqc[i]) {
+      const uint32_t length = this->results[i].end() - this->results[i].begin();
+      std::copy(this->results[i].begin(), this->results[i].end(),
+                curr_wp.begin() + (length * i));
+    }
+  }
+}
+
 DHT_Wrapper::DHT_Wrapper(const poet::SimParams &params, MPI_Comm dht_comm,
                          uint32_t dht_size, uint32_t key_count,
-                         uint32_t data_count) {
+                         uint32_t data_count)
+    : key_count(key_count), data_count(data_count) {
   poet::initHashCtx(EVP_md5());
   // initialize DHT object
   uint32_t key_size = key_count * sizeof(DHT_Keyelement);
@@ -74,77 +96,61 @@ DHT_Wrapper::~DHT_Wrapper() {
   free(fuzzing_buffer);
   poet::freeHashCtx();
 }
+auto DHT_Wrapper::checkDHT(int length, double dt,
+                           const std::vector<double> &work_package)
+    -> poet::DHT_ResultObject {
 
-auto DHT_Wrapper::checkDHT(int length, std::vector<bool> &out_result_index,
-                           const std::vector<double> &work_package, double dt)
-    -> std::vector<std::vector<double>> {
-  void *key;
-  int res;
-  // var count -> count of variables per grid cell
-  int var_count = dht_prop_type_vector.size();
-  std::vector<std::vector<double>> data(length);
+  DHT_ResultObject check_data;
+
+  check_data.length = length;
+  check_data.keys.resize(length);
+  check_data.results.resize(length);
+  check_data.needPhreeqc.resize(length);
+
   // loop over every grid cell contained in work package
   for (int i = 0; i < length; i++) {
     // point to current grid cell
-    key = (void *)&(work_package[i * var_count]);
-    data[i].resize(dht_prop_type_vector.size());
+    void *key = (void *)&(work_package[i * this->key_count]);
+    auto &data = check_data.results[i];
+    auto &key_vector = check_data.keys[i];
 
-    // fuzz data (round, logarithm etc.)
-    auto vecFuzz = fuzzForDHT(var_count, key, dt);
+    data.resize(this->data_count);
+    key_vector = fuzzForDHT(this->key_count, key, dt);
 
     // overwrite input with data from DHT, IF value is found in DHT
-    res = DHT_read(dht_object, vecFuzz.data(), data[i].data());
+    int res = DHT_read(this->dht_object, key_vector.data(), data.data());
 
-    // if DHT_SUCCESS value was found ...
-    if (res == DHT_SUCCESS) {
-      // ... and grid cell will be marked as 'not to be simulating'
-      out_result_index[i] = false;
-      dht_hits++;
-    }
-    // ... otherwise ...
-    else if (res == DHT_READ_MISS) {
-      // grid cell needs to be simulated by PHREEQC
-      dht_miss++;
-    } else {
-      // MPI ERROR ... WHAT TO DO NOW?
-      // RUNNING CIRCLES WHILE SCREAMING
+    switch (res) {
+    case DHT_SUCCESS:
+      check_data.needPhreeqc[i] = false;
+      this->dht_hits++;
+      break;
+    case DHT_READ_MISS:
+      check_data.needPhreeqc[i] = true;
+      this->dht_miss++;
+      break;
     }
   }
 
-  return data;
+  return check_data;
 }
 
-void DHT_Wrapper::fillDHT(int length, const std::vector<bool> &result_index,
-                          const std::vector<double> &work_package,
-                          const std::vector<double> &results, double dt) {
-  void *key;
-  void *data;
-  int res;
-  // var count -> count of variables per grid cell
-  int var_count = dht_prop_type_vector.size();
+void DHT_Wrapper::fillDHT(int length, const DHT_ResultObject &dht_check_data,
+                          const std::vector<double> &results) {
   // loop over every grid cell contained in work package
   for (int i = 0; i < length; i++) {
-    key = (void *)&(work_package[i * var_count]);
-    data = (void *)&(results[i * var_count]);
-
     // If true grid cell was simulated, needs to be inserted into dht
-    if (result_index[i]) {
+    if (dht_check_data.needPhreeqc[i]) {
+      const auto &key = dht_check_data.keys[i];
+      void *data = (void *)&(results[i * this->data_count]);
       // fuzz data (round, logarithm etc.)
-      auto vecFuzz = fuzzForDHT(var_count, key, dt);
 
       // insert simulated data with fuzzed key into DHT
-      res = DHT_write(dht_object, vecFuzz.data(), data);
+      int res = DHT_write(this->dht_object, (void *)key.data(), data);
 
       // if data was successfully written ...
-      if (res != DHT_SUCCESS) {
-        // ... also check if a previously written value was evicted
-        if (res == DHT_WRITE_SUCCESS_WITH_EVICTION) {
-          // and increment internal eviciton counter
-          dht_evictions++;
-        } else {
-          // MPI ERROR ... WHAT TO DO NOW?
-          // RUNNING CIRCLES WHILE SCREAMING
-        }
+      if ((res != DHT_SUCCESS) && (res == DHT_WRITE_SUCCESS_WITH_EVICTION)) {
+        dht_evictions++;
       }
     }
   }

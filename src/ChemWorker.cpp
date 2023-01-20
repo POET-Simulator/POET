@@ -173,11 +173,9 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   std::vector<double> vecCurrWP(
       mpi_buffer,
       mpi_buffer + (local_work_package_size * this->prop_names.size()));
-  std::vector<double> vecDHTKeys = vecCurrWP;
-
   std::vector<int32_t> vecMappingWP(this->wp_size);
-  std::vector<std::vector<double>> vecDHTResults;
-  std::vector<bool> vecNeedPhreeqc(this->wp_size, true);
+
+  DHT_ResultObject DHT_Results;
 
   for (uint32_t i = 0; i < local_work_package_size; i++) {
     vecMappingWP[i] = i;
@@ -197,19 +195,10 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   if (dht_enabled) {
     /* check for values in DHT */
     dht_get_start = MPI_Wtime();
-    // vecDHTKeys = this->phreeqc_rm->ReplaceTotalsByPotentials(
-    //     vecCurrWP, local_work_package_size);
-    vecDHTResults =
-        dht->checkDHT(local_work_package_size, vecNeedPhreeqc, vecDHTKeys, dt);
+    DHT_Results = dht->checkDHT(local_work_package_size, dt, vecCurrWP);
     dht_get_end = MPI_Wtime();
 
-    uint32_t iMappingIndex = 0;
-    for (uint32_t i = 0; i < local_work_package_size; i++) {
-      if (vecMappingWP[i] == -1) {
-        continue;
-      }
-      vecMappingWP[i] = (vecNeedPhreeqc[i] ? iMappingIndex++ : -1);
-    }
+    DHT_Results.ResultsToMapping(vecMappingWP);
   }
 
   phreeqc_time_start = MPI_Wtime();
@@ -218,12 +207,7 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   phreeqc_time_end = MPI_Wtime();
 
   if (dht_enabled) {
-    for (uint32_t i = 0; i < local_work_package_size; i++) {
-      if (!vecNeedPhreeqc[i]) {
-        std::copy(vecDHTResults[i].begin(), vecDHTResults[i].end(),
-                  vecCurrWP.begin() + (this->prop_names.size() * i));
-      }
-    }
+    DHT_Results.ResultsToWP(vecCurrWP);
   }
 
   /* send results to master */
@@ -234,8 +218,7 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   if (dht_enabled) {
     /* write results to DHT */
     dht_fill_start = MPI_Wtime();
-    dht->fillDHT(local_work_package_size, vecNeedPhreeqc, vecDHTKeys, vecCurrWP,
-                 dt);
+    dht->fillDHT(local_work_package_size, DHT_Results, vecCurrWP);
     dht_fill_end = MPI_Wtime();
 
     timing[1] += dht_get_end - dht_get_start;

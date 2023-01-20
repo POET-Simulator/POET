@@ -40,6 +40,16 @@ using DHT_Keyelement = struct keyelem {
   std::int64_t significant : 56;
 };
 
+using DHT_ResultObject = struct DHTResobj {
+  uint32_t length;
+  std::vector<std::vector<DHT_Keyelement>> keys;
+  std::vector<std::vector<double>> results;
+  std::vector<bool> needPhreeqc;
+
+  void ResultsToMapping(std::vector<int32_t>  &curr_mapping);
+  void ResultsToWP(std::vector<double> &curr_wp);
+};
+
 /**
  * @brief Return user-defined md5sum
  *
@@ -105,9 +115,8 @@ public:
    * @param[in,out] work_package Pointer to current work package
    * @param dt Current timestep of simulation
    */
-  auto checkDHT(int length, std::vector<bool> &out_result_index,
-                const std::vector<double> &work_package, double dt)
-      -> std::vector<std::vector<double>>;
+  auto checkDHT(int length, double dt, const std::vector<double> &work_package)
+      -> poet::DHT_ResultObject;
 
   /**
    * @brief Write simulated values into DHT
@@ -125,9 +134,8 @@ public:
    * outputs of the PHREEQC simulation
    * @param dt Current timestep of simulation
    */
-  void fillDHT(int length, const std::vector<bool> &result_index,
-               const std::vector<double> &work_package,
-               const std::vector<double> &results, double dt);
+  void fillDHT(int length, const DHT_ResultObject &dht_check_data,
+               const std::vector<double> &results);
 
   /**
    * @brief Dump current DHT state into file.
@@ -182,6 +190,9 @@ public:
   uint64_t getEvictions();
 
 private:
+  uint32_t key_count;
+  uint32_t data_count;
+
   /**
    * @brief Transform given workpackage into DHT key
    *
