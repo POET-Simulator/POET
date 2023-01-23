@@ -89,7 +89,6 @@ public:
       -> std::vector<double>;
 
 private:
-  // auto InitPhreeqc(const poet::GridParams &params) -> PhreeqcRM *;
 
   std::uint8_t dim = 0;
   std::array<double, MAX_DIM> grid_size;
@@ -99,8 +98,6 @@ private:
   StateMemory *grid_init = std::nullptr_t();
 
   std::vector<std::string> prop_names;
-
-  // PhreeqcRM *phreeqc_rm = std::nullptr_t();
 };
 } // namespace poet
 #endif // GRID_H
