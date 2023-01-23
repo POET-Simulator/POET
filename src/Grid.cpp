@@ -101,6 +101,36 @@ void poet::Grid::SetPropNames(const std::vector<std::string> &prop_names) {
   this->prop_names = prop_names;
 }
 
+void poet::Grid::PushbackModuleFlow(const std::string &input,
+                                    const std::string &output) {
+  FlowInputOutputInfo element = {input, output};
+  this->flow_vec.push_back(element);
+}
+
+void poet::Grid::PreModuleFieldCopy(uint32_t tick) {
+  FlowInputOutputInfo curr_element = this->flow_vec.at(tick);
+
+  const std::string input_module_name = curr_element.input_field;
+  StateMemory *out_state = this->GetStatePointer(curr_element.output_field);
+
+  std::vector<std::string> &mod_props = out_state->props;
+  std::vector<double> &mod_field = out_state->mem;
+
+  // copy output of another module  as input for another module
+  for (uint32_t i = 0; i < mod_props.size(); i++) {
+    try {
+      std::vector<double> t_prop_vec =
+          this->GetSpeciesByName(mod_props[i], input_module_name);
+
+      std::copy(t_prop_vec.begin(), t_prop_vec.end(),
+                mod_field.begin() + (i * this->GetTotalCellCount()));
+    } catch (...) {
+      // TODO: there might be something wrong ...
+      continue;
+    }
+  }
+}
+
 Grid::Grid() {
   this->n_cells.fill(0);
   this->grid_size.fill(0);
@@ -110,9 +140,6 @@ Grid::~Grid() {
   for (auto &[key, val] : this->state_register) {
     delete val;
   }
-  // if (this->phreeqc_rm != nullptr) {
-  //   delete this->phreeqc_rm;
-  // }
 }
 
 void poet::Grid::InitGridFromScratch(const Rcpp::DataFrame &init_cell) {
@@ -168,20 +195,6 @@ poet::StateMemory *Grid::GetStatePointer(std::string module_name) {
   return it->second;
 }
 
-// void Grid::DeregisterState(std::string module_name) {
-//   const auto it = this->state_register.find(module_name);
-
-//   if (it == this->state_register.end()) {
-//     throw std::range_error(
-//         std::string("Requested module " + module_name + " was not found"));
-//   }
-
-//   auto *p = it->second;
-//   delete p;
-
-//   this->state_register.erase(it);
-// }
-
 auto Grid::GetGridSize(uint8_t direction) const -> uint32_t {
   return this->grid_size.at(direction);
 }
@@ -217,20 +230,6 @@ auto poet::Grid::GetSpeciesByName(std::string name,
                                   std::string module_name) const
     -> std::vector<double> {
 
-  // if module name references to initial grid
-  // if (module_name == poet::GRID_MODULE_NAME) {
-  //   auto const it = this->grid_init.find(name);
-
-  //   if (it == this->grid_init.end()) {
-  //     throw std::range_error(
-  //         std::string("Species " + name + " was not found for initial
-  //         grid"));
-  //   }
-
-  //   return it->second;
-  // }
-
-  // else find module with name
   auto const it = this->state_register.find(module_name);
 
   if (it == this->state_register.end()) {
@@ -254,53 +253,3 @@ auto poet::Grid::GetSpeciesByName(std::string name,
   return std::vector<double>(module_memory->mem.begin() + begin_vec,
                              module_memory->mem.begin() + end_vec);
 }
-
-// PhreeqcRM *poet::Grid::InitPhreeqc(const poet::GridParams &params) {
-//   PhreeqcRM *chem_model = new PhreeqcRM(this->GetTotalCellCount(), 1);
-
-//   // FIXME: hardcoded options ...
-//   chem_model->SetErrorHandlerMode(1);
-//   chem_model->SetComponentH2O(false);
-//   chem_model->SetRebalanceFraction(0.5);
-//   chem_model->SetRebalanceByCell(true);
-//   chem_model->UseSolutionDensityVolume(false);
-//   chem_model->SetPartitionUZSolids(false);
-
-//   // Set concentration units
-//   // 1, mg/L; 2, mol/L; 3, kg/kgs
-//   chem_model->SetUnitsSolution(2);
-//   // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
-//   chem_model->SetUnitsPPassemblage(1);
-//   // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
-//   chem_model->SetUnitsExchange(1);
-//   // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
-//   chem_model->SetUnitsSurface(1);
-//   // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
-//   chem_model->SetUnitsGasPhase(1);
-//   // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
-//   chem_model->SetUnitsSSassemblage(1);
-//   // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
-//   chem_model->SetUnitsKinetics(1);
-
-//   // Set representative volume
-//   std::vector<double> rv;
-//   rv.resize(this->GetTotalCellCount(), 1.0);
-//   chem_model->SetRepresentativeVolume(rv);
-
-//   // Set initial porosity
-//   std::vector<double> por;
-//   por.resize(this->GetTotalCellCount(), 0.05);
-//   chem_model->SetPorosity(por);
-
-//   // Set initial saturation
-//   std::vector<double> sat;
-//   sat.resize(this->GetTotalCellCount(), 1.0);
-//   chem_model->SetSaturation(sat);
-
-//   // Load database
-//   chem_model->LoadDatabase(params.database_path);
-//   chem_model->RunFile(true, true, true, params.input_script);
-//   chem_model->RunString(true, false, true, "DELETE; -all");
-
-//   return chem_model;
-// }

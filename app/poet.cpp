@@ -56,6 +56,7 @@ inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
 
   double dStartTime = MPI_Wtime();
   for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
+    uint32_t tick = 0;
     // cout << "CPP: Evaluating next time step" << endl;
     // R.parseEvalQ("mysetup <- master_iteration_setup(mysetup)");
 
@@ -72,9 +73,12 @@ inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
     // TODO: transport to diffusion
     diffusion.simulate(dt);
 
+    grid.PreModuleFieldCopy(tick++);
+
     cout << "CPP: Chemistry" << endl;
 
     C.Simulate(dt);
+    grid.PreModuleFieldCopy(tick++);
 
     R["req_dt"] = dt;
     R["simtime"] = (sim_time += dt);
@@ -182,6 +186,10 @@ int main(int argc, char *argv[]) {
   Grid grid;
 
   grid.InitModuleFromParams(GridParams(R));
+  grid.PushbackModuleFlow(poet::DIFFUSION_MODULE_NAME,
+                          poet::BaseChemModule::CHEMISTRY_MODULE_NAME);
+  grid.PushbackModuleFlow(poet::BaseChemModule::CHEMISTRY_MODULE_NAME,
+                          poet::DIFFUSION_MODULE_NAME);
 
   params.initVectorParams(R, grid.GetSpeciesCount());
 

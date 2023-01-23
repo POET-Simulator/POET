@@ -103,18 +103,6 @@ void ChemMaster::Simulate(double dt) {
 
   std::vector<double> &field = this->state->mem;
 
-  for (uint32_t i = 0; i < this->prop_names.size(); i++) {
-    try {
-      std::vector<double> t_prop_vec = this->grid.GetSpeciesByName(
-          this->prop_names[i], poet::DIFFUSION_MODULE_NAME);
-
-      std::copy(t_prop_vec.begin(), t_prop_vec.end(),
-                field.begin() + (i * this->n_cells_per_prop));
-    } catch (...) {
-      continue;
-    }
-  }
-
   // HACK: transfer the field into R data structure serving as input for phreeqc
   R["TMP_T"] = field;
 
