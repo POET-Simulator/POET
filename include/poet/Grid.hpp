@@ -2,7 +2,7 @@
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
 **
-** Copyright (C) 2018-2022 Marco De Lucia, Max Luebke (GFZ Potsdam)
+** Copyright (C) 2018-2023 Marco De Lucia, Max Luebke (GFZ Potsdam)
 **
 ** POET is free software; you can redistribute it and/or modify it under the
 ** terms of the GNU General Public License as published by the Free Software
@@ -21,10 +21,10 @@
 #ifndef GRID_H
 #define GRID_H
 
-#include "PhreeqcRM.h"
 #include "poet/SimParams.hpp"
 #include <Rcpp.h>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -53,65 +53,54 @@ constexpr const char *GRID_MODULE_NAME = "grid_init";
  *
  */
 class Grid {
-private:
-  using prop_vec = std::vector<std::string>;
 
 public:
-  /**
-   * @brief Construct a new Grid object
-   *
-   * This will call the default constructor and initializes private RRuntime
-   * with given R runtime.
-   *
-   * @param R
-   */
-  Grid(poet::GridParams grid_args);
+  Grid();
 
   ~Grid();
-  /**
-   * @brief Init the grid
-   *
-   * At this moment init will only declare and define a variable inside the R
-   * runtime called grid_tmp since the whole Grid initialization and management
-   * is done by the R runtime. This may change in the future.
-   *
-   */
-  void init_from_R();
 
-  auto getGridDimension() -> uint8_t;
-  auto getTotalCellCount() -> uint32_t;
-  auto getGridCellsCount(uint8_t direction) -> uint32_t;
-  auto getDomainSize(uint8_t dircetion) -> uint32_t;
+  void InitModuleFromParams(const poet::GridParams &grid_args);
 
-  StateMemory *registerState(std::string module_name,
-                             std::vector<std::string> props);
-  StateMemory *getStatePointer(std::string module_name);
-  void deregisterState(std::string module_name);
+  void SetGridDimension(uint8_t dim);
+  void SetGridCellCount(uint32_t n_x, uint32_t n_y = 0, uint32_t n_z = 0);
+  void SetGridSize(double s_x, double s_y = 0., double s_z = 0.);
+  void SetPropNames(const std::vector<std::string> &prop_names);
 
-  auto getSpeciesCount() -> uint32_t;
-  auto getPropNames() -> prop_vec;
+  void InitGridFromScratch(const Rcpp::DataFrame &init_cell);
+  void InitGridFromRDS();
+  void InitGridFromPhreeqc();
 
-  auto getSpeciesByName(std::string name,
-                        std::string module_name = poet::GRID_MODULE_NAME)
+  auto GetGridDimension() const -> uint8_t;
+  auto GetTotalCellCount() const -> uint32_t;
+  auto GetGridCellsCount(uint8_t direction) const -> uint32_t;
+  auto GetGridSize(uint8_t direction) const -> uint32_t;
+
+  auto RegisterState(std::string module_name, std::vector<std::string> props)
+      -> StateMemory *;
+  auto GetStatePointer(std::string module_name) -> StateMemory *;
+
+  auto GetInitialGrid() const -> StateMemory *;
+
+  auto GetSpeciesCount() const -> uint32_t;
+  auto GetPropNames() const -> std::vector<std::string>;
+
+  auto GetSpeciesByName(std::string name,
+                        std::string module_name = poet::GRID_MODULE_NAME) const
       -> std::vector<double>;
 
 private:
-  PhreeqcRM *initPhreeqc(const poet::GridParams &params);
+  // auto InitPhreeqc(const poet::GridParams &params) -> PhreeqcRM *;
 
-  std::uint8_t dim;
-  std::array<std::uint32_t, MAX_DIM> d_spatial;
+  std::uint8_t dim = 0;
+  std::array<double, MAX_DIM> grid_size;
   std::array<std::uint32_t, MAX_DIM> n_cells;
 
   std::map<std::string, StateMemory *> state_register;
-  std::map<std::string, std::vector<double>> grid_init;
+  StateMemory *grid_init = std::nullptr_t();
 
-  prop_vec prop_names;
+  std::vector<std::string> prop_names;
 
-  PhreeqcRM *phreeqc_rm = std::nullptr_t();
-
-  void initFromPhreeqc(const poet::GridParams &grid_args);
-  void initFromRDS(const poet::GridParams &grid_args);
-  void initFromScratch(const poet::GridParams &grid_args);
+  // PhreeqcRM *phreeqc_rm = std::nullptr_t();
 };
 } // namespace poet
 #endif // GRID_H

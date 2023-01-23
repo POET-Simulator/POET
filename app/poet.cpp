@@ -179,11 +179,11 @@ int main(int argc, char *argv[]) {
 
   // TODO: Grid anpassen
 
-  GridParams grid_params = GridParams(R);
-  Grid grid(grid_params);
-  // grid.init_from_R();
+  Grid grid;
 
-  params.initVectorParams(R, grid.getSpeciesCount());
+  grid.InitModuleFromParams(GridParams(R));
+
+  params.initVectorParams(R, grid.GetSpeciesCount());
 
   // MDL: store all parameters
   if (world_rank == 0) {

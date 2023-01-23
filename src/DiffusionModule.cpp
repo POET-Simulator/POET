@@ -24,13 +24,11 @@
 #include <Rcpp.h>
 #include <algorithm>
 #include <cstdint>
-#include <ostream>
 #include <poet/ChemSimSeq.hpp>
 #include <poet/DiffusionModule.hpp>
 #include <poet/Grid.hpp>
 
 #include <array>
-#include <bits/stdint-uintn.h>
 #include <cassert>
 #include <mpi.h>
 #include <string>
@@ -58,14 +56,14 @@ inline const char *convert_bc_to_config_file(uint8_t in) {
 
 DiffusionModule::DiffusionModule(poet::DiffusionParams diffu_args, Grid &grid_)
     : grid(grid_) {
-  this->diff_input.setGridCellN(grid_.getGridCellsCount(GRID_X_DIR),
-                                grid_.getGridCellsCount(GRID_Y_DIR));
-  this->diff_input.setDomainSize(grid_.getDomainSize(GRID_X_DIR),
-                                 grid_.getDomainSize(GRID_Y_DIR));
+  this->diff_input.setGridCellN(grid_.GetGridCellsCount(GRID_X_DIR),
+                                grid_.GetGridCellsCount(GRID_Y_DIR));
+  this->diff_input.setDomainSize(grid_.GetGridSize(GRID_X_DIR),
+                                 grid_.GetGridSize(GRID_Y_DIR));
 
-  this->dim = grid_.getGridDimension();
+  this->dim = grid_.GetGridDimension();
 
-  this->n_cells_per_prop = grid_.getTotalCellCount();
+  this->n_cells_per_prop = grid_.GetTotalCellCount();
 
   this->initialize(diffu_args);
 }
@@ -78,7 +76,7 @@ void DiffusionModule::initialize(poet::DiffusionParams args) {
   this->prop_count = this->prop_names.size();
 
   this->state =
-      this->grid.registerState(DIFFUSION_MODULE_NAME, this->prop_names);
+      this->grid.RegisterState(DIFFUSION_MODULE_NAME, this->prop_names);
 
   std::vector<double> &field = this->state->mem;
 
@@ -91,15 +89,15 @@ void DiffusionModule::initialize(poet::DiffusionParams args) {
     // initial input
     this->alpha.push_back(args.alpha[this->prop_names[i]]);
 
-    std::vector<double> prop_vec = grid.getSpeciesByName(this->prop_names[i]);
+    std::vector<double> prop_vec = grid.GetSpeciesByName(this->prop_names[i]);
     std::copy(prop_vec.begin(), prop_vec.end(),
               field.begin() + (i * this->n_cells_per_prop));
     if (this->dim == this->DIM_2D) {
-      tug::bc::BoundaryCondition bc(this->grid.getGridCellsCount(GRID_X_DIR),
-                                    this->grid.getGridCellsCount(GRID_Y_DIR));
+      tug::bc::BoundaryCondition bc(this->grid.GetGridCellsCount(GRID_X_DIR),
+                                    this->grid.GetGridCellsCount(GRID_Y_DIR));
       this->bc_vec.push_back(bc);
     } else {
-      tug::bc::BoundaryCondition bc(this->grid.getGridCellsCount(GRID_X_DIR));
+      tug::bc::BoundaryCondition bc(this->grid.GetGridCellsCount(GRID_X_DIR));
       this->bc_vec.push_back(bc);
     }
   }
@@ -173,7 +171,7 @@ void DiffusionModule::simulate(double dt) {
   // module) as input for diffusion
   for (uint32_t i = 0; i < this->prop_names.size(); i++) {
     try {
-      std::vector<double> t_prop_vec = this->grid.getSpeciesByName(
+      std::vector<double> t_prop_vec = this->grid.GetSpeciesByName(
           this->prop_names[i], poet::BaseChemModule::CHEMISTRY_MODULE_NAME);
 
       std::copy(t_prop_vec.begin(), t_prop_vec.end(),

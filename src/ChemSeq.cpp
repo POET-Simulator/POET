@@ -37,14 +37,14 @@ using namespace poet;
 ChemSeq::ChemSeq(SimParams &params, RInside &R_, Grid &grid_)
     : BaseChemModule(params, R_, grid_) {
 
-  this->state = this->grid.registerState(
+  this->state = this->grid.RegisterState(
       poet::BaseChemModule::CHEMISTRY_MODULE_NAME, this->prop_names);
   std::vector<double> &field = this->state->mem;
 
   field.resize(this->n_cells_per_prop * this->prop_names.size());
   for (uint32_t i = 0; i < this->prop_names.size(); i++) {
     std::vector<double> prop_vec =
-        this->grid.getSpeciesByName(this->prop_names[i]);
+        this->grid.GetSpeciesByName(this->prop_names[i]);
 
     std::copy(prop_vec.begin(), prop_vec.end(),
               field.begin() + (i * this->n_cells_per_prop));
@@ -52,7 +52,6 @@ ChemSeq::ChemSeq(SimParams &params, RInside &R_, Grid &grid_)
 }
 
 poet::ChemSeq::~ChemSeq() {
-  this->grid.deregisterState(poet::BaseChemModule::CHEMISTRY_MODULE_NAME);
   if (this->phreeqc_rm) {
     delete this->phreeqc_rm;
   }
@@ -75,7 +74,7 @@ void ChemSeq::Simulate(double dt) {
 
   for (uint32_t i = 0; i < this->prop_names.size(); i++) {
     try {
-      std::vector<double> t_prop_vec = this->grid.getSpeciesByName(
+      std::vector<double> t_prop_vec = this->grid.GetSpeciesByName(
           this->prop_names[i], poet::DIFFUSION_MODULE_NAME);
 
       std::copy(t_prop_vec.begin(), t_prop_vec.end(),
