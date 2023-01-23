@@ -6,7 +6,7 @@ poet::BaseChemModule::BaseChemModule(SimParams &params, RInside &R_,
   t_simparams tmp = params.getNumParams();
   this->world_rank = tmp.world_rank;
   this->world_size = tmp.world_size;
-  this->prop_names = this->grid.getPropNames();
+  this->prop_names = this->grid.GetPropNames();
 
-  this->n_cells_per_prop = this->grid.getTotalCellCount();
+  this->n_cells_per_prop = this->grid.GetTotalCellCount();
 }

@@ -42,7 +42,7 @@ ChemMaster::ChemMaster(SimParams &params, RInside &R_, Grid &grid_)
   this->wp_size = tmp.wp_size;
   this->dht_enabled = tmp.dht_enabled;
 
-  uint32_t grid_size = grid.getTotalCellCount() * this->prop_names.size();
+  uint32_t grid_size = grid.GetTotalCellCount() * this->prop_names.size();
 
   /* allocate memory */
   this->workerlist = new worker_struct[this->world_size - 1];
@@ -52,8 +52,8 @@ ChemMaster::ChemMaster(SimParams &params, RInside &R_, Grid &grid_)
   this->mpi_buffer = new double[grid_size];
 
   /* calculate distribution of work packages */
-  uint32_t mod_pkgs = grid.getTotalCellCount() % this->wp_size;
-  uint32_t n_packages = (uint32_t)(grid.getTotalCellCount() / this->wp_size) +
+  uint32_t mod_pkgs = grid.GetTotalCellCount() % this->wp_size;
+  uint32_t n_packages = (uint32_t)(grid.GetTotalCellCount() / this->wp_size) +
                         (mod_pkgs != 0 ? 1 : 0);
 
   this->wp_sizes_vector = std::vector<uint32_t>(n_packages, this->wp_size);
@@ -64,14 +64,14 @@ ChemMaster::ChemMaster(SimParams &params, RInside &R_, Grid &grid_)
     }
   }
 
-  this->state = this->grid.registerState(
+  this->state = this->grid.RegisterState(
       poet::BaseChemModule::CHEMISTRY_MODULE_NAME, this->prop_names);
   std::vector<double> &field = this->state->mem;
 
   field.resize(this->n_cells_per_prop * this->prop_names.size());
   for (uint32_t i = 0; i < this->prop_names.size(); i++) {
     std::vector<double> prop_vec =
-        this->grid.getSpeciesByName(this->prop_names[i]);
+        this->grid.GetSpeciesByName(this->prop_names[i]);
 
     std::copy(prop_vec.begin(), prop_vec.end(),
               field.begin() + (i * this->n_cells_per_prop));
@@ -105,7 +105,7 @@ void ChemMaster::Simulate(double dt) {
 
   for (uint32_t i = 0; i < this->prop_names.size(); i++) {
     try {
-      std::vector<double> t_prop_vec = this->grid.getSpeciesByName(
+      std::vector<double> t_prop_vec = this->grid.GetSpeciesByName(
           this->prop_names[i], poet::DIFFUSION_MODULE_NAME);
 
       std::copy(t_prop_vec.begin(), t_prop_vec.end(),
@@ -233,7 +233,7 @@ inline void ChemMaster::sendPkgs(int &pkg_to_send, int &count_pkgs,
       workerlist[p].send_addr = work_pointer;
 
       /* push work pointer to next work package */
-      end_of_wp = local_work_package_size * grid.getSpeciesCount();
+      end_of_wp = local_work_package_size * grid.GetSpeciesCount();
       work_pointer = &(work_pointer[end_of_wp]);
 
       // fill send buffer starting with work_package ...
