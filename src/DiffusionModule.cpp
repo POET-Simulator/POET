@@ -167,21 +167,6 @@ void DiffusionModule::simulate(double dt) {
 
   std::vector<double> &curr_field = this->state->mem;
 
-  // copy output of another module (in this case there is only the chemistry
-  // module) as input for diffusion
-  for (uint32_t i = 0; i < this->prop_names.size(); i++) {
-    try {
-      std::vector<double> t_prop_vec = this->grid.GetSpeciesByName(
-          this->prop_names[i], poet::BaseChemModule::CHEMISTRY_MODULE_NAME);
-
-      std::copy(t_prop_vec.begin(), t_prop_vec.end(),
-                curr_field.begin() + (i * this->n_cells_per_prop));
-    } catch (...) {
-      // TODO: there might be something wrong ...
-      continue;
-    }
-  }
-
   this->diff_input.setTimestep(dt);
 
   double *field = curr_field.data();

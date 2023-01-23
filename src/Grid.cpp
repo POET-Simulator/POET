@@ -101,6 +101,36 @@ void poet::Grid::SetPropNames(const std::vector<std::string> &prop_names) {
   this->prop_names = prop_names;
 }
 
+void poet::Grid::PushbackModuleFlow(const std::string &input,
+                                    const std::string &output) {
+  FlowInputOutputInfo element = {input, output};
+  this->flow_vec.push_back(element);
+}
+
+void poet::Grid::PreModuleFieldCopy(uint32_t tick) {
+  FlowInputOutputInfo curr_element = this->flow_vec.at(tick);
+
+  const std::string input_module_name = curr_element.input_field;
+  StateMemory *out_state = this->GetStatePointer(curr_element.output_field);
+
+  std::vector<std::string> &mod_props = out_state->props;
+  std::vector<double> &mod_field = out_state->mem;
+
+  // copy output of another module  as input for another module
+  for (uint32_t i = 0; i < mod_props.size(); i++) {
+    try {
+      std::vector<double> t_prop_vec =
+          this->GetSpeciesByName(mod_props[i], input_module_name);
+
+      std::copy(t_prop_vec.begin(), t_prop_vec.end(),
+                mod_field.begin() + (i * this->GetTotalCellCount()));
+    } catch (...) {
+      // TODO: there might be something wrong ...
+      continue;
+    }
+  }
+}
+
 Grid::Grid() {
   this->n_cells.fill(0);
   this->grid_size.fill(0);

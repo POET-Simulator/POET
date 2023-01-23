@@ -26,6 +26,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <list>
 #include <map>
 #include <string>
 #include <vector>
@@ -39,6 +40,11 @@ enum { GRID_X_DIR, GRID_Y_DIR, GRID_Z_DIR };
 using StateMemory = struct s_StateMemory {
   std::vector<double> mem;
   std::vector<std::string> props;
+};
+
+using FlowInputOutputInfo = struct inOut_info {
+  std::string input_field;
+  std::string output_field;
 };
 
 constexpr const char *GRID_MODULE_NAME = "grid_init";
@@ -66,6 +72,9 @@ public:
   void SetGridSize(double s_x, double s_y = 0., double s_z = 0.);
   void SetPropNames(const std::vector<std::string> &prop_names);
 
+  void PushbackModuleFlow(const std::string &input, const std::string &output);
+  void PreModuleFieldCopy(uint32_t tick);
+
   void InitGridFromScratch(const Rcpp::DataFrame &init_cell);
   void InitGridFromRDS();
   void InitGridFromPhreeqc();
@@ -89,6 +98,7 @@ public:
       -> std::vector<double>;
 
 private:
+  std::vector<FlowInputOutputInfo> flow_vec;
 
   std::uint8_t dim = 0;
   std::array<double, MAX_DIM> grid_size;
