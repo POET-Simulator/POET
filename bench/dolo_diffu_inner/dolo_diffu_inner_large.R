@@ -28,7 +28,7 @@ init_cell <- list(
 
 grid <- list(
   n_cells = c(n, m),
-  s_cells = c(1, 1),
+  s_cells = c(2, 1),
   type = types[1],
   init_cell = as.data.frame(init_cell),
   props = names(init_cell),
@@ -88,7 +88,7 @@ vecinj_diffu <- list(
 
 vecinj_inner <- list(
   l1 = c(1,400,200),
-  l2 = c(2,1600,800),
+  l2 = c(2,1400,800),
   l3 = c(2,1600,800)
 )
 
@@ -132,8 +132,8 @@ chemistry <- list(
 #################################################################
 
 
-iterations <- 10
-dt <- 200
+iterations <- 500
+dt <- 50
 
 setup <- list(
   grid = grid,
