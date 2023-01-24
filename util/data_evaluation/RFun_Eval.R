@@ -1,10 +1,20 @@
 ## Simple library of functions to assess and visualize the results of the coupled simulations
 
-## Time-stamp: "Last modified 2022-12-15 11:30:55 delucia"
+## Time-stamp: "Last modified 2023-01-18 16:02:58 delucia"
 
 require(RedModRphree)
 require(Rmufits)  ## essentially for PlotCartCellData 
+require(Rcpp)
 
+curdir <- dirname(sys.frame(1)$ofile) ##path.expand(".")
+
+print(paste("RFun_Eval.R is in ", curdir))
+sourceCpp(file = paste0(curdir, "/interpret_keys.cpp"))
+
+# Wrapper around previous sourced Rcpp function
+ConvertDHTKey <- function(value) {
+  rcpp_key_convert(value)
+}
 
 ## function which reads all simulation results in a given directory
 ReadRTSims <- function(dir) {
@@ -16,16 +26,16 @@ ReadRTSims <- function(dir) {
 }
 
 ## function which reads all successive DHT stored in a given directory
-ReadAllDHT <- function(dir) {
+ReadAllDHT <- function(dir, new_scheme = TRUE) {
     files_full <- list.files(dir, pattern="iter.*dht", full.names=TRUE)
     files_name <- list.files(dir, pattern="iter.*dht", full.names=FALSE)
-    res <- lapply(files_full, ReadDHT)
+    res <- lapply(files_full, ReadDHT, new_scheme = new_scheme)
     names(res) <- gsub(".rds","",files_name, fixed=TRUE)
     return(res)
 }
 
 ## function which reads one .dht file and gives a matrix
-ReadDHT <- function(file) {
+ReadDHT <- function(file, new_scheme = TRUE) {
     conn <- file(file, "rb")  ## open for reading in binary mode
     if (!isSeekable(conn))
         stop("Connection not seekable")
@@ -46,6 +56,15 @@ ReadDHT <- function(file) {
     ## close connection
     close(conn)
     res <- matrix(buff, nrow=nrow, ncol=ncol, byrow=TRUE)
+
+    if (new_scheme) {
+      nkeys <- dims[1] / 8
+      keys <- res[, 1:nkeys]
+
+      conv <- apply(keys, 2, ConvertDHTKey)
+      res[, 1:nkeys] <- conv
+    }
+
     return(res)
 }
 
@@ -74,27 +93,27 @@ PlotScatter <- function(sam1, sam2, which=NULL, labs=c("NO DHT", "DHT"), pch="."
 ##### Some metrics for relative comparison
 
 ## Using range as norm
-RranRMSE <- function (pred, obs)
+RranRMSE <- function(pred, obs)
     sqrt(mean((pred - obs)^2))/abs(max(pred) - min(pred))
 
 ## Using max val as norm
-RmaxRMSE <- function (pred, obs)
+RmaxRMSE <- function(pred, obs)
     sqrt(mean((pred - obs)^2)/abs(max(pred)))
 
 ## Using sd as norm
-RsdRMSE <- function (pred, obs)
+RsdRMSE <- function(pred, obs)
     sqrt(mean((pred - obs)^2))/sd(pred)
 
 ## Using mean as norm
-RmeanRMSE <- function (pred, obs)
+RmeanRMSE <- function(pred, obs)
     sqrt(mean((pred - obs)^2))/mean(pred)
 
 ## Using mean as norm
-RAEmax <- function (pred, obs)
+RAEmax <- function(pred, obs)
     mean(abs(pred - obs))/max(pred)
 
 ## Max absolute error
-MAE <- function (pred, obs)
+MAE <- function(pred, obs)
     max(abs(pred - obs))
 
 ## workhorse function for ComputeErrors and its use with mapply
@@ -161,7 +180,7 @@ ExportToParaview <- function(vtu, nameout, results) {
 ## "breaks" for color coding of 2D simulations
 Plot2DCellData <- function (data, grid, nx, ny, contour = TRUE,
                             nlevels = 12, breaks, palette = "heat.colors",
-                            rev.palette = TRUE, scale = TRUE, ...) {
+                            rev.palette = TRUE, scale = TRUE, plot.axes=TRUE, ...) {
     if (!missing(grid)) {
         xc <- unique(sort(grid$cell$XCOORD))
         yc <- unique(sort(grid$cell$YCOORD))
@@ -190,11 +209,14 @@ Plot2DCellData <- function (data, grid, nx, ny, contour = TRUE,
             1))
     }
     par(las = 1, mar = c(5, 5, 3, 1))
-    image(xc, yc, pp, xlab = "X [m]", ylab = "Y[m]", las = 1, 
-        asp = 1, breaks = breaks, col = colors, axes = FALSE, 
-        ...)
-    axis(1)
-    axis(2)
+    image(xc, yc, pp, xlab = "X [m]", ylab = "Y[m]", las = 1, asp = 1,
+          breaks = breaks, col = colors, axes = FALSE, ann=plot.axes,
+          ...)
+
+    if (plot.axes) {
+        axis(1)
+        axis(2)
+    }
     if (contour) 
         contour(unique(sort(xc)), unique(sort(yc)), pp, breaks = breaks, 
             add = TRUE)

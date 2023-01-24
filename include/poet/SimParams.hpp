@@ -23,6 +23,7 @@
 
 #include <bits/stdint-uintn.h>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "argh.hpp" // Argument handler https://github.com/adishavit/argh
@@ -184,7 +185,7 @@ public:
    *
    * @return t_simparams Parameter struct
    */
-  t_simparams getNumParams();
+  t_simparams getNumParams() const;
 
   /**
    * @brief Get the DHT_Signif_Vector
@@ -195,7 +196,7 @@ public:
    * @return std::vector<int> Vector of integers containing information about
    * significant digits
    */
-  std::vector<int> getDHTSignifVector();
+  std::vector<int> getDHTSignifVector() const;
 
   /**
    * @brief Get the DHT_Prop_Type_Vector
@@ -205,7 +206,7 @@ public:
    * @return std::vector<std::string> Vector if strings defining a type of a
    * variable
    */
-  std::vector<std::string> getDHTPropTypeVector();
+  std::vector<std::string> getDHTPropTypeVector() const;
 
   /**
    * @brief Return name of DHT snapshot.
@@ -215,7 +216,7 @@ public:
    *
    * @return std::string Absolute paht to the DHT snapshot
    */
-  std::string getDHTFile();
+  std::string_view getDHTFile() const;
 
   /**
    * @brief Get the filesim name
@@ -225,7 +226,7 @@ public:
    *
    * @return std::string Absolute path to R file
    */
-  std::string getFilesim();
+  std::string_view getFilesim() const;
 
   /**
    * @brief Get the output directory
@@ -235,7 +236,7 @@ public:
    *
    * @return std::string Absolute path to output path
    */
-  std::string getOutDir();
+  std::string_view getOutDir() const;
 
 private:
   /**

@@ -23,6 +23,7 @@
 #include "tug/Diffusion.hpp"
 #include <Rcpp.h>
 #include <algorithm>
+#include <bits/stdint-intn.h>
 #include <cstdint>
 #include <poet/ChemSimSeq.hpp>
 #include <poet/DiffusionModule.hpp>
@@ -35,6 +36,8 @@
 #include <vector>
 
 using namespace poet;
+
+static constexpr double ZERO_MULTIPLICATOR = 10E-14;
 
 constexpr std::array<uint8_t, 4> borders = {
     tug::bc::BC_SIDE_LEFT, tug::bc::BC_SIDE_RIGHT, tug::bc::BC_SIDE_TOP,
@@ -180,6 +183,11 @@ void DiffusionModule::simulate(double dt) {
     } else {
       tug::diffusion::ADI_2D(this->diff_input, in_field, in_alpha.data());
     }
+
+    // TODO: do not use hardcoded index for O, H and charge
+    if (i > 2) {
+      this->RoundToZero(in_field, this->n_cells_per_prop);
+    }
   }
 
   std::cout << " done!\n";
@@ -187,6 +195,12 @@ void DiffusionModule::simulate(double dt) {
   sim_a_transport = MPI_Wtime();
 
   transport_t += sim_a_transport - sim_b_transport;
+}
+inline void DiffusionModule::RoundToZero(double *field,
+                                         uint32_t cell_count) const {
+  for (uint32_t i = 0; i < cell_count; i++) {
+    field[i] = ((int32_t)(field[i] / ZERO_MULTIPLICATOR)) * ZERO_MULTIPLICATOR;
+  }
 }
 
 void DiffusionModule::end() {

@@ -26,6 +26,7 @@
 
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 using namespace poet;
@@ -229,18 +230,18 @@ void SimParams::initVectorParams(RInside &R, int col_count) {
 
 void SimParams::setDtDiffer(bool dt_differ) { simparams.dt_differ = dt_differ; }
 
-t_simparams SimParams::getNumParams() { return this->simparams; }
+t_simparams SimParams::getNumParams() const { return this->simparams; }
 
-std::vector<int> SimParams::getDHTSignifVector() {
+std::vector<int> SimParams::getDHTSignifVector() const {
   return this->dht_signif_vector;
 }
-std::vector<std::string> SimParams::getDHTPropTypeVector() {
+std::vector<std::string> SimParams::getDHTPropTypeVector() const {
   return this->dht_prop_type_vector;
 }
-std::string SimParams::getDHTFile() { return this->dht_file; }
+std::string_view SimParams::getDHTFile() const { return this->dht_file; }
 
-std::string SimParams::getFilesim() { return this->filesim; }
-std::string SimParams::getOutDir() { return this->out_dir; }
+std::string_view SimParams::getFilesim() const { return this->filesim; }
+std::string_view SimParams::getOutDir() const { return this->out_dir; }
 
 std::list<std::string> SimParams::validateOptions(argh::parser cmdl) {
   /* store all unknown parameters here */

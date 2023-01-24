@@ -52,7 +52,7 @@ void poet::PhreeqcWrapper::SetupAndLoadDB(
 
   // Set initial porosity
   std::vector<double> por;
-  por.resize(this->iWPSize, 0.05);
+  por.resize(this->iWPSize, 1);
   this->SetPorosity(por);
 
   // Set initial saturation
@@ -66,7 +66,8 @@ void poet::PhreeqcWrapper::SetupAndLoadDB(
 
 void poet::PhreeqcWrapper::InitFromFile(const std::string &strInputFile) {
   this->RunFile(true, true, false, strInputFile);
-  this->RunString(true, false, true, "DELETE; -all");
+  // MDL: this is run only by the workers
+  this->RunString(true, false, true, "DELETE; -all; PRINT; -warnings 0;");
 
   this->FindComponents();
 

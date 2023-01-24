@@ -24,6 +24,7 @@
 #include "poet/SimParams.hpp"
 #include <array>
 #include <bits/stdint-uintn.h>
+#include <cmath>
 #include <poet/Grid.hpp>
 #include <string>
 #include <tug/BoundaryCondition.hpp>
@@ -84,6 +85,8 @@ private:
   enum { DIM_1D = 1, DIM_2D };
 
   void initialize(poet::DiffusionParams args);
+
+  void RoundToZero(double *field, uint32_t cell_count) const;
 
   Grid &grid;
   uint8_t dim;

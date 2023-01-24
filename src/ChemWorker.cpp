@@ -19,10 +19,12 @@
 */
 
 #include "poet/ChemSimPar.hpp"
+#include "poet/DHT_Wrapper.hpp"
 #include "poet/SimParams.hpp"
 #include <Rcpp.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <mpi.h>
@@ -57,20 +59,20 @@ ChemWorker::ChemWorker(SimParams &params, RInside &R_, Grid &grid_,
          << endl;
 
   if (this->dht_enabled) {
-    int data_size = this->prop_names.size() * sizeof(double);
-    int key_size = (this->prop_names.size() - 1) * sizeof(double) +
-                   (dt_differ * sizeof(double));
-    int dht_buckets_per_process =
-        dht_size_per_process / (1 + data_size + key_size);
+
+    uint32_t iKeyCount = this->prop_names.size() + (dt_differ);
+    uint32_t iDataCount = this->prop_names.size();
 
     if (world_rank == 1)
-      cout << "CPP: Worker: data size: " << data_size << " bytes" << endl
-           << "CPP: Worker: key size: " << key_size << " bytes" << endl
-           << "CPP: Worker: buckets per process " << dht_buckets_per_process
-           << endl;
+      cout << "CPP: Worker: data count: " << iDataCount << " entries" << endl
+           << "CPP: Worker: key count: " << iKeyCount << " entries" << endl
+           << "CPP: Worker: memory per process "
+           << params.getNumParams().dht_size_per_process / std::pow(10, 6)
+           << " MByte" << endl;
 
-    dht = new DHT_Wrapper(params, dht_comm, dht_buckets_per_process, data_size,
-                          key_size);
+    dht = new DHT_Wrapper(params, dht_comm,
+                          params.getNumParams().dht_size_per_process, iKeyCount,
+                          iDataCount);
 
     if (world_rank == 1)
       cout << "CPP: Worker: DHT created!" << endl;
@@ -171,11 +173,9 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   std::vector<double> vecCurrWP(
       mpi_buffer,
       mpi_buffer + (local_work_package_size * this->prop_names.size()));
-
   std::vector<int32_t> vecMappingWP(this->wp_size);
-  std::vector<std::vector<double>> vecDHTResults;
-  std::vector<double> vecDHTKeys;
-  std::vector<bool> vecNeedPhreeqc(this->wp_size, true);
+
+  DHT_ResultObject DHT_Results;
 
   for (uint32_t i = 0; i < local_work_package_size; i++) {
     vecMappingWP[i] = i;
@@ -195,19 +195,10 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   if (dht_enabled) {
     /* check for values in DHT */
     dht_get_start = MPI_Wtime();
-    vecDHTKeys = this->phreeqc_rm->ReplaceTotalsByPotentials(
-        vecCurrWP, local_work_package_size);
-    vecDHTResults = dht->checkDHT(local_work_package_size, vecNeedPhreeqc,
-                                  vecDHTKeys.data(), dt);
+    DHT_Results = dht->checkDHT(local_work_package_size, dt, vecCurrWP);
     dht_get_end = MPI_Wtime();
 
-    uint32_t iMappingIndex = 0;
-    for (uint32_t i = 0; i < local_work_package_size; i++) {
-      if (vecMappingWP[i] == -1) {
-        continue;
-      }
-      vecMappingWP[i] = (vecNeedPhreeqc[i] ? iMappingIndex++ : -1);
-    }
+    DHT_Results.ResultsToMapping(vecMappingWP);
   }
 
   phreeqc_time_start = MPI_Wtime();
@@ -216,12 +207,7 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   phreeqc_time_end = MPI_Wtime();
 
   if (dht_enabled) {
-    for (uint32_t i = 0; i < local_work_package_size; i++) {
-      if (!vecNeedPhreeqc[i]) {
-        std::copy(vecDHTResults[i].begin(), vecDHTResults[i].end(),
-                  vecCurrWP.begin() + (this->prop_names.size() * i));
-      }
-    }
+    DHT_Results.ResultsToWP(vecCurrWP);
   }
 
   /* send results to master */
@@ -232,8 +218,7 @@ void ChemWorker::doWork(MPI_Status &probe_status) {
   if (dht_enabled) {
     /* write results to DHT */
     dht_fill_start = MPI_Wtime();
-    dht->fillDHT(local_work_package_size, vecNeedPhreeqc, vecDHTKeys.data(),
-                 vecCurrWP.data(), dt);
+    dht->fillDHT(local_work_package_size, DHT_Results, vecCurrWP);
     dht_fill_end = MPI_Wtime();
 
     timing[1] += dht_get_end - dht_get_start;

@@ -33,16 +33,23 @@ extern "C" {
 
 #include <mpi.h>
 
-/**
- * @brief Cut double value after signif digit
- *
- * Macro to round a double value by cutting every digit after significant digit
- *
- */
-// #define ROUND(value, signif)                                                   \
-//   (((int)(pow(10.0, (double)signif) * value)) * pow(10.0, (double)-signif))
-
 namespace poet {
+
+using DHT_Keyelement = struct keyelem {
+  std::int8_t exp : 8;
+  std::int64_t significant : 56;
+};
+
+using DHT_ResultObject = struct DHTResobj {
+  uint32_t length;
+  std::vector<std::vector<DHT_Keyelement>> keys;
+  std::vector<std::vector<double>> results;
+  std::vector<bool> needPhreeqc;
+
+  void ResultsToMapping(std::vector<int32_t>  &curr_mapping);
+  void ResultsToWP(std::vector<double> &curr_wp);
+};
+
 /**
  * @brief Return user-defined md5sum
  *
@@ -76,11 +83,11 @@ public:
    * @param dht_comm Communicator which addresses all participating DHT
    * processes
    * @param buckets_per_process Count of buckets to allocate for each process
-   * @param data_size Size of data in bytes
-   * @param key_size Size of key in bytes
+   * @param key_count Count of key entries
+   * @param data_count Count of data entries
    */
-  DHT_Wrapper(SimParams &params, MPI_Comm dht_comm, int buckets_per_process,
-              int data_size, int key_size);
+  DHT_Wrapper(const poet::SimParams &params, MPI_Comm dht_comm,
+              uint32_t dht_size, uint32_t key_count, uint32_t data_count);
   /**
    * @brief Destroy the dht wrapper object
    *
@@ -108,9 +115,8 @@ public:
    * @param[in,out] work_package Pointer to current work package
    * @param dt Current timestep of simulation
    */
-  auto checkDHT(int length, std::vector<bool> &out_result_index,
-                double *work_package, double dt)
-      -> std::vector<std::vector<double>>;
+  auto checkDHT(int length, double dt, const std::vector<double> &work_package)
+      -> poet::DHT_ResultObject;
 
   /**
    * @brief Write simulated values into DHT
@@ -128,8 +134,8 @@ public:
    * outputs of the PHREEQC simulation
    * @param dt Current timestep of simulation
    */
-  void fillDHT(int length, std::vector<bool> &result_index,
-               double *work_package, double *results, double dt);
+  void fillDHT(int length, const DHT_ResultObject &dht_check_data,
+               const std::vector<double> &results);
 
   /**
    * @brief Dump current DHT state into file.
@@ -184,6 +190,9 @@ public:
   uint64_t getEvictions();
 
 private:
+  uint32_t key_count;
+  uint32_t data_count;
+
   /**
    * @brief Transform given workpackage into DHT key
    *
@@ -211,7 +220,7 @@ private:
    * @param key Pointer to work package handled as the key
    * @param dt Current time step of the simulation
    */
-  std::vector<double> fuzzForDHT(int var_count, void *key, double dt);
+  std::vector<DHT_Keyelement> fuzzForDHT(int var_count, void *key, double dt);
 
   /**
    * @brief DHT handle

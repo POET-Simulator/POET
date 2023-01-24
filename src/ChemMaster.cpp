@@ -26,6 +26,7 @@
 
 #include <Rcpp.h>
 #include <array>
+#include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <string>
@@ -56,13 +57,9 @@ ChemMaster::ChemMaster(SimParams &params, RInside &R_, Grid &grid_)
   uint32_t n_packages = (uint32_t)(grid.GetTotalCellCount() / this->wp_size) +
                         (mod_pkgs != 0 ? 1 : 0);
 
-  this->wp_sizes_vector = std::vector<uint32_t>(n_packages, this->wp_size);
-  if (mod_pkgs) {
-    auto itEndVector = this->wp_sizes_vector.end() - 1;
-    for (uint32_t i = 0; i < this->wp_size - mod_pkgs; i++) {
-      *(itEndVector - i) -= 1;
-    }
-  }
+  Rcpp::Function wp_f("GetWorkPackageSizesVector");
+  this->wp_sizes_vector = Rcpp::as<std::vector<uint32_t>>(
+      wp_f(n_packages, this->wp_size, grid.GetTotalCellCount()));
 
   this->state = this->grid.RegisterState(
       poet::BaseChemModule::CHEMISTRY_MODULE_NAME, this->prop_names);

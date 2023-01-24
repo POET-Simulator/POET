@@ -5,4 +5,4 @@ FILES
     phreeqc_kin.dat
     dol.pqi
 DESTINATION
-    data)
+    share/poet/examples)

@@ -1,13 +1,13 @@
-database <- normalizePath("../data/phreeqc_kin.dat")
-input_script <- normalizePath("../data/dol.pqi")
+database <- normalizePath("../share/poet/examples/phreeqc_kin.dat")
+input_script <- normalizePath("../share/poet/examples/dol.pqi")
 
 #################################################################
 ##                          Section 1                          ##
 ##                     Grid initialization                     ##
 #################################################################
 
-n <- 5
-m <- 5
+n <- 100
+m <- 100
 
 types <- c("scratch", "phreeqc", "rds")
 
@@ -168,8 +168,8 @@ selout <- c(
 
 
 # Needed when using DHT
-signif_vector <- c(7, 7, 7, 7, 7, 7, 7, 5, 5, 7)
-prop_type <- c("act", "act", "act", "act", "logact", "logact", "ignore", "act", "act", "act")
+signif_vector <- c(10, 10, 10, 7, 7, 7, 7, 0, 5, 5)
+prop_type <- c("", "", "", "act", "act", "act", "act", "ignore", "", "")
 prop <- names(init_cell)
 
 chemistry <- list(
