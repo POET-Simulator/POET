@@ -140,5 +140,7 @@ setup <- list(
   diffusion = diffusion,
   chemistry = chemistry,
   iterations = iterations,
-  timesteps = rep(dt, iterations)
+  timesteps = rep(dt, iterations),
+  store_result = TRUE,
+  out_save = c(5, iterations)
 )

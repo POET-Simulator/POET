@@ -46,6 +46,17 @@ master_init <- function(setup) {
   setup$maxiter <- setup$iterations
   setup$timesteps <- setup$timesteps
   setup$simulation_time <- 0
+
+  if (!(exists("setup$store_result"))) {
+    setup$store_result <- TRUE
+  }
+
+  if (setup$store_result) {
+    if (!(exists("setup$out_save"))) {
+      setup$out_save <- seq(1, setup$iterations)
+    }
+  }
+
   return(setup)
 }
 
@@ -56,22 +67,22 @@ master_iteration_end <- function(setup) {
   iter <- setup$iter
   ## MDL Write on disk state_T and state_C after every iteration
   ## comprised in setup$out_save
-  # if (store_result) {
-  #    if (iter %in% setup$out_save) {
-  nameout <- paste0(fileout, "/iter_", sprintf("%03d", iter), ".rds")
-  info <- list(
-    tr_req_dt = as.integer(setup$req_dt)
-#    tr_allow_dt = setup$allowed_dt,
-#    tr_inniter = as.integer(setup$inniter)
-  )
-  saveRDS(list(
-    T = setup$state_T, C = setup$state_C,
-    simtime = as.integer(setup$simtime),
-    tr_info = info
-  ), file = nameout)
-  msgm("results stored in <", nameout, ">")
-  #    }
-  # }
+  if (setup$store_result) {
+    if (iter %in% setup$out_save) {
+      nameout <- paste0(fileout, "/iter_", sprintf("%03d", iter), ".rds")
+      info <- list(
+        tr_req_dt = as.integer(setup$req_dt)
+        #    tr_allow_dt = setup$allowed_dt,
+        #    tr_inniter = as.integer(setup$inniter)
+      )
+      saveRDS(list(
+        T = setup$state_T, C = setup$state_C,
+        simtime = as.integer(setup$simtime),
+        tr_info = info
+      ), file = nameout)
+      msgm("results stored in <", nameout, ">")
+    }
+  }
   msgm("done iteration", iter, "/", setup$maxiter)
   setup$iter <- setup$iter + 1
   return(setup)
