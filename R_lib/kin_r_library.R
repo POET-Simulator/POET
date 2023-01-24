@@ -47,12 +47,12 @@ master_init <- function(setup) {
   setup$timesteps <- setup$timesteps
   setup$simulation_time <- 0
 
-  if (!(exists("setup$store_result"))) {
+  if (is.null(setup[["store_result"]])) {
     setup$store_result <- TRUE
   }
 
   if (setup$store_result) {
-    if (!(exists("setup$out_save"))) {
+    if (is.null(setup[["out_save"]])) {
       setup$out_save <- seq(1, setup$iterations)
     }
   }
