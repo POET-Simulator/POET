@@ -1,0 +1,39 @@
+style: gitlab
+template: CHANGELOG.tpl.md
+info:
+  title: CHANGELOG
+  repository_url: https://git.gfz-potsdam.de/sec34/port
+options:
+  commits:
+     filters:
+       Type:
+         - feat
+         - fix
+         - perf
+         - refactor
+         - data
+         - build
+         - util
+         - doc
+         - chore
+         - ci
+  commit_groups:
+     title_maps:
+       feat: Features
+       fix: Bug Fixes
+       perf: Performance Improvements
+       refactor: Code Refactoring
+       data: Simulation Input
+       build: Build System
+       util: Evaluation Scripts
+       doc: Documentation
+       chore: Householding and Cleanup
+       ci: CI
+  header:
+    pattern: "^(\\w*)\\:\\s(.*)$"
+    pattern_maps:
+      - Type
+      - Subject
+  notes:
+    keywords:
+      - BREAKING CHANGE
