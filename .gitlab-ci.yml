@@ -20,9 +20,12 @@ image: git.gfz-potsdam.de:5000/sec34/port:builder
 
 stages:          # List of stages for jobs, and their order of execution
   - build
+  - release
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
+  SOURCE_ARCHIVE_NAME: 'port_${CI_COMMIT_TAG}_sources.tar.gz'
+  CHANGELOG_FILE: 'commit_changelog.md'
 
 build-poet:       # This job runs in the build stage, which runs first.
   stage: build
@@ -30,3 +33,55 @@ build-poet:       # This job runs in the build stage, which runs first.
     - mkdir build && cd build
     - cmake ..
     - make -j$(nproc)
+
+archive-sources:       # This job runs in the build stage, which runs first.
+  image: python:3
+  stage: release
+
+  before_script:
+    - pip install git-archive-all
+    - echo ARCHIVE_JOB_ID=${CI_JOB_ID} >> archives.env
+  script:
+    - git-archive-all ${SOURCE_ARCHIVE_NAME}
+  artifacts:
+    paths:
+      - ${SOURCE_ARCHIVE_NAME}
+    reports:
+      dotenv: archives.env
+  rules:
+    - if: $CI_COMMIT_TAG
+
+release-description:
+  image: golang:bullseye
+  stage: release
+  rules:
+    - if: $CI_COMMIT_TAG
+  before_script:
+    - go install github.com/git-chglog/git-chglog/cmd/git-chglog@v0.15.2
+  script:
+    - git-chglog -o ${CHANGELOG_FILE} ${CI_COMMIT_TAG}
+  artifacts:
+    paths:
+      - ${CHANGELOG_FILE}
+
+
+release-create:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - echo "Running release job"
+  needs:
+    - job: archive-sources
+      artifacts: true
+    - job: release-description
+      artifacts: true
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: 'PORT $CI_COMMIT_TAG'
+    description: ${CHANGELOG_FILE}
+    assets:
+      links:
+        - name: '${SOURCE_ARCHIVE_NAME}'
+          url: 'https://git.gfz-potsdam.de/sec34/port/-/jobs/${ARCHIVE_JOB_ID}/artifacts/file/${SOURCE_ARCHIVE_NAME}'
