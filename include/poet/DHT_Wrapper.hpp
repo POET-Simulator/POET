@@ -197,9 +197,9 @@ private:
 
   std::vector<DHT_Keyelement> fuzzForDHT(int var_count, void *key, double dt);
 
-  uint64_t dht_hits = 0;
-  uint64_t dht_miss = 0;
-  uint64_t dht_evictions = 0;
+  uint32_t dht_hits = 0;
+  uint32_t dht_miss = 0;
+  uint32_t dht_evictions = 0;
 
   std::vector<uint32_t> dht_signif_vector;
   std::vector<uint32_t> dht_prop_type_vector;
