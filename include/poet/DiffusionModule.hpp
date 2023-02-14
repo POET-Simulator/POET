@@ -39,7 +39,7 @@ namespace poet {
  *
  */
 
-constexpr const char *DIFFUSION_MODULE_NAME = "state_t";
+constexpr const char *DIFFUSION_MODULE_NAME = "state_T";
 
 class DiffusionModule {
 public:

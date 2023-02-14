@@ -164,6 +164,7 @@ inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
     chem.RunCells();
     chem_state->mem = chem.GetField();
 
+    grid.WriteFieldsToR(R);
     grid.PreModuleFieldCopy(tick++);
 
     R["req_dt"] = dt;

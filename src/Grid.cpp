@@ -19,7 +19,9 @@
 */
 
 #include "poet/SimParams.hpp"
+#include <RInside.h>
 #include <Rcpp.h>
+#include <Rcpp/internal/wrap.h>
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
@@ -252,4 +254,21 @@ auto poet::Grid::GetSpeciesByName(std::string name,
 
   return std::vector<double>(module_memory->mem.begin() + begin_vec,
                              module_memory->mem.begin() + end_vec);
+}
+
+// HACK: Helper function
+void poet::Grid::WriteFieldsToR(RInside &R) {
+
+  for (auto const &elem : this->state_register) {
+    std::string field_name = elem.first;
+    StateMemory *field = elem.second;
+
+    const uint32_t n_cells_per_prop = field->mem.size() / field->props.size();
+
+    R["TMP"] = Rcpp::wrap(field->mem);
+    R["TMP_PROPS"] = Rcpp::wrap(field->props);
+    R.parseEval(std::string(
+        "mysetup$" + field_name + " <- setNames(data.frame(matrix(TMP, nrow=" +
+        std::to_string(n_cells_per_prop) + ")), TMP_PROPS)"));
+  }
 }
