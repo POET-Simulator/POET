@@ -18,18 +18,19 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include "poet/DHT_Wrapper.hpp"
+#include "poet/DHT_Types.hpp"
 #include "poet/HashFunctions.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <openssl/evp.h>
-#include <poet/DHT_Wrapper.hpp>
-
-#include <math.h>
-
 #include <iostream>
+#include <math.h>
+#include <openssl/evp.h>
+#include <stdexcept>
 #include <vector>
 
 using namespace poet;
@@ -67,9 +68,8 @@ void poet::DHT_ResultObject::ResultsToWP(std::vector<double> &curr_wp) {
   }
 }
 
-DHT_Wrapper::DHT_Wrapper(const poet::SimParams &params, MPI_Comm dht_comm,
-                         uint32_t dht_size, uint32_t key_count,
-                         uint32_t data_count)
+DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, uint32_t dht_size,
+                         uint32_t key_count, uint32_t data_count)
     : key_count(key_count), data_count(data_count) {
   poet::initHashCtx(EVP_md5());
   // initialize DHT object
@@ -80,20 +80,26 @@ DHT_Wrapper::DHT_Wrapper(const poet::SimParams &params, MPI_Comm dht_comm,
                           &poet::hashDHT);
 
   // extract needed values from sim_param struct
-  t_simparams tmp = params.getNumParams();
+  // t_simparams tmp = params.getNumParams();
 
-  this->dt_differ = tmp.dt_differ;
-  this->dht_log = tmp.dht_log;
+  // this->dt_differ = tmp.dt_differ;
+  // this->dht_log = tmp.dht_log;
 
-  this->dht_signif_vector = params.getDHTSignifVector();
-  this->dht_prop_type_vector = params.getDHTPropTypeVector();
+  // this->dht_signif_vector = params.getDHTSignifVector();
+  // this->dht_prop_type_vector = params.getDHTPropTypeVector();
+
+  this->dht_signif_vector.resize(key_size, DHT_KEY_SIGNIF_DEFAULT);
+  this->dht_signif_vector[0] = DHT_KEY_SIGNIF_TOTALS;
+  this->dht_signif_vector[1] = DHT_KEY_SIGNIF_TOTALS;
+  this->dht_signif_vector[2] = DHT_KEY_SIGNIF_CHARGE;
+
+  this->dht_prop_type_vector.resize(key_size, DHT_TYPE_DEFAULT);
 }
 
 DHT_Wrapper::~DHT_Wrapper() {
   // free DHT
   DHT_free(dht_object, NULL, NULL);
-  // free fuzzing buffer
-  free(fuzzing_buffer);
+
   poet::freeHashCtx();
 }
 auto DHT_Wrapper::checkDHT(int length, double dt,
@@ -184,17 +190,11 @@ void DHT_Wrapper::printStatistics() {
   }
 }
 
-uint64_t DHT_Wrapper::getHits() { return this->dht_hits; }
-
-uint64_t DHT_Wrapper::getMisses() { return this->dht_miss; }
-
-uint64_t DHT_Wrapper::getEvictions() { return this->dht_evictions; }
-
 std::vector<DHT_Keyelement> DHT_Wrapper::fuzzForDHT(int var_count, void *key,
                                                     double dt) {
   constexpr double zero_val = 10E-14;
 
-  std::vector<DHT_Keyelement> vecFuzz(var_count);
+  std::vector<DHT_Keyelement> vecFuzz(var_count + 1);
   std::memset(&vecFuzz[0], 0, sizeof(DHT_Keyelement) * var_count);
 
   unsigned int i = 0;
@@ -203,10 +203,11 @@ std::vector<DHT_Keyelement> DHT_Wrapper::fuzzForDHT(int var_count, void *key,
   for (i = 0; i < (unsigned int)var_count; i++) {
     double &curr_key = ((double *)key)[i];
     if (curr_key != 0) {
-      if (curr_key < zero_val && this->dht_prop_type_vector[i] == "act") {
+      if (curr_key < zero_val &&
+          this->dht_prop_type_vector[i] == DHT_TYPE_ACT) {
         continue;
       }
-      if (this->dht_prop_type_vector[i] == "ignore") {
+      if (this->dht_prop_type_vector[i] == DHT_TYPE_IGNORE) {
         continue;
       }
       vecFuzz[i] = round_key_element(curr_key, dht_signif_vector[i]);
@@ -214,9 +215,24 @@ std::vector<DHT_Keyelement> DHT_Wrapper::fuzzForDHT(int var_count, void *key,
   }
   // if timestep differs over iterations set current current time step at the
   // end of fuzzing buffer
-  if (dt_differ) {
-    vecFuzz[var_count] = round_key_element(dt, 55);
-  }
+  vecFuzz[var_count] = round_key_element(dt, 55);
 
   return vecFuzz;
+}
+
+void poet::DHT_Wrapper::SetSignifVector(std::vector<uint32_t> signif_vec) {
+  if (signif_vec.size() != this->key_count) {
+    throw std::runtime_error(
+        "Significant vector size mismatches count of key elements.");
+  }
+
+  this->dht_signif_vector = signif_vec;
+}
+void poet::DHT_Wrapper::SetPropTypeVector(std::vector<uint32_t> prop_type_vec) {
+  if (prop_type_vec.size() != this->key_count) {
+    throw std::runtime_error(
+        "Prop type vector size mismatches count of key elements.");
+  }
+
+  this->dht_prop_type_vector = prop_type_vec;
 }
