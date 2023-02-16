@@ -31,8 +31,8 @@
 #include <Rcpp.h>
 // BSD-licenced
 
-/** Standard DHT Size (Defaults to 1 GiB) */
-#define DHT_SIZE_PER_PROCESS 1073741824
+/** Standard DHT Size. Defaults to 1 GB (1000 MB) */
+constexpr uint32_t DHT_SIZE_PER_PROCESS_MB = 1E3;
 /** Standard work package size */
 #define WORK_PACKAGE_SIZE_DEFAULT 5
 
@@ -168,16 +168,6 @@ public:
   void initVectorParams(RInside &R, int col_count);
 
   /**
-   * @brief Set if dt differs
-   *
-   * Set a boolean variable if the timestep differs between iterations of
-   * simulation.
-   *
-   * @param dt_differ Boolean value, if dt differs
-   */
-  void setDtDiffer(bool dt_differ);
-
-  /**
    * @brief Get the numerical params struct
    *
    * Returns a struct which contains all numerical or boolean simulation
@@ -185,7 +175,7 @@ public:
    *
    * @return t_simparams Parameter struct
    */
-  t_simparams getNumParams() const;
+  auto getNumParams() const { return this->simparams; };
 
   /**
    * @brief Get the DHT_Signif_Vector
@@ -196,7 +186,7 @@ public:
    * @return std::vector<int> Vector of integers containing information about
    * significant digits
    */
-  std::vector<int> getDHTSignifVector() const;
+  auto getDHTSignifVector() const { return this->dht_signif_vector; };
 
   /**
    * @brief Get the DHT_Prop_Type_Vector
@@ -206,7 +196,7 @@ public:
    * @return std::vector<std::string> Vector if strings defining a type of a
    * variable
    */
-  std::vector<std::string> getDHTPropTypeVector() const;
+  auto getDHTPropTypeVector() const { return this->dht_prop_type_vector; };
 
   /**
    * @brief Return name of DHT snapshot.
@@ -216,7 +206,7 @@ public:
    *
    * @return std::string Absolute paht to the DHT snapshot
    */
-  std::string_view getDHTFile() const;
+  auto getDHTFile() const { return this->dht_file; };
 
   /**
    * @brief Get the filesim name
@@ -226,7 +216,7 @@ public:
    *
    * @return std::string Absolute path to R file
    */
-  std::string_view getFilesim() const;
+  auto getFilesim() const { return this->filesim; };
 
   /**
    * @brief Get the output directory
@@ -236,71 +226,23 @@ public:
    *
    * @return std::string Absolute path to output path
    */
-  std::string_view getOutDir() const;
+  auto getOutDir() const { return this->out_dir; };
 
 private:
-  /**
-   * @brief Validate program parameters and flags
-   *
-   * Therefore this function iterates over the list of flags and parameters and
-   * compare them to the class member flagList and paramList. If a program
-   * argument is not included it is put to a list. This list will be returned.
-   *
-   * @return std::list<std::string> List with all unknown parameters. Might be
-   * empty.
-   */
   std::list<std::string> validateOptions(argh::parser cmdl);
 
-  /**
-   * @brief Contains all valid program flags.
-   *
-   */
-  std::set<std::string> flaglist{"ignore-result", "dht", "dht-nolog"};
+  const std::set<std::string> flaglist{"ignore-result", "dht", "dht-nolog"};
+  const std::set<std::string> paramlist{"work-package-size", "dht-signif",
+                                        "dht-strategy",      "dht-size",
+                                        "dht-snaps",         "dht-file"};
 
-  /**
-   * @brief Contains all valid program parameters.
-   *
-   */
-  std::set<std::string> paramlist{"work-package-size", "dht-signif",
-                                  "dht-strategy",      "dht-size",
-                                  "dht-snaps",         "dht-file"};
-
-  /**
-   * @brief Struct containing all simulation parameters
-   *
-   * Contains only those values which are standard arithmetic C types.
-   *
-   */
   t_simparams simparams;
 
-  /**
-   * @brief Defines significant digits for each variable of a grid cell
-   *
-   */
-  std::vector<int> dht_signif_vector;
+  std::vector<uint32_t> dht_signif_vector;
+  std::vector<uint32_t> dht_prop_type_vector;
 
-  /**
-   * @brief Defines the type of a variable
-   *
-   */
-  std::vector<std::string> dht_prop_type_vector;
-
-  /**
-   * @brief Absolute path to a DHT snapshot
-   *
-   */
   std::string dht_file;
-
-  /**
-   * @brief Absolute path to R file containing simulation definitions
-   *
-   */
   std::string filesim;
-
-  /**
-   * @brief Absolute path to output dir
-   *
-   */
   std::string out_dir;
 };
 } // namespace poet
