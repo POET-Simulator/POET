@@ -37,12 +37,12 @@ init_cell <- list(H = 1.476571028625e-01,
                   `U(5)` = 1.208394829796e-15,
                   `U(6)` = 2.976409147150e-12)
 
-
 grid <- list(
   n_cells = c(n, m),
   s_cells = c(1, 1),
   type = "scratch",
-  init_cell = as.data.frame(init_cell),
+  init_cell = as.data.frame(init_cell, check.names = FALSE),
+  props = names(init_cell),
   database = database,
   input_script = input_script
 )
@@ -77,6 +77,9 @@ vecinj_diffu <- list(
          `U(6)` = 1.32462838991902e-09)
 )
 
+vecinj <- do.call(rbind.data.frame, vecinj_diffu)
+names(vecinj) <- grid$props
+
 ## diffusion coefficients
 alpha_diffu <- c(H = 1E-6, O = 1E-6, Charge = 1E-6, `C(-4)` = 1E-6,
                  `C(4)` = 1E-6, Ca = 1E-6, Cl = 1E-6, `Fe(2)` = 1E-6,
@@ -102,7 +105,7 @@ diffu_list <- names(alpha_diffu)
 
 diffusion <- list(
   init = init_cell,
-  vecinj = do.call(rbind.data.frame, vecinj_diffu),
+  vecinj = vecinj,
 #  vecinj_inner = vecinj_inner,
   vecinj_index = boundary,
   alpha = alpha_diffu
