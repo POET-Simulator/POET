@@ -21,6 +21,7 @@ image: git.gfz-potsdam.de:5000/sec34/port:builder
 stages:          # List of stages for jobs, and their order of execution
   - build
   - release
+  - test
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
@@ -33,6 +34,13 @@ build-poet:       # This job runs in the build stage, which runs first.
     - mkdir build && cd build
     - cmake ..
     - make -j$(nproc)
+
+test-poet:
+  stage: test
+  script:
+    - mkdir build_test && cd build_test
+    - cmake -DPOET_ENABLE_TESTING=ON ..
+    - make -j$(nproc) check
 
 archive-sources:       # This job runs in the build stage, which runs first.
   image: python:3
