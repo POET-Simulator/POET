@@ -24,8 +24,18 @@ add_subdirectory(data)
 add_subdirectory(app)
 add_subdirectory(bench/dolo_diffu_inner)
 
+# as tug will also pull in doctest as a dependency
+set(TUG_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+
 add_subdirectory(ext/tug EXCLUDE_FROM_ALL)
 add_subdirectory(ext/phreeqcrm EXCLUDE_FROM_ALL)
+
+option(POET_ENABLE_TESTING "Build test suite for POET" OFF)
+
+if (POET_ENABLE_TESTING)
+  add_subdirectory(ext/doctest EXCLUDE_FROM_ALL)
+  add_subdirectory(test)
+endif()
 
 option(BUILD_DOC "Build documentation with doxygen" OFF)
 
