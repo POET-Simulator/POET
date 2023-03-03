@@ -17,6 +17,7 @@ options:
          - doc
          - chore
          - ci
+         - test
   commit_groups:
      title_maps:
        feat: Features
@@ -29,6 +30,7 @@ options:
        doc: Documentation
        chore: Householding and Cleanup
        ci: CI
+       test: Software Testing
   header:
     pattern: "^(\\w*)\\:\\s(.*)$"
     pattern_maps:
