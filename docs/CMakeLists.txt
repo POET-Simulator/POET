@@ -1,18 +1,18 @@
 find_package(Doxygen)
+
 if(DOXYGEN_FOUND)
+  set(DOXYGEN_GENERATE_HTML YES)
+  set(DOXYGEN_EXCLUDE_PATTERNS ${PROJECT_SOURCE_DIR}/*/argh.hpp)
+  set(DOXYGEN_USE_MDFILE_AS_MAINPAGE ${PROJECT_SOURCE_DIR}/README.md)
 
-  set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/./Doxyfile.in)
-  set(DOXYGEN_OUT ${CMAKE_BINARY_DIR}/Doxyfile)
+  # See https://www.doxygen.nl/manual/customize.html
+  set(DOXYGEN_DISABLE_INDEX NO)
+  set(DOXYGEN_GENERATE_TREEVIEW YES)
+  set(DOXYGEN_FULL_SIDEBAR YES)
 
-  configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
-
-  add_custom_target(doc_doxygen ALL
-    COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Generating documantation with doxygen"
-    VERBATIM)
-
-  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doxygen/ DESTINATION docs)
-else(DOXYGEN_FOUND)
-  message("Doxygen not found. Please install.")
-endif(DOXYGEN_FOUND)
+  doxygen_add_docs(doxygen
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/README.md
+    ${PROJECT_SOURCE_DIR}/docs/Output.md
+    COMMENT "Generate html pages")
+endif()

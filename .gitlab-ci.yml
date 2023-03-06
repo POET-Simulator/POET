@@ -34,6 +34,8 @@ build-poet:       # This job runs in the build stage, which runs first.
     - mkdir build && cd build
     - cmake ..
     - make -j$(nproc)
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
 
 test-poet:
   stage: test
@@ -41,6 +43,8 @@ test-poet:
     - mkdir build_test && cd build_test
     - cmake -DPOET_ENABLE_TESTING=ON ..
     - make -j$(nproc) check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
 
 archive-sources:       # This job runs in the build stage, which runs first.
   image: python:3
@@ -93,3 +97,18 @@ release-create:
       links:
         - name: '${SOURCE_ARCHIVE_NAME}'
           url: 'https://git.gfz-potsdam.de/sec34/port/-/jobs/${ARCHIVE_JOB_ID}/artifacts/file/${SOURCE_ARCHIVE_NAME}'
+
+create-docs:
+  stage: release
+  before_script:
+    - apt-get update && apt-get install -y doxygen graphviz
+    - mkdir {public,build}
+  script:
+    - pushd build
+    - cmake .. && make doxygen && ls -alh docs
+    - popd && mv build/docs/html/* public/
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
