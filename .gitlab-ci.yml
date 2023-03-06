@@ -98,14 +98,14 @@ release-create:
         - name: '${SOURCE_ARCHIVE_NAME}'
           url: 'https://git.gfz-potsdam.de/sec34/port/-/jobs/${ARCHIVE_JOB_ID}/artifacts/file/${SOURCE_ARCHIVE_NAME}'
 
-create-docs:
+pages:
   stage: release
   before_script:
     - apt-get update && apt-get install -y doxygen graphviz
     - mkdir {public,build}
   script:
     - pushd build
-    - cmake .. && make doxygen && ls -alh docs
+    - cmake .. && make doxygen
     - popd && mv build/docs/html/* public/
   artifacts:
     paths:
