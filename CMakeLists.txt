@@ -1,7 +1,9 @@
 # Version 3.9+ offers new MPI package variables
 cmake_minimum_required(VERSION 3.9)
 
-project(POET CXX C)
+project(POET
+  LANGUAGES CXX C
+  DESCRIPTION "A coupled reactive transport simulator")
 
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -39,6 +41,4 @@ endif()
 
 option(BUILD_DOC "Build documentation with doxygen" OFF)
 
-if(BUILD_DOC)
-  add_subdirectory(docs)
-endif(BUILD_DOC)
+add_subdirectory(docs)
