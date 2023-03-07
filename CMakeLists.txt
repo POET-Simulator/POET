@@ -14,6 +14,8 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 include("CMake/POET_Scripts.cmake")
 list(APPEND CMAKE_MODULE_PATH "${POET_SOURCE_DIR}/CMake")
 
+get_poet_version()
+
 # set(GCC_CXX_FLAGS "-D STRICT_R_HEADERS") add_definitions(${GCC_CXX_FLAGS})
 
 find_package(MPI REQUIRED)

@@ -1,11 +1,9 @@
-get_poet_version()
-
 configure_file(poet.h.in poet.h)
 
-if (POET_USE_PRM_BACKEND)
-    set(poet_SRC poet_prm.cpp)
+if(POET_USE_PRM_BACKEND)
+  set(poet_SRC poet_prm.cpp)
 else()
-    set(poet_SRC poet.cpp)
+  set(poet_SRC poet.cpp)
 endif()
 
 add_executable(poet ${poet_SRC})
