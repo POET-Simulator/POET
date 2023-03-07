@@ -46,11 +46,13 @@ and possible to read out within a R runtime with
 If running parallel there are also measured timings which are subsets of
 *simtime\_​chemistry*.
 
-| Value                      | Description                                        |
-|----------------------------|----------------------------------------------------|
-| simtime\_workers           | time spent in send/​recv loop of master             |
-| simtime\_chemistry\_master | sequential part of master chemistry                |
-| phreeqc                    | measured time of each worker in PHREEQC subroutine |
+| Value                 | Description                                               |
+|-----------------------|-----------------------------------------------------------|
+| chemistry\_loop       | time spent in send/​recv loop of master                    |
+| chemistry\_sequential | sequential part of master chemistry                       |
+| idle\_master          | idling time (waiting for any free worker) of the master   |
+| idle\_worker          | idling time (waiting for work from master) of the workers |
+| phreeqc\_time         | accumulated times for Phreeqc calls of every worker       |
 
 ### DHT usage {#DHT-usage}
 
