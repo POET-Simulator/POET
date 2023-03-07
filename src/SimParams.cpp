@@ -18,6 +18,7 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include "poet/DHT_Types.hpp"
 #include <bits/stdint-uintn.h>
 #include <poet/SimParams.hpp>
 
@@ -130,7 +131,7 @@ int SimParams::parseFromCmdl(char *argv[], RInside &R) {
     // cout << "CPP: DHT logarithm before rounding: " << ( dht_logarithm ? "ON"
     // : "OFF" ) << endl;
 
-    cmdl("dht-size", DHT_SIZE_PER_PROCESS) >> simparams.dht_size_per_process;
+    cmdl("dht-size", DHT_SIZE_PER_PROCESS_MB) >> simparams.dht_size_per_process;
     // cout << "CPP: DHT size per process (Byte) = " << dht_size_per_process <<
     // endl;
 
@@ -196,17 +197,30 @@ void SimParams::initVectorParams(RInside &R, int col_count) {
     /*Load significance vector from R setup file (or set default)*/
     bool signif_vector_exists = R.parseEval("exists('signif_vector')");
     if (signif_vector_exists) {
-      dht_signif_vector = as<std::vector<int>>(R["signif_vector"]);
-    } else {
-      dht_signif_vector.assign(col_count, simparams.dht_significant_digits);
+      dht_signif_vector = as<std::vector<uint32_t>>(R["signif_vector"]);
     }
 
     /*Load property type vector from R setup file (or set default)*/
     bool prop_type_vector_exists = R.parseEval("exists('prop_type')");
     if (prop_type_vector_exists) {
-      dht_prop_type_vector = as<std::vector<string>>(R["prop_type"]);
-    } else {
-      dht_prop_type_vector.assign(col_count, "act");
+      std::vector<std::string> prop_type_R =
+          as<std::vector<string>>(R["prop_type"]);
+      this->dht_prop_type_vector.clear();
+      this->dht_prop_type_vector.reserve(prop_type_R.size());
+
+      for (const auto &type : prop_type_R) {
+        if (type == "act") {
+          this->dht_prop_type_vector.push_back(DHT_TYPE_ACT);
+          continue;
+        }
+
+        if (type == "ignore") {
+          this->dht_prop_type_vector.push_back(DHT_TYPE_IGNORE);
+          continue;
+        }
+
+        this->dht_prop_type_vector.push_back(DHT_TYPE_DEFAULT);
+      }
     }
 
     if (simparams.world_rank == 0) {
@@ -227,21 +241,6 @@ void SimParams::initVectorParams(RInside &R, int col_count) {
     }
   }
 }
-
-void SimParams::setDtDiffer(bool dt_differ) { simparams.dt_differ = dt_differ; }
-
-t_simparams SimParams::getNumParams() const { return this->simparams; }
-
-std::vector<int> SimParams::getDHTSignifVector() const {
-  return this->dht_signif_vector;
-}
-std::vector<std::string> SimParams::getDHTPropTypeVector() const {
-  return this->dht_prop_type_vector;
-}
-std::string_view SimParams::getDHTFile() const { return this->dht_file; }
-
-std::string_view SimParams::getFilesim() const { return this->filesim; }
-std::string_view SimParams::getOutDir() const { return this->out_dir; }
 
 std::list<std::string> SimParams::validateOptions(argh::parser cmdl) {
   /* store all unknown parameters here */

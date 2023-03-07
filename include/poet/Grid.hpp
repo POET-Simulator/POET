@@ -22,6 +22,7 @@
 #define GRID_H
 
 #include "poet/SimParams.hpp"
+#include <RInside.h>
 #include <Rcpp.h>
 #include <array>
 #include <cstddef>
@@ -96,6 +97,8 @@ public:
   auto GetSpeciesByName(std::string name,
                         std::string module_name = poet::GRID_MODULE_NAME) const
       -> std::vector<double>;
+
+  void WriteFieldsToR(RInside &R);
 
 private:
   std::vector<FlowInputOutputInfo> flow_vec;

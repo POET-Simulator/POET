@@ -21,8 +21,6 @@
 #ifndef DHT_WRAPPER_H
 #define DHT_WRAPPER_H
 
-#include "SimParams.hpp"
-
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -46,7 +44,7 @@ using DHT_ResultObject = struct DHTResobj {
   std::vector<std::vector<double>> results;
   std::vector<bool> needPhreeqc;
 
-  void ResultsToMapping(std::vector<int32_t>  &curr_mapping);
+  void ResultsToMapping(std::vector<int32_t> &curr_mapping);
   void ResultsToWP(std::vector<double> &curr_wp);
 };
 
@@ -79,15 +77,14 @@ public:
    * calling DHT_create with all given parameters. Also the fuzzing buffer will
    * be allocated and all needed parameters extracted from simparams struct.
    *
-   * @param params Simulation parameter object
    * @param dht_comm Communicator which addresses all participating DHT
    * processes
    * @param buckets_per_process Count of buckets to allocate for each process
    * @param key_count Count of key entries
    * @param data_count Count of data entries
    */
-  DHT_Wrapper(const poet::SimParams &params, MPI_Comm dht_comm,
-              uint32_t dht_size, uint32_t key_count, uint32_t data_count);
+  DHT_Wrapper(MPI_Comm dht_comm, uint32_t dht_size, uint32_t key_count,
+              uint32_t data_count);
   /**
    * @brief Destroy the dht wrapper object
    *
@@ -173,138 +170,43 @@ public:
    *
    * @return uint64_t Count of hits
    */
-  uint64_t getHits();
+  auto getHits() { return this->dht_hits; };
 
   /**
    * @brief Get the Misses object
    *
    * @return uint64_t Count of read misses
    */
-  uint64_t getMisses();
+  auto getMisses() { return this->dht_miss; };
 
   /**
    * @brief Get the Evictions object
    *
    * @return uint64_t Count of evictions
    */
-  uint64_t getEvictions();
+  auto getEvictions() { return this->dht_evictions; };
+
+  void SetSignifVector(std::vector<uint32_t> signif_vec);
+  void SetPropTypeVector(std::vector<uint32_t> prop_type_vec);
 
 private:
   uint32_t key_count;
   uint32_t data_count;
 
-  /**
-   * @brief Transform given workpackage into DHT key
-   *
-   * A given workpackage will be transformed into a DHT key by rounding each
-   * value of a workpackage to a given significant digit. Three different types
-   * of variables 'act', 'logact' and 'ignore' are used. Those types are given
-   * via the dht_signif_vector.
-   *
-   * If a variable is defined as 'act', dht_log is true and non-negative, the
-   * logarithm with base 10 will be applied. After that the value is negated. In
-   * case the value is 0 the fuzzing_buffer is also set to 0 at this position.
-   * If the value is negative a correspondending warning will be printed to
-   * stderr and the fuzzing buffer will be set to 0 at this index.
-   *
-   * If a variable is defined as 'logact' the value will be cut after the
-   * significant digit.
-   *
-   * If a variable ist defined as 'ignore' the fuzzing_buffer will be set to 0
-   * at the index of the variable.
-   *
-   * If dt_differ is true the current time step of the simulation will be set at
-   * the end of the fuzzing_buffer.
-   *
-   * @param var_count Count of variables for the current work package
-   * @param key Pointer to work package handled as the key
-   * @param dt Current time step of the simulation
-   */
-  std::vector<DHT_Keyelement> fuzzForDHT(int var_count, void *key, double dt);
-
-  /**
-   * @brief DHT handle
-   *
-   * Stores information about the DHT. Will be used as a handle for each DHT
-   * library call.
-   *
-   */
   DHT *dht_object;
 
-  /**
-   * @brief Count of hits
-   *
-   * The counter will be incremented if a previously simulated workpackage can
-   * be retrieved with a given key.
-   *
-   */
-  uint64_t dht_hits = 0;
+  std::vector<DHT_Keyelement> fuzzForDHT(int var_count, void *key, double dt);
 
-  /**
-   * @brief Count of read misses
-   *
-   * The counter will be incremented if a given key doesn't retrieve a value
-   * from the DHT.
-   *
-   */
-  uint64_t dht_miss = 0;
+  uint32_t dht_hits = 0;
+  uint32_t dht_miss = 0;
+  uint32_t dht_evictions = 0;
 
-  /**
-   * @brief Count of evictions
-   *
-   * If a value in the DHT must be evicted because of lack of space/reaching the
-   * last index etc., this counter will be incremented.
-   *
-   */
-  uint64_t dht_evictions = 0;
+  std::vector<uint32_t> dht_signif_vector;
+  std::vector<uint32_t> dht_prop_type_vector;
 
-  /**
-   * @brief Rounded work package values
-   *
-   * Stores rounded work package values and serves as the DHT key pointer.
-   *
-   */
-  double *fuzzing_buffer;
-
-  /**
-   * @brief Indicates change in time step during simulation
-   *
-   * If set to true, the time step of simulation will differ between iterations,
-   * so the current time step must be stored inside the DHT key. Otherwise wrong
-   * values would be obtained.
-   *
-   * If set to false the time step doesn't need to be stored in the DHT key.
-   *
-   */
-  bool dt_differ;
-
-  /**
-   * @brief Logarithm before rounding
-   *
-   * Indicates if the logarithm with base 10 will be applied to a variable
-   * before rounding.
-   *
-   * Defaults to true.
-   *
-   */
-  bool dht_log;
-
-  /**
-   * @brief Significant digits for each variable
-   *
-   * Stores the rounding/significant digits for each variable of the work
-   * package.
-   *
-   */
-  std::vector<int> dht_signif_vector;
-
-  /**
-   * @brief Type of each variable
-   *
-   * Defines the type of each variable of the work package.
-   *
-   */
-  std::vector<std::string> dht_prop_type_vector;
+  static constexpr int DHT_KEY_SIGNIF_DEFAULT = 5;
+  static constexpr int DHT_KEY_SIGNIF_TOTALS = 12;
+  static constexpr int DHT_KEY_SIGNIF_CHARGE = 3;
 };
 } // namespace poet
 

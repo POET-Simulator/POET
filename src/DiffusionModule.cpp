@@ -25,7 +25,6 @@
 #include <algorithm>
 #include <bits/stdint-intn.h>
 #include <cstdint>
-#include <poet/ChemSimSeq.hpp>
 #include <poet/DiffusionModule.hpp>
 #include <poet/Grid.hpp>
 

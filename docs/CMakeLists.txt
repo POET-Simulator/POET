@@ -9,10 +9,12 @@ if(DOXYGEN_FOUND)
   set(DOXYGEN_DISABLE_INDEX NO)
   set(DOXYGEN_GENERATE_TREEVIEW YES)
   set(DOXYGEN_FULL_SIDEBAR YES)
+  set(DOXYGEN_PROJECT_NUMBER ${POET_VERSION})
 
   doxygen_add_docs(doxygen
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/README.md
+    ${PROJECT_SOURCE_DIR}/docs/Input_Scripts.md
     ${PROJECT_SOURCE_DIR}/docs/Output.md
     COMMENT "Generate html pages")
 endif()
