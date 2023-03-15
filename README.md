@@ -1,24 +1,19 @@
 <!--
     Time-stamp: "Last modified 2023-01-19 12:06:10 delucia"
 -->
-# Forked Project
-
-*PORT* is a fork of [POET](https://doi.org/10.5281/zenodo.4757913)
-integrating a standalone component for transport computations and
-leveraging PHREEQC_RM as geochemical solver. The following README is
-also applicable for this project.
-
-![PORT's Coupling Scheme](./docs/20221216_Scheme_PORT_en.svg)
 
 # POET
 
-POET is a coupled reactive transport simulator implementing a parallel
-architecture and a fast, original MPI-based Distributed Hash Table.
+[POET](https://doi.org/10.5281/zenodo.4757913) is a coupled reactive transport
+simulator implementing a parallel architecture and a fast, original MPI-based
+Distributed Hash Table.
+
+![PORT's Coupling Scheme](./docs/20221216_Scheme_PORT_en.svg)
 
 ## Parsed code documentiation
 
 A parsed version of POET's documentiation can be found at [Gitlab
-pages](https://sec34.git-pages.gfz-potsdam.de/port).
+pages](https://naaice.git-pages.gfz-potsdam.de/poet).
 
 ## External Libraries
 
