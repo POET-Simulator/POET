@@ -1,10 +1,10 @@
 [submodule "ext/tug"]
 	path = ext/tug
-	url = ../../sec34/tug.git
+	url = ../tug.git
 
 [submodule "ext/phreeqcrm"]
 	path = ext/phreeqcrm
-	url = ../../mluebke/phreeqcrm-gfz.git
+	url = ../phreeqcrm-gfz.git
 [submodule "ext/doctest"]
 	path = ext/doctest
 	url = https://github.com/doctest/doctest.git
