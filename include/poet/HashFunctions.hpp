@@ -1,3 +1,5 @@
+// //  Time-stamp: "Last modified 2023-03-27 14:51:05 mluebke"
+
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
@@ -26,13 +28,15 @@
 
 namespace poet {
 
+// Sum of POET interpreted as ASCII
+constexpr uint32_t HASH_SEED = 80 + 79 + 69 + 84;
+
 void initHashCtx(const EVP_MD *md);
 void freeHashCtx();
 
-uint64_t hashDHT(int key_size, void *key);
+uint64_t hashDHT(int key_size, const void *key);
+uint64_t Murmur2_64A(int len, const void *key);
 
-
-
-}
+} // namespace poet
 
 #endif // HASHFUNCTIONS_H_
