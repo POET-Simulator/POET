@@ -52,7 +52,7 @@ static int read_flag(char flag_byte) {
 }
 
 DHT *DHT_create(MPI_Comm comm, uint64_t size, unsigned int data_size,
-                unsigned int key_size, uint64_t (*hash_func)(int, void *)) {
+                unsigned int key_size, uint64_t (*hash_func)(int, const void *)) {
   DHT *object;
   MPI_Win window;
   void *mem_alloc;

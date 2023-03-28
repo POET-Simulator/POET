@@ -100,7 +100,7 @@ typedef struct {
   /** Size of the MPI communicator respectively all participating processes. */
   int comm_size;
   /** Pointer to a hashfunction. */
-  uint64_t (*hash_func)(int, void*);
+  uint64_t (*hash_func)(int, const void*);
   /** Pre-allocated memory where a bucket can be received. */
   void* recv_entry;
   /** Pre-allocated memory where a bucket to send can be stored. */
@@ -143,7 +143,7 @@ typedef struct {
  */
 extern DHT* DHT_create(MPI_Comm comm, uint64_t size_per_process,
                        unsigned int data_size, unsigned int key_size,
-                       uint64_t (*hash_func)(int, void*));
+                       uint64_t (*hash_func)(int, const void*));
 
 /**
  * @brief Write data into DHT.
