@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-03-27 14:50:53 mluebke"
+//  Time-stamp: "Last modified 2023-03-31 15:00:11 mluebke"
 /*
 **-----------------------------------------------------------------------------
 ** MurmurHash2 was written by Austin Appleby, and is placed in the public
@@ -27,8 +27,6 @@
 #include "poet/HashFunctions.hpp"
 
 #include <cstddef>
-#include <openssl/evp.h>
-#include <openssl/md5.h>
 #include <stdexcept>
 
 #if defined(_MSC_VER)
@@ -42,42 +40,6 @@
 #define BIG_CONSTANT(x) (x##LLU)
 
 #endif // !defined(_MSC_VER)
-
-// HACK: I know this is not a good practice, but this will do it for now!
-EVP_MD_CTX *ctx = NULL;
-
-void poet::initHashCtx(const EVP_MD *md) {
-  if (ctx == NULL) {
-    ctx = EVP_MD_CTX_new();
-    EVP_DigestInit_ex(ctx, md, NULL);
-  }
-}
-
-void poet::freeHashCtx() {
-  EVP_MD_CTX_free(ctx);
-  ctx = NULL;
-}
-
-uint64_t poet::hashDHT(int key_size, const void *key) {
-  unsigned char sum[MD5_DIGEST_LENGTH];
-  uint32_t md_len;
-  uint64_t retval, *v1, *v2;
-
-  // calculate md5 using MD5 functions
-  EVP_DigestUpdate(ctx, key, key_size);
-  EVP_DigestFinal_ex(ctx, sum, &md_len);
-
-  if (md_len != MD5_DIGEST_LENGTH) {
-    throw std::runtime_error("Something went wrong during MD5 hashing!");
-  }
-
-  // divide hash in 2 64 bit parts and XOR them
-  v1 = (uint64_t *)&sum[0];
-  v2 = (uint64_t *)&sum[8];
-  retval = *v1 ^ *v2;
-
-  return retval;
-}
 
 //-----------------------------------------------------------------------------
 // MurmurHash2, 64-bit versions, by Austin Appleby

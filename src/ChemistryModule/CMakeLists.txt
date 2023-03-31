@@ -18,7 +18,7 @@ add_library(ChemistryModule ${CHEM_MODEL_SRC})
 target_include_directories(ChemistryModule PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(ChemistryModule
   PUBLIC MPI::MPI_CXX PhreeqcRM
-  PRIVATE ${MATH_LIBRARY} ${CRYPTO_LIBRARY}
+  PRIVATE ${MATH_LIBRARY}
   )
 
 target_compile_definitions(ChemistryModule PUBLIC OMPI_SKIP_MPICXX)
