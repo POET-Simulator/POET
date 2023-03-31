@@ -71,10 +71,10 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, uint32_t dht_size,
                          uint32_t key_count, uint32_t data_count)
     : key_count(key_count), data_count(data_count) {
   // initialize DHT object
-  uint32_t key_size = key_count * sizeof(DHT_Keyelement);
+  uint32_t key_size = (key_count + 1) * sizeof(DHT_Keyelement);
   uint32_t data_size = data_count * sizeof(double);
   uint32_t buckets_per_process = dht_size / (1 + data_size + key_size);
-  dht_object = DHT_create(dht_comm, buckets_per_process, data_size, key_size + 1,
+  dht_object = DHT_create(dht_comm, buckets_per_process, data_size, key_size,
                           &poet::Murmur2_64A);
 
   // extract needed values from sim_param struct
