@@ -16,7 +16,7 @@
 # This specific template is located at:
 # https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
 
-image: git.gfz-potsdam.de:5000/sec34/port:builder
+image: git.gfz-potsdam.de:5000/naaice/poet:ci
 
 stages:          # List of stages for jobs, and their order of execution
   - build
@@ -32,16 +32,20 @@ build-poet:       # This job runs in the build stage, which runs first.
   stage: build
   script:
     - mkdir build && cd build
-    - cmake ..
+    - cmake -DPOET_ENABLE_TESTING=ON ..
     - make -j$(nproc)
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  artifacts:
+    paths:
+      - build
 
 test-poet:
   stage: test
+  dependencies:
+    - build-poet
   script:
-    - mkdir build_test && cd build_test
-    - cmake -DPOET_ENABLE_TESTING=ON ..
+    - cd build
     - make -j$(nproc) check
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
@@ -101,12 +105,14 @@ release-create:
 
 pages:
   stage: release
+  dependencies:
+    - build-poet
   before_script:
     - apt-get update && apt-get install -y doxygen graphviz
-    - mkdir {public,build}
+    - mkdir public
   script:
     - pushd build
-    - cmake .. && make doxygen
+    - make doxygen
     - popd && mv build/docs/html/* public/
   artifacts:
     paths:
