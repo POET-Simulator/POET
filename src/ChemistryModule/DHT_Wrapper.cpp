@@ -29,7 +29,6 @@
 #include <cstring>
 #include <iostream>
 #include <math.h>
-#include <openssl/evp.h>
 #include <stdexcept>
 #include <vector>
 
@@ -71,7 +70,6 @@ void poet::DHT_ResultObject::ResultsToWP(std::vector<double> &curr_wp) {
 DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, uint32_t dht_size,
                          uint32_t key_count, uint32_t data_count)
     : key_count(key_count), data_count(data_count) {
-  poet::initHashCtx(EVP_md5());
   // initialize DHT object
   uint32_t key_size = key_count * sizeof(DHT_Keyelement);
   uint32_t data_size = data_count * sizeof(double);
@@ -100,7 +98,6 @@ DHT_Wrapper::~DHT_Wrapper() {
   // free DHT
   DHT_free(dht_object, NULL, NULL);
 
-  poet::freeHashCtx();
 }
 auto DHT_Wrapper::checkDHT(int length, double dt,
                            const std::vector<double> &work_package)
