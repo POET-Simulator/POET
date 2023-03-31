@@ -105,14 +105,12 @@ release-create:
 
 pages:
   stage: release
-  dependencies:
-    - build-poet
   before_script:
     - apt-get update && apt-get install -y doxygen graphviz
-    - mkdir public
+    - mkdir {build,public}
   script:
     - pushd build
-    - make doxygen
+    - cmake .. && make doxygen
     - popd && mv build/docs/html/* public/
   artifacts:
     paths:
