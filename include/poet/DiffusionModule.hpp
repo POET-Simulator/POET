@@ -86,8 +86,6 @@ private:
 
   void initialize(poet::DiffusionParams args);
 
-  void RoundToZero(double *field, uint32_t cell_count) const;
-
   Grid &grid;
   uint8_t dim;
 
