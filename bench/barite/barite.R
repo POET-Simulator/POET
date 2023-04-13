@@ -1,7 +1,7 @@
-## Time-stamp: "Last modified 2023-04-11 14:29:51 delucia"
+## Time-stamp: "Last modified 2023-04-13 17:10:30 mluebke"
 
-database <- normalizePath("./db_barite.dat")
-input_script <- normalizePath("./barite.pqi")
+database <- normalizePath("../share/poet/bench/barite/db_barite.dat")
+input_script <- normalizePath("../share/poet/bench/barite/barite.pqi")
 
 #################################################################
 ##                          Section 1                          ##

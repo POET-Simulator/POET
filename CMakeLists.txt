@@ -26,7 +26,7 @@ add_subdirectory(src)
 add_subdirectory(R_lib)
 add_subdirectory(data)
 add_subdirectory(app)
-add_subdirectory(bench/dolo_diffu_inner)
+add_subdirectory(bench)
 
 # as tug will also pull in doctest as a dependency
 set(TUG_ENABLE_TESTING OFF CACHE BOOL "" FORCE)

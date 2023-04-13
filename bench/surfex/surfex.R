@@ -1,7 +1,7 @@
-## Time-stamp: "Last modified 2023-02-27 18:33:30 delucia"
+## Time-stamp: "Last modified 2023-04-13 17:11:52 mluebke"
 
-database <- normalizePath("./SMILE_2021_11_01_TH.dat")
-input_script <- normalizePath("./SurfExBase.pqi")
+database <- normalizePath("../share/poet/bench/surfex/SMILE_2021_11_01_TH.dat")
+input_script <- normalizePath("../share/poet/bench/surfex/SurfExBase.pqi")
 
 cat(paste(":: R This is a test 1\n"))
 
