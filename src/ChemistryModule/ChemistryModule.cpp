@@ -2,11 +2,15 @@
 #include "PhreeqcRM.h"
 #include "poet/DHT_Wrapper.hpp"
 
+#include <algorithm>
+#include <bits/stdint-uintn.h>
 #include <cassert>
 #include <cstdint>
+#include <map>
 #include <mpi.h>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #ifndef POET_USE_PRM
@@ -58,44 +62,12 @@ void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
 
   this->FindComponents();
 
-  std::vector<std::string> props;
-  this->speciesPerModule.reserve(this->MODULE_COUNT);
+  PhreeqcRM::initializePOET(this->speciesPerModule, this->prop_names);
+  this->prop_count = prop_names.size();
 
-  std::vector<std::string> curr_prop_names = this->GetComponents();
-  props.insert(props.end(), curr_prop_names.begin(), curr_prop_names.end());
-  this->speciesPerModule.push_back(curr_prop_names.size());
-
-  curr_prop_names = this->GetEquilibriumPhases();
-  props.insert(props.end(), curr_prop_names.begin(), curr_prop_names.end());
-  char equilibrium = (curr_prop_names.empty() ? -1 : 1);
-  this->speciesPerModule.push_back(curr_prop_names.size());
-
-  curr_prop_names = this->GetExchangeNames();
-  props.insert(props.end(), curr_prop_names.begin(), curr_prop_names.end());
-  char exchange = (curr_prop_names.empty() ? -1 : 1);
-  this->speciesPerModule.push_back(curr_prop_names.size());
-
-  curr_prop_names = this->GetSurfaceNames();
-  props.insert(props.end(), curr_prop_names.begin(), curr_prop_names.end());
-  char surface = (curr_prop_names.empty() ? -1 : 1);
-  this->speciesPerModule.push_back(curr_prop_names.size());
-
-  // curr_prop_names = this->GetGasComponents();
-  // props.insert(props.end(), curr_prop_names.begin(), curr_prop_names.end());
-  // char gas = (curr_prop_names.empty() ? -1 : 1);
-  // this->speciesPerModule.push_back(curr_prop_names.size());
-
-  // curr_prop_names = this->GetSolidSolutionNames();
-  // props.insert(props.end(), curr_prop_names.begin(), curr_prop_names.end());
-  // char ssolutions = (curr_prop_names.empty() ? -1 : 1);
-  // this->speciesPerModule.push_back(curr_prop_names.size());
-
-  curr_prop_names = this->GetKineticReactions();
-  props.insert(props.end(), curr_prop_names.begin(), curr_prop_names.end());
-  char kinetics = (curr_prop_names.empty() ? -1 : 1);
-  this->speciesPerModule.push_back(curr_prop_names.size());
-
-  this->prop_count = props.size();
+  char exchange = (speciesPerModule[1] == 0 ? -1 : 1);
+  char kinetics = (speciesPerModule[2] == 0 ? -1 : 1);
+  char equilibrium = (speciesPerModule[3] == 0 ? -1 : 1);
 
 #ifdef POET_USE_PRM
   std::vector<int> ic1;
@@ -105,7 +77,7 @@ void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
     ic1[i] = 1;                   // Solution 1
     ic1[nxyz + i] = equilibrium;  // Equilibrium 1
     ic1[2 * nxyz + i] = exchange; // Exchange none
-    ic1[3 * nxyz + i] = surface;  // Surface none
+    ic1[3 * nxyz + i] = -1;       // Surface none
     ic1[4 * nxyz + i] = -1;       // Gas phase none
     ic1[5 * nxyz + i] = -1;       // Solid solutions none
     ic1[6 * nxyz + i] = kinetics; // Kinetics 1
@@ -113,61 +85,105 @@ void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
 
   this->InitialPhreeqc2Module(ic1);
 #else
-  if (!this->is_master || this->is_sequential) {
-    std::vector<int> ic1;
-    ic1.resize(this->nxyz * 7, -1);
-    // TODO: hardcoded reaction modules
-    for (int i = 0; i < nxyz; i++) {
-      ic1[i] = 1;                   // Solution 1
-      ic1[nxyz + i] = equilibrium;  // Equilibrium 1
-      ic1[2 * nxyz + i] = exchange; // Exchange none
-      ic1[3 * nxyz + i] = surface;  // Surface none
-      ic1[4 * nxyz + i] = -1;       // Gas phase none
-      ic1[5 * nxyz + i] = -1;       // Solid solutions none
-      ic1[6 * nxyz + i] = kinetics; // Kinetics 1
-    }
-
-    this->InitialPhreeqc2Module(ic1);
+  std::vector<int> ic1;
+  ic1.resize(this->nxyz * 7, -1);
+  // TODO: hardcoded reaction modules
+  for (int i = 0; i < nxyz; i++) {
+    ic1[i] = 1;                   // Solution 1
+    ic1[nxyz + i] = equilibrium;  // Equilibrium 1
+    ic1[2 * nxyz + i] = exchange; // Exchange none
+    ic1[3 * nxyz + i] = -1;       // Surface none
+    ic1[4 * nxyz + i] = -1;       // Gas phase none
+    ic1[5 * nxyz + i] = -1;       // Solid solutions none
+    ic1[6 * nxyz + i] = kinetics; // Kinetics 1
   }
+
+  this->InitialPhreeqc2Module(ic1);
 #endif
-  this->prop_names = props;
 }
 
 #ifndef POET_USE_PRM
-void poet::ChemistryModule::InitializeField(
-    uint32_t n_cells, const poet::ChemistryModule::SingleCMap &mapped_values) {
-  if (this->is_master) {
-    this->field.reserve(this->prop_count * n_cells);
-    for (const std::string &prop_name : this->prop_names) {
-      const auto m_it = mapped_values.find(prop_name);
-      if (m_it == mapped_values.end()) {
-        throw std::domain_error(
-            "Prop names vector does not match any key in given map.");
-      }
+void poet::ChemistryModule::mergeFieldWithModule(const SingleCMap &input_map,
+                                               std::uint32_t n_cells) {
 
-      const std::vector<double> field_row(n_cells, m_it->second);
-      const auto chem_field_end = this->field.end();
-      this->field.insert(chem_field_end, field_row.begin(), field_row.end());
-    }
-    this->n_cells = n_cells;
+  if (is_master) {
+    int f_type = CHEM_INIT_SPECIES;
+    PropagateFunctionType(f_type);
   }
-}
 
-void poet::ChemistryModule::InitializeField(
-    const poet::ChemistryModule::VectorCMap &mapped_values) {
-  if (this->is_master) {
-    for (const std::string &prop_name : this->prop_names) {
-      const auto m_it = mapped_values.find(prop_name);
-      if (m_it == mapped_values.end()) {
-        throw std::domain_error(
-            "Prop names vector does not match any key in given map.");
+  std::vector<std::string> essentials_backup{
+      prop_names.begin() + speciesPerModule[0], prop_names.end()};
+
+  std::vector<std::string> new_solution_names{
+      this->prop_names.begin(), this->prop_names.begin() + speciesPerModule[0]};
+
+  if (is_master) {
+    for (const auto &init_val : input_map) {
+      std::string name = init_val.first;
+      if (std::find(new_solution_names.begin(), new_solution_names.end(),
+                    name) == new_solution_names.end()) {
+        int size = name.size();
+        ChemBCast(&size, 1, MPI_INT);
+        ChemBCast(name.data(), name.size(), MPI_CHAR);
+        new_solution_names.push_back(name);
       }
-
-      const auto field_row = m_it->second;
-      const auto chem_field_end = this->field.end();
-      this->field.insert(chem_field_end, field_row.begin(), field_row.end());
     }
-    this->n_cells = mapped_values.begin()->second.size();
+    int end = 0;
+    ChemBCast(&end, 1, MPI_INT);
+  } else {
+    constexpr int MAXSIZE = 128;
+    MPI_Status status;
+    int recv_size;
+    char recv_buffer[MAXSIZE];
+    while (1) {
+      ChemBCast(&recv_size, 1, MPI_INT);
+      if (recv_size == 0) {
+        break;
+      }
+      ChemBCast(recv_buffer, recv_size, MPI_CHAR);
+      recv_buffer[recv_size] = '\0';
+      new_solution_names.push_back(std::string(recv_buffer));
+    }
+  }
+
+  // now sort the new values
+  std::sort(new_solution_names.begin() + 3, new_solution_names.end());
+
+  // and append other processes than solutions
+  std::vector<std::string> new_prop_names = new_solution_names;
+  new_prop_names.insert(new_prop_names.end(), essentials_backup.begin(),
+                        essentials_backup.end());
+
+  std::vector<std::string> old_prop_names{this->prop_names};
+  this->prop_names = std::move(new_prop_names);
+  this->prop_count = prop_names.size();
+
+  this->SetPOETSolutionNames(new_solution_names);
+
+  if (is_master) {
+    this->n_cells = n_cells;
+
+    this->field.clear();
+    this->field.reserve(this->prop_count * n_cells);
+
+    std::vector<double> init_values;
+    this->getDumpedField(init_values);
+
+    const std::vector<std::string> ess_names = old_prop_names;
+
+    for (const auto &name : this->prop_names) {
+      auto it_find = std::find(ess_names.begin(), ess_names.end(), name);
+      double value;
+      if (it_find != ess_names.end()) {
+        int index = it_find - ess_names.begin();
+        value = init_values[index];
+      } else {
+        auto map_it = input_map.find(name);
+        value = map_it->second;
+      }
+      std::vector<double> curr_vec(n_cells, value);
+      this->field.insert(field.end(), curr_vec.begin(), curr_vec.end());
+    }
   }
 }
 
@@ -274,89 +290,26 @@ void poet::ChemistryModule::ReadDHTFile(const std::string &input_file) {
   }
 }
 
-void poet::ChemistryModule::GetWPFromInternals(std::vector<double> &vecWP,
-                                               uint32_t wp_size) {
-  std::vector<double> vecCurrOutput;
-
-  vecWP.clear();
-  vecWP.reserve(this->prop_count * wp_size);
-
-  this->GetConcentrations(vecCurrOutput);
-  vecWP.insert(vecWP.end(), vecCurrOutput.begin(), vecCurrOutput.end());
-
-  if (this->speciesPerModule[1] != 0) {
-    this->GetPPhaseMoles(vecCurrOutput);
-    vecWP.insert(vecWP.end(), vecCurrOutput.begin(), vecCurrOutput.end());
-  }
-
-  // NOTE: Block for 'Surface' and 'Exchange' is missing because of missing
-  // Getters @ PhreeqcRM
-  // ...
-  // BLOCK_END
-
-  if (this->speciesPerModule[4] != 0) {
-    this->GetKineticsMoles(vecCurrOutput);
-    vecWP.insert(vecWP.end(), vecCurrOutput.begin(), vecCurrOutput.end());
-  }
-}
-void poet::ChemistryModule::SetInternalsFromWP(const std::vector<double> &vecWP,
-                                               uint32_t wp_size) {
-  uint32_t iCurrElements;
-
-  auto itStart = vecWP.begin();
-  auto itEnd = itStart;
-
-  // this->SetMappingForWP(iCurrWPSize);
-
-  int nchem = this->GetChemistryCellCount();
-
-  iCurrElements = this->speciesPerModule[0];
-
-  itEnd += iCurrElements * wp_size;
-  this->SetConcentrations(std::vector<double>(itStart, itEnd));
-  itStart = itEnd;
-
-  // Equlibirum Phases
-  if ((iCurrElements = this->speciesPerModule[1]) != 0) {
-    itEnd += iCurrElements * wp_size;
-    this->SetPPhaseMoles(std::vector<double>(itStart, itEnd));
-    itStart = itEnd;
-  }
-
-  // // NOTE: Block for 'Surface' and 'Exchange' is missing because of missing
-  // // setters @ PhreeqcRM
-  // // ...
-  // // BLOCK_END
-
-  if ((iCurrElements = this->speciesPerModule[4]) != 0) {
-    itEnd += iCurrElements * wp_size;
-    this->SetKineticsMoles(std::vector<double>(itStart, itEnd));
-    itStart = itEnd;
-  }
-}
-
-#else //POET_USE_PRM
+#else // POET_USE_PRM
 
 inline void poet::ChemistryModule::PrmToPoetField(std::vector<double> &field) {
-  GetConcentrations(field);
-  int col = GetSelectedOutputColumnCount();
-  int rows = GetSelectedOutputRowCount();
-
-  field.reserve(field.size() + 3 * rows);
-
-  std::vector<double> so;
-  GetSelectedOutput(so);
-
-  for (int j = 0; j < col; j += 2) {
-    const auto start = so.begin() + (j * rows);
-    const auto end = start + rows;
-    field.insert(field.end(), start, end);
-  }
+  this->getDumpedField(field);
 }
 
 void poet::ChemistryModule::RunCells() {
   PhreeqcRM::RunCells();
-  PrmToPoetField(this->field);
+
+  std::vector<double> tmp_field;
+
+  PrmToPoetField(tmp_field);
+  this->field = tmp_field;
+
+  for (uint32_t i = 0; i < field.size(); i++) {
+    uint32_t back_i = static_cast<uint32_t>(i / this->nxyz);
+    uint32_t mod_i = i % this->nxyz;
+
+    field[i] = tmp_field[back_i + (mod_i * this->prop_count)];
+  }
 }
 
 #endif

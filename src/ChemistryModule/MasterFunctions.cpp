@@ -233,9 +233,12 @@ void poet::ChemistryModule::RunCells() {
 }
 
 void poet::ChemistryModule::MasterRunSequential() {
-  SetInternalsFromWP(this->field, this->nxyz);
+  std::vector<double> shuffled_field =
+      shuffleField(field, n_cells, prop_count, 1);
+  this->setDumpedField(shuffled_field);
   PhreeqcRM::RunCells();
-  GetWPFromInternals(this->field, this->nxyz);
+  this->getDumpedField(shuffled_field);
+  unshuffleField(shuffled_field, n_cells, prop_count, 1, this->field);
 }
 
 void poet::ChemistryModule::MasterRunParallel() {

@@ -21,7 +21,6 @@
 #include "poet/ChemistryModule.hpp"
 #include <RInside.h>
 #include <Rcpp.h>
-#include <Rcpp/internal/wrap.h>
 #include <cstdint>
 #include <cstdlib>
 #include <poet/DiffusionModule.hpp>
@@ -99,7 +98,6 @@ inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
   set_chem_parameters(chem, nxyz_master, chem_params.database_path);
   chem.RunInitFile(chem_params.input_script);
 
-  chem.SetSelectedOutputOn(true);
   chem.SetTimeStep(0);
   chem.RunCells();
 

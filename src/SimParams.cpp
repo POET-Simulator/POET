@@ -19,7 +19,6 @@
 */
 
 #include "poet/DHT_Types.hpp"
-#include <bits/stdint-uintn.h>
 #include <poet/SimParams.hpp>
 
 #include <RInside.h>
@@ -51,8 +50,8 @@ poet::GridParams::s_GridParams(RInside &R) {
 }
 
 poet::DiffusionParams::s_DiffusionParams(RInside &R) {
-  this->prop_names = Rcpp::as<std::vector<std::string>>(
-      R.parseEval("names(mysetup$diffusion$init)"));
+  this->initial_t =
+      Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$diffusion$init"));
   this->alpha =
       Rcpp::as<Rcpp::NumericVector>(R.parseEval("mysetup$diffusion$alpha"));
   if (Rcpp::as<bool>(
