@@ -23,7 +23,6 @@
 #include "tug/Diffusion.hpp"
 #include <Rcpp.h>
 #include <algorithm>
-#include <bits/stdint-intn.h>
 #include <cstdint>
 #include <poet/DiffusionModule.hpp>
 #include <poet/Grid.hpp>

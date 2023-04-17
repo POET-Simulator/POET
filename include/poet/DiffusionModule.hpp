@@ -23,7 +23,6 @@
 
 #include "poet/SimParams.hpp"
 #include <array>
-#include <bits/stdint-uintn.h>
 #include <cmath>
 #include <poet/Grid.hpp>
 #include <string>
