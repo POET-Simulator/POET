@@ -1,8 +1,8 @@
 install(FILES
     ExBase.pqi
     ex.R
-    #surfex.R
-    #SurfExBase.pqi
+    surfex.R
+    SurfExBase.pqi
     SMILE_2021_11_01_TH.dat
 DESTINATION
     share/poet/bench/surfex
