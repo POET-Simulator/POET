@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
+#include <map>
 #include <mpi.h>
 #include <stdexcept>
 #include <string>
@@ -40,6 +41,12 @@ void poet::ChemistryModule::WorkerLoop() {
     switch (func_type) {
     case CHEM_INIT: {
       RunInitFile(get_string(0, this->group_comm));
+      break;
+    }
+    case CHEM_INIT_SPECIES: {
+      SingleCMap dummy_map;
+      std::uint32_t n_cells_dummy;
+      mergeFieldWithModule(dummy_map, n_cells_dummy);
       break;
     }
     case CHEM_DHT_ENABLE: {
@@ -339,32 +346,16 @@ poet::ChemistryModule::WorkerRunWorkPackage(std::vector<double> &vecWP,
     return IRM_OK;
   }
 
-  std::vector<double> vecCopy;
-
-  vecCopy = vecWP;
-  for (uint32_t i = 0; i < this->prop_count; i++) {
-    for (uint32_t j = 0; j < this->wp_size; j++) {
-      vecWP[(i * this->wp_size) + j] = vecCopy[(j * this->prop_count) + i];
-    }
-  }
-
   IRM_RESULT result;
   this->PhreeqcRM::CreateMapping(vecMapping);
-  this->SetInternalsFromWP(vecWP, this->wp_size);
+  this->setDumpedField(vecWP);
 
   this->PhreeqcRM::SetTime(dSimTime);
   this->PhreeqcRM::SetTimeStep(dTimestep);
 
   result = this->PhreeqcRM::RunCells();
 
-  this->GetWPFromInternals(vecWP, this->wp_size);
-
-  vecCopy = vecWP;
-  for (uint32_t i = 0; i < this->prop_count; i++) {
-    for (uint32_t j = 0; j < this->wp_size; j++) {
-      vecWP[(j * this->prop_count) + i] = vecCopy[(i * this->wp_size) + j];
-    }
-  }
+  this->getDumpedField(vecWP);
 
   return result;
 }

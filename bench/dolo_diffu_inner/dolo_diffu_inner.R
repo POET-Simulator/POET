@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-01-10 13:51:40 delucia"
+## Time-stamp: "Last modified 2023-04-17 12:25:25 mluebke"
 
 database <- normalizePath("../share/poet/examples/phreeqc_kin.dat")
 input_script <- normalizePath("../share/poet/bench/dolo_inner.pqi")
@@ -17,7 +17,7 @@ init_cell <- list(
   "H" = 110.683,
   "O" = 55.3413,
   "Charge" = -5.0822e-19,
-  "C" = 1.2279E-4,
+  "C(4)" = 1.2279E-4,
   "Ca" = 1.2279E-4,
   "Cl" = 0,
   "Mg" = 0,
@@ -30,7 +30,7 @@ grid <- list(
   n_cells = c(n, m),
   s_cells = c(1, 1),
   type = types[1],
-  init_cell = as.data.frame(init_cell),
+  init_cell = as.data.frame(init_cell, check.names = FALSE),
   props = names(init_cell),
   database = database,
   input_script = input_script
@@ -43,11 +43,11 @@ grid <- list(
 ##################################################################
 
 ## initial conditions
-init_diffu <- c(
+init_diffu <- list(
   "H" = 110.683,
   "O" = 55.3413,
   "Charge" = -5.0822e-19,
-  "C" = 1.2279E-4,
+  "C(4)" = 1.2279E-4,
   "Ca" = 1.2279E-4,
   "Cl" = 0,
   "Mg" = 0
@@ -58,7 +58,7 @@ alpha_diffu <- c(
   "H" = 1E-6,
   "O" = 1E-6,
   "Charge" = 1E-6,
-  "C" = 1E-6,
+  "C(4)" = 1E-6,
   "Ca" = 1E-6,
   "Cl" = 1E-6,
   "Mg" = 1E-6
@@ -70,7 +70,7 @@ vecinj_diffu <- list(
         "H" = 110.683,
         "O" = 55.3413,
         "Charge" = 1.90431e-16,
-        "C" = 0,
+        "C(4)" = 0,
         "Ca" = 0,
         "Cl" = 0.002,
         "Mg" = 0.001
@@ -79,7 +79,7 @@ vecinj_diffu <- list(
         "H" = 110.683,
         "O" = 55.3413,
         "Charge" = 1.90431e-16,
-        "C" = 0,
+        "C(4)" = 0,
         "Ca" = 0.0,
         "Cl" = 0.004,
         "Mg" = 0.002
@@ -102,9 +102,12 @@ boundary <- list(
 
 diffu_list <- names(alpha_diffu)
 
+vecinj <- do.call(rbind.data.frame, vecinj_diffu)
+names(vecinj) <- names(init_diffu)
+
 diffusion <- list(
-  init = init_diffu,
-  vecinj = do.call(rbind.data.frame, vecinj_diffu),
+  init = as.data.frame(init_diffu, check.names = FALSE),
+  vecinj = vecinj,
   vecinj_inner = vecinj_inner,
   vecinj_index = boundary,
   alpha = alpha_diffu

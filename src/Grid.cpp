@@ -21,7 +21,6 @@
 #include "poet/SimParams.hpp"
 #include <RInside.h>
 #include <Rcpp.h>
-#include <Rcpp/internal/wrap.h>
 #include <algorithm>
 #include <cassert>
 #include <cstdint>

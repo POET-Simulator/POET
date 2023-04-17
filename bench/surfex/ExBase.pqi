@@ -1,0 +1,39 @@
+##  Time-stamp: "Last modified 2023-03-21 11:49:43 mluebke"
+KNOBS
+ -logfile            false
+ -iterations         10000
+ -convergence_tolerance  1E-12
+ -step_size          2
+ -pe_step_size       2
+SELECTED_OUTPUT
+ -reset false
+ -high_precision true
+ -solution true
+ -state true
+ -step true 
+ -pH true 
+ -pe true
+ -ionic_strength true 
+ -water true
+SOLUTION 1
+temp         13
+units        mol/kgw
+pH           7.06355
+pe          -2.626517
+C(4)         0.001990694
+Ca           0.02172649
+Cl           0.3227673 charge
+Fe           0.0001434717
+K            0.001902357
+Mg           0.01739704
+Na           0.2762882
+S(6)         0.01652701
+Sr           0.0004520361
+U(4)         8.147792e-12
+U(6)         2.237946e-09
+-water       0.00133
+EXCHANGE 1
+ -equil 1
+  Z     0.0012585
+  Y     0.0009418
+END

@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-04-13 17:10:30 mluebke"
+## Time-stamp: "Last modified 2023-04-14 11:02:31 mluebke"
 
 database <- normalizePath("../share/poet/bench/barite/db_barite.dat")
 input_script <- normalizePath("../share/poet/bench/barite/barite.pqi")
@@ -29,7 +29,7 @@ grid <- list(
   n_cells = c(n, m),
   s_cells = c(1, 1),
   type = types[1],
-  init_cell = as.data.frame(init_cell),
+  init_cell = as.data.frame(init_cell, check.names = FALSE),
   props = names(init_cell),
   database = database,
   input_script = input_script
@@ -43,13 +43,13 @@ grid <- list(
 
 ## initial conditions
 
-init_diffu <- c(
+init_diffu <- list(
   "H" = 110.0124,
   "O" = 55.5087,
   "Charge" = -1.217E-09,
   "Ba" = 1.E-10,
   "Cl" = 1.E-10,
-  "S" = 6.205E-4,
+  "S(6)" = 6.205E-4,
   "Sr" = 6.205E-4
 )
 
@@ -60,7 +60,7 @@ injection_diff <- list(
         "Charge" = -3.337E-08,
         "Ba" = 0.1,
         "Cl" = 0.2,
-        "S"  = 0,
+        "S(6)"  = 0,
         "Sr" = 0)
 )
 
@@ -71,7 +71,7 @@ alpha_diffu <- c(
   "Charge" = 1E-06,
   "Ba" = 1E-06,
   "Cl" = 1E-06,
-  "S"  = 1E-06,
+  "S(6)"  = 1E-06,
   "Sr" = 1E-06
 )
 
@@ -91,9 +91,12 @@ boundary <- list(
 
 diffu_list <- names(alpha_diffu)
 
+vecinj <- do.call(rbind.data.frame, injection_diff)
+names(vecinj) <- names(init_diffu)
+
 diffusion <- list(
-  init = init_diffu,
-  vecinj = do.call(rbind.data.frame, injection_diff),
+  init = as.data.frame(init_diffu, check.names = FALSE),
+  vecinj = vecinj,
 #  vecinj_inner = vecinj_inner,
   vecinj_index = boundary,
   alpha = alpha_diffu

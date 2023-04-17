@@ -5,8 +5,10 @@
 #include "PhreeqcRM.h"
 #include "poet/DHT_Wrapper.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <mpi.h>
 #include <string>
 #include <unordered_map>
@@ -127,35 +129,14 @@ public:
   };
 
   /**
-   * Initializes field with a "DataFrame" containing a single value for each
-   * species.
+   * Merge initial values from existing module with the chemistry module and set
+   * according internal variables.
    *
-   * Each species must have been previously found by
-   * ChemistryModule::RunInitFile.
-   *
-   * \exception std::domain_error Species name of map is not defined.
-   *
-   * \param n_cells Count of cells for each species.
-   * \param mapped_values Unordered map containing one double value for each
-   * specified species.
+   * \param input_map Map with name and initial values of another module like
+   * Diffusion.
+   * \param n_cells number of cells used to initialize the field with.
    */
-  void InitializeField(uint32_t n_cells, const SingleCMap &mapped_values);
-
-  /**
-   * Initializes field with a "DataFrame" containing a vector of values for each
-   * species.
-   *
-   * Each species must have been previously found by
-   * ChemistryModule::RunInitFile.
-   *
-   * There is no check if vector length matches count of grid cells defined.
-   *
-   * \exception std::domain_error Species name of map is not defined.
-   *
-   * \param mapped_values Unordered map containing a vector of multiple values.
-   * Size of the vectors shall be the count of grid cells defined previously.
-   */
-  void InitializeField(const VectorCMap &mapped_values);
+  void mergeFieldWithModule(const SingleCMap &input_map, std::uint32_t n_cells);
 
   /**
    * **Only called by workers!** Start the worker listening loop.
@@ -298,6 +279,7 @@ protected:
   enum {
     CHEM_INIT,
     CHEM_WP_SIZE,
+    CHEM_INIT_SPECIES,
     CHEM_DHT_ENABLE,
     CHEM_DHT_SIGNIF_VEC,
     CHEM_DHT_PROP_TYPE_VEC,
@@ -365,9 +347,6 @@ protected:
                                   std::vector<int32_t> &vecMapping,
                                   double dSimTime, double dTimestep);
 
-  void GetWPFromInternals(std::vector<double> &vecWP, uint32_t wp_size);
-  void SetInternalsFromWP(const std::vector<double> &vecWP, uint32_t wp_size);
-
   std::vector<uint32_t> CalculateWPSizesVector(uint32_t n_cells,
                                                uint32_t wp_size) const;
 
@@ -397,6 +376,7 @@ protected:
   double idle_t = 0.;
   double seq_t = 0.;
   double send_recv_t = 0.;
+
 #endif
 
   double chem_t = 0.;
@@ -405,8 +385,9 @@ protected:
   uint32_t prop_count = 0;
   std::vector<std::string> prop_names;
   std::vector<double> field;
-  std::vector<uint32_t> speciesPerModule;
-  static constexpr uint32_t MODULE_COUNT = 5;
+  static constexpr uint32_t MODULE_COUNT = 4;
+
+  std::array<std::uint32_t, 4> speciesPerModule{};
 };
 } // namespace poet
 

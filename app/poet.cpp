@@ -21,7 +21,6 @@
 #include "poet/ChemistryModule.hpp"
 #include <RInside.h>
 #include <Rcpp.h>
-#include <Rcpp/internal/wrap.h>
 #include <cstdint>
 #include <cstdlib>
 #include <poet/DiffusionModule.hpp>
@@ -100,7 +99,8 @@ inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
                             ChemistryParams &chem_params,
                             const GridParams &g_params, uint32_t nxyz_master) {
 
-  DiffusionModule diffusion(poet::DiffusionParams(R), grid);
+  DiffusionParams d_params{R};
+  DiffusionModule diffusion(d_params, grid);
   /* Iteration Count is dynamic, retrieving value from R (is only needed by
    * master for the following loop) */
   uint32_t maxiter = R.parseEval("mysetup$iterations");
@@ -112,7 +112,8 @@ inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
   set_chem_parameters(chem, nxyz_master, chem_params.database_path);
   chem.RunInitFile(chem_params.input_script);
 
-  chem.InitializeField(grid.GetTotalCellCount(), DFToHashMap(g_params.init_df));
+  poet::ChemistryModule::SingleCMap init_df = DFToHashMap(d_params.initial_t);
+  chem.mergeFieldWithModule(init_df, grid.GetTotalCellCount());
 
   if (params.getNumParams().dht_enabled) {
     chem.SetDHTEnabled(true, params.getNumParams().dht_size_per_process);

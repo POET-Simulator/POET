@@ -21,7 +21,6 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include <bits/stdint-uintn.h>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -85,7 +84,7 @@ using GridParams = struct s_GridParams {
 };
 
 using DiffusionParams = struct s_DiffusionParams {
-  std::vector<std::string> prop_names;
+  Rcpp::DataFrame initial_t;
 
   Rcpp::NumericVector alpha;
   Rcpp::List vecinj_inner;

@@ -74,7 +74,8 @@ void DiffusionModule::initialize(poet::DiffusionParams args) {
   // const poet::DiffusionParams args(this->R);
 
   // name of props
-  this->prop_names = args.prop_names;
+  //
+  this->prop_names = Rcpp::as<std::vector<std::string>>(args.initial_t.names());
   this->prop_count = this->prop_names.size();
 
   this->state =
@@ -91,7 +92,9 @@ void DiffusionModule::initialize(poet::DiffusionParams args) {
     // initial input
     this->alpha.push_back(args.alpha[this->prop_names[i]]);
 
-    std::vector<double> prop_vec = grid.GetSpeciesByName(this->prop_names[i]);
+    double val = args.initial_t[prop_names[i]];
+
+    std::vector<double> prop_vec(n_cells_per_prop, val);
     std::copy(prop_vec.begin(), prop_vec.end(),
               field.begin() + (i * this->n_cells_per_prop));
     if (this->dim == this->DIM_2D) {
