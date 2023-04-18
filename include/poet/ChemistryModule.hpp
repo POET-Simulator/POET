@@ -385,9 +385,9 @@ protected:
   uint32_t prop_count = 0;
   std::vector<std::string> prop_names;
   std::vector<double> field;
-  static constexpr uint32_t MODULE_COUNT = 4;
+  static constexpr int MODULE_COUNT = 5;
 
-  std::array<std::uint32_t, 4> speciesPerModule{};
+  std::array<std::uint32_t, MODULE_COUNT> speciesPerModule{};
 };
 } // namespace poet
 

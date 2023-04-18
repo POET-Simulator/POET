@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-04-13 17:11:52 mluebke"
+## Time-stamp: "Last modified 2023-04-17 15:48:21 mluebke"
 
 database <- normalizePath("../share/poet/bench/surfex/SMILE_2021_11_01_TH.dat")
 input_script <- normalizePath("../share/poet/bench/surfex/SurfExBase.pqi")
@@ -103,8 +103,11 @@ boundary <- list(
 
 diffu_list <- names(alpha_diffu)
 
+vecinj <- do.call(rbind.data.frame, vecinj_diffu)
+names(vecinj) <- names(init_cell)
+
 diffusion <- list(
-  init = init_cell,
+  init = as.data.frame(init_cell, check.names = FALSE),
   vecinj = vecinj,
 #  vecinj_inner = vecinj_inner,
   vecinj_index = boundary,

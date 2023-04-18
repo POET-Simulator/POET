@@ -68,6 +68,7 @@ void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
   char exchange = (speciesPerModule[1] == 0 ? -1 : 1);
   char kinetics = (speciesPerModule[2] == 0 ? -1 : 1);
   char equilibrium = (speciesPerModule[3] == 0 ? -1 : 1);
+  char surface = (speciesPerModule[4] == 0 ? -1 : 1);
 
 #ifdef POET_USE_PRM
   std::vector<int> ic1;
@@ -77,7 +78,7 @@ void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
     ic1[i] = 1;                   // Solution 1
     ic1[nxyz + i] = equilibrium;  // Equilibrium 1
     ic1[2 * nxyz + i] = exchange; // Exchange none
-    ic1[3 * nxyz + i] = -1;       // Surface none
+    ic1[3 * nxyz + i] = surface;  // Surface none
     ic1[4 * nxyz + i] = -1;       // Gas phase none
     ic1[5 * nxyz + i] = -1;       // Solid solutions none
     ic1[6 * nxyz + i] = kinetics; // Kinetics 1
@@ -92,7 +93,7 @@ void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
     ic1[i] = 1;                   // Solution 1
     ic1[nxyz + i] = equilibrium;  // Equilibrium 1
     ic1[2 * nxyz + i] = exchange; // Exchange none
-    ic1[3 * nxyz + i] = -1;       // Surface none
+    ic1[3 * nxyz + i] = surface;  // Surface none
     ic1[4 * nxyz + i] = -1;       // Gas phase none
     ic1[5 * nxyz + i] = -1;       // Solid solutions none
     ic1[6 * nxyz + i] = kinetics; // Kinetics 1
@@ -104,7 +105,7 @@ void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
 
 #ifndef POET_USE_PRM
 void poet::ChemistryModule::mergeFieldWithModule(const SingleCMap &input_map,
-                                               std::uint32_t n_cells) {
+                                                 std::uint32_t n_cells) {
 
   if (is_master) {
     int f_type = CHEM_INIT_SPECIES;
@@ -171,16 +172,8 @@ void poet::ChemistryModule::mergeFieldWithModule(const SingleCMap &input_map,
 
     const std::vector<std::string> ess_names = old_prop_names;
 
-    for (const auto &name : this->prop_names) {
-      auto it_find = std::find(ess_names.begin(), ess_names.end(), name);
-      double value;
-      if (it_find != ess_names.end()) {
-        int index = it_find - ess_names.begin();
-        value = init_values[index];
-      } else {
-        auto map_it = input_map.find(name);
-        value = map_it->second;
-      }
+    for (int i = 0; i < prop_names.size(); i++) {
+      double value = init_values[i];
       std::vector<double> curr_vec(n_cells, value);
       this->field.insert(field.end(), curr_vec.begin(), curr_vec.end());
     }
