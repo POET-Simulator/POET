@@ -1,6 +1,6 @@
 ## Simple library of functions to assess and visualize the results of the coupled simulations
 
-## Time-stamp: "Last modified 2023-01-18 16:02:58 delucia"
+## Time-stamp: "Last modified 2023-04-24 16:09:55 mluebke"
 
 require(RedModRphree)
 require(Rmufits)  ## essentially for PlotCartCellData 
@@ -59,10 +59,10 @@ ReadDHT <- function(file, new_scheme = TRUE) {
 
     if (new_scheme) {
       nkeys <- dims[1] / 8
-      keys <- res[, 1:nkeys]
+      keys <- res[, 1:nkeys - 1]
 
       conv <- apply(keys, 2, ConvertDHTKey)
-      res[, 1:nkeys] <- conv
+      res[, 1:nkeys - 1] <- conv
     }
 
     return(res)

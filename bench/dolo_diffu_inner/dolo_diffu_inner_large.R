@@ -1,7 +1,7 @@
-## Time-stamp: "Last modified 2023-04-17 12:27:27 mluebke"
+## Time-stamp: "Last modified 2023-04-24 15:43:26 mluebke"
 
 database <- normalizePath("../share/poet/examples/phreeqc_kin.dat")
-input_script <- normalizePath("../share/poet/bench/dolo_inner.pqi")
+input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
 
 #################################################################
 ##                          Section 1                          ##
@@ -44,10 +44,10 @@ grid <- list(
 
 ## initial conditions
 init_diffu <- list(
-  "H" = 110.683,
-  "O" = 55.3413,
+  "H" = 0.000211313883539788,
+  "O" = 0.00398302904424952,
   "Charge" = -5.0822e-19,
-  "C" = 1.2279E-4,
+  "C(4)" = 1.2279E-4,
   "Ca" = 1.2279E-4,
   "Cl" = 0,
   "Mg" = 0
@@ -58,7 +58,7 @@ alpha_diffu <- c(
   "H" = 1E-6,
   "O" = 1E-6,
   "Charge" = 1E-6,
-  "C" = 1E-6,
+  "C(4)" = 1E-6,
   "Ca" = 1E-6,
   "Cl" = 1E-6,
   "Mg" = 1E-6
@@ -67,19 +67,19 @@ alpha_diffu <- c(
 ## list of boundary conditions/inner nodes
 vecinj_diffu <- list(
     list(
-        "H" = 110.683,
-        "O" = 55.3413,
+        "H" = 0.0001540445,
+        "O" = 0.002148006,
         "Charge" = 1.90431e-16,
-        "C" = 0,
+        "C(4)" = 0,
         "Ca" = 0,
         "Cl" = 0.002,
         "Mg" = 0.001
     ),
     list(
-        "H" = 110.683,
-        "O" = 55.3413,
+        "H" = 0.0001610193,
+        "O" = 0.002386934,
         "Charge" = 1.90431e-16,
-        "C" = 0,
+        "C(4)" = 0,
         "Ca" = 0.0,
         "Cl" = 0.004,
         "Mg" = 0.002
@@ -120,13 +120,16 @@ diffusion <- list(
 
 
 ## # Needed when using DHT
-signif_vector <- c(10, 10, 2, 5, 5, 5, 5, 0, 5, 5)
-prop_type <- c("", "", "", "act", "act", "act", "act", "ignore", "", "")
-prop <- names(init_cell)
+dht_species <- c("H", "O", "Charge", "C(4)", "Ca", "Cl", "Mg", "Calcite",
+                 "Dolomite")
+#dht_signif <- rep(15, length(dht_species))
+dht_signif <- c(10, 10, 3, 5, 5, 5, 5, 5, 5)
 
 chemistry <- list(
   database = database,
-  input_script = input_script
+  input_script = input_script,
+  dht_species = dht_species,
+  dht_signif = dht_signif
 )
 
 #################################################################
@@ -145,5 +148,5 @@ setup <- list(
   iterations = iterations,
   timesteps = rep(dt, iterations),
   store_result = TRUE,
-  out_save = c(5, iterations)
+  out_save = seq(5, iterations, by=5)
 )

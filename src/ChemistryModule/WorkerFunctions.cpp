@@ -1,6 +1,10 @@
+//  Time-stamp: "Last modified 2023-04-24 16:55:34 mluebke"
+
 #include "IrmResult.h"
 #include "poet/ChemistryModule.hpp"
 
+#include <algorithm>
+#include <bits/stdint-uintn.h>
 #include <cstddef>
 #include <cstdint>
 #include <iomanip>
@@ -55,12 +59,13 @@ void poet::ChemistryModule::WorkerLoop() {
       uint32_t size_mb;
       ChemBCast(&size_mb, 1, MPI_UINT32_T);
 
-      SetDHTEnabled(enable, size_mb);
+      std::vector<std::string> name_dummy;
+
+      SetDHTEnabled(enable, size_mb, name_dummy);
       break;
     }
     case CHEM_DHT_SIGNIF_VEC: {
-      std::vector<uint32_t> input_vec(this->prop_count);
-      ChemBCast(input_vec.data(), this->prop_count, MPI_UINT32_T);
+      std::vector<uint32_t> input_vec;
 
       SetDHTSignifVector(input_vec);
       break;
@@ -185,46 +190,35 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
   /* 4th double value is currently a placeholder */
   // placeholder = mpi_buffer[count+4];
 
-  // std::vector<double> vecCurrWP(
-  //     mpi_buffer,
-  //     mpi_buffer + (local_work_package_size * this->prop_names.size()));
   vecCurrWP.resize(n_cells_times_props);
-  std::vector<int32_t> vecMappingWP(this->wp_size);
+  std::vector<std::uint32_t> vecMappingWP(local_work_package_size);
 
-  DHT_ResultObject DHT_Results;
-
-  for (uint32_t i = 0; i < local_work_package_size; i++) {
-    vecMappingWP[i] = i;
-  }
-
-  if (local_work_package_size != this->wp_size) {
-    // std::vector<double> vecFiller(
-    //     (this->wp_size - local_work_package_size) * prop_count, 0);
-    // vecCurrWP.insert(vecCurrWP.end(), vecFiller.begin(), vecFiller.end());
-
-    // set all remaining cells to inactive
-    for (int i = local_work_package_size; i < this->wp_size; i++) {
-      vecMappingWP[i] = -1;
-    }
+  {
+    std::uint32_t i = 0;
+    std::generate(vecMappingWP.begin(), vecMappingWP.end(),
+                  [&] { return i++; });
   }
 
   if (dht_enabled) {
     /* check for values in DHT */
     dht_get_start = MPI_Wtime();
-    DHT_Results = dht->checkDHT(local_work_package_size, dt, vecCurrWP);
+    dht->checkDHT(local_work_package_size, dt, vecCurrWP, vecMappingWP);
     dht_get_end = MPI_Wtime();
 
-    DHT_Results.ResultsToMapping(vecMappingWP);
+    // DHT_Results.ResultsToMapping(vecMappingWP);
   }
 
   phreeqc_time_start = MPI_Wtime();
 
-  WorkerRunWorkPackage(vecCurrWP, vecMappingWP, current_sim_time, dt);
+  if (WorkerRunWorkPackage(vecCurrWP, vecMappingWP, current_sim_time, dt) !=
+      IRM_OK) {
+    throw std::runtime_error("Phreeqc threw an error!");
+  };
 
   phreeqc_time_end = MPI_Wtime();
 
   if (dht_enabled) {
-    DHT_Results.ResultsToWP(vecCurrWP);
+    dht->resultsToWP(vecCurrWP);
   }
 
   /* send results to master */
@@ -235,7 +229,7 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
   if (dht_enabled) {
     /* write results to DHT */
     dht_fill_start = MPI_Wtime();
-    dht->fillDHT(local_work_package_size, DHT_Results, vecCurrWP);
+    dht->fillDHT(local_work_package_size, vecCurrWP);
     dht_fill_end = MPI_Wtime();
 
     timings.dht_get += dht_get_end - dht_get_start;
@@ -260,37 +254,14 @@ void poet::ChemistryModule::WorkerPostIter(MPI_Status &prope_status,
   }
 }
 void poet::ChemistryModule::WorkerPostSim(uint32_t iteration) {
-  /* before death, submit profiling/timings to master*/
-
-  // double timings_serialized[4];
-  // timings_serialized[0] = timings.phreeqc_t;
-  // timings_serialized[1] = timings.dht_get;
-  // timings_serialized[2] = timings.dht_fill;
-  // timings_serialized[3] = timings.idle_t;
-
-  // // timings
-  // MPI_Send(timings_serialized, 4, MPI_DOUBLE, 0, 0, this->group_comm);
-
-  // // MPI_Send(&phreeqc_count, 1, MPI_INT, 0, TAG_TIMING, MPI_COMM_WORLD);
-  // // MPI_Send(&idle_t, 1, MPI_DOUBLE, 0, TAG_TIMING, MPI_COMM_WORLD);
-
-  // if (this->dht_enabled) {
-  //   // dht_perf
-  //   int dht_perf[3];
-  //   dht_perf[0] = dht->getHits();
-  //   dht_perf[1] = dht->getMisses();
-  //   dht_perf[2] = dht->getEvictions();
-  //   MPI_Send(dht_perf, 3, MPI_INT, 0, 0, this->group_comm);
-  // }
-
-  if (this->dht_enabled && this->dht_snaps_type > DHT_FILES_SIMEND) {
+  if (this->dht_enabled && this->dht_snaps_type == DHT_FILES_SIMEND) {
     WorkerWriteDHTDump(iteration);
   }
 }
 
 void poet::ChemistryModule::WorkerWriteDHTDump(uint32_t iteration) {
   std::stringstream out;
-  out << this->dht_file_out_dir << "/iter_" << std::setfill('0') << std::setw(4)
+  out << this->dht_file_out_dir << "/iter_" << std::setfill('0') << std::setw(3)
       << iteration << ".dht";
   int res = dht->tableToFile(out.str().c_str());
   if (res != DHT_SUCCESS && this->comm_rank == 2)
@@ -321,13 +292,9 @@ void poet::ChemistryModule::WorkerReadDHTDump(
 }
 
 IRM_RESULT
-poet::ChemistryModule::WorkerRunWorkPackage(std::vector<double> &vecWP,
-                                            std::vector<int32_t> &vecMapping,
-                                            double dSimTime, double dTimestep) {
-  if (this->wp_size != vecMapping.size()) {
-    return IRM_INVALIDARG;
-  }
-
+poet::ChemistryModule::WorkerRunWorkPackage(
+    std::vector<double> &vecWP, std::vector<std::uint32_t> &vecMapping,
+    double dSimTime, double dTimestep) {
   if ((this->wp_size * this->prop_count) != vecWP.size()) {
     return IRM_INVALIDARG;
   }
@@ -346,7 +313,7 @@ poet::ChemistryModule::WorkerRunWorkPackage(std::vector<double> &vecWP,
   }
 
   IRM_RESULT result;
-  this->PhreeqcRM::CreateMapping(vecMapping);
+  this->PhreeqcRM::setPOETMapping(vecMapping);
   this->setDumpedField(vecWP);
 
   this->PhreeqcRM::SetTime(dSimTime);

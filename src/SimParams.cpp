@@ -21,6 +21,7 @@
 #include "poet/DHT_Types.hpp"
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <poet/SimParams.hpp>
 
 #include <RInside.h>
@@ -86,6 +87,16 @@ poet::ChemistryParams::s_ChemistryParams(RInside &R) {
       Rcpp::as<std::string>(R.parseEval("mysetup$chemistry$database"));
   this->input_script =
       Rcpp::as<std::string>(R.parseEval("mysetup$chemistry$input_script"));
+  if (Rcpp::as<bool>(
+          R.parseEval("'dht_species' %in% names(mysetup$chemistry)"))) {
+    this->dht_species = Rcpp::as<std::vector<std::string>>(
+        R.parseEval("mysetup$chemistry$dht_species"));
+  }
+  if (Rcpp::as<bool>(
+          R.parseEval("'dht_signif' %in% names(mysetup$chemistry)"))) {
+    this->dht_signif = Rcpp::as<std::vector<std::uint32_t>>(
+        R.parseEval("mysetup$chemistry$dht_signif"));
+  }
 }
 
 SimParams::SimParams(int world_rank_, int world_size_) {
@@ -225,7 +236,7 @@ void SimParams::initVectorParams(RInside &R) {
 
       for (const auto &type : prop_type_R) {
         if (type == "act") {
-          this->dht_prop_type_vector.push_back(DHT_TYPE_ACT);
+          this->dht_prop_type_vector.push_back(DHT_TYPE_CHARGE);
           continue;
         }
 

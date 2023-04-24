@@ -1,3 +1,5 @@
+//  Time-stamp: "Last modified 2023-04-24 16:23:42 mluebke"
+
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
@@ -21,6 +23,8 @@
 #ifndef DHT_WRAPPER_H
 #define DHT_WRAPPER_H
 
+#include "poet/DHT_Types.hpp"
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -33,9 +37,14 @@ extern "C" {
 
 namespace poet {
 
-using DHT_Keyelement = struct keyelem {
+struct DHT_SCNotation {
   std::int8_t exp : 8;
   std::int64_t significant : 56;
+};
+
+union DHT_Keyelement {
+  double fp_elemet;
+  DHT_SCNotation sc_notation;
 };
 
 using DHT_ResultObject = struct DHTResobj {
@@ -43,9 +52,6 @@ using DHT_ResultObject = struct DHTResobj {
   std::vector<std::vector<DHT_Keyelement>> keys;
   std::vector<std::vector<double>> results;
   std::vector<bool> needPhreeqc;
-
-  void ResultsToMapping(std::vector<int32_t> &curr_mapping);
-  void ResultsToWP(std::vector<double> &curr_wp);
 };
 
 /**
@@ -79,11 +85,14 @@ public:
    *
    * @param dht_comm Communicator which addresses all participating DHT
    * processes
-   * @param buckets_per_process Count of buckets to allocate for each process
-   * @param key_count Count of key entries
+   * @param buckets_per_process Count of buckets to allocate for each
+   * process
+   * @param key_indices Vector indexing elements of one grid cell used
+   * for key creation.
    * @param data_count Count of data entries
    */
-  DHT_Wrapper(MPI_Comm dht_comm, uint32_t dht_size, uint32_t key_count,
+  DHT_Wrapper(MPI_Comm dht_comm, uint32_t dht_size,
+              const std::vector<std::uint32_t> &key_indices,
               uint32_t data_count);
   /**
    * @brief Destroy the dht wrapper object
@@ -112,8 +121,9 @@ public:
    * @param[in,out] work_package Pointer to current work package
    * @param dt Current timestep of simulation
    */
-  auto checkDHT(int length, double dt, const std::vector<double> &work_package)
-      -> poet::DHT_ResultObject;
+  auto checkDHT(int length, double dt, const std::vector<double> &work_package,
+                std::vector<std::uint32_t> &curr_mapping)
+      -> const poet::DHT_ResultObject &;
 
   /**
    * @brief Write simulated values into DHT
@@ -131,8 +141,9 @@ public:
    * outputs of the PHREEQC simulation
    * @param dt Current timestep of simulation
    */
-  void fillDHT(int length, const DHT_ResultObject &dht_check_data,
-               const std::vector<double> &results);
+  void fillDHT(int length, const std::vector<double> &work_package);
+
+  void resultsToWP(std::vector<double> &work_package);
 
   /**
    * @brief Dump current DHT state into file.
@@ -189,6 +200,10 @@ public:
   void SetSignifVector(std::vector<uint32_t> signif_vec);
   void SetPropTypeVector(std::vector<uint32_t> prop_type_vec);
 
+  void setBaseTotals(const std::array<double, 2> &bt) {
+    this->base_totals = bt;
+  }
+
 private:
   uint32_t key_count;
   uint32_t data_count;
@@ -202,11 +217,16 @@ private:
   uint32_t dht_evictions = 0;
 
   std::vector<uint32_t> dht_signif_vector;
-  std::vector<uint32_t> dht_prop_type_vector;
+  std::vector<std::uint32_t> dht_prop_type_vector;
+  std::vector<std::uint32_t> input_key_elements;
 
   static constexpr int DHT_KEY_SIGNIF_DEFAULT = 5;
-  static constexpr int DHT_KEY_SIGNIF_TOTALS = 12;
+  static constexpr int DHT_KEY_SIGNIF_TOTALS = 10;
   static constexpr int DHT_KEY_SIGNIF_CHARGE = 3;
+
+  DHT_ResultObject dht_results;
+
+  std::array<double, 2> base_totals{0};
 };
 } // namespace poet
 

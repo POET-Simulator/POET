@@ -1,3 +1,5 @@
+//  Time-stamp: "Last modified 2023-04-24 14:30:06 mluebke"
+
 #ifndef CHEMISTRYMODULE_H_
 #define CHEMISTRYMODULE_H_
 
@@ -158,8 +160,10 @@ public:
    *
    * \param enable Enables or disables the usage of the DHT.
    * \param size_mb Size in megabyte to allocate for the DHT if enabled.
+   * \param key_species Name of species to be used for key creation.
    */
-  void SetDHTEnabled(bool enable, uint32_t size_mb);
+  void SetDHTEnabled(bool enable, uint32_t size_mb,
+                     const std::vector<std::string> &key_species);
   /**
    * **Master only** Set DHT snapshots to specific mode.
    *
@@ -174,7 +178,7 @@ public:
    * \param signif_vec Vector defining significant digit for each species. Order
    * is defined by prop_type vector (ChemistryModule::GetPropNames).
    */
-  void SetDHTSignifVector(std::vector<uint32_t> signif_vec);
+  void SetDHTSignifVector(std::vector<uint32_t> &signif_vec);
   /**
    * **Master only** Set the DHT rounding type of each species. See
    * DHT_PROP_TYPES enumemartion for explanation.
@@ -343,7 +347,7 @@ protected:
   void WorkerMetricsToMaster(int type);
 
   IRM_RESULT WorkerRunWorkPackage(std::vector<double> &vecWP,
-                                  std::vector<int32_t> &vecMapping,
+                                  std::vector<std::uint32_t> &vecMapping,
                                   double dSimTime, double dTimestep);
 
   std::vector<uint32_t> CalculateWPSizesVector(uint32_t n_cells,
@@ -355,6 +359,8 @@ protected:
   void unshuffleField(const std::vector<double> &in_buffer,
                       uint32_t size_per_prop, uint32_t prop_count,
                       uint32_t wp_count, std::vector<double> &out_field);
+  std::vector<std::uint32_t>
+  parseDHTSpeciesVec(const std::vector<std::string> &species_vec) const;
 
   int comm_size, comm_rank;
   MPI_Comm group_comm;
@@ -362,12 +368,12 @@ protected:
   bool is_sequential;
   bool is_master;
 
-  uint32_t wp_size;
-  bool dht_enabled = false;
-  int dht_snaps_type = DHT_FILES_DISABLED;
+  uint32_t wp_size{CHEM_DEFAULT_WP_SIZE};
+  bool dht_enabled{false};
+  int dht_snaps_type{DHT_FILES_DISABLED};
   std::string dht_file_out_dir;
 
-  poet::DHT_Wrapper *dht = std::nullptr_t();
+  poet::DHT_Wrapper *dht = nullptr;
 
   static constexpr uint32_t BUFFER_OFFSET = 5;
 
@@ -382,6 +388,8 @@ protected:
   double idle_t = 0.;
   double seq_t = 0.;
   double send_recv_t = 0.;
+
+  std::array<double, 2> base_totals{0};
 
 #endif
 
