@@ -21,9 +21,12 @@
 #ifndef DIFFUSION_MODULE_H
 #define DIFFUSION_MODULE_H
 
+#include "Field.hpp"
+#include "SimParams.hpp"
 #include "poet/SimParams.hpp"
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <poet/Grid.hpp>
 #include <string>
 #include <tug/BoundaryCondition.hpp>
@@ -49,7 +52,8 @@ public:
    *
    * @param R RRuntime object
    */
-  DiffusionModule(poet::DiffusionParams diffu_args, Grid &grid_);
+  DiffusionModule(const poet::DiffusionParams &diffu_args,
+                  const poet::GridParams &grid_params);
 
   /**
    * @brief Run simulation for one iteration
@@ -74,6 +78,13 @@ public:
    */
   double getTransportTime();
 
+  /**
+   * \brief Returns the current diffusion field.
+   *
+   * \return Reference to the diffusion field.
+   */
+  Field &getField() { return this->t_field; }
+
 private:
   /**
    * @brief Instance of RRuntime
@@ -83,9 +94,8 @@ private:
 
   enum { DIM_1D = 1, DIM_2D };
 
-  void initialize(poet::DiffusionParams args);
+  void initialize(const poet::DiffusionParams &args);
 
-  Grid &grid;
   uint8_t dim;
 
   uint32_t prop_count;
@@ -96,7 +106,7 @@ private:
   std::vector<std::string> prop_names;
 
   std::vector<tug::bc::BoundaryCondition> bc_vec;
-  poet::StateMemory *state;
+  Field t_field;
 
   uint32_t n_cells_per_prop;
 

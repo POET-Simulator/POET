@@ -21,6 +21,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -69,8 +70,10 @@ typedef struct {
 } t_simparams;
 
 using GridParams = struct s_GridParams {
-  std::vector<uint32_t> n_cells;
-  std::vector<double> s_cells;
+  std::array<uint32_t, 2> n_cells;
+  std::array<double, 2> s_cells;
+  std::uint8_t dim;
+  std::uint32_t total_n;
 
   std::string type;
 
@@ -161,10 +164,8 @@ public:
    * 'init_chemistry' must be run beforehand.
    *
    * @param R R runtime
-   * @param col_count Count of variables per grid cell (typically the count of
-   * columns of each grid cell)
    */
-  void initVectorParams(RInside &R, int col_count);
+  void initVectorParams(RInside &R);
 
   /**
    * @brief Get the numerical params struct

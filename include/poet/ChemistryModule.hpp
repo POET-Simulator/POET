@@ -1,6 +1,7 @@
 #ifndef CHEMISTRYMODULE_H_
 #define CHEMISTRYMODULE_H_
 
+#include "Field.hpp"
 #include "IrmResult.h"
 #include "PhreeqcRM.h"
 #include "poet/DHT_Wrapper.hpp"
@@ -77,7 +78,7 @@ public:
   /**
    * Returns the chemical field.
    */
-  auto GetField() const { return this->field; }
+  auto GetField() const { return this->chem_field; }
   /**
    * Returns all known species names, including not only aqueous species, but
    * also equilibrium, exchange, surface and kinetic reactants.
@@ -129,14 +130,15 @@ public:
   };
 
   /**
+   * **This function has to be run!**
+   *
    * Merge initial values from existing module with the chemistry module and set
    * according internal variables.
    *
-   * \param input_map Map with name and initial values of another module like
-   * Diffusion.
-   * \param n_cells number of cells used to initialize the field with.
+   * \param other Field to merge chemistry with. Most likely it is something
+   * like the diffusion field.
    */
-  void mergeFieldWithModule(const SingleCMap &input_map, std::uint32_t n_cells);
+  void initializeField(const Field &other);
 
   /**
    * **Only called by workers!** Start the worker listening loop.
@@ -186,16 +188,6 @@ public:
    * \param input_file File to load data from.
    */
   void ReadDHTFile(const std::string &input_file);
-
-  /**
-   * Overwrite the current field state by another field.
-   *
-   * There are no checks if new vector dimensions matches expected sizes etc.
-   *
-   * \param field New input field. Current field state of the instance will be
-   * overwritten.
-   */
-  void SetField(const std::vector<double> &field) { this->field = field; }
 
   /**
    * **Master only** Return count of grid cells.
@@ -271,6 +263,13 @@ public:
    * \return Vector of all count of DHT evictions.
    */
   std::vector<uint32_t> GetWorkerDHTEvictions() const;
+
+  /**
+   * **Master only** Returns the current state of the chemical field.
+   *
+   * \return Reference to the chemical field.
+   */
+  Field &getField() { return this->chem_field; }
 #endif
 protected:
 #ifdef POET_USE_PRM
@@ -350,6 +349,13 @@ protected:
   std::vector<uint32_t> CalculateWPSizesVector(uint32_t n_cells,
                                                uint32_t wp_size) const;
 
+  std::vector<double> shuffleField(const std::vector<double> &in_field,
+                                   uint32_t size_per_prop, uint32_t prop_count,
+                                   uint32_t wp_count);
+  void unshuffleField(const std::vector<double> &in_buffer,
+                      uint32_t size_per_prop, uint32_t prop_count,
+                      uint32_t wp_count, std::vector<double> &out_field);
+
   int comm_size, comm_rank;
   MPI_Comm group_comm;
 
@@ -384,7 +390,9 @@ protected:
   uint32_t n_cells = 0;
   uint32_t prop_count = 0;
   std::vector<std::string> prop_names;
-  std::vector<double> field;
+
+  Field chem_field{0};
+
   static constexpr int MODULE_COUNT = 5;
 
   std::array<std::uint32_t, MODULE_COUNT> speciesPerModule{};

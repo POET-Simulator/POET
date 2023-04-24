@@ -55,21 +55,19 @@ inline const char *convert_bc_to_config_file(uint8_t in) {
   return "";
 }
 
-DiffusionModule::DiffusionModule(poet::DiffusionParams diffu_args, Grid &grid_)
-    : grid(grid_) {
-  this->diff_input.setGridCellN(grid_.GetGridCellsCount(GRID_X_DIR),
-                                grid_.GetGridCellsCount(GRID_Y_DIR));
-  this->diff_input.setDomainSize(grid_.GetGridSize(GRID_X_DIR),
-                                 grid_.GetGridSize(GRID_Y_DIR));
+DiffusionModule::DiffusionModule(const poet::DiffusionParams &diffu_args,
+                                 const poet::GridParams &grid_params)
+    : t_field{grid_params.total_n}, n_cells_per_prop(grid_params.total_n) {
+  this->diff_input.setGridCellN(grid_params.n_cells[0], grid_params.n_cells[1]);
+  this->diff_input.setDomainSize(grid_params.s_cells[0],
+                                 grid_params.s_cells[1]);
 
-  this->dim = grid_.GetGridDimension();
-
-  this->n_cells_per_prop = grid_.GetTotalCellCount();
+  this->dim = grid_params.dim;
 
   this->initialize(diffu_args);
 }
 
-void DiffusionModule::initialize(poet::DiffusionParams args) {
+void DiffusionModule::initialize(const poet::DiffusionParams &args) {
   // const poet::DiffusionParams args(this->R);
 
   // name of props
@@ -77,34 +75,31 @@ void DiffusionModule::initialize(poet::DiffusionParams args) {
   this->prop_names = Rcpp::as<std::vector<std::string>>(args.initial_t.names());
   this->prop_count = this->prop_names.size();
 
-  this->state =
-      this->grid.RegisterState(DIFFUSION_MODULE_NAME, this->prop_names);
-
-  std::vector<double> &field = this->state->mem;
-
   // initialize field and alphas
-  field.resize(this->n_cells_per_prop * this->prop_count);
   this->alpha.reserve(this->prop_count);
+
+  std::vector<std::vector<double>> initial_values;
 
   for (uint32_t i = 0; i < this->prop_count; i++) {
     // get alphas - we cannot assume alphas are provided in same order as
     // initial input
     this->alpha.push_back(args.alpha[this->prop_names[i]]);
 
-    double val = args.initial_t[prop_names[i]];
+    const double val = args.initial_t[prop_names[i]];
+    std::vector<double> init_val(t_field.GetRequestedVecSize(), val);
+    initial_values.push_back(std::move(init_val));
 
-    std::vector<double> prop_vec(n_cells_per_prop, val);
-    std::copy(prop_vec.begin(), prop_vec.end(),
-              field.begin() + (i * this->n_cells_per_prop));
     if (this->dim == this->DIM_2D) {
-      tug::bc::BoundaryCondition bc(this->grid.GetGridCellsCount(GRID_X_DIR),
-                                    this->grid.GetGridCellsCount(GRID_Y_DIR));
+      tug::bc::BoundaryCondition bc(diff_input.grid.grid_cells[0],
+                                    diff_input.grid.grid_cells[1]);
       this->bc_vec.push_back(bc);
     } else {
-      tug::bc::BoundaryCondition bc(this->grid.GetGridCellsCount(GRID_X_DIR));
+      tug::bc::BoundaryCondition bc(diff_input.grid.grid_cells[0]);
       this->bc_vec.push_back(bc);
     }
   }
+
+  t_field.InitFromVec(initial_values, prop_names);
 
   // apply boundary conditions to each ghost node
   uint8_t bc_size = (this->dim == this->DIM_1D ? 2 : 4);
@@ -133,14 +128,6 @@ void DiffusionModule::initialize(poet::DiffusionParams args) {
   // apply inner grid constant cells
   // NOTE: opening a scope here for distinguish variable names
   if (args.vecinj_inner.size() != 0) {
-    // get indices of constant grid cells
-    // Rcpp::NumericVector indices_const_cells = args.vecinj_inner(Rcpp::_, 0);
-    // this->index_constant_cells =
-    //     Rcpp::as<std::vector<uint32_t>>(indices_const_cells);
-
-    // // get indices to vecinj for constant cells
-    // Rcpp::NumericVector vecinj_indices = args.vecinj_inner(Rcpp::_, 1);
-
     // apply inner constant cells for every concentration
     for (int i = 0; i < this->prop_count; i++) {
       std::vector<double> bc_vec = args.vecinj[this->prop_names[i]];
@@ -169,22 +156,24 @@ void DiffusionModule::simulate(double dt) {
   std::cout << "DiffusionModule::simulate(): Starting diffusion ..."
             << std::flush;
 
-  std::vector<double> &curr_field = this->state->mem;
+  std::vector<std::vector<double>> field_2d = t_field.As2DVector();
 
   this->diff_input.setTimestep(dt);
 
-  double *field = curr_field.data();
-  for (int i = 0; i < this->prop_count; i++) {
-    double *in_field = &field[i * this->n_cells_per_prop];
+  for (int i = 0; i < field_2d.size(); i++) {
     std::vector<double> in_alpha(this->n_cells_per_prop, this->alpha[i]);
     this->diff_input.setBoundaryCondition(this->bc_vec[i]);
 
     if (this->dim == this->DIM_1D) {
-      tug::diffusion::BTCS_1D(this->diff_input, in_field, in_alpha.data());
+      tug::diffusion::BTCS_1D(this->diff_input, field_2d[i].data(),
+                              in_alpha.data());
     } else {
-      tug::diffusion::ADI_2D(this->diff_input, in_field, in_alpha.data());
+      tug::diffusion::ADI_2D(this->diff_input, field_2d[i].data(),
+                             in_alpha.data());
     }
   }
+
+  t_field.SetFromVector(field_2d);
 
   std::cout << " done!\n";
 

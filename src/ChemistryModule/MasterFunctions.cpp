@@ -77,40 +77,6 @@ std::vector<uint32_t> poet::ChemistryModule::GetWorkerDHTEvictions() const {
   return MasterGatherWorkerMetrics(WORKER_DHT_EVICTIONS);
 }
 
-inline std::vector<double> shuffleField(const std::vector<double> &in_field,
-                                        uint32_t size_per_prop,
-                                        uint32_t prop_count,
-                                        uint32_t wp_count) {
-  std::vector<double> out_buffer(in_field.size());
-  uint32_t write_i = 0;
-  for (uint32_t i = 0; i < wp_count; i++) {
-    for (uint32_t j = i; j < size_per_prop; j += wp_count) {
-      for (uint32_t k = 0; k < prop_count; k++) {
-        out_buffer[(write_i * prop_count) + k] =
-            in_field[(k * size_per_prop) + j];
-      }
-      write_i++;
-    }
-  }
-  return out_buffer;
-}
-
-inline void unshuffleField(const std::vector<double> &in_buffer,
-                           uint32_t size_per_prop, uint32_t prop_count,
-                           uint32_t wp_count, std::vector<double> &out_field) {
-  uint32_t read_i = 0;
-
-  for (uint32_t i = 0; i < wp_count; i++) {
-    for (uint32_t j = i; j < size_per_prop; j += wp_count) {
-      for (uint32_t k = 0; k < prop_count; k++) {
-        out_field[(k * size_per_prop) + j] =
-            in_buffer[(read_i * prop_count) + k];
-      }
-      read_i++;
-    }
-  }
-}
-
 inline void printProgressbar(int count_pkgs, int n_wp, int barWidth = 70) {
   /* visual progress */
   double progress = (float)(count_pkgs + 1) / n_wp;
@@ -234,11 +200,13 @@ void poet::ChemistryModule::RunCells() {
 
 void poet::ChemistryModule::MasterRunSequential() {
   std::vector<double> shuffled_field =
-      shuffleField(field, n_cells, prop_count, 1);
+      shuffleField(chem_field.AsVector(), n_cells, prop_count, 1);
   this->setDumpedField(shuffled_field);
   PhreeqcRM::RunCells();
   this->getDumpedField(shuffled_field);
-  unshuffleField(shuffled_field, n_cells, prop_count, 1, this->field);
+  std::vector<double> out_vec{shuffled_field};
+  unshuffleField(shuffled_field, n_cells, prop_count, 1, out_vec);
+  chem_field.SetFromVector(out_vec);
 }
 
 void poet::ChemistryModule::MasterRunParallel() {
@@ -270,8 +238,9 @@ void poet::ChemistryModule::MasterRunParallel() {
 
   /* shuffle grid */
   // grid.shuffleAndExport(mpi_buffer);
-  std::vector<double> mpi_buffer = shuffleField(
-      this->field, this->n_cells, this->prop_count, wp_sizes_vector.size());
+  std::vector<double> mpi_buffer =
+      shuffleField(chem_field.AsVector(), this->n_cells, this->prop_count,
+                         wp_sizes_vector.size());
 
   /* setup local variables */
   pkg_to_send = wp_sizes_vector.size();
@@ -317,8 +286,10 @@ void poet::ChemistryModule::MasterRunParallel() {
 
   /* unshuffle grid */
   // grid.importAndUnshuffle(mpi_buffer);
+  std::vector<double> out_vec{mpi_buffer};
   unshuffleField(mpi_buffer, this->n_cells, this->prop_count,
-                 wp_sizes_vector.size(), this->field);
+                       wp_sizes_vector.size(), out_vec);
+  chem_field.SetFromVector(out_vec);
 
   /* do master stuff */
 

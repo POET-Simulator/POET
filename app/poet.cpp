@@ -51,6 +51,22 @@ poet::ChemistryModule::SingleCMap DFToHashMap(const Rcpp::DataFrame &df) {
   return out_map;
 }
 
+// HACK: this is a step back as the order and also the count of fields is
+// predefined, but it will change in the future
+void writeFieldsToR(RInside &R, const Field &trans, const Field &chem) {
+  R["TMP"] = Rcpp::wrap(trans.AsVector());
+  R["TMP_PROPS"] = Rcpp::wrap(trans.GetProps());
+  R.parseEval(std::string(
+      "mysetup$state_T <- setNames(data.frame(matrix(TMP, nrow=" +
+      std::to_string(trans.GetRequestedVecSize()) + ")), TMP_PROPS)"));
+
+  R["TMP"] = Rcpp::wrap(chem.AsVector());
+  R["TMP_PROPS"] = Rcpp::wrap(chem.GetProps());
+  R.parseEval(std::string(
+      "mysetup$state_C <- setNames(data.frame(matrix(TMP, nrow=" +
+      std::to_string(chem.GetRequestedVecSize()) + ")), TMP_PROPS)"));
+}
+
 void set_chem_parameters(poet::ChemistryModule &chem, uint32_t wp_size,
                          const std::string &database_path) {
   chem.SetErrorHandlerMode(1);
@@ -95,12 +111,12 @@ void set_chem_parameters(poet::ChemistryModule &chem, uint32_t wp_size,
   chem.LoadDatabase(database_path);
 }
 
-inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
+inline double RunMasterLoop(SimParams &params, RInside &R,
                             ChemistryParams &chem_params,
                             const GridParams &g_params, uint32_t nxyz_master) {
 
   DiffusionParams d_params{R};
-  DiffusionModule diffusion(d_params, grid);
+  DiffusionModule diffusion(d_params, g_params);
   /* Iteration Count is dynamic, retrieving value from R (is only needed by
    * master for the following loop) */
   uint32_t maxiter = R.parseEval("mysetup$iterations");
@@ -113,7 +129,7 @@ inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
   chem.RunInitFile(chem_params.input_script);
 
   poet::ChemistryModule::SingleCMap init_df = DFToHashMap(d_params.initial_t);
-  chem.mergeFieldWithModule(init_df, grid.GetTotalCellCount());
+  chem.initializeField(diffusion.getField());
 
   if (params.getNumParams().dht_enabled) {
     chem.SetDHTEnabled(true, params.getNumParams().dht_size_per_process);
@@ -131,8 +147,6 @@ inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
     }
   }
 
-  StateMemory *chem_state = grid.RegisterState("state_C", chem.GetPropNames());
-  chem_state->mem = chem.GetField();
   /* SIMULATION LOOP */
 
   double dStartTime = MPI_Wtime();
@@ -154,19 +168,17 @@ inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
     // TODO: transport to diffusion
     diffusion.simulate(dt);
 
-    grid.PreModuleFieldCopy(tick++);
+    chem.getField().UpdateFromField(diffusion.getField());
 
     cout << "CPP: Chemistry" << endl;
 
     chem.SetTimeStep(dt);
 
-    chem.SetField(chem_state->mem);
     chem.SetTimeStep(dt);
     chem.RunCells();
-    chem_state->mem = chem.GetField();
 
-    grid.WriteFieldsToR(R);
-    grid.PreModuleFieldCopy(tick++);
+    writeFieldsToR(R, diffusion.getField(), chem.GetField());
+    diffusion.getField().UpdateFromField(chem.GetField());
 
     R["req_dt"] = dt;
     R["simtime"] = (sim_time += dt);
@@ -302,14 +314,9 @@ int main(int argc, char *argv[]) {
   std::string master_init_code = "mysetup <- master_init(setup=setup)";
   R.parseEval(master_init_code);
 
-  Grid grid;
   GridParams g_params(R);
 
-  grid.InitModuleFromParams(g_params);
-  grid.PushbackModuleFlow(poet::DIFFUSION_MODULE_NAME, CHEMISTRY_MODULE_NAME);
-  grid.PushbackModuleFlow(CHEMISTRY_MODULE_NAME, poet::DIFFUSION_MODULE_NAME);
-
-  params.initVectorParams(R, grid.GetSpeciesCount());
+  params.initVectorParams(R);
 
   // MDL: store all parameters
   if (world_rank == 0) {
@@ -331,9 +338,9 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(&c_size, 1, MPI_UINT32_T, 0, MPI_COMM_WORLD);
 
   MPI_Bcast(db_path.data(), c_size, MPI_CHAR, 0, MPI_COMM_WORLD);
-  uint32_t nxyz_master = (world_size == 1 ? grid.GetTotalCellCount() : 1);
+  uint32_t nxyz_master = (world_size == 1 ? g_params.total_n : 1);
 
-  dSimTime = RunMasterLoop(params, R, grid, chem_params, g_params, nxyz_master);
+  dSimTime = RunMasterLoop(params, R, chem_params, g_params, nxyz_master);
 
   cout << "CPP: finished simulation loop" << endl;
 

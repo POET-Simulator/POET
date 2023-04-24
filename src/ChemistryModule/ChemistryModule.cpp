@@ -104,8 +104,7 @@ void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
 }
 
 #ifndef POET_USE_PRM
-void poet::ChemistryModule::mergeFieldWithModule(const SingleCMap &input_map,
-                                                 std::uint32_t n_cells) {
+void poet::ChemistryModule::initializeField(const Field &trans_field) {
 
   if (is_master) {
     int f_type = CHEM_INIT_SPECIES;
@@ -119,14 +118,13 @@ void poet::ChemistryModule::mergeFieldWithModule(const SingleCMap &input_map,
       this->prop_names.begin(), this->prop_names.begin() + speciesPerModule[0]};
 
   if (is_master) {
-    for (const auto &init_val : input_map) {
-      std::string name = init_val.first;
+    for (auto &prop : trans_field.GetProps()) {
       if (std::find(new_solution_names.begin(), new_solution_names.end(),
-                    name) == new_solution_names.end()) {
-        int size = name.size();
+                    prop) == new_solution_names.end()) {
+        int size = prop.size();
         ChemBCast(&size, 1, MPI_INT);
-        ChemBCast(name.data(), name.size(), MPI_CHAR);
-        new_solution_names.push_back(name);
+        ChemBCast(prop.data(), prop.size(), MPI_CHAR);
+        new_solution_names.push_back(prop);
       }
     }
     int end = 0;
@@ -162,21 +160,27 @@ void poet::ChemistryModule::mergeFieldWithModule(const SingleCMap &input_map,
   this->SetPOETSolutionNames(new_solution_names);
 
   if (is_master) {
-    this->n_cells = n_cells;
+    this->n_cells = trans_field.GetRequestedVecSize();
+    chem_field = Field(n_cells);
 
-    this->field.clear();
-    this->field.reserve(this->prop_count * n_cells);
+    std::vector<double> phreeqc_init;
+    this->getDumpedField(phreeqc_init);
 
-    std::vector<double> init_values;
-    this->getDumpedField(init_values);
-
-    const std::vector<std::string> ess_names = old_prop_names;
-
-    for (int i = 0; i < prop_names.size(); i++) {
-      double value = init_values[i];
-      std::vector<double> curr_vec(n_cells, value);
-      this->field.insert(field.end(), curr_vec.begin(), curr_vec.end());
+    if (is_sequential) {
+      std::vector<double> init_vec{phreeqc_init};
+      this->unshuffleField(phreeqc_init, n_cells, prop_count, 1, init_vec);
+      chem_field.InitFromVec(init_vec, prop_names);
+      return;
     }
+
+    std::vector<std::vector<double>> initial_values;
+
+    for (int i = 0; i < phreeqc_init.size(); i++) {
+      std::vector<double> init(n_cells, phreeqc_init[i]);
+      initial_values.push_back(std::move(init));
+    }
+
+    chem_field.InitFromVec(initial_values, prop_names);
   }
 }
 
@@ -280,6 +284,42 @@ void poet::ChemistryModule::ReadDHTFile(const std::string &input_file) {
 
   if (!this->is_master) {
     WorkerReadDHTDump(input_file);
+  }
+}
+
+std::vector<double>
+poet::ChemistryModule::shuffleField(const std::vector<double> &in_field,
+                                    uint32_t size_per_prop, uint32_t prop_count,
+                                    uint32_t wp_count) {
+  std::vector<double> out_buffer(in_field.size());
+  uint32_t write_i = 0;
+  for (uint32_t i = 0; i < wp_count; i++) {
+    for (uint32_t j = i; j < size_per_prop; j += wp_count) {
+      for (uint32_t k = 0; k < prop_count; k++) {
+        out_buffer[(write_i * prop_count) + k] =
+            in_field[(k * size_per_prop) + j];
+      }
+      write_i++;
+    }
+  }
+  return out_buffer;
+}
+
+void poet::ChemistryModule::unshuffleField(const std::vector<double> &in_buffer,
+                                           uint32_t size_per_prop,
+                                           uint32_t prop_count,
+                                           uint32_t wp_count,
+                                           std::vector<double> &out_field) {
+  uint32_t read_i = 0;
+
+  for (uint32_t i = 0; i < wp_count; i++) {
+    for (uint32_t j = i; j < size_per_prop; j += wp_count) {
+      for (uint32_t k = 0; k < prop_count; k++) {
+        out_field[(k * size_per_prop) + j] =
+            in_buffer[(read_i * prop_count) + k];
+      }
+      read_i++;
+    }
   }
 }
 

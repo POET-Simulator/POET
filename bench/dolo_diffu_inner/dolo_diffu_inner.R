@@ -1,7 +1,7 @@
-## Time-stamp: "Last modified 2023-04-17 12:25:25 mluebke"
+## Time-stamp: "Last modified 2023-04-24 14:11:01 mluebke"
 
 database <- normalizePath("../share/poet/examples/phreeqc_kin.dat")
-input_script <- normalizePath("../share/poet/bench/dolo_inner.pqi")
+input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
 
 #################################################################
 ##                          Section 1                          ##
