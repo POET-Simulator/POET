@@ -101,6 +101,8 @@ using DiffusionParams = struct s_DiffusionParams {
 using ChemistryParams = struct s_ChemistryParams {
   std::string database_path;
   std::string input_script;
+  std::vector<std::string> dht_species;
+  std::vector<std::uint32_t> dht_signif;
 
   s_ChemistryParams(RInside &R);
 };

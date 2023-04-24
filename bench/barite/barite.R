@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-04-14 11:02:31 mluebke"
+## Time-stamp: "Last modified 2023-04-24 16:51:23 mluebke"
 
 database <- normalizePath("../share/poet/bench/barite/db_barite.dat")
 input_script <- normalizePath("../share/poet/bench/barite/barite.pqi")
@@ -44,9 +44,12 @@ grid <- list(
 ## initial conditions
 
 init_diffu <- list(
-  "H" = 110.0124,
-  "O" = 55.5087,
-  "Charge" = -1.217E-09,
+  #"H" = 110.0124,
+  "H" = 0.00000028904,
+  #"O" = 55.5087,
+  "O" = 0.000000165205,
+  #"Charge" = -1.217E-09,
+  "Charge" = -3.337E-08,
   "Ba" = 1.E-10,
   "Cl" = 1.E-10,
   "S(6)" = 6.205E-4,
@@ -55,9 +58,12 @@ init_diffu <- list(
 
 injection_diff <- list(
     list(
-        "H" = 111.0124,
-        "O" = 55.50622,
-        "Charge" = -3.337E-08,
+        #"H" = 111.0124,
+        "H" = 0.0000002890408,
+        #"O" = 55.50622,
+        "O" = 0.00002014464,
+        #"Charge" = -3.337E-08,
+        "Charge" = -3.337000004885E-08,
         "Ba" = 0.1,
         "Cl" = 0.2,
         "S(6)"  = 0,
@@ -109,13 +115,16 @@ diffusion <- list(
 
 
 ## # Needed when using DHT
-signif_vector <- c(9, 9, 10, 5, 5, 5, 5, 5, 5)
-prop_type <- c("", "", "", "act", "act", "act", "act", "", "")
-prop <- names(init_cell)
+
+dht_species <- names(init_diffu)
+#dht_signif <- rep(15, length(dht_species))
+dht_signif <- c(10, 10, 3, 5, 5, 5, 5)
 
 chemistry <- list(
   database = database,
-  input_script = input_script
+  input_script = input_script,
+  dht_species = dht_species,
+  dht_signif = dht_signif
 )
 
 #################################################################

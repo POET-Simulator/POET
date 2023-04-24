@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-03-31 15:00:11 mluebke"
+//  Time-stamp: "Last modified 2023-04-24 16:56:18 mluebke"
 /*
 **-----------------------------------------------------------------------------
 ** MurmurHash2 was written by Austin Appleby, and is placed in the public
@@ -25,9 +25,6 @@
 */
 
 #include "poet/HashFunctions.hpp"
-
-#include <cstddef>
-#include <stdexcept>
 
 #if defined(_MSC_VER)
 

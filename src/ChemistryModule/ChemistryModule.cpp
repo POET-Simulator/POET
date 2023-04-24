@@ -3,7 +3,6 @@
 #include "poet/DHT_Wrapper.hpp"
 
 #include <algorithm>
-#include <bits/stdint-uintn.h>
 #include <cassert>
 #include <cstdint>
 #include <map>
@@ -146,7 +145,7 @@ void poet::ChemistryModule::initializeField(const Field &trans_field) {
   }
 
   // now sort the new values
-  std::sort(new_solution_names.begin() + 3, new_solution_names.end());
+  std::sort(new_solution_names.begin() + 4, new_solution_names.end());
 
   // and append other processes than solutions
   std::vector<std::string> new_prop_names = new_solution_names;
@@ -184,14 +183,28 @@ void poet::ChemistryModule::initializeField(const Field &trans_field) {
   }
 }
 
-void poet::ChemistryModule::SetDHTEnabled(bool enable, uint32_t size_mb) {
+void poet::ChemistryModule::SetDHTEnabled(
+    bool enable, uint32_t size_mb,
+    const std::vector<std::string> &key_species) {
+
   constexpr uint32_t MB_FACTOR = 1E6;
+  std::vector<std::uint32_t> key_inidices;
 
   if (this->is_master) {
     int ftype = CHEM_DHT_ENABLE;
     PropagateFunctionType(ftype);
     ChemBCast(&enable, 1, MPI_CXX_BOOL);
     ChemBCast(&size_mb, 1, MPI_UINT32_T);
+
+    key_inidices = parseDHTSpeciesVec(key_species);
+    int vec_size = key_inidices.size();
+    ChemBCast(&vec_size, 1, MPI_INT);
+    ChemBCast(key_inidices.data(), key_inidices.size(), MPI_UINT32_T);
+  } else {
+    int vec_size;
+    ChemBCast(&vec_size, 1, MPI_INT);
+    key_inidices.resize(vec_size);
+    ChemBCast(key_inidices.data(), vec_size, MPI_UINT32_T);
   }
 
   this->dht_enabled = enable;
@@ -214,8 +227,37 @@ void poet::ChemistryModule::SetDHTEnabled(bool enable, uint32_t size_mb) {
     const uint32_t dht_size = size_mb * MB_FACTOR;
 
     this->dht =
-        new DHT_Wrapper(dht_comm, dht_size, this->prop_count, this->prop_count);
+        new DHT_Wrapper(dht_comm, dht_size, key_inidices, this->prop_count);
+    // this->dht->setBaseTotals(this->base_totals);
   }
+}
+
+inline std::vector<std::uint32_t> poet::ChemistryModule::parseDHTSpeciesVec(
+    const std::vector<std::string> &species_vec) const {
+  std::vector<uint32_t> species_indices;
+
+  if (species_vec.empty()) {
+    species_indices.resize(this->prop_count);
+
+    int i = 0;
+    std::generate(species_indices.begin(), species_indices.end(),
+                  [&] { return i++; });
+    return species_indices;
+  }
+
+  species_indices.reserve(species_vec.size());
+
+  for (const auto &name : species_vec) {
+    auto it = std::find(this->prop_names.begin(), this->prop_names.end(), name);
+    if (it == prop_names.end()) {
+      throw std::runtime_error(
+          "DHT species name was not found in prop name vector!");
+    }
+    const std::uint32_t index = it - prop_names.begin();
+    species_indices.push_back(index);
+  }
+
+  return species_indices;
 }
 
 void poet::ChemistryModule::SetDHTSnaps(int type, const std::string &out_dir) {
@@ -230,23 +272,27 @@ void poet::ChemistryModule::SetDHTSnaps(int type, const std::string &out_dir) {
     ChemBCast(const_cast<char *>(out_dir.data()), str_size, MPI_CHAR);
   }
 
+  this->dht_snaps_type = type;
   this->dht_file_out_dir = out_dir;
 }
 
 void poet::ChemistryModule::SetDHTSignifVector(
-    std::vector<uint32_t> signif_vec) {
+    std::vector<uint32_t> &signif_vec) {
   if (this->is_master) {
-    if (signif_vec.size() != this->prop_count) {
-      throw std::runtime_error(
-          "Significant vector sizes mismatches prop count.");
-    }
-
     int ftype = CHEM_DHT_SIGNIF_VEC;
     PropagateFunctionType(ftype);
+
+    int data_count = signif_vec.size();
+    ChemBCast(&data_count, 1, MPI_INT);
     ChemBCast(signif_vec.data(), signif_vec.size(), MPI_UINT32_T);
 
     return;
   }
+
+  int data_count;
+  ChemBCast(&data_count, 1, MPI_INT);
+  signif_vec.resize(data_count);
+  ChemBCast(signif_vec.data(), data_count, MPI_UINT32_T);
 
   this->dht->SetSignifVector(signif_vec);
 }

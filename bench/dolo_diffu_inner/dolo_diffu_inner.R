@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-04-24 14:11:01 mluebke"
+## Time-stamp: "Last modified 2023-04-24 15:12:02 mluebke"
 
 database <- normalizePath("../share/poet/examples/phreeqc_kin.dat")
 input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
@@ -44,8 +44,8 @@ grid <- list(
 
 ## initial conditions
 init_diffu <- list(
-  "H" = 110.683,
-  "O" = 55.3413,
+  "H" = 0.000211313883539788,
+  "O" = 0.00398302904424952,
   "Charge" = -5.0822e-19,
   "C(4)" = 1.2279E-4,
   "Ca" = 1.2279E-4,
@@ -67,8 +67,8 @@ alpha_diffu <- c(
 ## list of boundary conditions/inner nodes
 vecinj_diffu <- list(
     list(
-        "H" = 110.683,
-        "O" = 55.3413,
+        "H" = 0.0001540445,
+        "O" = 0.002148006,
         "Charge" = 1.90431e-16,
         "C(4)" = 0,
         "Ca" = 0,
@@ -76,8 +76,8 @@ vecinj_diffu <- list(
         "Mg" = 0.001
     ),
     list(
-        "H" = 110.683,
-        "O" = 55.3413,
+        "H" = 0.0001610193,
+        "O" = 0.002386934,
         "Charge" = 1.90431e-16,
         "C(4)" = 0,
         "Ca" = 0.0,
@@ -120,13 +120,16 @@ diffusion <- list(
 
 
 ## # Needed when using DHT
-signif_vector <- c(10, 10, 2, 5, 5, 5, 5, 0, 5, 5)
-prop_type <- c("", "", "", "act", "act", "act", "act", "ignore", "", "")
-prop <- names(init_cell)
+dht_species <- c("H", "O", "Charge", "C(4)", "Ca", "Cl", "Mg", "Calcite",
+                 "Dolomite")
+#dht_signif <- rep(15, length(dht_species))
+dht_signif <- c(10, 10, 3, 5, 5, 5, 5, 5, 5)
 
 chemistry <- list(
   database = database,
-  input_script = input_script
+  input_script = input_script,
+  dht_species = dht_species,
+  dht_signif = dht_signif
 )
 
 #################################################################
@@ -135,7 +138,7 @@ chemistry <- list(
 #################################################################
 
 
-iterations <- 1000
+iterations <- 10
 dt <- 200
 
 setup <- list(
@@ -144,6 +147,5 @@ setup <- list(
   chemistry = chemistry,
   iterations = iterations,
   timesteps = rep(dt, iterations),
-  store_result = TRUE,
-  out_save = c(5, iterations)
+  store_result = TRUE
 )

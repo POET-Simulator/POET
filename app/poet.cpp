@@ -70,7 +70,7 @@ void writeFieldsToR(RInside &R, const Field &trans, const Field &chem) {
 void set_chem_parameters(poet::ChemistryModule &chem, uint32_t wp_size,
                          const std::string &database_path) {
   chem.SetErrorHandlerMode(1);
-  chem.SetComponentH2O(false);
+  chem.SetComponentH2O(true);
   chem.SetRebalanceFraction(0.5);
   chem.SetRebalanceByCell(true);
   chem.UseSolutionDensityVolume(false);
@@ -132,9 +132,10 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
   chem.initializeField(diffusion.getField());
 
   if (params.getNumParams().dht_enabled) {
-    chem.SetDHTEnabled(true, params.getNumParams().dht_size_per_process);
-    if (!params.getDHTSignifVector().empty()) {
-      chem.SetDHTSignifVector(params.getDHTSignifVector());
+    chem.SetDHTEnabled(true, params.getNumParams().dht_size_per_process,
+                       chem_params.dht_species);
+    if (!chem_params.dht_signif.empty()) {
+      chem.SetDHTSignifVector(chem_params.dht_signif);
     }
     if (!params.getDHTPropTypeVector().empty()) {
       chem.SetDHTPropTypeVector(params.getDHTPropTypeVector());
