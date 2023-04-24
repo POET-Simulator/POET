@@ -44,9 +44,8 @@ void poet::ChemistryModule::WorkerLoop() {
       break;
     }
     case CHEM_INIT_SPECIES: {
-      SingleCMap dummy_map;
-      std::uint32_t n_cells_dummy;
-      mergeFieldWithModule(dummy_map, n_cells_dummy);
+      Field dummy{0};
+      initializeField(dummy);
       break;
     }
     case CHEM_DHT_ENABLE: {

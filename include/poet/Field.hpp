@@ -63,6 +63,12 @@ public:
   void InitFromVec(const std::vector<double> &input,
                    const std::vector<std::string> &prop_vec);
 
+  Field &operator=(const Field &rhs) {
+    this->req_vec_size = rhs.req_vec_size;
+    this->props = rhs.props;
+    return *this;
+  }
+
   /**
    * Returns a reference to the column vector with given name. Creates a new
    * vector if prop was not found. The prop name will be added to the end of the
@@ -79,14 +85,16 @@ public:
    *
    * \return Vector containing all species names in output order.
    */
-  auto GetProps() const { return this->props; };
+  auto GetProps() const -> std::vector<std::string> { return this->props; }
 
   /**
    * Return the requested vector size.
    *
    * \return Requested vector size set in the instanciation of the object.
    */
-  auto GetRequestedVecSize() const { return this->req_vec_size; };
+  auto GetRequestedVecSize() const -> std::uint32_t {
+    return this->req_vec_size;
+  };
 
   /**
    * Updates all species with values from another field. If one element of the
@@ -142,7 +150,7 @@ public:
   void SetFromVector(const std::vector<FieldColumn> &cont_field);
 
 private:
-  const uint32_t req_vec_size;
+  std::uint32_t req_vec_size;
 
   std::vector<std::string> props;
 };

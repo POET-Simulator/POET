@@ -19,6 +19,8 @@
 */
 
 #include "poet/DHT_Types.hpp"
+#include <algorithm>
+#include <cassert>
 #include <poet/SimParams.hpp>
 
 #include <RInside.h>
@@ -34,10 +36,24 @@ using namespace std;
 using namespace Rcpp;
 
 poet::GridParams::s_GridParams(RInside &R) {
-  this->n_cells =
+  auto tmp_n_cells =
       Rcpp::as<std::vector<uint32_t>>(R.parseEval("mysetup$grid$n_cells"));
-  this->s_cells =
+  assert(tmp_n_cells.size() < 3);
+
+  this->dim = tmp_n_cells.size();
+
+  std::copy(tmp_n_cells.begin(), tmp_n_cells.end(), this->n_cells.begin());
+
+  auto tmp_s_cells =
       Rcpp::as<std::vector<double>>(R.parseEval("mysetup$grid$s_cells"));
+
+  assert(tmp_s_cells.size() == this->dim);
+
+  std::copy(tmp_s_cells.begin(), tmp_s_cells.end(), this->s_cells.begin());
+
+  this->total_n =
+      (dim == 1 ? this->n_cells[0] : this->n_cells[0] * this->n_cells[1]);
+
   this->type = Rcpp::as<std::string>(R.parseEval("mysetup$grid$type"));
   this->init_df =
       Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$grid$init_cell"));
@@ -191,7 +207,7 @@ int SimParams::parseFromCmdl(char *argv[], RInside &R) {
   return poet::PARSER_OK;
 }
 
-void SimParams::initVectorParams(RInside &R, int col_count) {
+void SimParams::initVectorParams(RInside &R) {
   if (simparams.dht_enabled) {
     /*Load significance vector from R setup file (or set default)*/
     bool signif_vector_exists = R.parseEval("exists('signif_vector')");
