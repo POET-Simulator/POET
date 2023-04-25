@@ -1,28 +1,29 @@
-## Time-stamp: "Last modified 2023-04-24 16:51:23 mluebke"
+## Time-stamp: "Last modified 2023-07-28 16:57:40 mluebke"
 
-database <- normalizePath("../share/poet/bench/barite/db_barite.dat")
-input_script <- normalizePath("../share/poet/bench/barite/barite.pqi")
+database <- normalizePath("../share/poet/bench/dolo/phreeqc_kin.dat")
+input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
 
 #################################################################
 ##                          Section 1                          ##
 ##                     Grid initialization                     ##
 #################################################################
 
-n <- 20
-m <- 20
+n <- 100
+m <- 100
 
 types <- c("scratch", "phreeqc", "rds")
 
 init_cell <- list(
-  "H" = 110.0124,
-  "O" = 55.5087,
-  "Charge" = -1.217E-09,
-  "Ba" = 1.E-10,
-  "Cl" = 2.E-10,
-  "S" = 6.205E-4,
-  "Sr" = 6.205E-4,
-  "Barite" = 0.001,
-  "Celestite" = 1
+  "H" = 110.683,
+  "O" = 55.3413,
+  "Charge" = -5.0822e-19,
+  "C(4)" = 1.2279E-4,
+  "Ca" = 1.2279E-4,
+  "Cl" = 0,
+  "Mg" = 0,
+  "O2g" = 0.499957,
+  "Calcite" = 2.07e-4,
+  "Dolomite" = 0
 )
 
 grid <- list(
@@ -42,54 +43,58 @@ grid <- list(
 ##################################################################
 
 ## initial conditions
-
 init_diffu <- list(
-  #"H" = 110.0124,
-  "H" = 0.00000028904,
-  #"O" = 55.5087,
-  "O" = 0.000000165205,
-  #"Charge" = -1.217E-09,
-  "Charge" = -3.337E-08,
-  "Ba" = 1.E-10,
-  "Cl" = 1.E-10,
-  "S(6)" = 6.205E-4,
-  "Sr" = 6.205E-4
-)
-
-injection_diff <- list(
-    list(
-        #"H" = 111.0124,
-        "H" = 0.0000002890408,
-        #"O" = 55.50622,
-        "O" = 0.00002014464,
-        #"Charge" = -3.337E-08,
-        "Charge" = -3.337000004885E-08,
-        "Ba" = 0.1,
-        "Cl" = 0.2,
-        "S(6)"  = 0,
-        "Sr" = 0)
+  "H" = 110.683,
+  "O" = 55.3413,
+  "Charge" = -5.0822e-19,
+  "C(4)" = 1.2279E-4,
+  "Ca" = 1.2279E-4,
+  "Cl" = 0,
+  "Mg" = 0
 )
 
 ## diffusion coefficients
 alpha_diffu <- c(
-  "H"  =  1E-06,
-  "O"  =  1E-06,
-  "Charge" = 1E-06,
-  "Ba" = 1E-06,
-  "Cl" = 1E-06,
-  "S(6)"  = 1E-06,
-  "Sr" = 1E-06
+  "H" = 1E-6,
+  "O" = 1E-6,
+  "Charge" = 1E-6,
+  "C(4)" = 1E-6,
+  "Ca" = 1E-6,
+  "Cl" = 1E-6,
+  "Mg" = 1E-6
 )
 
-## vecinj_inner <- list(
-##   l1 = c(1,20,20),
-##   l2 = c(2,80,80),
-##   l3 = c(2,60,80)
-## )
+## list of boundary conditions/inner nodes
+vecinj_diffu <- list(
+    list(
+        "H" = 110.683,
+        "O" = 55.3413,
+        "Charge" = 1.90431e-16,
+        "C(4)" = 0,
+        "Ca" = 0,
+        "Cl" = 0.002,
+        "Mg" = 0.001
+    ),
+    list(
+        "H" = 110.683,
+        "O" = 55.3413,
+        "Charge" = 1.90431e-16,
+        "C(4)" = 0,
+        "Ca" = 0.0,
+        "Cl" = 0.004,
+        "Mg" = 0.002
+    )
+)
+
+vecinj_inner <- list(
+  l1 = c(1,20,20),
+  l2 = c(2,80,80),
+  l3 = c(2,60,80)
+)
 
 boundary <- list(
-  "N" = rep(1, n),
-##  "N" = rep(0, n),
+#  "N" = c(1, rep(0, n-1)),
+  "N" = rep(0, n),
   "E" = rep(0, n),
   "S" = rep(0, n),
   "W" = rep(0, n)
@@ -97,13 +102,13 @@ boundary <- list(
 
 diffu_list <- names(alpha_diffu)
 
-vecinj <- do.call(rbind.data.frame, injection_diff)
+vecinj <- do.call(rbind.data.frame, vecinj_diffu)
 names(vecinj) <- names(init_diffu)
 
 diffusion <- list(
   init = as.data.frame(init_diffu, check.names = FALSE),
   vecinj = vecinj,
-#  vecinj_inner = vecinj_inner,
+  vecinj_inner = vecinj_inner,
   vecinj_index = boundary,
   alpha = alpha_diffu
 )
@@ -115,15 +120,16 @@ diffusion <- list(
 
 
 ## # Needed when using DHT
-dht_species <- c(
-  "H" = 10,
-  "O" = 10,
-  "Charge" = 3,
-  "Ba" = 5,
-  "Cl" = 5,
-  "S(6)" = 5,
-  "Sr" = 5
-)
+dht_species <- c("H" = 10,
+                 "O" = 10,
+                 "Charge" = 3,
+                 "C(4)" = 5,
+                 "Ca" = 5,
+                 "Cl" = 5,
+                 "Mg" = 5,
+                 "Calcite" = 5,
+                 "Dolomite" =5
+                 )
 
 chemistry <- list(
   database = database,
@@ -137,8 +143,8 @@ chemistry <- list(
 #################################################################
 
 
-iterations <- 4
-dt <- 100
+iterations <- 10
+dt <- 200
 
 setup <- list(
   grid = grid,
@@ -146,6 +152,5 @@ setup <- list(
   chemistry = chemistry,
   iterations = iterations,
   timesteps = rep(dt, iterations),
-  store_result = TRUE,
-  out_save = seq(1, iterations)
+  store_result = TRUE
 )

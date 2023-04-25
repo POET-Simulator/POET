@@ -24,17 +24,20 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
+#include "DataStructures.hpp"
+#include "RInsidePOET.hpp"
 #include "argh.hpp" // Argument handler https://github.com/adishavit/argh
 #include <RInside.h>
 #include <Rcpp.h>
 // BSD-licenced
 
 /** Standard DHT Size. Defaults to 1 GB (1000 MB) */
-constexpr uint32_t DHT_SIZE_PER_PROCESS_MB = 1E3;
+constexpr uint32_t DHT_SIZE_PER_PROCESS_MB = 1.5E3;
 /** Standard work package size */
-#define WORK_PACKAGE_SIZE_DEFAULT 5
+#define WORK_PACKAGE_SIZE_DEFAULT 32
 
 namespace poet {
 
@@ -70,6 +73,8 @@ typedef struct {
   /** indicating whether the progress bar during chemistry simulation should be
    * printed or not */
   bool print_progressbar;
+
+  bool interp_enabled;
 } t_simparams;
 
 using GridParams = struct s_GridParams {
@@ -101,13 +106,24 @@ using DiffusionParams = struct s_DiffusionParams {
   s_DiffusionParams(RInside &R);
 };
 
-using ChemistryParams = struct s_ChemistryParams {
+struct ChemistryParams {
   std::string database_path;
   std::string input_script;
-  std::vector<std::string> dht_species;
-  std::vector<std::uint32_t> dht_signif;
 
-  s_ChemistryParams(RInside &R);
+  bool use_dht;
+  std::uint64_t dht_size;
+  int dht_snaps;
+  std::string dht_file;
+  std::string dht_outdir;
+  NamedVector<std::uint32_t> dht_signifs;
+
+  bool use_interp;
+  std::uint64_t pht_size;
+  std::uint32_t pht_max_entries;
+  std::uint32_t interp_min_entries;
+  NamedVector<std::uint32_t> pht_signifs;
+
+  void initFromR(RInsidePOET &R);
 };
 
 /**
@@ -159,7 +175,7 @@ public:
    * @return int Returns with 0 if no error occured, otherwise value less than 0
    * is returned.
    */
-  int parseFromCmdl(char *argv[], RInside &R);
+  int parseFromCmdl(char *argv[], RInsidePOET &R);
 
   /**
    * @brief Init std::vector values
@@ -193,25 +209,10 @@ public:
    */
   auto getDHTSignifVector() const { return this->dht_signif_vector; };
 
-  /**
-   * @brief Get the DHT_Prop_Type_Vector
-   *
-   * Returns a vector indicating of which type a variable of a grid cell is.
-   *
-   * @return std::vector<std::string> Vector if strings defining a type of a
-   * variable
-   */
-  auto getDHTPropTypeVector() const { return this->dht_prop_type_vector; };
+  auto getPHTSignifVector() const { return this->pht_signif_vector; };
 
-  /**
-   * @brief Return name of DHT snapshot.
-   *
-   * Name of the DHT file which is used to initialize the DHT with a previously
-   * written snapshot.
-   *
-   * @return std::string Absolute paht to the DHT snapshot
-   */
-  auto getDHTFile() const { return this->dht_file; };
+  auto getPHTBucketSize() const { return this->pht_bucket_size; };
+  auto getPHTMinEntriesNeeded() const { return this->pht_min_entries_needed; };
 
   /**
    * @brief Get the filesim name
@@ -233,23 +234,30 @@ public:
    */
   auto getOutDir() const { return this->out_dir; };
 
+  const auto &getChemParams() const { return chem_params; }
+
 private:
   std::list<std::string> validateOptions(argh::parser cmdl);
 
-  const std::set<std::string> flaglist{"ignore-result", "dht", "dht-nolog", "P",
-                                       "progress"};
-  const std::set<std::string> paramlist{"work-package-size", "dht-signif",
-                                        "dht-strategy",      "dht-size",
-                                        "dht-snaps",         "dht-file"};
+  const std::set<std::string> flaglist{
+      "ignore-result", "dht", "dht-nolog", "P", "progress", "interp"};
+  const std::set<std::string> paramlist{
+      "work-package-size", "dht-signif", "dht-strategy",
+      "dht-size",          "dht-snaps",  "dht-file",
+      "interp-size",       "interp-min", "interp-bucket-entries"};
 
   t_simparams simparams;
 
   std::vector<uint32_t> dht_signif_vector;
-  std::vector<uint32_t> dht_prop_type_vector;
+  std::vector<uint32_t> pht_signif_vector;
 
-  std::string dht_file;
+  uint32_t pht_bucket_size;
+  uint32_t pht_min_entries_needed;
+
   std::string filesim;
   std::string out_dir;
+
+  ChemistryParams chem_params;
 };
 } // namespace poet
 #endif // PARSER_H

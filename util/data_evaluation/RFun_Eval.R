@@ -1,10 +1,11 @@
 ## Simple library of functions to assess and visualize the results of the coupled simulations
 
-## Time-stamp: "Last modified 2023-04-24 16:09:55 mluebke"
+## Time-stamp: "Last modified 2023-05-29 13:51:21 mluebke"
 
 require(RedModRphree)
 require(Rmufits)  ## essentially for PlotCartCellData 
 require(Rcpp)
+require(stringr)
 
 curdir <- dirname(sys.frame(1)$ofile) ##path.expand(".")
 
@@ -16,13 +17,18 @@ ConvertDHTKey <- function(value) {
   rcpp_key_convert(value)
 }
 
+ConvertToUInt64 <- function(double_data) {
+  rcpp_uint64_convert(double_data)
+}
+
 ## function which reads all simulation results in a given directory
 ReadRTSims <- function(dir) {
     files_full <- list.files(dir, pattern="iter.*rds", full.names=TRUE)
     files_name <- list.files(dir, pattern="iter.*rds", full.names=FALSE)
     res <- lapply(files_full, readRDS)
     names(res) <- gsub(".rds","",files_name, fixed=TRUE)
-    return(res)
+
+    return(res[str_sort(names(res), numeric = TRUE)])
 }
 
 ## function which reads all successive DHT stored in a given directory
@@ -64,6 +70,61 @@ ReadDHT <- function(file, new_scheme = TRUE) {
       conv <- apply(keys, 2, ConvertDHTKey)
       res[, 1:nkeys - 1] <- conv
     }
+
+    return(res)
+}
+
+## function which reads all successive DHT stored in a given directory
+ReadAllPHT <- function(dir, with_info = FALSE) {
+    files_full <- list.files(dir, pattern="iter.*pht", full.names=TRUE)
+    files_name <- list.files(dir, pattern="iter.*pht", full.names=FALSE)
+    res <- lapply(files_full, ReadPHT, with_info = with_info)
+    names(res) <- gsub(".pht","",files_name, fixed=TRUE)
+    return(res)
+}
+
+## function which reads one .dht file and gives a matrix
+ReadPHT <- function(file, with_info = FALSE) {
+    conn <- file(file, "rb")  ## open for reading in binary mode
+    if (!isSeekable(conn))
+        stop("Connection not seekable")
+
+    ## we first reposition ourselves to the end of the file...
+    tmp <- seek(conn, where=0, origin = "end")
+    ## ... and then back to the origin so to store the length in bytes
+    flen <- seek(conn, where=0, origin = "start")
+
+    ## we read the first 2 integers (4 bytes each) containing dimensions in bytes
+    dims <- readBin(conn, what="integer", n=2)
+
+    ## compute dimensions of the data
+    tots <- sum(dims)
+    ncol <- tots/8
+    nrow <- (flen - 8)/tots ## 8 here is 2*sizeof("int")
+    buff <- readBin(conn, what="double", n=ncol*nrow)
+    ## close connection
+    close(conn)
+    res <- matrix(buff, nrow=nrow, ncol=ncol, byrow=TRUE)
+
+    nkeys <- dims[1] / 8
+    keys <- res[, 1:nkeys - 1]
+
+    timesteps <- res[, nkeys]
+    conv <- apply(keys, 2, ConvertDHTKey)
+    #res[, 1:nkeys - 1] <- conv
+
+    ndata <- dims[2] / 8
+    fill_rate <- ConvertToUInt64(res[, nkeys + 1])
+
+    buff <- c(conv, timesteps, fill_rate)
+
+    if (with_info) {
+      ndata <- dims[2]/8
+      visit_count <- ConvertToUInt64(res[, nkeys + ndata])
+      buff <- c(buff, visit_count)
+    }
+
+    res <- matrix(buff, nrow = nrow, byrow = FALSE)
 
     return(res)
 }
@@ -227,4 +288,34 @@ Plot2DCellData <- function (data, grid, nx, ny, contour = TRUE,
         axis(4, at = breaks)
     }
     invisible(pp)
+}
+
+PlotAsMP4 <- function(data, nx, ny, to_plot, out_dir, name,
+                      contour = FALSE, scale = FALSE, framerate = 30) {
+  sort_data <- data[str_sort(names(data), numeric = TRUE)]
+  plot_data <- lapply(sort_data, function(x) x$C[[to_plot]])
+  pad_size <- ceiling(log10(length(plot_data)))
+
+  dir.create(out_dir, showWarnings = FALSE)
+  output_files <- paste0(out_dir, "/", name, "_%0", pad_size, "d.png")
+  output_mp4 <- paste0(out_dir, "/", name, ".mp4")
+
+  png(output_files,
+    width = 297, height = 210, units = "mm",
+    res = 100
+  )
+
+  for (i in 1:length(plot_data)) {
+    Rmufits::PlotCartCellData(plot_data[[i]], nx = nx, ny = ny, contour = contour, scale = scale)
+  }
+  dev.off()
+
+  ffmpeg_command <- paste(
+    "ffmpeg -framerate", framerate, "-i", output_files,
+    "-c:v libx264 -crf 22", output_mp4
+  )
+
+  unlink(output_mp4)
+  system(ffmpeg_command)
+
 }

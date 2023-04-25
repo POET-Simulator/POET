@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-04-24 16:51:23 mluebke"
+## Time-stamp: "Last modified 2023-07-21 15:04:49 mluebke"
 
 database <- normalizePath("../share/poet/bench/barite/db_barite.dat")
 input_script <- normalizePath("../share/poet/bench/barite/barite.pqi")
@@ -8,8 +8,8 @@ input_script <- normalizePath("../share/poet/bench/barite/barite.pqi")
 ##                     Grid initialization                     ##
 #################################################################
 
-n <- 20
-m <- 20
+n <- 400
+m <- 200
 
 types <- c("scratch", "phreeqc", "rds")
 
@@ -27,7 +27,7 @@ init_cell <- list(
 
 grid <- list(
   n_cells = c(n, m),
-  s_cells = c(1, 1),
+  s_cells = c(n / 10, m / 10),
   type = types[1],
   init_cell = as.data.frame(init_cell, check.names = FALSE),
   props = names(init_cell),
@@ -44,11 +44,11 @@ grid <- list(
 ## initial conditions
 
 init_diffu <- list(
-  #"H" = 110.0124,
+  # "H" = 110.0124,
   "H" = 0.00000028904,
-  #"O" = 55.5087,
+  # "O" = 55.5087,
   "O" = 0.000000165205,
-  #"Charge" = -1.217E-09,
+  # "Charge" = -1.217E-09,
   "Charge" = -3.337E-08,
   "Ba" = 1.E-10,
   "Cl" = 1.E-10,
@@ -57,39 +57,40 @@ init_diffu <- list(
 )
 
 injection_diff <- list(
-    list(
-        #"H" = 111.0124,
-        "H" = 0.0000002890408,
-        #"O" = 55.50622,
-        "O" = 0.00002014464,
-        #"Charge" = -3.337E-08,
-        "Charge" = -3.337000004885E-08,
-        "Ba" = 0.1,
-        "Cl" = 0.2,
-        "S(6)"  = 0,
-        "Sr" = 0)
+  list(
+    # "H" = 111.0124,
+    "H" = 0.0000002890408,
+    # "O" = 55.50622,
+    "O" = 0.00002014464,
+    # "Charge" = -3.337E-08,
+    "Charge" = -3.337000004885E-08,
+    "Ba" = 0.1,
+    "Cl" = 0.2,
+    "S(6)" = 0,
+    "Sr" = 0
+  )
 )
 
 ## diffusion coefficients
 alpha_diffu <- c(
-  "H"  =  1E-06,
-  "O"  =  1E-06,
+  "H" = 1E-06,
+  "O" = 1E-06,
   "Charge" = 1E-06,
   "Ba" = 1E-06,
   "Cl" = 1E-06,
-  "S(6)"  = 1E-06,
+  "S(6)" = 1E-06,
   "Sr" = 1E-06
 )
 
-## vecinj_inner <- list(
-##   l1 = c(1,20,20),
-##   l2 = c(2,80,80),
-##   l3 = c(2,60,80)
-## )
+vecinj_inner <- list(
+  l1 = c(1, floor(n / 2), floor(m / 2))
+  ##   l2 = c(2,80,80),
+  ##   l3 = c(2,60,80)
+)
 
 boundary <- list(
-  "N" = rep(1, n),
-##  "N" = rep(0, n),
+  #  "N" = rep(1, n),
+  "N" = rep(0, n),
   "E" = rep(0, n),
   "S" = rep(0, n),
   "W" = rep(0, n)
@@ -103,7 +104,7 @@ names(vecinj) <- names(init_diffu)
 diffusion <- list(
   init = as.data.frame(init_diffu, check.names = FALSE),
   vecinj = vecinj,
-#  vecinj_inner = vecinj_inner,
+  vecinj_inner = vecinj_inner,
   vecinj_index = boundary,
   alpha = alpha_diffu
 )
@@ -112,7 +113,6 @@ diffusion <- list(
 ##                          Section 3                          ##
 ##                  Chemistry module (Phreeqc)                 ##
 #################################################################
-
 
 ## # Needed when using DHT
 dht_species <- c(
@@ -137,8 +137,8 @@ chemistry <- list(
 #################################################################
 
 
-iterations <- 4
-dt <- 100
+iterations <- 200
+dt <- 250
 
 setup <- list(
   grid = grid,

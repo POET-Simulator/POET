@@ -1,20 +1,167 @@
 #include "poet/ChemistryModule.hpp"
 #include "PhreeqcRM.h"
 #include "poet/DHT_Wrapper.hpp"
+#include "poet/Interpolation.hpp"
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <mpi.h>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
+constexpr uint32_t MB_FACTOR = 1E6;
+
+std::vector<double>
+inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
+                         const std::vector<double> &from,
+                         const std::vector<std::vector<double>> &input,
+                         const std::vector<std::vector<double>> &output) {
+  std::vector<double> results = from;
+
+  const std::uint32_t buffer_size = input.size() + 1;
+  double buffer[buffer_size];
+  double from_rescaled;
+
+  const std::uint32_t data_set_n = input.size();
+  double rescaled[to_calc.size()][data_set_n + 1];
+  double weights[data_set_n];
+
+  // rescaling over all key elements
+  for (int key_comp_i = 0; key_comp_i < to_calc.size(); key_comp_i++) {
+    const auto output_comp_i = to_calc[key_comp_i];
+
+    // rescale input between 0 and 1
+    for (int point_i = 0; point_i < data_set_n; point_i++) {
+      rescaled[key_comp_i][point_i] = input[point_i][key_comp_i];
+    }
+
+    rescaled[key_comp_i][data_set_n] = from[output_comp_i];
+
+    const double min = *std::min_element(rescaled[key_comp_i],
+                                         rescaled[key_comp_i] + data_set_n + 1);
+    const double max = *std::max_element(rescaled[key_comp_i],
+                                         rescaled[key_comp_i] + data_set_n + 1);
+
+    for (int point_i = 0; point_i < data_set_n; point_i++) {
+      rescaled[key_comp_i][point_i] =
+          ((max - min) != 0
+               ? (rescaled[key_comp_i][point_i] - min) / (max - min)
+               : 0);
+    }
+    rescaled[key_comp_i][data_set_n] =
+        ((max - min) != 0 ? (from[output_comp_i] - min) / (max - min) : 0);
+  }
+
+  // calculate distances for each data set
+  double inv_sum = 0;
+  for (int point_i = 0; point_i < data_set_n; point_i++) {
+    double distance = 0;
+    for (int key_comp_i = 0; key_comp_i < to_calc.size(); key_comp_i++) {
+      distance += std::pow(
+          rescaled[key_comp_i][point_i] - rescaled[key_comp_i][data_set_n], 2);
+    }
+    weights[point_i] = 1 / std::sqrt(distance);
+    assert(!std::isnan(weights[point_i]));
+    inv_sum += weights[point_i];
+  }
+
+  assert(!std::isnan(inv_sum));
+
+  // actual interpolation
+  // bool has_h = false;
+  // bool has_o = false;
+
+  for (int key_comp_i = 0; key_comp_i < to_calc.size(); key_comp_i++) {
+    const auto output_comp_i = to_calc[key_comp_i];
+    double key_delta = 0;
+
+    // if (interp_i == 0) {
+    //   has_h = true;
+    // }
+
+    // if (interp_i == 1) {
+    //   has_o = true;
+    // }
+
+    for (int j = 0; j < data_set_n; j++) {
+      key_delta += weights[j] * input[j][key_comp_i];
+    }
+
+    key_delta /= inv_sum;
+
+    results[output_comp_i] = from[output_comp_i] + key_delta;
+  }
+
+  // if (!has_h) {
+  //   double new_val = 0;
+  //   for (int j = 0; j < data_set_n; j++) {
+  //     new_val += weights[j] * output[j][0];
+  //   }
+  //   results[0] = new_val / inv_sum;
+  // }
+
+  // if (!has_h) {
+  //   double new_val = 0;
+  //   for (int j = 0; j < data_set_n; j++) {
+  //     new_val += weights[j] * output[j][1];
+  //   }
+  //   results[1] = new_val / inv_sum;
+  // }
+
+  // for (std::uint32_t i = 0; i < to_calc.size(); i++) {
+  //   const std::uint32_t interp_i = to_calc[i];
+
+  //   // rescale input between 0 and 1
+  //   for (int j = 0; j < input.size(); j++) {
+  //     buffer[j] = input[j].at(i);
+  //   }
+
+  //   buffer[buffer_size - 1] = from[interp_i];
+
+  //   const double min = *std::min_element(buffer, buffer + buffer_size);
+  //   const double max = *std::max_element(buffer, buffer + buffer_size);
+
+  //   for (int j = 0; j < input.size(); j++) {
+  //     buffer[j] = ((max - min) != 0 ? (buffer[j] - min) / (max - min) : 1);
+  //   }
+  //   from_rescaled =
+  //       ((max - min) != 0 ? (from[interp_i] - min) / (max - min) : 0);
+
+  //   double inv_sum = 0;
+
+  //   // calculate distances for each point
+  //   for (int i = 0; i < input.size(); i++) {
+  //     const double distance = std::pow(buffer[i] - from_rescaled, 2);
+
+  //     buffer[i] = distance > 0 ? (1 / std::sqrt(distance)) : 0;
+  //     inv_sum += buffer[i];
+  //   }
+  //   // calculate new values
+  //   double new_val = 0;
+  //   for (int i = 0; i < output.size(); i++) {
+  //     new_val += buffer[i] * output[i][interp_i];
+  //   }
+  //   results[interp_i] = new_val / inv_sum;
+  //   if (std::isnan(results[interp_i])) {
+  //     std::cout << "nan with new_val = " << output[0][i] << std::endl;
+  //   }
+  // }
+
+  return results;
+}
+
 poet::ChemistryModule::ChemistryModule(uint32_t nxyz, uint32_t wp_size,
+                                       std::uint32_t maxiter,
+                                       const ChemistryParams &chem_param,
                                        MPI_Comm communicator)
-    : PhreeqcRM(nxyz, 1), group_comm(communicator), wp_size(wp_size) {
+    : PhreeqcRM(nxyz, 1), group_comm(communicator), wp_size(wp_size),
+      params(chem_param) {
 
   MPI_Comm_size(communicator, &this->comm_size);
   MPI_Comm_rank(communicator, &this->comm_rank);
@@ -24,7 +171,10 @@ poet::ChemistryModule::ChemistryModule(uint32_t nxyz, uint32_t wp_size,
 
   if (!is_sequential && is_master) {
     MPI_Bcast(&wp_size, 1, MPI_UINT32_T, 0, this->group_comm);
+    MPI_Bcast(&maxiter, 1, MPI_UINT32_T, 0, this->group_comm);
   }
+
+  this->file_pad = std::ceil(std::log10(maxiter + 1));
 }
 
 poet::ChemistryModule::~ChemistryModule() {
@@ -34,11 +184,15 @@ poet::ChemistryModule::~ChemistryModule() {
 }
 
 poet::ChemistryModule
-poet::ChemistryModule::createWorker(MPI_Comm communicator) {
+poet::ChemistryModule::createWorker(MPI_Comm communicator,
+                                    const ChemistryParams &chem_param) {
   uint32_t wp_size;
   MPI_Bcast(&wp_size, 1, MPI_UINT32_T, 0, communicator);
 
-  return ChemistryModule(wp_size, wp_size, communicator);
+  std::uint32_t maxiter;
+  MPI_Bcast(&maxiter, 1, MPI_UINT32_T, 0, communicator);
+
+  return ChemistryModule(wp_size, wp_size, maxiter, chem_param, communicator);
 }
 
 void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
@@ -122,7 +276,9 @@ void poet::ChemistryModule::initializeField(const Field &trans_field) {
   }
 
   // now sort the new values
-  std::sort(new_solution_names.begin() + 4, new_solution_names.end());
+  std::sort(new_solution_names.begin() + 3, new_solution_names.end());
+  this->SetPOETSolutionNames(new_solution_names);
+  this->speciesPerModule[0] = new_solution_names.size();
 
   // and append other processes than solutions
   std::vector<std::string> new_prop_names = new_solution_names;
@@ -132,8 +288,6 @@ void poet::ChemistryModule::initializeField(const Field &trans_field) {
   std::vector<std::string> old_prop_names{this->prop_names};
   this->prop_names = std::move(new_prop_names);
   this->prop_count = prop_names.size();
-
-  this->SetPOETSolutionNames(new_solution_names);
 
   if (is_master) {
     this->n_cells = trans_field.GetRequestedVecSize();
@@ -151,162 +305,186 @@ void poet::ChemistryModule::initializeField(const Field &trans_field) {
 
     std::vector<std::vector<double>> initial_values;
 
-    for (int i = 0; i < phreeqc_init.size(); i++) {
+    for (const auto &vec : trans_field.As2DVector()) {
+      initial_values.push_back(vec);
+    }
+
+    this->base_totals = {initial_values.at(0).at(0),
+                         initial_values.at(1).at(0)};
+    ChemBCast(base_totals.data(), 2, MPI_DOUBLE);
+
+    for (int i = speciesPerModule[0]; i < phreeqc_init.size(); i++) {
       std::vector<double> init(n_cells, phreeqc_init[i]);
       initial_values.push_back(std::move(init));
     }
 
     chem_field.InitFromVec(initial_values, prop_names);
+  } else {
+    ChemBCast(base_totals.data(), 2, MPI_DOUBLE);
+  }
+
+  if (this->params.use_dht || this->params.use_interp) {
+    initializeDHT(this->params.dht_size, this->params.dht_signifs);
+    setDHTSnapshots(this->params.dht_snaps, this->params.dht_outdir);
+    setDHTReadFile(this->params.dht_file);
+
+    this->dht_enabled = this->params.use_dht;
+
+    if (this->params.use_interp) {
+      initializeInterp(this->params.pht_max_entries, this->params.pht_size,
+                       this->params.interp_min_entries,
+                       this->params.pht_signifs);
+      this->interp_enabled = this->params.use_interp;
+    }
   }
 }
 
-void poet::ChemistryModule::SetDHTEnabled(
-    bool enable, uint32_t size_mb,
-    const std::vector<std::string> &key_species) {
-
+void poet::ChemistryModule::initializeDHT(
+    uint32_t size_mb, const NamedVector<std::uint32_t> &key_species) {
   constexpr uint32_t MB_FACTOR = 1E6;
-  std::vector<std::uint32_t> key_inidices;
+
+  this->dht_enabled = true;
+
+  MPI_Comm dht_comm;
 
   if (this->is_master) {
-    int ftype = CHEM_DHT_ENABLE;
-    PropagateFunctionType(ftype);
-    ChemBCast(&enable, 1, MPI_CXX_BOOL);
-    ChemBCast(&size_mb, 1, MPI_UINT32_T);
-
-    key_inidices = parseDHTSpeciesVec(key_species);
-    int vec_size = key_inidices.size();
-    ChemBCast(&vec_size, 1, MPI_INT);
-    ChemBCast(key_inidices.data(), key_inidices.size(), MPI_UINT32_T);
-  } else {
-    int vec_size;
-    ChemBCast(&vec_size, 1, MPI_INT);
-    key_inidices.resize(vec_size);
-    ChemBCast(key_inidices.data(), vec_size, MPI_UINT32_T);
+    MPI_Comm_split(this->group_comm, MPI_UNDEFINED, this->comm_rank, &dht_comm);
+    return;
   }
 
-  this->dht_enabled = enable;
-
-  if (enable) {
-    MPI_Comm dht_comm;
-
-    if (this->is_master) {
-      MPI_Comm_split(this->group_comm, MPI_UNDEFINED, this->comm_rank,
-                     &dht_comm);
-      return;
-    }
+  if (!this->is_master) {
 
     MPI_Comm_split(this->group_comm, 1, this->comm_rank, &dht_comm);
+
+    auto map_copy = key_species;
+
+    if (key_species.empty()) {
+      const auto &all_species = this->prop_names;
+      for (std::size_t i = 0; i < all_species.size(); i++) {
+        map_copy.insert(std::make_pair(all_species[i],
+                                       DHT_Wrapper::DHT_KEY_SIGNIF_DEFAULT));
+      }
+    }
+
+    auto key_indices = parseDHTSpeciesVec(key_species, this->prop_names);
 
     if (this->dht) {
       delete this->dht;
     }
 
-    const uint32_t dht_size = size_mb * MB_FACTOR;
+    const std::uint64_t dht_size = size_mb * MB_FACTOR;
 
-    this->dht =
-        new DHT_Wrapper(dht_comm, dht_size, key_inidices, this->prop_count);
-    // this->dht->setBaseTotals(this->base_totals);
+    this->dht = new DHT_Wrapper(dht_comm, dht_size, map_copy, key_indices,
+                                this->prop_count);
+    this->dht->setBaseTotals(base_totals.at(0), base_totals.at(1));
   }
 }
 
-inline std::vector<std::uint32_t> poet::ChemistryModule::parseDHTSpeciesVec(
-    const std::vector<std::string> &species_vec) const {
-  std::vector<uint32_t> species_indices;
+inline std::vector<std::int32_t> poet::ChemistryModule::parseDHTSpeciesVec(
+    const NamedVector<std::uint32_t> &key_species,
+    const std::vector<std::string> &to_compare) const {
+  std::vector<int32_t> species_indices;
+  species_indices.reserve(key_species.size());
 
-  if (species_vec.empty()) {
-    species_indices.resize(this->prop_count);
-
-    int i = 0;
-    std::generate(species_indices.begin(), species_indices.end(),
-                  [&] { return i++; });
-    return species_indices;
-  }
-
-  species_indices.reserve(species_vec.size());
-
-  for (const auto &name : species_vec) {
-    auto it = std::find(this->prop_names.begin(), this->prop_names.end(), name);
-    if (it == prop_names.end()) {
-      throw std::runtime_error(
-          "DHT species name was not found in prop name vector!");
+  for (const auto &species : key_species.getNames()) {
+    auto it = std::find(to_compare.begin(), to_compare.end(), species);
+    if (it == to_compare.end()) {
+      species_indices.push_back(DHT_Wrapper::DHT_KEY_INPUT_CUSTOM);
+      continue;
     }
-    const std::uint32_t index = it - prop_names.begin();
+    const std::uint32_t index = it - to_compare.begin();
     species_indices.push_back(index);
   }
 
   return species_indices;
 }
 
-void poet::ChemistryModule::SetDHTSnaps(int type, const std::string &out_dir) {
+void poet::ChemistryModule::BCastStringVec(std::vector<std::string> &io) {
+
   if (this->is_master) {
-    int ftype = CHEM_DHT_SNAPS;
-    PropagateFunctionType(ftype);
+    int vec_size = io.size();
+    ChemBCast(&vec_size, 1, MPI_INT);
 
-    int str_size = out_dir.size();
-
-    ChemBCast(&type, 1, MPI_INT);
-    ChemBCast(&str_size, 1, MPI_INT);
-    ChemBCast(const_cast<char *>(out_dir.data()), str_size, MPI_CHAR);
-  }
-
-  this->dht_snaps_type = type;
-  this->dht_file_out_dir = out_dir;
-}
-
-void poet::ChemistryModule::SetDHTSignifVector(
-    std::vector<uint32_t> &signif_vec) {
-  if (this->is_master) {
-    int ftype = CHEM_DHT_SIGNIF_VEC;
-    PropagateFunctionType(ftype);
-
-    int data_count = signif_vec.size();
-    ChemBCast(&data_count, 1, MPI_INT);
-    ChemBCast(signif_vec.data(), signif_vec.size(), MPI_UINT32_T);
-
-    return;
-  }
-
-  int data_count;
-  ChemBCast(&data_count, 1, MPI_INT);
-  signif_vec.resize(data_count);
-  ChemBCast(signif_vec.data(), data_count, MPI_UINT32_T);
-
-  this->dht->SetSignifVector(signif_vec);
-}
-
-void poet::ChemistryModule::SetDHTPropTypeVector(
-    std::vector<uint32_t> proptype_vec) {
-  if (this->is_master) {
-    if (proptype_vec.size() != this->prop_count) {
-      throw std::runtime_error("Prop type vector sizes mismatches prop count.");
+    for (const auto &value : io) {
+      int buf_size = value.size() + 1;
+      ChemBCast(&buf_size, 1, MPI_INT);
+      ChemBCast(const_cast<char *>(value.c_str()), buf_size, MPI_CHAR);
     }
+  } else {
+    int vec_size;
+    ChemBCast(&vec_size, 1, MPI_INT);
 
-    int ftype = CHEM_DHT_PROP_TYPE_VEC;
-    PropagateFunctionType(ftype);
-    ChemBCast(proptype_vec.data(), proptype_vec.size(), MPI_UINT32_T);
+    io.resize(vec_size);
 
+    for (int i = 0; i < vec_size; i++) {
+      int buf_size;
+      ChemBCast(&buf_size, 1, MPI_INT);
+      char buf[buf_size];
+      ChemBCast(buf, buf_size, MPI_CHAR);
+      io[i] = std::string{buf};
+    }
+  }
+}
+
+void poet::ChemistryModule::setDHTSnapshots(int type,
+                                            const std::string &out_dir) {
+  if (this->is_master) {
     return;
   }
 
-  this->dht->SetPropTypeVector(proptype_vec);
+  this->dht_file_out_dir = out_dir;
+  this->dht_snaps_type = type;
 }
 
-void poet::ChemistryModule::ReadDHTFile(const std::string &input_file) {
+void poet::ChemistryModule::setDHTReadFile(const std::string &input_file) {
   if (this->is_master) {
-    int ftype = CHEM_DHT_READ_FILE;
-    PropagateFunctionType(ftype);
-    int str_size = input_file.size();
-
-    ChemBCast(&str_size, 1, MPI_INT);
-    ChemBCast(const_cast<char *>(input_file.data()), str_size, MPI_CHAR);
+    return;
   }
 
-  if (!this->dht_enabled) {
-    throw std::runtime_error("DHT file cannot be read. DHT is not enabled.");
+  if (!input_file.empty()) {
+    WorkerReadDHTDump(input_file);
   }
+}
+
+void poet::ChemistryModule::initializeInterp(
+    std::uint32_t bucket_size, std::uint32_t size_mb, std::uint32_t min_entries,
+    const NamedVector<std::uint32_t> &key_species) {
 
   if (!this->is_master) {
-    WorkerReadDHTDump(input_file);
+
+    constexpr uint32_t MB_FACTOR = 1E6;
+
+    assert(this->dht);
+
+    this->interp_enabled = true;
+
+    auto map_copy = key_species;
+
+    if (key_species.empty()) {
+      map_copy = this->dht->getKeySpecies();
+      for (std::size_t i = 0; i < map_copy.size(); i++) {
+        const std::uint32_t signif =
+            map_copy[i] - (map_copy[i] > InterpolationModule::COARSE_DIFF
+                               ? InterpolationModule::COARSE_DIFF
+                               : 0);
+        map_copy[i] = signif;
+      }
+    }
+
+    auto key_indices =
+        parseDHTSpeciesVec(key_species, dht->getKeySpecies().getNames());
+
+    if (this->interp) {
+      this->interp.reset();
+    }
+
+    const uint64_t pht_size = size_mb * MB_FACTOR;
+
+    interp = std::make_unique<poet::InterpolationModule>(
+        bucket_size, pht_size, min_entries, *(this->dht), map_copy,
+        key_indices);
+
+    interp->setInterpolationFunction(inverseDistanceWeighting);
   }
 }
 
