@@ -11,13 +11,26 @@ if(POET_USE_PRM_BACKEND)
   target_compile_definitions(poet_lib PRIVATE POET_USE_PRM)
 else()
   set(PHREEQCRM_BUILD_MPI OFF CACHE BOOL "" FORCE)
-  list(APPEND CHEM_MODEL_SRC "WorkerFunctions.cpp" "MasterFunctions.cpp" "DHT.c" "DHT_Wrapper.cpp" "HashFunctions.cpp")
+list(APPEND CHEM_MODEL_SRC "WorkerFunctions.cpp" "MasterFunctions.cpp" "DHT_Wrapper.cpp" "HashFunctions.cpp" "DaosKeyValue.c" "DHT.c")
 endif()
+
+# ML: Fuer Nico: Includes + linking fuer Daos bereitstellen
+find_library(DAOS_LIB libdaos.so
+  PATH_SUFFIXES lib lib64
+)
+find_path(DAOS_INCLUDE daos.h)
+
+add_library(DAOS INTERFACE IMPORTED)
+set_target_properties(DAOS PROPERTIES
+  INTERFACE_LINK_LIBRARIES "${DAOS_LIB}"
+  INTERFACE_INCLUDE_DIRECTORIES "${DAOS_INCLUDE}"
+)
 
 add_library(ChemistryModule ${CHEM_MODEL_SRC})
 target_include_directories(ChemistryModule PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(ChemistryModule
   PUBLIC MPI::MPI_CXX PhreeqcRM
+  PUBLIC MPI::MPI_CXX PhreeqcRM DAOS
   PRIVATE ${MATH_LIBRARY}
   )
 

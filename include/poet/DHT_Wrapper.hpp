@@ -29,9 +29,15 @@
 #include <string>
 #include <vector>
 
-extern "C" {
-#include "DHT.h"
-}
+
+
+#include <poet/DaosKeyValue.h>
+
+
+#include "poet/DHT.h"
+
+
+
 
 #include <mpi.h>
 
@@ -176,6 +182,7 @@ public:
    */
   void printStatistics();
 
+  void changeNullCharacter(char* key);
   /**
    * @brief Get the Hits object
    *
@@ -208,13 +215,17 @@ private:
   uint32_t key_count;
   uint32_t data_count;
 
-  DHT *dht_object;
+  uint32_t data_size = 0;
+  uint32_t key_size = 0;
+
+  DAOSKV *daosKV_object;
 
   std::vector<DHT_Keyelement> fuzzForDHT(int var_count, void *key, double dt);
 
   uint32_t dht_hits = 0;
   uint32_t dht_miss = 0;
   uint32_t dht_evictions = 0;
+
 
   std::vector<uint32_t> dht_signif_vector;
   std::vector<std::uint32_t> dht_prop_type_vector;

@@ -22,6 +22,8 @@
 #include "poet/DHT_Types.hpp"
 #include "poet/HashFunctions.hpp"
 
+#include "poet/DaosKeyValue.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -31,6 +33,8 @@
 #include <math.h>
 #include <stdexcept>
 #include <vector>
+#include <sstream>
+
 
 using namespace poet;
 using namespace std;
@@ -54,11 +58,10 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, uint32_t dht_size,
     : key_count(key_indices.size()), data_count(data_count),
       input_key_elements(key_indices) {
   // initialize DHT object
-  uint32_t key_size = (key_count + 1) * sizeof(DHT_Keyelement);
-  uint32_t data_size = data_count * sizeof(double);
-  uint32_t buckets_per_process = dht_size / (1 + data_size + key_size);
-  dht_object = DHT_create(dht_comm, buckets_per_process, data_size, key_size,
-                          &poet::Murmur2_64A);
+  key_size = (key_count + 1) * sizeof(DHT_Keyelement);
+  data_size = data_count * sizeof(double);
+  
+  daosKV_object = DAOSKV_create(dht_comm);
 
   this->dht_signif_vector.resize(key_size, DHT_KEY_SIGNIF_DEFAULT);
   this->dht_signif_vector[0] = DHT_KEY_SIGNIF_TOTALS;
@@ -73,7 +76,7 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, uint32_t dht_size,
 
 DHT_Wrapper::~DHT_Wrapper() {
   // free DHT
-  DHT_free(dht_object, NULL, NULL);
+  DAOSKV_free(daosKV_object);
 }
 auto DHT_Wrapper::checkDHT(int length, double dt,
                            const std::vector<double> &work_package,
@@ -94,18 +97,20 @@ auto DHT_Wrapper::checkDHT(int length, double dt,
     auto &data = dht_results.results[i];
     auto &key_vector = dht_results.keys[i];
 
+
     data.resize(this->data_count);
     key_vector = fuzzForDHT(this->key_count, key, dt);
-
-    // overwrite input with data from DHT, IF value is found in DHT
-    int res = DHT_read(this->dht_object, key_vector.data(), data.data());
+    
+    int res = DAOSKV_read(this->daosKV_object,
+                          key_vector.data(),key_vector.size(),
+                          data.data(), data.size());
 
     switch (res) {
-    case DHT_SUCCESS:
+    case DAOS_SUCCESS:
       dht_results.needPhreeqc[i] = false;
       this->dht_hits++;
       break;
-    case DHT_READ_MISS:
+    case DAOS_READ_MISS:
       dht_results.needPhreeqc[i] = true;
       new_mapping.push_back(curr_mapping[i]);
       this->dht_miss++;
@@ -123,17 +128,14 @@ void DHT_Wrapper::fillDHT(int length, const std::vector<double> &work_package) {
   for (int i = 0; i < length; i++) {
     // If true grid cell was simulated, needs to be inserted into dht
     if (dht_results.needPhreeqc[i]) {
-      const auto &key = dht_results.keys[i];
+      auto &key = dht_results.keys[i];
       void *data = (void *)&(work_package[i * this->data_count]);
       // fuzz data (round, logarithm etc.)
 
-      // insert simulated data with fuzzed key into DHT
-      int res = DHT_write(this->dht_object, (void *)key.data(), data);
+      int res = DAOSKV_read(this->daosKV_object,
+                          (void *) key.data(), key.size(),
+                          data, data_size);
 
-      // if data was successfully written ...
-      if ((res != DHT_SUCCESS) && (res == DHT_WRITE_SUCCESS_WITH_EVICTION)) {
-        dht_evictions++;
-      }
     }
   }
 }
@@ -148,28 +150,30 @@ void DHT_Wrapper::resultsToWP(std::vector<double> &work_package) {
 }
 
 int DHT_Wrapper::tableToFile(const char *filename) {
-  int res = DHT_to_file(dht_object, filename);
+  //int res = DHT_to_file(daosKV_object, filename);
+  int res = 1;
   return res;
 }
 
 int DHT_Wrapper::fileToTable(const char *filename) {
-  int res = DHT_from_file(dht_object, filename);
+  //&int res = DHT_from_file(daosKV_object, filename);
+  int res = 1;
   if (res != DHT_SUCCESS)
     return res;
 
 #ifdef DHT_STATISTICS
-  DHT_print_statistics(dht_object);
+  //DHT_print_statistics(daosKV_object);
 #endif
 
   return DHT_SUCCESS;
 }
 
 void DHT_Wrapper::printStatistics() {
-  int res;
+  int res = 1;
 
-  res = DHT_print_statistics(dht_object);
+  //res = DHT_print_statistics(daosKV_object);
 
-  if (res != DHT_SUCCESS) {
+  if (res != DAOS_SUCCESS) {
     // MPI ERROR ... WHAT TO DO NOW?
     // RUNNING CIRCLES WHILE SCREAMING
   }
