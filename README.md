@@ -2,7 +2,7 @@
     Time-stamp: "Last modified 2023-01-19 12:06:10 delucia"
 -->
 
-# POET
+# POET Daos
 
 [POET](https://doi.org/10.5281/zenodo.4757913) is a coupled reactive transport
 simulator implementing a parallel architecture and a fast, original MPI-based
