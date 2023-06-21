@@ -108,25 +108,28 @@ DAOSKV *DAOSKV_create(MPI_Comm comm)
   object->read_misses = 0;
   object->evictions = 0;
 
+  MPI_Comm_rank(comm, &object->rank);
+  MPI_Comm_size(comm, &object->comm_size);
+
   // if set, initialize dht_stats
 #ifdef DHT_STATISTICS
-  DHT_stats *stats;
+  DAOSKV_stats *stats;
 
-  stats = (DHT_stats *)malloc(sizeof(DHT_stats));
+  stats = (DAOSKV_stats *)malloc(sizeof(DAOSKV_stats));
   if (stats == NULL)
     return NULL;
 
   object->stats = stats;
-  object->stats->writes_local = (int *)calloc(comm_size, sizeof(int));
+  object->stats->writes_local = (int *)calloc(object->comm_size, sizeof(int));
   object->stats->old_writes = 0;
   object->stats->read_misses = 0;
+  object->stats->read_hits = 0;
   object->stats->evictions = 0;
   object->stats->w_access = 0;
   object->stats->r_access = 0;
 #endif
 
-  MPI_Comm_rank(comm, &object->rank);
-  MPI_Comm_size(comm, &object->comm_size);
+
 
   /** initialize the local DAOS stack */
   if (daos_init() != 0)
@@ -219,6 +222,11 @@ int DAOSKV_write(DAOSKV *object, void *key, int key_size, void *send_data, int s
 {
   int rc;
 
+  #ifdef DHT_STATISTICS
+  object->stats->w_access++;
+  #endif
+
+
   d_iov_t dkey;
   d_sg_list_t sgl;
   d_iov_t sg_iov;
@@ -249,12 +257,20 @@ int DAOSKV_write(DAOSKV *object, void *key, int key_size, void *send_data, int s
   if (rc != 0)
     return DAOS_ERROR;
 
+  #ifdef DHT_STATISTICS
+  object->stats->writes_local[object->rank]++;
+  #endif
+
   return DAOS_SUCCESS;
 }
 
 int DAOSKV_read(DAOSKV *object, void *key, int key_size, void *recv_data, int recv_size)
 {
   int rc;
+
+  #ifdef DHT_STATISTICS
+    object->stats->r_access++;
+  #endif
 
   d_iov_t dkey;
   d_sg_list_t sgl;
@@ -283,12 +299,19 @@ int DAOSKV_read(DAOSKV *object, void *key, int key_size, void *recv_data, int re
   /** fetch a dkey */
   rc = daos_obj_fetch(object->oh, DAOS_TX_NONE, 0, &dkey, 1, &iod, &sgl,
                       NULL, NULL);
-  if (rc != 0)
+  if (rc != 0){
     return DAOS_ERROR;
-
-  if (iod.iod_size == 0)
+  }
+    
+  if (iod.iod_size == 0){
+    #ifdef DHT_STATISTICS
+      object->stats->read_misses += 1;
+    #endif
     return DAOS_READ_MISS;
-
+  }
+  #ifdef DHT_STATISTICS
+    object->stats->read_hits += 1;
+  #endif
   return DAOS_SUCCESS;
 }
 
@@ -302,4 +325,119 @@ int DAOSKV_remove(DAOSKV *object, void *key, int key_size)
     return DAOS_ERROR;
 
   return DAOS_SUCCESS;
+}
+
+int DAOSKV_print_statistics(DAOSKV *object){
+  #ifdef DHT_STATISTICS
+  int *written_buckets;
+  int *read_misses, sum_read_misses;
+  int *read_hits, sum_read_hits;
+  int *evictions, sum_evictions;
+  int sum_w_access, sum_r_access, *w_access, *r_access;
+  int rank;
+  MPI_Comm_rank(object->communicator, &rank);
+
+// disable possible warning of unitialized variable, which is not the case
+// since we're using MPI_Gather to obtain all values only on rank 0
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+
+  // obtaining all values from all processes in the communicator
+  if (rank == 0) read_misses = (int *)malloc(object->comm_size * sizeof(int));
+  if (MPI_Gather(&object->stats->read_misses, 1, MPI_INT, read_misses, 1,
+                 MPI_INT, 0, object->communicator) != 0)
+    return DAOS_MPI_ERROR;
+  if (MPI_Reduce(&object->stats->read_misses, &sum_read_misses, 1, MPI_INT,
+                 MPI_SUM, 0, object->communicator) != 0)
+    return DAOS_MPI_ERROR;
+  object->stats->read_misses = 0;
+
+  if (rank == 0) read_hits = (int *)malloc(object->comm_size * sizeof(int));
+  if (MPI_Gather(&object->stats->read_hits, 1, MPI_INT, read_hits, 1,
+                 MPI_INT, 0, object->communicator) != 0)
+    return DAOS_MPI_ERROR;
+  if (MPI_Reduce(&object->stats->read_hits, &sum_read_hits, 1, MPI_INT,
+                 MPI_SUM, 0, object->communicator) != 0)
+    return DAOS_MPI_ERROR;
+  object->stats->read_hits = 0;
+
+  if (rank == 0) evictions = (int *)malloc(object->comm_size * sizeof(int));
+  if (MPI_Gather(&object->stats->evictions, 1, MPI_INT, evictions, 1, MPI_INT, 0,
+                 object->communicator) != 0)
+    return DAOS_MPI_ERROR;
+  if (MPI_Reduce(&object->stats->evictions, &sum_evictions, 1, MPI_INT, MPI_SUM,
+                 0, object->communicator) != 0)
+    return DAOS_MPI_ERROR;
+  object->stats->evictions = 0;
+
+  if (rank == 0) w_access = (int *)malloc(object->comm_size * sizeof(int));
+  if (MPI_Gather(&object->stats->w_access, 1, MPI_INT, w_access, 1, MPI_INT, 0,
+                 object->communicator) != 0)
+    return DAOS_MPI_ERROR;
+  if (MPI_Reduce(&object->stats->w_access, &sum_w_access, 1, MPI_INT, MPI_SUM, 0,
+                 object->communicator) != 0)
+    return DAOS_MPI_ERROR;
+  object->stats->w_access = 0;
+
+  if (rank == 0) r_access = (int *)malloc(object->comm_size * sizeof(int));
+  if (MPI_Gather(&object->stats->r_access, 1, MPI_INT, r_access, 1, MPI_INT, 0,
+                 object->communicator) != 0)
+    return DAOS_MPI_ERROR;
+  if (MPI_Reduce(&object->stats->r_access, &sum_r_access, 1, MPI_INT, MPI_SUM, 0,
+                 object->communicator) != 0)
+    return DAOS_MPI_ERROR;
+  object->stats->r_access = 0;
+
+  if (rank == 0) written_buckets = (int *)calloc(object->comm_size, sizeof(int));
+  if (MPI_Reduce(object->stats->writes_local, written_buckets, object->comm_size,
+                 MPI_INT, MPI_SUM, 0, object->communicator) != 0)
+    return DAOS_MPI_ERROR;
+
+  if (rank == 0) {  // only process with rank 0 will print out results as a
+                    // object
+    int sum_written_buckets = 0;
+
+    for (int i = 0; i < object->comm_size; i++) {
+      sum_written_buckets += written_buckets[i];
+    }
+
+    int members = 7;
+    int padsize = (members * 12) + 1;
+    char pad[padsize + 1];
+
+    memset(pad, '-', padsize * sizeof(char));
+    pad[padsize] = '\0';
+    printf("\n");
+    printf("%-35s||resets with every call of this function\n", " ");
+    printf("%-11s|%-11s|%-11s||%-11s|%-11s|%-11s|%-11s|%-11s\n", "rank", "occupied",
+           "free", "w_access", "r_access", "read misses","read hits", "evictions");
+    printf("%s\n", pad);
+    for (int i = 0; i < object->comm_size; i++) {
+      printf("%-11d|%-11d|%-11d||%-11d|%-11d|%-11d|%-11d|%-11d\n", i,
+             written_buckets[i], 0,
+             w_access[i], r_access[i], read_misses[i],read_hits[i], evictions[i]);
+    }
+    printf("%s\n", pad);
+    printf("%-11s|%-11d|%-11d||%-11d|%-11d|%-11d|%-11d|%-11d\n", "sum",
+           sum_written_buckets,
+           0,
+           sum_w_access, sum_r_access, sum_read_misses,sum_read_hits, sum_evictions);
+
+    printf("%s\n", pad);
+    printf("%s %d\n",
+           "new entries:", sum_written_buckets - object->stats->old_writes);
+
+    printf("\n");
+    fflush(stdout);
+
+    object->stats->old_writes = sum_written_buckets;
+  }
+
+// enable warning again
+#pragma GCC diagnostic pop
+
+  MPI_Barrier(object->communicator);
+  return DAOS_SUCCESS;
+#endif
+
 }

@@ -22,6 +22,7 @@
 #define DAOS_ERROR -1
 #define DAOS_MPI_ERROR -2
 #define DAOS_READ_MISS -3
+#define DHT_STATISTICS 1
 
 /**
  * Internal struct to store statistics about read and write accesses and also
@@ -39,6 +40,8 @@ typedef struct
   int old_writes;
   /** How many read misses occur? */
   int read_misses;
+  /** How many read hits occur? */
+  int read_hits;
   /** How many buckets where evicted? */
   int evictions;
   /** How many calls of DHT_write() did this process? */
@@ -78,7 +81,7 @@ typedef struct
 
 #ifdef DHT_STATISTICS
   /** Detailed statistics of the usage of the DHT. */
-  DAOS_stats *stats;
+  DAOSKV_stats *stats;
 #endif
 } DAOSKV;
 #ifdef __cplusplus
@@ -91,6 +94,7 @@ extern "C"
   extern int DAOSKV_write(DAOSKV *object, void *key, int key_size, void *send_data, int send_size);
   extern int DAOSKV_read(DAOSKV *object, void *key, int key_size, void *recv_data, int recv_size);
   extern int DAOSKV_remove(DAOSKV *object, void *key, int key_size);
+  extern int DAOSKV_print_statistics(DAOSKV *object);
 #ifdef __cplusplus
 }
 #endif

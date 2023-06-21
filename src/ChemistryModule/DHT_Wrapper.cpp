@@ -102,19 +102,23 @@ auto DHT_Wrapper::checkDHT(int length, double dt,
     key_vector = fuzzForDHT(this->key_count, key, dt);
     
     int res = DAOSKV_read(this->daosKV_object,
-                          key_vector.data(),key_vector.size(),
-                          data.data(), data.size());
+                          key_vector.data(),key_size,
+                          data.data(), data_size);
 
     switch (res) {
     case DAOS_SUCCESS:
+
       dht_results.needPhreeqc[i] = false;
       this->dht_hits++;
       break;
     case DAOS_READ_MISS:
+
       dht_results.needPhreeqc[i] = true;
       new_mapping.push_back(curr_mapping[i]);
-      this->dht_miss++;
       break;
+
+    default:
+      printf("Error");
     }
   }
 
@@ -124,16 +128,19 @@ auto DHT_Wrapper::checkDHT(int length, double dt,
 }
 
 void DHT_Wrapper::fillDHT(int length, const std::vector<double> &work_package) {
+
   // loop over every grid cell contained in work package
   for (int i = 0; i < length; i++) {
     // If true grid cell was simulated, needs to be inserted into dht
+
     if (dht_results.needPhreeqc[i]) {
+
       auto &key = dht_results.keys[i];
       void *data = (void *)&(work_package[i * this->data_count]);
       // fuzz data (round, logarithm etc.)
 
-      int res = DAOSKV_read(this->daosKV_object,
-                          (void *) key.data(), key.size(),
+      int res = DAOSKV_write(this->daosKV_object,
+                          (void *) key.data(), key_size,
                           data, data_size);
 
     }
@@ -169,9 +176,8 @@ int DHT_Wrapper::fileToTable(const char *filename) {
 }
 
 void DHT_Wrapper::printStatistics() {
-  int res = 1;
 
-  //res = DHT_print_statistics(daosKV_object);
+  int res = DAOSKV_print_statistics(daosKV_object);
 
   if (res != DAOS_SUCCESS) {
     // MPI ERROR ... WHAT TO DO NOW?
