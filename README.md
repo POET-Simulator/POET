@@ -12,8 +12,15 @@ a DAOS server.
 
 ## Installation
 
-To install this version of POET please follow the instructions in the main branche,
-next to the requiered software already listed DAOS needs to be build on the system.
+To install this version of POET please follow the instructions in the main branche.
+The DAOS library must be build on the system.
+
+To build POET with DAOS as the key-value store either the POET_DAOSKV or POET_DAOSOB flag needs to be true,
+where POET_DAOSKV uses DAOS KV API, and POET_DAOSOB uses DAOS object API. For example:
+
+```sh
+cmake -DPOET_DAOSOB=True -DCMAKE_INSTALL_PREFIX=/home/dtest/poet ..
+```
 
 ## Running
 

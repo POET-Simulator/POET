@@ -1,5 +1,7 @@
 option(POET_USE_PRM_BACKEND "Use PhreeqcRM parallelization instead of poet's." OFF)
 option(POET_DHT_DEBUG "Build with DHT debug info" OFF)
+option(POET_DAOSKV "Build with DAOS, using the KV-API" OFF)
+option(POET_DAOSOB "Build with DAOS, using the Object-API" OFF)
 
 list(APPEND CHEM_MODEL_SRC "ChemistryModule.cpp" )
 
@@ -10,21 +12,35 @@ if(POET_USE_PRM_BACKEND)
   set(PHREEQCRM_BUILD_MPI ON CACHE BOOL "" FORCE)
   target_compile_definitions(poet_lib PRIVATE POET_USE_PRM)
 else()
-  set(PHREEQCRM_BUILD_MPI OFF CACHE BOOL "" FORCE)
-list(APPEND CHEM_MODEL_SRC "WorkerFunctions.cpp" "MasterFunctions.cpp" "DHT_Wrapper.cpp" "HashFunctions.cpp" "DaosKeyValue.c" "DHT.c")
+  if(POET_DAOSKV OR POET_DAOSOB)
+
+    message(NOTICE "Using DAOS")
+    # ML: Fuer Nico: Includes + linking fuer Daos bereitstellen
+    find_library(DAOS_LIB libdaos.so
+      PATH_SUFFIXES lib lib64
+    )
+    find_path(DAOS_INCLUDE daos.h)
+
+    add_library(DAOS INTERFACE IMPORTED)
+    set_target_properties(DAOS PROPERTIES
+      INTERFACE_LINK_LIBRARIES "${DAOS_LIB}"
+      INTERFACE_INCLUDE_DIRECTORIES "${DAOS_INCLUDE}"
+    )
+    set(PHREEQCRM_BUILD_MPI OFF CACHE BOOL "" FORCE)
+    
+    list(APPEND CHEM_MODEL_SRC "WorkerFunctions.cpp" "MasterFunctions.cpp" "DAOS/DHT_Wrapper.cpp" "HashFunctions.cpp" "DHT.c")
+    if (POET_DAOSKV)
+      list(APPEND CHEM_MODEL_SRC  "DAOS/KV/DaosKeyValue.c" )
+    else ()
+      list(APPEND CHEM_MODEL_SRC  "DAOS/OB/DaosKeyValue.c" )
+    endif()
+  else()
+    message(NOTICE "Using DHT")
+    set(PHREEQCRM_BUILD_MPI OFF CACHE BOOL "" FORCE)
+    list(APPEND CHEM_MODEL_SRC "WorkerFunctions.cpp" "MasterFunctions.cpp" "DHT_Wrapper.cpp" "HashFunctions.cpp" "DHT.c")
+  endif()
 endif()
 
-# ML: Fuer Nico: Includes + linking fuer Daos bereitstellen
-find_library(DAOS_LIB libdaos.so
-  PATH_SUFFIXES lib lib64
-)
-find_path(DAOS_INCLUDE daos.h)
-
-add_library(DAOS INTERFACE IMPORTED)
-set_target_properties(DAOS PROPERTIES
-  INTERFACE_LINK_LIBRARIES "${DAOS_LIB}"
-  INTERFACE_INCLUDE_DIRECTORIES "${DAOS_INCLUDE}"
-)
 
 add_library(ChemistryModule ${CHEM_MODEL_SRC})
 target_include_directories(ChemistryModule PUBLIC ${PROJECT_SOURCE_DIR}/include)

@@ -1,0 +1,3718 @@
+#        		SMILE Thermodynamic Database (EDH version)
+#
+#  Project: SMILE                          				      Version 01-November-2021
+##################################################################################################################################
+#
+# This thermodynamic database has been developed by Helmholtz-Zentrum Dresden-Rossendorf and GRS Braunschweig for the BMWi founded projects:
+#
+#	- SMILE: "Smart-Kd in der Langzeitsicherheitsanalyse - Anwendungen" (Contract Nos. 02E11668B)
+# 	- WEIMAR: "Further Development of the Smart Kd-Concept for Long-Term Safety Assessment" (Contract Nos. 02 E 10518 + 02 E 11072A)
+#	- ESTRAL: "Realistic Integrataion of Sorption Processes in Transport Programs for long-term Safety Analysis" (Contract Nos. 02 E 10528 + 02 E 11072B)
+# 
+# For the geochemical calculations within this projects two separate thermodynamic databases were created (dependent on the salinity of the groundwater solutions): 
+# 
+#  (I) The EDH version for groundwater solutions with ionic strength lower than 0.5 mol L-1. This database
+#      based on the actual PSI/Nagra Chemical Thermodynamic Database Version 12/07 (PSI/Nagra TDB 12/07) formatted for 
+#      PHREEQC /Thoenen et al. 2014/ considering the Davies approach /Davies, 1962/ to represent ion-ion interactions 
+#      based on the Extended Debye-Hückel Theory (EDH) with updated values from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+# 
+# (II) The Pitzer version (PIT.dat) for high saline solutions using the Pitzer formalism. 
+#
+# For the projects the site-specific minerals and matrix elements of the sedimentary rock above the repository site Gorleben 
+# and actinides and fission products relevant in the context of a nuclear waste repository are important and considered in the database. 
+# So far only parameters for T=298.15 K are provided. Relevant thermodynamic data which are not included or not actual in the PSI/Nagra TDB 12/07 
+# were taken from either other databases, original literature or own batch experiments and were clearly commented in the database 
+# and listed here (not relevent date or not recommended data wer commented out, e.g. Graphite, Molybdenum, Niob, Palladium, Tin). 
+# 
+# In general the data can be divided into three groups: 
+#
+# (1) Thermodynamic data for aqueous element species
+#	- Fe+2/Fe+3 were updated from NEA TDB Vol. 13a [Lemire et al., 2013]
+#	- Mg+2 (MgPO4-, MgHPO4, MgCl+ & MgH2PO4) complexes were added from the LLNL database
+#	- MgOH+ was updated from [Brown & Ekberg, 2016]
+#	- Mn+3, MnO4-2, MnO4-
+#	- U, Np and Am(III) data were updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) and THEREDA Release 2020 (for U)
+#
+# (2) Solubility data for site-specific Minerals:
+# 	- Fe+2/Fe+3-solid phases were updated from NEA TDB Vol. 13a [Lemire et al., 2013]
+#	- Albite, Anorthite, Chlorite, Illite and Montmorillonite were included from the ANDRA Database
+#   	  ThermoChimie [Giffaut et al., 2014]. Thereby, for Albite, only Albite-low was used, being stable below
+#   	  700°C with an ordered Si-Al arrangement.
+# 	- K-Feldspar (Orthoclase) were calculated from logK(T)-functions published in Stefánsson and Arnórsson (2000) for Microcline.
+# 	- Muscovite were taken from Richter et al. (2016).
+#	- generic Gibbsite phase 'Gibbsite(gen)' from own fit to experimental Gorleben data
+#	- amorphous Gibbsite phase from Lindsay (1979)
+#	- U, Np and Am(III) data were updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) and THEREDA Release 2020 (for U)
+#
+# (3) Thermodynamic sorption data for representative sorbates (pair of element and minerals):
+#	- Surface complexation data (SCM), e.g. protolysis constants (pK-values), stability constants (log K-values) 
+#	  and reaction equations were taken from the thermodynamic sorption database RES³T (Rossendorf Expert System 
+#	  for Surface and Sorption Thermodynamics; [Brendler et al. 2003], full bibliographic references are 
+#	  available at http://www.hzdr.de/res3t).
+#	- Missing SCM data are derived from batch experiments by GRS & HZDR.
+#	- primary the Diffuse Double Layer Model (DDL) is preferred, but in case of no/scarce SCM data sets
+#	  additionally other SCM models are used
+#	- generic sites (»XOH) are prefered (with no differentiation between strong and weak sites)
+#	- Following Kulik (2006, 2002) the protolysis and stability constants were normalised to a reference surface 
+#	  site density of 2.31 nm-2 as recommended by Davis and Kent (1990). 
+#	- All SCM-values were corrected to infinite dilution (ionic strength 0) using the Davies equation (Davies, 1962). 
+#	- The solid surface binding sites are essential components and their abbreviations correspond to the international 
+#	  code after Whitney and Evans (2010), e. g. for quartz: =Qz-OH2+.
+#
+#
+# References:
+#
+# Altmaier, M., Brendler, V, Bosbach, D., Kienzler, B., Marquardt, C. M., Neck, V., Richter, A., 2004. Sichtung, Zusammenstellung 
+#	und Bewertung von Daten zur geochemischen Modellierung. Forschungszentrum Karlsruhe, Report FZK - INE 002/04, (2004), 520 pp.
+#
+# Brendler, V., Vahle, A., Arnold, T., Bernhard, G., Fanghänel, T., 2003. RES³T-Rossendorf expert system for surface and sorption 
+#	thermodynamics. J. Cont. Hydrol., 61, 281-291.
+#
+# Brown, P.L., Ekberg, C., 2016, Hydrolysis of Metal Ions, Vol. 1, John Wiley & Sons, 952pp.
+#
+# Cornell, R.M., Schwertmann, U., 2003. The iron oxides - structure, properties, reactions, occurrences and uses.
+#    	2nd edition, Wiley-VCH, Weinheim, 185-220.
+#
+# Davies, C. W., 1962. Ion Association. Butterworths, Washington.
+#
+# Davis, J.A., Kent, D.B., 1990. Surface complexation modeling in aqueous geochemistry, in: Hochella, M.F., White, A.F. (Eds.), 
+#	Mineral-Water Interface Geochemistry. Reviews in Mineralogy, Vol. 23. MSA, Washington, D.C., pp. 177-258.
+#
+# Giffaut, E., Grivé, M., Blanc, P., Viellard, P., Colàs, E., Gailhanou, H., Gaboreau, S., Marty, N., Madé, B., Duro, L., (2014).
+#    	Andra thermodynamic database for performance assessment: ThermoChimie. Appl. Geochem. 49, 225-236.
+#
+# Guillaumont, R., Fanghaenel, T., Fuger, J., Grenthe, I., Neck, V., Palmer, D.A., Rand, M.H. (2003).
+#    	Vol. 5. Update on the Chemical Thermodynamics of Uranium, Neptunium, Plutonium, Americium and Technetium.
+#     	OECD Nuclear Energy Agency Data Bank, Eds., North Holland Elsevier Science Publishers B.V., Amsterdam, The Netherlands.
+#
+# Grenthe et al. (2020). Vol. 14. Second Update on the Chemical Thermodynamics of Uranium, Neptunium, Plutonium, Americium and Technetium, 
+#	OECD Nuclear Energy Agency Data Bank, Eds., OECD Publications, Paris, France. 
+#
+# Kulik, D.A., 2002. Sorption modelling by Gibbs energy minimisation: Towards a uniform thermodynamic database for surface complexes 
+#	of radionuclides. Radiochim. Acta 90, 815-832.
+#
+# Kulik, D.A., 2006. Standard molar Gibbs energies and activity coefficients of surface complexes on mineral-water interfaces 
+#	(thermodynamic insights), in: Lützenkirchen, J. (Eds.), Surface complexation modelling. Academic Press, Amsterdam, pp. 171-250.
+#
+# Lemire, R.J., Berner, U., Musikas, C., Palmer, D.A., Taylor, P., Tochiyama, O. (2013).
+#    	Vol. 13a. Chemical Thermodynamics of Iron, Part 1. OECD Nuclear Energy Agency Data Bank, Eds., OECD Publications,
+#    	Issy-les-Moulineaux, France.
+#
+# Lindsay, W.L., 1979. Chemical equilibria in soils. John Wiley & Sons, New York.
+#
+# Richter, C., 2015. Sorption of environmentally relevant radionuclides (U(VI), Np(V)) and lanthanides (Nd(III)) on feldspar and mica. 
+#	Doctoral thesis, TU Dresden (available at: https://www.hzdr.de/db/Cms?pNid=2850).
+#
+# Richter, C., Müller, K., Drobot, B., Steudtner, R., Großmann, K., Stockmann, M., Brendler, V., 2016. Macroscopic and spectroscopic 
+#	characterization of uranium(VI) sorption onto orthoclase and muscovite and the influence of competing Ca2+.
+#	Geochim. Cosmochim. Acta, 189, 143-157.
+#
+# Stefánsson, A., Arnórsson, S., 2000. Feldspar saturation state in natural waters. Geochim. Cosmochim. Acta, 64, 2567-84.
+#
+# Thoenen T., Hummel W., Berner U., Curti E., 2014. The PSI/Nagra Chemical Thermodynamic Database 12/07, PSI Report 14-04. 
+#    	available for download at http://www.psi.ch/les/database
+#
+# Whitney, D. L., Evans, B. W., 2010. Abbreviations for names of rock-forming minerals. Amer. Mineral. 95, 185-187.
+#
+# 
+#
+########################################################################################################################
+# Original PSI/NAGRA TDB 12/07  
+#
+# PSI/Nagra Thermochemical Database Version 12/07                            LAST MOD. 11-JUN-2015
+# PSINA_110615_DAV_s.dat
+#
+# The documentation for this database is available on http://www.psi.ch/les/database.
+#
+# Change history -----------------------------------------------------------------------------------
+# PSINA_120110_DAV_s.dat
+#   12-JAN-2010 : Added Becquerelite and Compreignacite to PSINA_060110_DAV_s.dat
+# PSINA_050710_DAV_s.dat
+#   05-JULY-2010: Added CmSCN+2 to PSINA_120110_DAV_s.dat 
+#   05-JULY-2010: Added NpO2SCN to PSINA_120110_DAV_s.dat
+# PSINA_050710_rev_DAV_s.dat 
+#   14-FEB-2011 : Sn: Changed incorrect formula (for conversion from mass to mole units) and 
+#                     incorrect elemental gfw in PSINA_050710_DAV.dat and PSINA_050710_DAV_s.dat
+#   14-FEB-2011 : Added NpSiO(OH)3+2 to PSINA_050710_DAV_s.dat
+#   14-FEB-2011 : Added USiO4(s) to PSINA_050710_DAV_s.dat
+#   20-FEB-2011 : corrected log_k for UO2(am,hyd) (from -1.5 to 1.5) in PSINA_050710_DAV.dat
+#                 and PSINA_050710_DAV_s.dat
+# PSINA_290714_DAV_s.dat
+#   29-JUL-2014 : Added I(+5) to the SOLUTION_MASTER_SPECIES
+#                 corrected log_k for I2 (wrong sign)
+#                 corrected log_k for IO3- (from -122.0400 to -101.0900)
+#                 changed some comments
+# PSINA_110615_DAV_s.dat
+#    11-JUN-2015: Changed references to PSI reports and added comment concerning documentation,
+#                 deleted warning concerning use of database at temperatures other than 25ûC
+#---------------------------------------------------------------------------------------------------
+#
+# ACTIVITY COEFFICIENTS:
+#
+# This version of the database uses the Davies equation for the calculation of activity coefficients.
+# -gamma     0.00     0.00   for neutral species ensures that the activity coefficients 
+#                            are equal to one.
+#
+# TEMPERATURE:
+#
+# This version of the database only contains logK-data for 25ûC
+#
+# DOCUMENTATION:
+#
+# NAGRA NTB 91-17:  Pearson F.J., Berner U. (1992): Nagra Thermochemical Data Base I. Core Data,
+#                   Nagra NTB 91-17.
+#                     available for download at http://www.nagra.ch/de/downloadcenter.htm
+# NAGRA NTB 91-18:  Pearson F.J., Berner U., Hummel W. (1992): Nagra Thermochemical Data Base
+#                   II. Supplemental Data, Nagra NTB 91-18.
+#                     available for download at http://www.nagra.ch/de/downloadcenter.htm  
+# NAGRA NTB 02-16:  Hummel W., Berner U., Curti E., Pearson F.J., Thoenen T. (2002): Nagra/PSI
+#                   Chemical Thermodynamic Database 01/01, Nagra NTB 02-16.
+#                     available for download at http://www.nagra.ch/de/downloadcenter.htm  
+# PSI Report 14-04: Thoenen T., Hummel W., Berner U., Curti E. (2014): The PSI/Nagra Chemical 
+#                   Thermodynamic Database 12/07, PSI Report 14-04.
+#                     available for download at http://www.psi.ch/les/database  
+#
+#---------------------------------------------------------------------------------------------------
+#
+SOLUTION_MASTER_SPECIES
+#                                                                                                      
+#        ATOMIC WEIGHTS                                                                                
+#        Naturally occurring elements: IUPAC 1993 Table 1 rounded to 0.001                              
+#        Radioelements: Mass number of longest-lived isotope                                           
+#                                                                                                      
+#                                                                                                      
+#
+#  elemen     species        alk   gfw_formula element_gfw atomic Disposition           Source of data 
+#                                                          number   PMATCHC    
+#
+H               H+          -1.0        H         1.008   #   1       Ele              NAGRA NTB 91-17   
+H(0)            H2           0.0        H                 #          Ma(S)             NAGRA NTB 91-17  
+H(1)            H+          -1.0        H                 #          Ma(P)             NAGRA NTB 91-17 
+E               e-           0.0        0.0        0.0    #          Ma(P)             NAGRA NTB 91-17 
+O               H2O          0.0        O        15.999   #   8       Ele              NAGRA NTB 91-17 
+O(0)            O2           0.0        O                 #          Ma(S)             NAGRA NTB 91-17 
+O(-2)           H2O          0.0        O                 #          Ma(P)             NAGRA NTB 91-17 
+Al             Al+3          0.0        Al       26.982   #  13    Ele, Ma(P)          NAGRA NTB 02-16 
+Am             Am+3          0.0        Am         243    #  95    Ele, Ma(P)          PSI Report 14-04 
+Am(3)          Am+3          0.0        Am                #                            PSI Report 14-04
+Am(5)          AmO2+         0.0        Am                #                            PSI Report 14-04
+As            HAsO4-2        0.0        As       74.922   #  33       Ele              NAGRA NTB 91-17 
+As(3)         As(OH)3        0.0        As                #          Ma(S)             NAGRA NTB 91-17 
+As(5)         HAsO4-2        1.0        As                #          Ma(P)             NAGRA NTB 91-17      
+B             B(OH)3         0.0        B        10.812   #   5      Ma(P)             NAGRA NTB 91-18   
+Ba             Ba+2          0.0        Ba       137.328  #  56      Ma(P)             NAGRA NTB 91-17   
+Br              Br-          0.0        Br       79.904   #  35      Ma(P)             NAGRA NTB 91-17 
+C              HCO3-         1.0        C        12.011   #   6       Ele              NAGRA NTB 91-17 
+C(+4)          HCO3-         1.0      HCO3-               #          Ma(P)             NAGRA NTB 91-17 
+C(-4)           CH4          0.0       CH4                #          Ma(S)             NAGRA NTB 91-17 
+Alkalinity     HCO3-         1.0      HCO3-      61.016   #                            NAGRA NTB 91-17
+Ca             Ca+2          0.0        Ca       40.078   #  20      Ma(P)             NAGRA NTB 91-17 
+Cl              Cl-          0.0        Cl       35.453   #  17      Ma(P)             NAGRA NTB 91-17 
+Cm             Cm+3          0.0        Cm         247    #                            PSI Report 14-04
+Cs              Cs+          0.0        Cs      132.905   #  55      Ma(P)             Master Species only
+Eu             Eu+3          0.0        Eu       151.966  #  63       Ele              Replaced with Data from ANDRA TDB ThermoChimie 
+Eu(2)          Eu+2          0.0        Eu                #          Ma(S)             Replaced with Data from ANDRA TDB ThermoChimie 
+Eu(3)          Eu+3          0.0        Eu                #          Ma(P)             Replaced with Data from ANDRA TDB ThermoChimie 
+F               F-           0.0        F        18.998   #   9      Ma(P)             NAGRA NTB 91-17 
+Fe             Fe+2          0.0        Fe       55.845   #  26       Ele              NAGRA NTB 91-18 
+Fe(2)          Fe+2          0.0        Fe                #          Ma(P)             NAGRA NTB 91-18  
+Fe(3)          Fe+3          0.0        Fe                #          Ma(S)             NAGRA NTB 91-18  
+I               I-           0.0        I        126.904  #  53       Ele              NAGRA NTB 91-18  
+I(-1)           I-           0.0        I                 #          Ma(P)             NAGRA NTB 91-18  
+I(0)            I2           0.0        I                 #          Ma(S)             NAGRA NTB 91-18 
+I(+5)          IO3-          0.0        I                 #                            PSI Report 14-04            
+K               K+           0.0        K        39.098   #  19      Ma(P)             NAGRA NTB 91-17 
+Li              Li+          0.0        Li        6.941   #   6      Ma(P)             NAGRA NTB 91-17 
+Mg             Mg+2          0.0        Mg       24.305   #  12      Ma(P)             NAGRA NTB 91-17 & LLNL
+Mn             Mn+2          0.0        Mn       54.938   #  25      Ma(P)             NAGRA NTB 91-18 
+Mn(2)          Mn+2          0.0        Mn                #			       
+#Mn(3)         Mn+3          0.0        Mn                #			       
+#Mn(4)         Mn+4          0.0        Mn                #			       
+#Mn(6)         MnO4-2        0.0        Mn                #			       
+#Mn(7)         MnO4-         0.0        Mn                #			       
+Mo            MoO4-2         0.0        Mo       95.941   #  42      Ma(P)             NAGRA NTB 91-18  
+N              NO3-          0.0        N        14.007   #   7       Ele              NAGRA NTB 91-17  
+N(-5)          HCN           0.0       HCN                #                            PSI Report 14-04
+N(-3)          NH4+          0.0       NH4                #          Ma(S)             NAGRA NTB 91-17
+N(-1)          SCN-          0.0       SCN-               #                            PSI Report 14-04
+N(0)            N2           0.0        N2                #          Ma(S)             NAGRA NTB 91-17 
+N(5)           NO3-          0.0       NO3                #          Ma(P)             NAGRA NTB 91-17 
+Na              Na+          0.0        Na        22.99   #  11      Ma(P)             NAGRA NTB 91-17 
+Nb             NbO3-         0.0        Nb       92.906   #  41      Ma(P)             NAGRA NTB 91-18  
+Nd	      Nd+3	     0.0	Nd	 144.24   #  60			       Included from LLNL database
+Nd(3)	      Nd+3	     0.0	Nd					       Included from LLNL database
+Ni             Ni+2          0.0        Ni       58.693   #  28    Ele, Ma(P)          PSI Report 14-04 
+Np            NpO2+2         0.0        Np         237    #  93       Ele              PSI Report 14-04 
+Np(3)          Np+3          0.0        Np                #          Ma(S)             PSI Report 14-04 
+Np(4)          Np+4          0.0        Np                #          Ma(S)             PSI Report 14-04 
+Np(5)          NpO2+         0.0        Np                #          Ma(S)             PSI Report 14-04 
+Np(6)         NpO2+2         0.0        Np                #          Ma(P)             PSI Report 14-04 
+P             HPO4-2         1.0        P        30.974   #  15      Ma(P)             NAGRA NTB 91-17  
+Pd             Pd+2          0.0        Pd       106.421  #  46    Ele, Ma(P)          NAGRA NTB 02-16 
+Pu            PuO2+2         0.0        Pu         242    #  94       Ele              PSI Report 14-04 
+Pu(3)          Pu+3          0.0        Pu                #          Ma(S)             PSI Report 14-04 
+Pu(4)          Pu+4          0.0        Pu                #          Ma(S)             PSI Report 14-04 
+Pu(5)          PuO2+         0.0        Pu                #          Ma(S)             PSI Report 14-04 
+Pu(6)         PuO2+2         0.0        Pu                #          Ma(P)             PSI Report 14-04 
+Ra             Ra+2          0.0        Ra         226    #  88    Ele, Ma(P)          NAGRA NTB 02-16 
+S              SO4-2         0.0        S        32.067   #  16       Ele              NAGRA NTB 91-17 
+S(-2)           HS-          1.0        HS                #          Ma(S)             NAGRA NTB 02-16 
+S(2)          S2O3-2         0.0       S2O3               #          Ma(S)             NAGRA NTB 91-18  
+S(4)          SO3-2          0.0       SO3                #          Ma(S)             NAGRA NTB 91-18  
+S(6)           SO4-2         0.0       SO4                #          Ma(P)             NAGRA NTB 91-18  
+Se            SeO3-2         0.0        Se       78.963   #  34       Ele              PSI Report 14-04 
+Se(4)         SeO3-2         0.0        Se                #          Ma(P)             PSI Report 14-04 
+Se(-2)         H2Se          0.0        Se                #          Ma(S)             PSI Report 14-04 
+Se(6)         HSeO4-         0.0        Se                #          Ma(S)             PSI Report 14-04 
+Si            Si(OH)4        0.0        Si       28.086   #  14    Ele, Ma(P)          PSI Report 14-04 
+Tn             Tn+2          0.0        Tn       118.711  #  50    Ele, Ma(P)          NAGRA NTB 02-16 
+Sn            Sn(OH)4        0.0        Sn       118.711  #          Ma(P)             NAGRA NTB 02-16 
+Sr             Sr+2          0.0        Sr       87.621   #  38      Ma(P)             NAGRA NTB 91-17
+Tc             TcO4-         0.0        Tc         98     #  43       Ele              PSI Report 14-04 
+Tc(7)          TcO4-         0.0       TcO4               #          Ma(P)             PSI Report 14-04 
+Tc(4)        TcO(OH)2       -1.0     TcO(OH)2             #          Ma(S)             PSI Report 14-04 
+Th             Th+4          0.0        Th       232.038  #  90    Ele, Ma(P)          PSI Report 14-04 
+U              UO2+2         0.0        U        238.029  #  92       Ele              PSI Report 14-04 
+U(4)            U+4          0.0        U                 #          Ma(S)             PSI Report 14-04 
+U(5)           UO2+          0.0        U                 #          Ma(S)             PSI Report 14-04 
+U(6)           UO2+2         0.0       UO2                #          Ma(P)             PSI Report 14-04 
+Zr             Zr+4          0.0        Zr       91.224   #  40    Ele, Ma(P)          PSI Report 14-04 
+
+
+SOLUTION_SPECIES
+
+# PMATCH MASTER SPECIES
+# -Vm values for relevant elements/species are implemented from phreeqc.dat: C, Ca, Cl, K, Mg, Na, S                              
+
+H+                 = H+                
+    log_k      0.0
+    -dw	       9.31e-9 # phreeqc.dat, The dw parameters are defined in ref. 3.
+
+e-                 = e-                
+    log_k      0.0
+    -gamma     0.00     0.00 
+
+H2O                = H2O               
+    log_k      0.0
+    -gamma     0.00     0.00 
+
+Al+3               = Al+3              
+    log_k      0.0
+
+Am+3               = Am+3              
+    log_k      0.0
+
+HAsO4-2            = HAsO4-2           
+    log_k      0.0
+
+B(OH)3             = B(OH)3            
+    log_k      0.0
+    -gamma     0.00     0.00 
+
+Ba+2               = Ba+2              
+    log_k      0.0
+
+Br-                = Br-               
+    log_k      0.0
+
+HCO3-              = HCO3-             
+    log_k      0.0
+     -Vm  8.472  0  -11.5  0  1.56  0  0  146  3.16e-3  1 # ref. 1
+     # from phreeqc.dat: CO3-2 + H+ = HCO3-
+    -dw	       1.18e-9   # phreeqc.dat
+
+Ca+2               = Ca+2              
+    log_k      0.0
+    -Vm  -0.3456  -7.252  6.149  -2.479  1.239  5  1.60  -57.1  -6.12e-3  1 # ref. 1
+    -dw	       7.93e-10  # phreeqc.dat
+
+Cl-                = Cl-
+    log_k      0.0
+     -Vm  4.465  4.801  4.325  -2.847  1.748  0  -0.331  20.16  0  1 # ref. 1
+    -dw	       2.03e-9   # phreeqc.dat
+
+Cm+3               = Cm+3              
+    log_k      0.0
+
+Cs+                = Cs+               
+    log_k      0.0
+
+Eu+3               = Eu+3              
+    log_k      0.0
+
+F-                 = F-                
+    log_k      0.0
+
+Fe+2               = Fe+2              
+    log_k      0.0
+    -dw	       7.19e-10   # phreeqc.dat
+
+I-                 = I-                
+    log_k      0.0
+
+K+                 = K+                
+    log_k      0.0
+     -Vm  3.322  -1.473  6.534  -2.712  9.06e-2  3.5  0  29.7  0  1 # ref. 1
+    -dw	       1.96e-9  # phreeqc.dat
+
+Li+                = Li+               
+    log_k      0.0
+
+Mg+2               = Mg+2              
+    log_k      0.0
+     -Vm  -1.410  -8.6  11.13  -2.39  1.332  5.5  1.29  -32.9  -5.86e-3  1 # ref. 1
+    -dw	       7.05e-10  # phreeqc.dat
+
+Mn+2               = Mn+2              
+    log_k      0.0
+
+MoO4-2             = MoO4-2            
+    log_k      0.0
+
+NO3-               = NO3-              
+    log_k      0.0
+
+Na+                = Na+               
+    log_k      0.0
+     -Vm   2.28  -4.38  -4.1  -0.586  0.09  4  0.3  52  -3.33e-3  0.566 # ref. 1
+    -dw	       1.33e-9     # phreeqc.dat
+
+NbO3-              = NbO3-             
+    log_k      0.0
+
+Nd+3		   = Nd+3
+     log_k	0.0
+
+Ni+2               = Ni+2              
+    log_k      0.0
+
+NpO2+2             = NpO2+2            
+    log_k      0.0
+
+HPO4-2             = HPO4-2            
+    log_k      0.0
+    -dw	       6.9e-10       # phreeqc.dat
+
+Pd+2               = Pd+2              
+    log_k      0.0
+
+PuO2+2             = PuO2+2            
+    log_k      0.0
+
+Ra+2               = Ra+2              
+    log_k      0.0
+
+SO4-2              = SO4-2             
+    log_k      0.0
+    -Vm  8.0  2.3  -46.04  6.245  3.82  0  0  0  0  1 # ref. 1
+    -dw        1.07e-9  # phreeqc.dat
+
+SeO3-2             = SeO3-2            
+    log_k      0.0
+
+Si(OH)4            = Si(OH)4           
+    log_k      0.0
+    -gamma     0.00     0.00 
+
+Tn+2               = Tn+2              
+    log_k      0.0
+
+Sn(OH)4            = Sn(OH)4           
+    log_k      0.0
+    -gamma     0.00     0.00 
+
+Sr+2               = Sr+2              
+    log_k      0.0
+    -dw	       7.94e-10    # phreeqc.dat  
+
+TcO4-              = TcO4-             
+    log_k      0.0
+
+Th+4               = Th+4              
+    log_k      0.0
+
+UO2+2              = UO2+2             
+    log_k      0.0
+    -dw        7.659e-10        # Kerisit & Liu (2010)
+
+Zr+4               = Zr+4              
+    log_k      0.0
+
+
+# PMATCH SECONDARY MASTER SPECIES
+
+# Se     Redox
+##############
+
+ +1.000SeO3-2             +1.000H2O                -1.000H+                 -2.000e-                 = HSeO4-                
+    log_k     -26.3000 
+
+ +1.000SeO3-2             +8.000H+                 +6.000e-                 -3.000H2O                = H2Se                  
+    log_k      57.4000 
+    -gamma      0.00     0.00 
+
+ +1.000HCN                +1.000SeO3-2             +5.000H+                 +4.000e-                 -3.000H2O                = SeCN-                 
+    log_k      57.3000 
+
+# Tc     Redox
+##############
+
+ +1.000TcO4-              +4.000H+                 +3.000e-                 -1.000H2O                = TcO(OH)2              
+    log_k      29.4000 
+    -gamma      0.00     0.00 
+
+# Eu     Redox
+##############
+
+ +1.000Eu+3               +1.000e-                 = Eu+2                  
+    log_k      -5.9200 
+
+# U      Redox
+##############
+
+ +1.000UO2+2              +4.000H+                 +2.000e-                 -2.000H2O                = U+4                   
+    log_k       9.0380 
+  -dw        7.659e-10        # assumption: analogous to UO2+2, from Kerisit & Liu (2010)
+
+ +1.000UO2+2              +1.000e-                 = UO2+                  
+    log_k       1.4840 
+  -dw        7.659e-10        # assumption: analogous to UO2+2, from Kerisit & Liu (2010)
+
+# Np     Redox
+##############
+
+  +1.000NpO2+2             +4.000H+                 +3.000e-                 -2.000H2O                = Np+3                  
+    log_k      33.5000 
+
+ +1.000NpO2+2             +4.000H+                 +2.000e-                 -2.000H2O                = Np+4                  
+    log_k      29.8000 
+
+ +1.000NpO2+2             +1.000e-                 = NpO2+                 
+    log_k      19.5900 
+
+# Pu     Redox
+##############
+
+ +1.000PuO2+2             +4.000H+                 +3.000e-                 -2.000H2O                = Pu+3                  
+    log_k      50.9700 
+
+ +1.000PuO2+2             +4.000H+                 +2.000e-                 -2.000H2O                = Pu+4                  
+    log_k      33.2800 
+
+ +1.000PuO2+2             +1.000e-                 = PuO2+                 
+    log_k      15.8200 
+
+# Am     Redox
+##############
+
+ +1.000Am+3               +2.000H2O                -4.000H+                 -2.000e-                 = AmO2+                 
+    log_k     -59.7000 
+
+# Rest   Redox
+##############
+
+ +2.000H+                 +2.000e-                 = H2                    
+    log_k      -3.1054 
+    -gamma      0.00     0.00 
+    -dw	        5.13e-9     # phreeqc.dat
+
+ +2.000H2O                -4.000H+                 -4.000e-                 = O2                    
+    log_k     -85.9841 
+    -gamma      0.00     0.00 
+    -Vm  5.7889  6.3536  3.2528  -3.0417  -0.3943 # supcrt
+    -dw	        2.35e-9    # phreeqc.dat 
+
+ +1.000HAsO4-2            +4.000H+                 +2.000e-                 -1.000H2O                = As(OH)3               
+    log_k      28.4412 
+    -gamma      0.00     0.00 
+
+ +1.000HCO3-              +9.000H+                 +8.000e-                 -3.000H2O                = CH4                   
+    log_k      27.8486 
+    -gamma      0.00     0.00 
+    -dw         1.85e-9    # phreeqc.dat 
+
+ +2.000NO3-              +12.000H+                +10.000e-                 -6.000H2O                = N2                    
+    log_k     207.2627 
+    -gamma      0.00     0.00 
+
+ +1.000NO3-              +10.000H+                 +8.000e-                 -3.000H2O                = NH4+                  
+    log_k     119.1344 
+
+ +2.000SO4-2             +10.000H+                 +8.000e-                 -5.000H2O                = S2O3-2                
+    log_k      38.0140 
+#   bug: log_k entered manually
+
+ +1.000SO4-2              +2.000H+                 +2.000e-                 -1.000H2O                = SO3-2                 
+    log_k      -3.3970 
+#   bug: log_k entered manually
+
+ +1.000SO4-2              +9.000H+                 +8.000e-                 -4.000H2O                = HS-                   
+    log_k      33.6900 
+    -dw	        1.73e-9     # phreeqc.dat
+
+# +1.000Fe+2               -1.000e-                 = Fe+3                  
+#    log_k     -13.0200 
+
+ +2.000I-                 -2.000e-                 = I2                    
+    log_k     -20.9500 
+    -gamma      0.00     0.00 
+
+ +0.500I2                 +3.000H2O                -6.000H+                 -5.000e-                 = IO3-                  
+    log_k    -101.0900 
+
++13.000H+                 +1.000CO3-2              +1.000NO3-              +10.000e-                 -6.000H2O                = HCN                   
+    log_k     117.3360 
+    -gamma      0.00     0.00 
+
+ +1.000HCN                +1.000HS-                -2.000e-                 -2.000H+                 = SCN-                  
+    log_k       5.9410 
+
+# Convenience
+#############
+
+ +1.000H2O                -1.000H+                 = OH-                   
+    log_k     -13.9995 
+     -Vm  -9.66  28.5  80.0 -22.9 1.89 0 1.09 0 0 1 # ref. 1
+     # from phreec.dat: H2O = OH- + H+
+    -dw	        5.27e-9     # phreeqc.dat
+
+ +1.000H+                 -1.000H2O                +1.000HCO3-              = CO2                   
+    log_k       6.3519 
+   # -gamma      0.00     0.00 
+   -Vm   7.29  0.92  2.07  -1.23  -1.60 # ref. 1 + McBride et al. 2015, JCED 60, 171
+    # from phreeqc.dat: CO3-2 + 2 H+ = CO2 + H2O
+    -dw	        1.92e-9     # phreeqc.dat
+ 
+ -1.000H+                 +1.000HCO3-              = CO3-2                 
+    log_k     -10.3289 
+     -Vm  5.95  0  0  -5.67  6.85  0  1.37  106  -0.0343  1 # ref. 1
+     # from phreeqc.dat: CO3-2 = CO3-2
+    -dw	        8.119e-10   # Kerisit & Liu (2010) 
+
+ +1.000HPO4-2             +2.000H+                 = H3PO4                 
+    log_k       9.3520 
+    -gamma      0.00     0.00 
+
+ +1.000HPO4-2             +1.000H+                 = H2PO4-                
+    log_k       7.2120 
+    -dw	        8.46e-10    # phreeqc.dat 
+
+ +1.000HPO4-2             -1.000H+                 = PO4-3                 
+    log_k     -12.3500 
+    -dw	        6.12e-10    # phreeqc.dat
+
+ +1.000Si(OH)4            -1.000H+                 = SiO(OH)3-             
+    log_k      -9.8100 
+
+ +1.000Si(OH)4            -2.000H+                 = SiO2(OH)2-2           
+    log_k     -23.1400 
+
+ +1.000Al+3               +4.000H2O                -4.000H+                 = Al(OH)4-              
+    log_k     -22.8791 
+
+ +1.000NH4+               -1.000H+                 = NH3                   
+    log_k      -9.2370 
+    -gamma      0.00     0.00 
+
+ +1.000HCN                -1.000H+                 = CN-                   
+    log_k      -9.2100 
+
+ +1.000HAsO4-2            -1.000H+                 = AsO4-3                
+    log_k     -11.6030 
+
+ +1.000HAsO4-2            +2.000H+                 = H3AsO4                
+    log_k       9.0270 
+    -gamma      0.00     0.00 
+#   bug: log_k entered manually
+
+# Se(VI)    RECOMMENDED DATA Convenience  
+########################################
+
+ +1.000HSeO4-             -1.000H+                 = SeO4-2                
+    log_k      -1.7500 
+
+# Se(IV)    RECOMMENDED DATA Convenience      
+########################################
+
+ +1.000SeO3-2             +1.000H+                 = HSeO3-                
+    log_k       8.3600 
+
+# Se(-II)   RECOMMENDED DATA Convenience    
+########################################
+
+ +1.000H2Se               -1.000H+                 = HSe-                  
+    log_k      -3.8500 
+
+ +1.000HSe-               -1.000H+                 = Se-2                  
+    log_k     -14.9100 
+
+# PMATCH PRODUCT SPECIES
+
+# General   RECOMMENDED DATA 
+############################
+
+ +1.000I-                 +1.000I2                 = I3-                   
+    log_k       2.8700 
+
+ +1.000H+                 +1.000IO3-               = HIO3                  
+    log_k       0.7880 
+    -gamma      0.00     0.00 
+
+ +1.000Al+3               +1.000F-                 = AlF+2                 
+    log_k       7.0800 
+
+ +1.000Al+3               +2.000F-                 = AlF2+                 
+    log_k      12.7300 
+
+ +1.000Al+3               +3.000F-                 = AlF3                  
+    log_k      16.7800 
+    -gamma      0.00     0.00 
+
+ +1.000Al+3               +4.000F-                 = AlF4-                 
+    log_k      19.2900 
+
+ +1.000Al+3               +5.000F-                 = AlF5-2                
+    log_k      20.3000 
+
+ +1.000Al+3               +6.000F-                 = AlF6-3                
+    log_k      20.3000 
+
+ +1.000Al+3               +1.000H2O                -1.000H+                 = AlOH+2                
+    log_k      -4.9572 
+
+ +1.000Al+3               +2.000H2O                -2.000H+                 = Al(OH)2+              
+    log_k     -10.5940 
+
+ +1.000Al+3               +3.000H2O                -3.000H+                 = Al(OH)3               
+    log_k     -16.4324 
+    -gamma      0.00     0.00 
+
+ +1.000Al+3               +1.000SO4-2              = AlSO4+                
+    log_k       3.9000 
+
+ +1.000Al+3               +2.000SO4-2              = Al(SO4)2-             
+    log_k       5.9000 
+
+ +1.000As(OH)3            +1.000H2O                -1.000H+                 = As(OH)4-              
+    log_k      -9.2320 
+#   bug: log_k entered manually
+
+ +1.000B(OH)3             +1.000H2O                -1.000H+                 = B(OH)4-               
+    log_k      -9.2352 
+
+ +1.000Ba+2               -1.000H+                 +1.000HCO3-              = BaCO3                 
+    log_k      -7.6157 
+    -gamma      0.00     0.00 
+
+ +1.000Ba+2               +1.000HCO3-              = BaHCO3+               
+    log_k       0.9816 
+
+ +1.000Ba+2               +1.000H2O                -1.000H+                 = BaOH+                 
+    log_k     -13.4700 
+
+ +1.000Ba+2               +1.000SO4-2              = BaSO4                 
+    log_k       2.7000 
+    -gamma      0.00     0.00 
+
+ +1.000Ca+2               -1.000H+                 +1.000HCO3-              = CaCO3                 
+    log_k      -7.1047 
+   # -gamma      0.00     0.00 
+     -Vm  -.2430  -8.3748  9.0417  -2.4328  -.0300 # supcrt
+     # from phreeqc.dat: Ca+2 + CO3-2 = CaCO3
+    -dw         4.46e-10	# phreeqc.dat, complexes: calc'd with the Pikal formula 
+
+ +1.000Ca+2               +1.000F-                 = CaF+                  
+    log_k       0.9400 
+
+ +1.000Ca+2               +1.000HCO3-              = CaHCO3+               
+    log_k       1.1057 
+   -Vm  3.1911  .0104  5.7459  -2.7794  .3084 5.4 # supcrt
+     # from phreeqc.dat: Ca+2 + CO3-2 + H+ = CaHCO3+
+    -dw         5.06e-10      # phreeqc.dat
+
+ +1.000Ca+2               +1.000H2O                -1.000H+                 = CaOH+                 
+    log_k     -12.7800 
+
+ +1.000Ca+2               +1.000SO4-2              = CaSO4                 
+    log_k       2.3000 
+   # -gamma     0.00     0.00 
+     -Vm  2.7910  -.9666  6.1300  -2.7390  -.0010 # supcrt
+    -dw 4.71e-10         # phreeqc.dat 
+
+#############################
+# Fe data were updated with data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+# and commented out here (recommended data are implemented below) 
+#############################
+#
+# +2.000H2O                -2.000H+                 +1.000Fe+3               = Fe(OH)2+              
+#    log_k      -5.6700 
+#
+# +3.000H2O                -3.000H+                 +1.000Fe+3               = Fe(OH)3               
+#    log_k     -12.5600 
+#    -gamma      0.00     0.00 
+#
+# +4.000H2O                -4.000H+                 +1.000Fe+3               = Fe(OH)4-              
+#    log_k     -21.6000 
+#
+# +2.000SO4-2              +1.000Fe+3               = Fe(SO4)2-             
+#    log_k       5.3800 
+#
+# +2.000H2O                -2.000H+                 +2.000Fe+3               = Fe2(OH)2+4            
+#    log_k      -2.9500 
+#
+# +4.000H2O                -4.000H+                 +3.000Fe+3               = Fe3(OH)4+5            
+#    log_k      -6.3000 
+#
+# +1.000Fe+2               +1.000Cl-                = FeCl+                 
+#    log_k       0.1400 
+#
+# +1.000Cl-                +1.000Fe+3               = FeCl+2                
+#    log_k       1.4800 
+#
+# +2.000Cl-                +1.000Fe+3               = FeCl2+                
+#    log_k       2.1300 
+#
+# +3.000Cl-                +1.000Fe+3               = FeCl3                 
+#    log_k       1.1300 
+#    -gamma      0.00     0.00 
+#
+# +1.000Fe+2               +1.000HCO3-              -1.000H+                 = FeCO3                 
+#    log_k      -5.9490 
+#    -gamma      0.00     0.00 
+#
+# +1.000Fe+2               +1.000F-                 = FeF+                  
+#    log_k       1.0000 
+#
+# +1.000F-                 +1.000Fe+3               = FeF+2                 
+#    log_k       6.2000 
+#
+# +2.000F-                 +1.000Fe+3               = FeF2+                 
+#    log_k      10.8000 
+#
+# +3.000F-                 +1.000Fe+3               = FeF3                  
+#    log_k      14.0000 
+#    -gamma      0.00     0.00 
+#
+# +1.000Fe+2               +1.000HCO3-              = FeHCO3+               
+#    log_k       2.0000 
+#
+# +1.000Fe+2               +1.000H+                 +1.000SO4-2              = FeHSO4+               
+#    log_k       3.0680 
+#
+# +1.000H+                 +1.000SO4-2              +1.000Fe+3               = FeHSO4+2              
+#    log_k       4.4680 
+#
+# +1.000Fe+2               +1.000H2O                -1.000H+                 = FeOH+                 
+#    log_k      -9.5000 
+#
+# +1.000H2O                -1.000H+                 +1.000Fe+3               = FeOH+2                
+#    log_k      -2.1900 
+#
+# +1.000SO4-2              +1.000Fe+3               = FeSO4+                
+#    log_k       4.0400 
+#
+# +1.000Fe+2               +1.000SO4-2              = FeSO4                 
+#    log_k       2.2500 
+#    -gamma      0.00     0.00 
+
+ +1.000HAsO4-2            +1.000H+                 = H2AsO4-               
+    log_k       6.7640 
+#   bug: log_k entered manually
+
+ +1.000H+                 +1.000F-                 = HF                    
+    log_k       3.1760 
+    -gamma      0.00     0.00 
+
+ +1.000H+                 +2.000F-                 = HF2-                  
+    log_k       3.6200 
+
+ +1.000H+                 +1.000SO3-2              = HSO3-                 
+    log_k       7.2200 
+#   bug: log_k entered manually
+
+ +1.000H+                 +1.000SO4-2              = HSO4-                 
+    log_k       1.9878 
+   -Vm 8.2 9.2590  2.1108  -3.1618 1.1748  0 -0.3 15 0 1 # ref. 1
+    -dw	        1.33e-9     # phreeqc.dat
+
+ +1.000K+                 +1.000H2O                -1.000H+                 = KOH                   
+    log_k     -14.4600 
+    -gamma      0.00     0.00 
+
+ +1.000K+                 +1.000SO4-2              = KSO4-                 
+    log_k       0.8500 
+     -Vm  6.8  7.06 3.0   -2.07  1.1  0  0  0  0  1 # ref. 1
+    -dw         1.5e-9      # phreeqc.dat
+
+ +1.000Li+                +1.000H2O                -1.000H+                 = LiOH                  
+    log_k     -13.6400 
+    -gamma      0.00     0.00 
+
+ +1.000Li+                +1.000SO4-2              = LiSO4-                
+    log_k       0.6400 
+
+ +1.000HS-                -1.000H+                 = S-2                   
+    log_k     -19.0000 
+    -dw	        7.31e-9      # phreeqc.dat 
+
+ +1.000HS-                +1.000H+                 = H2S                   
+    log_k       6.9900 
+    -gamma      0.00     0.00 
+    -dw	        2.1e-9       # phreeqc.dat 
+
+ +1.000Mg+2               -1.000H+                 +1.000HCO3-              = MgCO3                 
+    log_k      -7.3492 
+    -gamma      0.00     0.00 
+ 	-Vm  -.5837  -9.2067  9.3687  -2.3984  -.0300 # supcrt
+     # from phreeqc.dat: Mg+2 + CO3-2 = MgCO3
+    -dw         4.21e-10    # phreeqc.dat 
+
+ +1.000Mg+2               +1.000Cl-                = MgCl+                 
+    log_k      -0.1350 
+
+ +1.000Mg+2               +1.000F-                 = MgF+                  
+    log_k       1.8200 
+
+ +1.000Mg+2               +1.000HCO3-              = MgHCO3+               
+    log_k       1.0682 
+    -Vm  2.7171  -1.1469  6.2008  -2.7316  .5985 4 # supcrt
+     # from phreeqc.dat: Mg+2 + H+ + CO3-2 = MgHCO3+
+    -dw         4.78e-10    # phreeqc.dat 
+
+ +1.000Mg+2               +1.000HPO4-2             -1.000H+                 = MgPO4-
+    log_k      -5.7330 
+
+ +1.000Mg+2               +1.000HPO4-2             = MgHPO4
+    log_k       2.9100 
+
+ +1.000Mg+2               +1.000HPO4-2             +1.000H+                 = MgH2PO4+
+    log_k       1.6600 
+
+ +1.000Mg+2               +1.000H2O                -1.000H+                 = MgOH+                 
+    log_k     -11.7500 
+
+ +1.000Mg+2               +1.000SO4-2              = MgSO4                 
+    log_k       2.3700 
+  #  -gamma      0.00     0.00 
+   -Vm  2.4  -0.97  6.1  -2.74  # est'd
+    -dw         4.45e-10     # phreeqc.dat
+
+ +1.000Mn+2               +1.000Cl-                = MnCl+                 
+    log_k       0.6100 
+
+ +1.000Mn+2               +2.000Cl-                = MnCl2                 
+    log_k       0.2500 
+    -gamma      0.00     0.00 
+
+ +1.000Mn+2               +3.000Cl-                = MnCl3-                
+    log_k      -0.3100 
+
+ +1.000Mn+2               +1.000HCO3-              -1.000H+                 = MnCO3                 
+    log_k      -5.4290 
+    -gamma      0.00     0.00 
+
+ +1.000Mn+2               +1.000F-                 = MnF+                  
+    log_k       0.8400 
+
+ +1.000Mn+2               +1.000HCO3-              = MnHCO3+               
+    log_k       1.9500 
+
+ +1.000Mn+2               +1.000H2O                -1.000H+                 = MnOH+                 
+    log_k     -10.5900 
+
+ +1.000Mn+2               +1.000SO4-2              = MnSO4                 
+    log_k       2.2500 
+    -gamma      0.00     0.00 
+
+ +1.000Na+                -1.000H+                 +1.000HCO3-              = NaCO3-                
+    log_k      -9.0590 
+    -Vm  3.89  -8.23e-4  20  -9.44  3.02  9.05e-3  3.07  0  0.0233  1 # ref. 1
+     # But in phreeqc.dat: Na+ + CO3-2 = NaCO3-
+    -dw         1.2e-9     # phreeqc.dat 
+
+ +1.000Na+                +1.000F-                 = NaF                   
+    log_k      -0.2400 
+    -gamma      0.00     0.00 
+
+ +1.000Na+                +1.000HCO3-              = NaHCO3                
+    log_k      -0.2500 
+   # -gamma      0.00     0.00 
+     -Vm  0.431 # ref. 1
+     # from phreeqc.dat: Na+ + HCO3- = NaHCO3
+    -dw         6.73e-10   # phreeqc.dat 
+
+ +1.000Na+                +1.000H2O                -1.000H+                 = NaOH                  
+    log_k     -14.1800 
+    -gamma      0.00     0.00 
+    -dw         1.33e-9    # phreeqc.dat
+
+ +1.000Na+                +1.000SO4-2              = NaSO4-                
+    log_k       0.7000 
+   -Vm  1e-5  16.4  -0.0678  -1.05  4.14  0  6.86  0  0.0242  0.53 # ref. 1
+
+ +1.000NbO3-              +2.000H+                 +1.000H2O                = Nb(OH)4+              
+    log_k       6.8955 
+
+ +1.000NbO3-              +1.000H+                 +2.000H2O                = Nb(OH)5               
+    log_k       7.3440 
+    -gamma     0.00     0.00 
+
+ +1.000Sr+2               -1.000H+                 +1.000HCO3-              = SrCO3                 
+    log_k      -7.5238 
+    -gamma      0.00     0.00 
+
+ +1.000Sr+2               +1.000HCO3-              = SrHCO3+               
+    log_k       1.1846 
+
+ +1.000Sr+2               +1.000H2O                -1.000H+                 = SrOH+                 
+    log_k     -13.2900 
+
+ +1.000Sr+2               +1.000SO4-2              = SrSO4                 
+    log_k       2.2900 
+    -gamma     0.00     0.00 
+
+# Si(IV)    RECOMMENDED DATA
+############################
+
+ +1.000Ca+2               +1.000SiO(OH)3-          = CaSiO(OH)3+           
+    log_k       1.2000 
+
+ +1.000Ca+2               +1.000SiO2(OH)2-2        = CaSiO2(OH)2           
+    log_k       4.6000 
+    -gamma      0.00     0.00 
+
+ +1.000Mg+2               +1.000SiO(OH)3-          = MgSiO(OH)3+           
+    log_k       1.5000 
+
+ +1.000Mg+2               +1.000SiO2(OH)2-2        = MgSiO2(OH)2           
+    log_k       5.7000 
+    -gamma      0.00     0.00 
+
+ +1.000Al+3               +1.000SiO(OH)3-          = AlSiO(OH)3+2          
+    log_k       7.4000 
+
+ +1.000Fe+3               +1.000SiO(OH)3-          = FeSiO(OH)3+2          
+    log_k       9.7000 
+
+ +4.000Si(OH)4            -4.000H+                 -4.000H2O                = Si4O8(OH)4-4          
+    log_k     -36.3000 
+
+# Si(IV)   SUPPLEMENTAL DATA
+# ==========================
+
+ +1.000Al(OH)4-           +1.000SiO2(OH)2-2        -1.000H2O                = AlSiO3(OH)4-3         
+    log_k       0.5300 
+
+# Ni(II)    RECOMMENDED DATA
+############################
+
+ +1.000Ni+2               +1.000H2O                -1.000H+                 = NiOH+                 
+    log_k      -9.5400 
+
+ +1.000Ni+2               +3.000H2O                -3.000H+                 = Ni(OH)3-              
+    log_k     -29.2000 
+
+ +2.000Ni+2               +1.000H2O                -1.000H+                 = Ni2OH+3               
+    log_k     -10.6000 
+
+ +4.000Ni+2               +4.000H2O                -4.000H+                 = Ni4(OH)4+4            
+    log_k     -27.5200 
+
+ +1.000Ni+2               +1.000F-                 = NiF+                  
+    log_k       1.4300 
+
+ +1.000Ni+2               +1.000Cl-                = NiCl+                 
+    log_k       0.0800 
+
+ +1.000Ni+2               +1.000SO4-2              = NiSO4                 
+    log_k       2.3500 
+    -gamma      0.00     0.00 
+
+ +1.000Ni+2               +1.000NO3-               = NiNO3+                
+    log_k       0.5000 
+
+ +1.000Ni+2               +1.000HPO4-2             = NiHPO4                
+    log_k       3.0500 
+    -gamma      0.00     0.00 
+
+ +1.000Ni+2               +1.000CO3-2              = NiCO3                 
+    log_k       4.2000 
+    -gamma      0.00     0.00 
+
+ +1.000Ni+2               +1.000HS-                = NiHS+                 
+    log_k       5.5000 
+
+ +1.000Ni+2               +2.000HS-                = Ni(HS)2               
+    log_k      11.1000 
+    -gamma      0.00     0.00 
+
+ +1.000Ni+2               +1.000HAsO4-2            = NiHAsO4               
+    log_k       2.9000 
+    -gamma      0.00     0.00 
+
+ +1.000Ni+2               +4.000CN-                = Ni(CN)4-2             
+    log_k      30.2000 
+
+ +1.000Ni+2               +5.000CN-                = Ni(CN)5-3             
+    log_k      28.5000 
+
+ +1.000Ni+2               +1.000SCN-               = NiSCN+                
+    log_k       1.8100 
+
+ +1.000Ni+2               +2.000SCN-               = Ni(SCN)2              
+    log_k       2.6900 
+    -gamma      0.00     0.00 
+
+ +1.000Ni+2               +3.000SCN-               = Ni(SCN)3-             
+    log_k       3.0200 
+
+# Ni(II)   SUPPLEMENTAL DATA
+# ==========================
+
+ +1.000Ni+2               +2.000H2O                -2.000H+                 = Ni(OH)2               
+    log_k     -18.0000 
+    -gamma      0.00     0.00 
+
+ +1.000Ni+2               +1.000NH3                = NiNH3+2               
+    log_k       2.7000 
+
+ +1.000Ni+2               +2.000NH3                = Ni(NH3)2+2            
+    log_k       4.9000 
+
+ +1.000Ni+2               +3.000NH3                = Ni(NH3)3+2            
+    log_k       6.5000 
+
+ +1.000Ni+2               +4.000NH3                = Ni(NH3)4+2            
+    log_k       7.6000 
+
+ +1.000Ni+2               +5.000NH3                = Ni(NH3)5+2            
+    log_k       8.3000 
+
+ +1.000Ni+2               +6.000NH3                = Ni(NH3)6+2            
+    log_k       8.2000 
+
+ +1.000Ni+2               +2.000CO3-2              = Ni(CO3)2-2            
+    log_k       6.0000 
+
+ +1.000Ni+2               +1.000HCO3-              = NiHCO3+               
+    log_k       1.0000 
+
+ +1.000Ni+2               +1.000SiO(OH)3-          = NiSiO(OH)3+           
+    log_k       6.3000 
+
+# Se(0|-II) RECOMMENDED DATA
+############################
+
+ +2.000Se-2               -2.000e-                 = Se2-2                 
+    log_k      25.3200 
+
+ +3.000Se-2               -4.000e-                 = Se3-2                 
+    log_k      49.9700 
+
+ +4.000Se-2               -6.000e-                 = Se4-2                 
+    log_k      73.0200 
+
+# Se(0)    RECOMMENDED DATA
+############################
+
+ +1.000Ni+2               +1.000SeCN-              = NiSeCN+               
+    log_k       1.7700 
+
+ +1.000Ni+2               +2.000SeCN-              = Ni(SeCN)2             
+    log_k       2.2400 
+    -gamma      0.00     0.00 
+
+# Se(IV)    RECOMMENDED DATA
+############################
+
+ +1.000HSeO3-             +1.000H+                 = H2SeO3                
+    log_k       2.6400 
+    -gamma      0.00     0.00 
+
+ +1.000Fe+3               +1.000SeO3-2             = FeSeO3+               
+    log_k      11.1500 
+
+# Se(VI)    RECOMMENDED DATA
+############################
+
+ +1.000Ni+2               +1.000SeO4-2             = NiSeO4                
+    log_k       2.6700 
+    -gamma      0.00     0.00 
+
+ +1.000Mn+2               +1.000SeO4-2             = MnSeO4                
+    log_k       2.4300 
+    -gamma      0.00     0.00 
+
+ +1.000UO2+2              +1.000SeO4-2             = UO2SeO4               
+    log_k       2.7400 
+    -gamma      0.00     0.00 
+
+ +1.000Ca+2               +1.000SeO4-2             = CaSeO4                
+    log_k       2.0000 
+    -gamma      0.00     0.00 
+
+# Se(VI)   SUPPLEMENTAL DATA
+# ==========================
+
+ +1.000UO2+2              +2.000SeO4-2             = UO2(SeO4)2-2          
+    log_k       3.1000 
+
+ +1.000Mg+2               +1.000SeO4-2             = MgSeO4                
+    log_k       2.2000 
+    -gamma      0.00     0.00 
+
+# Zr(IV)    RECOMMENDED DATA
+############################
+
+ +1.000Zr+4               +1.000H2O                -1.000H+                 = ZrOH+3                
+    log_k       0.3200 
+
+ +1.000Zr+4               +4.000H2O                -4.000H+                 = Zr(OH)4               
+    log_k      -2.1900 
+    -gamma      0.00     0.00 
+
+ +1.000Zr+4               +2.000F-                 = ZrF2+2                
+    log_k      18.5500 
+
+ +1.000Zr+4               +3.000F-                 = ZrF3+                 
+    log_k      24.7200 
+
+ +1.000Zr+4               +4.000F-                 = ZrF4                  
+    log_k      30.1100 
+    -gamma      0.00     0.00 
+
+ +1.000Zr+4               +1.000SO4-2              = ZrSO4+2               
+    log_k       7.0400 
+
+ +1.000Zr+4               +6.000F-                 = ZrF6-2                
+    log_k      38.1100 
+
+ +1.000Zr+4               +1.000F-                 = ZrF+3                 
+    log_k      10.1200 
+
+ +1.000Zr+4               +5.000F-                 = ZrF5-                 
+    log_k      34.6000 
+
+ +1.000Zr+4               +1.000Cl-                = ZrCl+3                
+    log_k       1.5900 
+
+ +1.000Zr+4               +2.000Cl-                = ZrCl2+2               
+    log_k       2.1700 
+
+ +1.000Zr+4               +2.000SO4-2              = Zr(SO4)2              
+    log_k      11.5400 
+    -gamma      0.00     0.00 
+
+ +1.000Zr+4               +3.000SO4-2              = Zr(SO4)3-2            
+    log_k      14.3000 
+
+ +1.000Zr+4               +1.000NO3-               = ZrNO3+3               
+    log_k       1.5900 
+
+ +1.000Zr+4               +2.000NO3-               = Zr(NO3)2+2            
+    log_k       2.6400 
+
+ +1.000Zr+4               +4.000CO3-2              = Zr(CO3)4-4            
+    log_k      42.9000 
+
+ +1.000Zr+4               +2.000H2O                -2.000H+                 = Zr(OH)2+2             
+    log_k       0.9800 
+
+ +1.000Zr+4               +6.000H2O                -6.000H+                 = Zr(OH)6-2             
+    log_k     -29.0000 
+
+ +3.000Zr+4               +4.000H2O                -4.000H+                 = Zr3(OH)4+8            
+    log_k       0.4000 
+
+ +3.000Zr+4               +9.000H2O                -9.000H+                 = Zr3(OH)9+3            
+    log_k      12.1900 
+
+ +4.000Zr+4              +15.000H2O               -15.000H+                 = Zr4(OH)15+            
+    log_k      12.5800 
+
+ +4.000Zr+4              +16.000H2O               -16.000H+                 = Zr4(OH)16             
+    log_k       8.3900 
+    -gamma      0.00     0.00 
+
+ +4.000Zr+4               +8.000H2O                -8.000H+                 = Zr4(OH)8+8            
+    log_k       6.5200 
+
+ +2.000Ca+2               +1.000Zr+4               +6.000H2O                -6.000H+                 = Ca2Zr(OH)6+2          
+    log_k     -22.6000 
+
+ +3.000Ca+2               +1.000Zr+4               +6.000H2O                -6.000H+                 = Ca3Zr(OH)6+4          
+    log_k     -23.2000 
+
+# Zr(IV)   SUPPLEMENTAL DATA
+# ==========================
+
+ +1.000Ca+2               +1.000Zr+4               +6.000H2O                -6.000H+                 = CaZr(OH)6             
+    log_k     -24.6000 
+    -gamma      0.00     0.00 
+
+# Tc(IV)    RECOMMENDED DATA
+############################
+
+ +1.000TcO(OH)2           +2.000H+                 -2.000H2O                = TcO+2                 
+    log_k       4.0000 
+
+ +1.000TcO(OH)2           +1.000H+                 -1.000H2O                = TcO(OH)+              
+    log_k       2.5000 
+
+ +1.000TcO(OH)2           +1.000H2O                -1.000H+                 = TcO(OH)3-             
+    log_k     -10.9000 
+
+ +1.000TcO(OH)2           +1.000CO3-2              +2.000H+                 -1.000H2O                = TcCO3(OH)2            
+    log_k      19.3000 
+    -gamma      0.00     0.00 
+
+ +1.000TcO(OH)2           +1.000H+                 +1.000CO3-2              = TcCO3(OH)3-           
+    log_k      11.0000 
+
+# Pd(II)    RECOMMENDED DATA
+############################
+
+ +1.000Pd+2               +1.000Cl-                = PdCl+                 
+    log_k       5.1000 
+
+ +1.000Pd+2               +2.000Cl-                = PdCl2                 
+    log_k       8.3000 
+    -gamma      0.00     0.00 
+
+ +1.000Pd+2               +3.000Cl-                = PdCl3-                
+    log_k      10.9000 
+
+ +1.000Pd+2               +4.000Cl-                = PdCl4-2               
+    log_k      11.7000 
+
+ +1.000Pd+2               +1.000NH3                = PdNH3+2               
+    log_k       9.6000 
+
+ +1.000Pd+2               +2.000NH3                = Pd(NH3)2+2            
+    log_k      18.5000 
+
+ +1.000Pd+2               +3.000NH3                = Pd(NH3)3+2            
+    log_k      26.0000 
+
+ +1.000Pd+2               +4.000NH3                = Pd(NH3)4+2            
+    log_k      32.8000 
+
+ +1.000Pd+2               -2.000H+                 +2.000H2O                = Pd(OH)2               
+    log_k      -4.0000 
+    -gamma      0.00     0.00 
+
+ +1.000Pd+2               -3.000H+                 +3.000H2O                = Pd(OH)3-              
+    log_k     -15.5000 
+
+ +1.000Pd+2               +3.000Cl-                +1.000H2O                -1.000H+                 = PdCl3OH-2             
+    log_k       2.5000 
+
+ +1.000Pd+2               +2.000Cl-                +2.000H2O                -2.000H+                 = PdCl2(OH)2-2          
+    log_k      -7.0000 
+
+# Tn(II)    RECOMMENDED DATA
+########################################################
+
+ +1.000Tn+2               +1.000H2O                -1.000H+                 = TnOH+                 
+    log_k      -3.8000 
+
+ +1.000Tn+2               +3.000H2O                -3.000H+                 = Tn(OH)3-              
+    log_k     -17.5000 
+
+ +3.000Tn+2               +4.000H2O                -4.000H+                 = Tn3(OH)4+2            
+    log_k      -5.6000 
+
+ +1.000Tn+2               +1.000Cl-                = TnCl+                 
+   log_k       1.7000 
+
+ +1.000Tn+2               +3.000Cl-                = TnCl3-                
+    log_k       2.1000 
+
+ +1.000Tn+2               +1.000F-                 = TnF+                  
+    log_k       5.0000 
+
+ +1.000Tn+2               +2.000H2O                -2.000H+                 = Tn(OH)2               
+    log_k      -7.7000 
+    -gamma      0.00     0.00 
+
+ +1.000Tn+2               +1.000SO4-2              = TnSO4                 
+    log_k       2.6000 
+    -gamma      0.00     0.00 
+
+ +1.000Tn+2               +1.000H2O                +1.000Cl-                -1.000H+                 = TnOHCl                
+    log_k      -3.1000 
+    -gamma      0.00     0.00 
+
+ +1.000Tn+2               +2.000Cl-                = TnCl2                 
+    log_k       2.3600 
+    -gamma      0.00     0.00 
+
+# Sn(IV)    RECOMMENDED DATA
+############################
+
+ +1.000Sn(OH)4            +1.000H2O                -1.000H+                 = Sn(OH)5-              
+    log_k      -8.0000 
+
+ +1.000Sn(OH)4            +2.000H2O                -2.000H+               = Sn(OH)6-2             
+    log_k     -18.4000 
+
+# Ra(II)    RECOMMENDED DATA
+############################
+
+ +1.000Ra+2               +1.000OH-                = RaOH+                 
+    log_k       0.5000 
+
+ +1.000Ra+2               +1.000Cl-                = RaCl+                 
+    log_k      -0.1000 
+
+ +1.000Ra+2               +1.000CO3-2              = RaCO3                 
+    log_k       2.5000 
+    -gamma      0.00     0.00 
+
+ +1.000Ra+2               +1.000SO4-2              = RaSO4                 
+    log_k       2.7500 
+    -gamma      0.00     0.00 
+
+# Eu(III)   RECOMMENDED DATA 
+############################
+
+ +1.000Eu+3               +1.000H2O                -1.000H+                 = EuOH+2                
+    log_k      -7.6400 
+
+ +1.000Eu+3               +2.000H2O                -2.000H+                 = Eu(OH)2+              
+    log_k     -15.1000 
+
+ +1.000Eu+3               +3.000H2O                -3.000H+                 = Eu(OH)3               
+    log_k     -23.7000 
+    -gamma      0.00     0.00 
+
+ +1.000Eu+3               +4.000H2O                -4.000H+                 = Eu(OH)4-              
+    log_k     -36.2000 
+
+ +1.000Eu+3               +1.000CO3-2              = EuCO3+                
+    log_k       8.1000 
+
+ +1.000Eu+3               +2.000CO3-2              = Eu(CO3)2-             
+    log_k      12.1000 
+
+ +1.000Eu+3               +1.000SO4-2              = EuSO4+                
+    log_k       3.9500 
+
+ +1.000Eu+3               +2.000SO4-2              = Eu(SO4)2-             
+    log_k       5.7000 
+
+ +1.000Eu+3               +1.000F-                 = EuF+2                 
+    log_k       3.8000 
+
+ +1.000Eu+3               +2.000F-                 = EuF2+                 
+    log_k       6.5000 
+
+ +1.000Eu+3               +1.000Cl-                = EuCl+2                
+    log_k       1.1000 
+
+ +1.000Eu+3               +2.000Cl-                = EuCl2+                
+    log_k       1.5000 
+
+ +1.000Eu+3               +1.000SiO(OH)3-          = EuSiO(OH)3+2          
+    log_k       8.1000 
+
+# Th(IV)    RECOMMENDED DATA
+############################
+
+ +1.000Th+4               +1.000H2O                -1.000H+                 = ThOH+3                
+    log_k      -2.5000 
+
+ +1.000Th+4               +4.000H2O                -4.000H+                 = Th(OH)4               
+    log_k     -17.4000 
+    -gamma      0.00     0.00 
+
+ +1.000Th+4               +1.000F-                 = ThF+3                 
+    log_k       8.8700 
+
+ +1.000Th+4               +2.000F-                 = ThF2+2                
+    log_k      15.6300 
+
+ +1.000Th+4               +3.000F-                 = ThF3+                 
+    log_k      20.6700 
+
+ +1.000Th+4               +4.000F-                 = ThF4                  
+    log_k      25.5800 
+    -gamma      0.00     0.00 
+
+ +1.000Th+4               +5.000CO3-2              = Th(CO3)5-6            
+    log_k      31.0000 
+
+ +1.000Th+4               +2.000SO4-2              = Th(SO4)2              
+    log_k       9.6900 
+    -gamma      0.00     0.00 
+
+ +1.000Th+4               +3.000SO4-2              = Th(SO4)3-2            
+    log_k      10.7480 
+
+ +1.000Th+4               +2.000H2O                -2.000H+                 = Th(OH)2+2             
+    log_k      -6.2000 
+
+ +2.000Th+4               +2.000H2O                -2.000H+                 = Th2(OH)2+6            
+    log_k      -5.9000 
+
+ +2.000Th+4               +3.000H2O                -3.000H+                 = Th2(OH)3+5            
+    log_k      -6.8000 
+
+ +4.000Th+4               +8.000H2O                -8.000H+                 = Th4(OH)8+8            
+    log_k     -20.4000 
+
+ +4.000Th+4              +12.000H2O               -12.000H+                 = Th4(OH)12+4           
+    log_k     -26.6000 
+
+ +6.000Th+4              +14.000H2O               -14.000H+                 = Th6(OH)14+10          
+    log_k     -36.8000 
+
+ +6.000Th+4              +15.000H2O               -15.000H+                 = Th6(OH)15+9           
+    log_k     -36.8000 
+
+ +1.000Th+4               +1.000Cl-                = ThCl+3                
+    log_k       1.7000 
+
+ +1.000Th+4               +1.000IO3-               = ThIO3+3               
+    log_k       4.1400 
+
+ +1.000Th+4               +2.000IO3-               = Th(IO3)2+2            
+    log_k       6.9700 
+
+ +1.000Th+4               +3.000IO3-               = Th(IO3)3+             
+    log_k       9.8700 
+
+ +1.000Th+4               +1.000SO4-2              = ThSO4+2               
+    log_k       6.1700 
+
+ +1.000Th+4               +1.000NO3-               = ThNO3+3               
+    log_k       1.3000 
+
+ +1.000Th+4               +2.000NO3-               = Th(NO3)2+2            
+    log_k       2.3000 
+
+ +1.000Th+4               +1.000H3PO4              -1.000H+                 = ThH2PO4+3             
+    log_k       3.4500 
+
+ +1.000Th+4               +1.000H3PO4              = ThH3PO4+4             
+    log_k       1.8900 
+
+ +1.000Th+4               +2.000H3PO4              -2.000H+                 = Th(H2PO4)2+2          
+    log_k       6.2000 
+
+ +1.000Th+4               +2.000H3PO4              -1.000H+                 = Th(H3PO4)(H2PO4)+3    
+    log_k       5.4200 
+
+ +1.000Th+4               +1.000OH-                +4.000CO3-2              = ThOH(CO3)4-5          
+    log_k      35.6000 
+
+ +1.000Th+4               +2.000OH-                +2.000CO3-2              = Th(OH)2(CO3)2-2       
+    log_k      36.8000 
+
+ +1.000Th+4               +4.000OH-                +1.000CO3-2              = Th(OH)4CO3-2          
+    log_k      40.4000 
+
+ +1.000Th+4               +1.000SCN-               = ThSCN+3               
+    log_k       2.0000 
+
+ +1.000Th+4               +2.000SCN-               = Th(SCN)2+2            
+    log_k       3.4000 
+
+ +4.000Ca+2               +1.000Th+4               +8.000H2O                -8.000H+                 = Ca4Th(OH)8+4          
+    log_k     -62.4000 
+
+# Th(IV)   SUPPLEMENTAL DATA
+# ==========================
+
+ +1.000Th+4               +6.000F-                 = ThF6-2                
+    log_k      29.2300 
+
+ +1.000Th+4               +2.000OH-                +1.000CO3-2              = Th(OH)2CO3            
+    log_k      30.5000 
+    -gamma      0.00     0.00 
+
+ +1.000Th+4               +3.000OH-                +1.000CO3-2              = Th(OH)3CO3-           
+    log_k      38.3000 
+
+ +1.000Th+4               +3.000Si(OH)4            +3.000H2O                -6.000H+                 = Th(OH)3(SiO(OH)3)3-2  
+    log_k     -27.8000 
+
+# U(IV)     RECOMMENDED DATA
+############################
+
+ +1.000U+4                +1.000H2O                -1.000H+                 = UOH+3                 
+    log_k      -0.5400 
+    -dw        7.66e-10                # assumption: analogous to UO2OH+, Kerisit & Liu (2010)
+
+ +1.000U+4                +4.000H2O                -4.000H+                 = U(OH)4                
+    log_k     -10.0000 
+    -gamma      0.00     0.00 
+    -dw        7.66e-10                # assumption: analogous to UO2OH+, Kerisit & Liu (2010)
+
+ +1.000U+4                +1.000F-                 = UF+3                  
+    log_k       9.4200 
+
+ +1.000U+4                +2.000F-                 = UF2+2                 
+    log_k      16.5600 
+
+ +1.000U+4                +3.000F-                 = UF3+                  
+    log_k      21.8900 
+
+ +1.000U+4                +4.000F-                 = UF4                   
+    log_k      26.3400 
+    -gamma      0.00     0.00 
+
+ +1.000U+4                +5.000F-                 = UF5-                  
+    log_k      27.7300 
+
+ +1.000U+4                +6.000F-                 = UF6-2                 
+    log_k      29.8000 
+
+ +1.000U+4                +1.000Cl-                = UCl+3                 
+    log_k       1.7200 
+
+ +1.000U+4                +1.000SO4-2              = USO4+2                
+    log_k       6.5800 
+    -dw        7.66e-10                # assumption: analogous to UO2OH+, Kerisit & Liu (2010)
+
+ +1.000U+4                +2.000SO4-2              = U(SO4)2               
+    log_k      10.5100 
+    -gamma      0.00     0.00 
+    -dw        7.66e-10                # assumption: analogous to UO2OH+, Kerisit & Liu (2010)
+
+ +1.000U+4                +1.000NO3-               = UNO3+3                
+    log_k       1.4700 
+
+ +1.000U+4                +2.000NO3-               = U(NO3)2+2             
+    log_k       2.3000 
+
+ +1.000U+4                +4.000CO3-2              = U(CO3)4-4             
+    log_k      35.2200 
+    -dw        7.66e-10                # assumption: analogous to UO2OH+, Kerisit & Liu (2010)
+
+ +1.000U+4                +5.000CO3-2              = U(CO3)5-6             
+    log_k      34.000 
+# Original value 34.1 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+    -dw        7.66e-10                # assumption: analogous to UO2OH+, Kerisit & Liu (2010)
+
+ +1.000U+4                +1.000I-                 = UI+3                  
+    log_k       1.2500 
+
+ +1.000U+4                +1.000SCN-               = USCN+3                
+    log_k       2.9700 
+
+ +1.000U+4                +2.000SCN-               = U(SCN)2+2             
+    log_k       4.2600 
+
+# U(IV)    SUPPLEMENTAL DATA
+# ==========================
+
+ +1.000U+4                +2.000H2O                -2.000H+                 = U(OH)2+2              
+    log_k      -1.9000 
+# Original value -1.1 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+    -dw        7.66e-10                # assumption: analogous to UO2OH+, Kerisit & Liu (2010)
+
+ +1.000U+4                +3.000H2O                -3.000H+                 = U(OH)3+               
+    log_k      -5.2000 
+# Original value -4.7 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+    -dw        7.66e-10                # assumption: analogous to UO2OH+, Kerisit & Liu (2010)
+
+ +1.000U+4                +1.000CO3-2              +3.000H2O                -3.000H+                 = UCO3(OH)3-            
+    log_k       4.0000 
+    -dw        7.66e-10                # assumption: analogous to UO2OH+, Kerisit & Liu (2010)
+
+# U(V)      RECOMMENDED DATA
+############################
+
+ +1.000UO2+               +3.000CO3-2              = UO2(CO3)3-5           
+    log_k       6.9500 
+    -dw        7.66e-10                # assumption: analogous to UO2OH+, Kerisit & Liu (2010)
+
+# U(VI)     RECOMMENDED DATA
+############################
+
+ +1.000UO2+2              +1.000H2O                -1.000H+                 = UO2OH+                
+    log_k      -5.2500 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +1.000UO2+2              +2.000H2O                -2.000H+                 = UO2(OH)2              
+    log_k     -12.1500 
+    -gamma      0.00     0.00 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +1.000UO2+2              +3.000H2O                -3.000H+                 = UO2(OH)3-             
+    log_k     -20.25
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +1.000UO2+2              +4.000H2O                -4.000H+                 = UO2(OH)4-2            
+    log_k     -32.4 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +2.000UO2+2              +1.000H2O                -1.000H+                 = (UO2)2OH+3            
+    log_k      -2.7000 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +2.000UO2+2              +2.000H2O                -2.000H+                 = (UO2)2(OH)2+2         
+    log_k      -5.6200 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +3.000UO2+2              +4.000H2O                -4.000H+                 = (UO2)3(OH)4+2         
+    log_k     -11.9000 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +3.000UO2+2              +5.000H2O                -5.000H+                 = (UO2)3(OH)5+          
+    log_k     -15.5500 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +3.000UO2+2              +7.000H2O                -7.000H+                 = (UO2)3(OH)7-          
+    log_k     -32.2000 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +4.000UO2+2              +7.000H2O                -7.000H+                 = (UO2)4(OH)7+          
+    log_k     -21.9000 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +1.000UO2+2              +1.000F-                 = UO2F+                 
+    log_k       5.1600 
+
+ +1.000UO2+2              +2.000F-                 = UO2F2                 
+    log_k       8.8300 
+    -gamma      0.00     0.00 
+
+ +1.000UO2+2              +3.000F-                 = UO2F3-                
+    log_k      10.9000 
+
+ +1.000UO2+2              +4.000F-                 = UO2F4-2               
+    log_k      11.8400 
+
+ +1.000UO2+2              +1.000Cl-                = UO2Cl+                
+    log_k       0.1700 
+
+ +1.000UO2+2              +2.000Cl-                = UO2Cl2                
+    log_k      -1.1000 
+    -gamma      0.00     0.00 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +1.000UO2+2              +1.000SO4-2              = UO2SO4                
+    log_k       3.1500 
+    -gamma      0.00     0.00 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +1.000UO2+2              +2.000SO4-2              = UO2(SO4)2-2           
+    log_k       4.1400 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +1.000UO2+2              +1.000NO3-               = UO2NO3+               
+    log_k       0.3000 
+
+ +1.000UO2+2              +1.000PO4-3              = UO2PO4-               
+    log_k      11.01
+# Original value 13.23 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+ +1.000UO2+2              +1.000HPO4-2             = UO2HPO4               
+    log_k       7.2400 
+    -gamma      0.00     0.00 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +1.000UO2+2              +1.000H3PO4              -1.000H+                 = UO2H2PO4+             
+    log_k       1.1200 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +1.000UO2+2              +1.000H3PO4              = UO2H3PO4+2            
+    log_k       0.7600 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +1.000UO2+2              +2.000H3PO4              -2.000H+                 = UO2(H2PO4)2           
+    log_k       0.6400 
+    -gamma      0.00     0.00 
+    -dw        7.66e-10                # assumption: analogous to UO2+2, Liu et al., 2011
+
+ +1.000UO2+2              +1.000CO3-2              = UO2CO3                
+    log_k       9.9400 
+    -gamma      0.00     0.00 
+    -dw         6.67e-10   # Kerisit & Liu (2010) 
+
+ +1.000UO2+2              +2.000CO3-2              = UO2(CO3)2-2           
+    log_k      16.6100 
+    -dw        5.52e-10    # Kerisit & Liu (2010) 
+
+ +1.000UO2+2              +3.000CO3-2              = UO2(CO3)3-4           
+    log_k      21.8400 
+    -dw        5.566e-10   # Kerisit & Liu (2010) 
+
+ +3.000UO2+2              +6.000CO3-2              = (UO2)3(CO3)6-6        
+   log_k      54.00 
+    -dw        5.566e-10   # assumption: analogous to UO2(CO3)2-2, Kerisit & Liu (2010) 
+
+ +2.000UO2+2              +3.000H2O                -3.000H+                 +1.000CO3-2              = (UO2)2CO3(OH)3-       
+    log_k      -0.855
+    -dw        5.566e-10   # assumption: analogous to UO2(CO3)2-2, Kerisit & Liu (2010) 
+
+ +1.000UO2+2              +2.000H3PO4              -1.000H+                 = UO2H2PO4H3PO4+        
+    log_k       1.6500 
+    -dw        5.566e-10   # assumption: analogous to UO2(CO3)2-2, Kerisit & Liu (2010) 
+
+ +3.000UO2+2              +1.000CO3-2              +3.000H2O                -3.000H+                 = (UO2)3O(OH)2HCO3+     
+    log_k       0.655
+    -dw        5.566e-10   # assumption: analogous to UO2(CO3)2-2, Kerisit & Liu (2010) 
+
+ +11.000UO2+2            + 6.000CO3-2              + 12H2O      - 12H+  =  (UO2)11(CO3)6(OH)12-2
+    log_k      36.42
+
++1.000UO2+2              +1.000IO3-               = UO2IO3+               
+    log_k       2.0000 
+
+ +1.000UO2+2              +2.000IO3-               = UO2(IO3)2             
+    log_k       3.5900 
+    -gamma      0.00     0.00 
+
+ +1.000UO2+2              +3.000SO4-2              = UO2(SO4)3-4           
+    log_k       3.0200 
+    -dw        5.566e-10   # assumption: analogous to UO2(CO3)2-2, Kerisit & Liu (2010) 
+
+ +1.000UO2+2              +1.000HAsO4-2            = UO2HAsO4              
+    log_k       7.1600 
+    -gamma      0.00     0.00 
+
+ +1.000UO2+2              +1.000H3AsO4             -1.000H+                 = UO2H2AsO4+            
+    log_k       1.3400 
+
+ +1.000UO2+2              +2.000H3AsO4             -2.000H+                 = UO2(H2AsO4)2          
+    log_k       0.2900 
+    -gamma      0.00     0.00 
+
+ +1.000UO2+2              +1.000CO3-2              +1.000F-                 = UO2CO3F-              
+    log_k      13.7500 
+
+ +1.000UO2+2              +1.000CO3-2              +2.000F-                 = UO2CO3F2-2            
+    log_k      15.5700 
+
+ +1.000UO2+2              +1.000CO3-2              +3.000F-                 = UO2CO3F3-3            
+    log_k      16.3800 
+
++1.000UO2+2              +1.000Si(OH)4             = UO2SiO(OH)3+        + H+  
+    log_k       -1.88 
+# Original value 7.8 (= -1.84) was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+ +1.000UO2+2              +1.000SCN-               = UO2SCN+               
+    log_k       1.4000 
+
+ +1.000UO2+2              +2.000SCN-               = UO2(SCN)2             
+    log_k       1.2400 
+    -gamma      0.00     0.00 
+
+ +1.000UO2+2              +3.000SCN-               = UO2(SCN)3-            
+    log_k       2.1000 
+
+# U(VI)    SUPPLEMENTAL DATA
+# ==========================
+
+ +1.000Mg+2               +1.000UO2+2              +3.000CO3-2              = MgUO2(CO3)3-2         
+    log_k      26.2
+# Original value 26.11 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+    -dw        5.06e-10   # Kerisit & Liu (2010) 
+
++2.000Mg+2               +1.000UO2+2              +3.000CO3-2              = Mg2UO2(CO3)3         
+    log_k      27.1
+# This value was added from NEA Second Update, Vol. 14 (Grenthe et al. 2020)
+    -dw         4.6e-10   # Kerisit & Liu (2010) analog to Ca2UO2(CO3)3
+
+ +1.000Ca+2               +1.000UO2+2              +3.000CO3-2              = CaUO2(CO3)3-2         
+    log_k      27.0 
+# Original value 27.18 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+    -dw        5.06e-10   # Kerisit & Liu (2010)
+
+ +2.000Ca+2               +1.000UO2+2              +3.000CO3-2              = Ca2UO2(CO3)3          
+    log_k      30.8 
+# Original value 29.22 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+    -dw         4.6e-10   # Kerisit & Liu (2010)
+
+ +1.000Sr+2               +1.000UO2+2              +3.000CO3-2              = SrUO2(CO3)3-2         
+    log_k      25.9 
+# Original value 26.86 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+    -dw        4.83e-10   # Kerisit & Liu (2010)
+
+ +2.000Sr+2               +1.000UO2+2              +3.000CO3-2              = Sr2UO2(CO3)3         
+    log_k      29.7 
+# This value was added from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+    -dw         4.6e-10   # Kerisit & Liu (2010) analog to Ca2UO2(CO3)3
+
+ +1.000SeO4-2             +1.000UO2+2              = UO2SeO4         
+    log_k      2.93 
+# This value was added from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+ +2.000SeO4-2             +1.000UO2+2             = UO2(SeO4)2-2         
+    log_k      4.03 
+# This value was added from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+ +1.000Ba+2               +1.000UO2+2              +3.000CO3-2              = BaUO2(CO3)3-2         
+    log_k      26.6800 
+
+ +2.000Ba+2               +1.000UO2+2              +3.000CO3-2              = Ba2UO2(CO3)3          
+    log_k      29.7500 
+    -gamma      0.00     0.00 
+
+# Np(III)   RECOMMENDED DATA
+############################
+
+ +1.000Np+3               +1.000H2O                -1.000H+                 = NpOH+2                
+    log_k      -6.8000 
+
+# Np(III)  SUPPLEMENTAL DATA
+# ==========================
+
++1.000Np+3               +2.000H2O                -2.000H+                 = Np(OH)2+              
+    log_k     -14.7000 
+
+ +1.000Np+3               +3.000H2O                -3.000H+                 = Np(OH)3               
+    log_k     -25.8000 
+    -gamma      0.00     0.00 
+
+ +1.000Np+3               +1.000F-                 = NpF+2                 
+    log_k       3.4000 
+
+ +1.000Np+3               +2.000F-                 = NpF2+                 
+    log_k       5.8000 
+
+ +1.000Np+3               +1.000Cl-                = NpCl+2                
+    log_k       0.2400 
+
+ +1.000Np+3               +2.000Cl-                = NpCl2+                
+    log_k      -0.7400 
+
+ +1.000Np+3               +1.000SO4-2              = NpSO4+                
+    log_k       3.3000 
+
+ +1.000Np+3               +2.000SO4-2              = Np(SO4)2-             
+    log_k       3.7000 
+
+ +1.000Np+3               +1.000CO3-2              = NpCO3+                
+    log_k       8.0000 
+
+ +1.000Np+3               +2.000CO3-2              = Np(CO3)2-             
+    log_k      12.9000 
+
+ +1.000Np+3               +3.000CO3-2              = Np(CO3)3-3            
+    log_k      15.0000 
+
+ +1.000Np+3               +1.000SiO(OH)3-          = NpSiO(OH)3+2          
+    log_k       8.1000 
+
+# Np(IV)    RECOMMENDED DATA
+############################
+
+ +1.000Np+4               +1.000H2O                -1.000H+                 = NpOH+3                
+    log_k       0.5500 
+
+ +1.000Np+4               +4.000H2O                -4.000H+                 = Np(OH)4               
+    log_k      -8.3000 
+    -gamma      0.00     0.00 
+
+ +1.000Np+4               +1.000F-                 = NpF+3                 
+    log_k       8.9600 
+
+ +1.000Np+4               +2.000F-                 = NpF2+2                
+    log_k      15.7000 
+
+ +1.000Np+4               +1.000Cl-                = NpCl+3                
+    log_k       1.5000 
+
+ +1.000Np+4               +1.000SO4-2              = NpSO4+2               
+    log_k       6.8500 
+
+ +1.000Np+4               +2.000SO4-2              = Np(SO4)2              
+    log_k      11.0500 
+    -gamma      0.00     0.00 
+
+ +1.000Np+4               +1.000NO3-               = NpNO3+3               
+    log_k       1.9000 
+
+ +1.000Np+4               +4.000CO3-2              = Np(CO3)4-4            
+    log_k      38.9000 
+
+ +1.000Np+4               +5.000CO3-2              = Np(CO3)5-6            
+    log_k      37.8000 
+
+ +1.000Np+4               +2.000H2O                -2.000H+                 = Np(OH)2+2             
+    log_k       0.3500 
+
+ +1.000Np+4               +1.000I-                 = NpI+3                 
+    log_k       1.5000 
+
+ +1.000Np+4               +1.000SCN-               = NpSCN+3               
+    log_k       3.0000 
+
+ +1.000Np+4               +2.000SCN-               = Np(SCN)2+2            
+    log_k       4.1000 
+
+ +1.000Np+4               +3.000SCN-               = Np(SCN)3+             
+    log_k       4.8000 
+
+# Np(IV)   SUPPLEMENTAL DATA
+# ==========================
+
+ +1.000Np+4               +3.000H2O                -3.000H+                 = Np(OH)3+              
+    log_k      -2.8000 
+
+ +1.000Np+4               +1.000CO3-2              +3.000H2O                -3.000H+                 = NpCO3(OH)3-           
+    log_k       2.0000 
+
+ +1.000Np+4               +1.000SiO(OH)3-          = NpSiO(OH)3+3          
+    log_k      11.2000 
+
+# Np(V)     RECOMMENDED DATA
+############################
+
+ +1.000NpO2+              +1.000H2O                -1.000H+                 = NpO2(OH)              
+    log_k     -11.3000 
+    -gamma      0.00     0.00 
+
+ +1.000NpO2+              +2.000H2O                -2.000H+                 = NpO2(OH)2-            
+    log_k     -23.6000 
+
+ +1.000NpO2+              +1.000F-                 = NpO2F                 
+    log_k       1.2000 
+    -gamma      0.00     0.00 
+
+ +1.000NpO2+              +1.000SO4-2              = NpO2SO4-              
+    log_k       1.3 
+# Original value 0.44 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+ +1.000NpO2+              +1.000HPO4-2             = NpO2HPO4-             
+    log_k       2.9500 
+
+ +1.000NpO2+              +1.000CO3-2              = NpO2CO3-              
+    log_k       4.9600 
+
+ +1.000NpO2+              +2.000CO3-2              = NpO2(CO3)2-3          
+    log_k       6.5300 
+
+ +1.000NpO2+              +3.000CO3-2              = NpO2(CO3)3-5          
+    log_k       5.5000 
+
+ +1.000NpO2+              +2.000CO3-2              +1.000H2O                -1.000H+                 = NpO2(CO3)2OH-4        
+    log_k      -5.3000 
+
+ +1.000NpO2+              +1.000IO3-               = NpO2IO3               
+    log_k       0.5000 
+    -gamma      0.00     0.00 
+
+# Np(V)    SUPPLEMENTAL DATA
+# ==========================
+
+ +1.000NpO2+              +1.000SiO(OH)3-          = NpO2SiO(OH)3          
+    log_k       7.0000 
+    -gamma      0.00     0.00
+    
+  +1.000NpO2+              +1.000SCN-               = NpO2SCN               
+    log_k       0.0800 
+    -gamma      0.00     0.00 
+
++1.000NpO2+              +1.000Ca+2      +2.000H2O          = Ca(NpO2(OH)2)+      +2.000H+ 
+    log_k       -20.6 
+# New species was added from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
++1.000NpO2+              +3.000Ca+2      +5.000H2O          = Ca3(NpO2(OH)5)+2      +5.000H+ 
+    log_k       -54.8 
+# New species was added from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+ 
+# Np(VI)    RECOMMENDED DATA
+############################
+
+ +1.000NpO2+2             +1.000H2O                -1.000H+                 = NpO2OH+               
+    log_k      -5.1000 
+
+ +2.000NpO2+2             +2.000H2O                -2.000H+                 = (NpO2)2(OH)2+2        
+    log_k      -6.2700 
+
+ +3.000NpO2+2             +5.000H2O                -5.000H+                 = (NpO2)3(OH)5+         
+    log_k     -17.1200 
+
+ +1.000NpO2+2             +1.000F-                 = NpO2F+                
+    log_k       4.5700 
+
+ +1.000NpO2+2             +2.000F-                 = NpO2F2                
+    log_k       7.6000 
+    -gamma      0.00     0.00 
+
+ +1.000NpO2+2             +1.000Cl-                = NpO2Cl+               
+    log_k       0.4000 
+
+ +1.000NpO2+2             +1.000SO4-2              = NpO2SO4               
+    log_k       3.2800 
+    -gamma      0.00     0.00 
+
+ +1.000NpO2+2             +2.000SO4-2              = NpO2(SO4)2-2          
+    log_k       4.7000 
+
+ +1.000NpO2+2             +1.000CO3-2              = NpO2CO3               
+    log_k       9.3200 
+    -gamma      0.00     0.00 
+
+ +1.000NpO2+2             +2.000CO3-2              = NpO2(CO3)2-2          
+    log_k      16.5200 
+
+ +1.000NpO2+2             +3.000CO3-2              = NpO2(CO3)3-4          
+    log_k      19.3700 
+
+ +3.000NpO2+2             +6.000CO3-2              = (NpO2)3(CO3)6-6       
+    log_k      49.8400 
+
+ +2.000NpO2+2             +1.000CO3-2              +3.000H2O                -3.000H+                 = (NpO2)2CO3(OH)3-      
+    log_k      -2.8700 
+
+ +1.000NpO2+2             +1.000HPO4-2             = NpO2HPO4              
+    log_k       6.2000 
+    -gamma      0.00     0.00 
+
+ +1.000NpO2+2             +1.000H2PO4-             = NpO2H2PO4+            
+    log_k       3.3200 
+
+ +1.000NpO2+2             +2.000HPO4-2             = NpO2(HPO4)2-2         
+    log_k       9.5000 
+
+ +1.000NpO2+2             +1.000IO3-               = NpO2IO3+              
+    log_k       1.2000 
+
+# Np(VI)   SUPPLEMENTAL DATA
+# ==========================
+
+ +1.000NpO2+2             +3.000H2O                -3.000H+                 = NpO2(OH)3-            
+    log_k     -20.0000 
+
+ +1.000NpO2+2             +4.000H2O                -4.000H+                 = NpO2(OH)4-2           
+    log_k     -32.0000
+
+ +1.000NpO2+2             +1.000SiO(OH)3-          = NpO2SiO(OH)3+         
+    log_k       7.2000 
+
+ +1.000NpO2+2             +1.000SiO2(OH)2-2        = NpO2SiO2(OH)2         
+    log_k      16.5000 
+    -gamma      0.00     0.00 
+
+# Pu(III)   RECOMMENDED DATA
+############################
+
+ +1.000Pu+3               +1.000H2O                -1.000H+                 = PuOH+2                
+    log_k      -6.9000 
+
+ +1.000Pu+3               +1.000SO4-2              = PuSO4+                
+    log_k       3.9000 
+
+ +1.000Pu+3               +2.000SO4-2              = Pu(SO4)2-             
+    log_k       5.7000 
+
+ +1.000Pu+3               +1.000SCN-               = PuSCN+2               
+    log_k       1.3000 
+
+# Pu(III)  SUPPLEMENTAL DATA
+# ==========================
+ 
+ +1.000Pu+3               +2.000H2O                -2.000H+                 = Pu(OH)2+              
+    log_k     -14.8000 
+
+ +1.000Pu+3               +3.000H2O                -3.000H+                 = Pu(OH)3               
+    log_k     -25.9000 
+    -gamma      0.00     0.00 
+
+ +1.000Pu+3               +1.000F-                 = PuF+2                 
+    log_k       3.4000 
+
+ +1.000Pu+3               +2.000F-                 = PuF2+                 
+    log_k       5.8000 
+
+ +1.000Pu+3               +1.000Cl-                = PuCl+2                
+    log_k       1.2000 
+
+ +1.000Pu+3               +1.000CO3-2              = PuCO3+                
+    log_k       8.0000 
+
+ +1.000Pu+3               +2.000CO3-2              = Pu(CO3)2-             
+    log_k      12.9000 
+
+ +1.000Pu+3               +3.000CO3-2              = Pu(CO3)3-3            
+    log_k      15.0000 
+
+ +1.000Pu+3               +1.000SiO(OH)3-          = PuSiO(OH)3+2          
+    log_k       8.1000 
+
+# Pu(IV)    RECOMMENDED DATA
+############################
+
+ +1.000Pu+4               +1.000H2O                -1.000H+                 = PuOH+3                
+    log_k       0.0000 
+
+ +1.000Pu+4               +4.000H2O                -4.000H+                 = Pu(OH)4               
+    log_k      -9.3000 
+    -gamma      0.00     0.00 
+
+ +1.000Pu+4               +1.000F-                 = PuF+3                 
+    log_k       8.8400 
+
+ +1.000Pu+4               +2.000F-                 = PuF2+2                
+    log_k      15.7000 
+
+ +1.000Pu+4               +1.000Cl-                = PuCl+3                
+    log_k       1.8000 
+
+ +1.000Pu+4               +1.000SO4-2              = PuSO4+2               
+    log_k       6.8900 
+
+ +1.000Pu+4               +2.000SO4-2              = Pu(SO4)2              
+    log_k      11.1400 
+    -gamma      0.00     0.00 
+
+ +1.000Pu+4               +1.000NO3-               = PuNO3+3               
+    log_k       1.9500 
+
+ +1.000Pu+4               +1.000H3PO4              = PuH3PO4+4             
+    log_k       2.4000 
+
+ +1.000Pu+4               +4.000CO3-2              = Pu(CO3)4-4            
+    log_k      37.0000 
+
+ +1.000Pu+4               +5.000CO3-2              = Pu(CO3)5-6            
+    log_k      35.6500 
+
+ +1.000Pu+4               +2.000H2O                -2.000H+                 = Pu(OH)2+2             
+    log_k      -1.2000 
+
+ +1.000Pu+4               +3.000H2O                -3.000H+                 = Pu(OH)3+              
+    log_k      -3.1000 
+
+
+# Pu(IV)   SUPPLEMENTAL DATA
+# ==========================
+
+ +1.000Pu+4               +1.000SiO(OH)3-          = PuSiO(OH)3+3          
+    log_k      11.8000 
+
+ +4.000Ca+2               +1.000Pu+4               +8.000H2O                -8.000H+                 = Ca4Pu(OH)8+4          
+    log_k     -55.7000 
+
+ +1.000Pu+4               +1.000CO3-2              +3.000H2O                -3.000H+                 = PuCO3(OH)3-           
+    log_k       6.0000 
+
+# Pu(V)     RECOMMENDED DATA
+############################
+
+ +1.000PuO2+              +1.000H2O                -1.000H+                 = PuO2OH                
+    log_k      -9.7300 
+    -gamma      0.00     0.00 
+
+ +1.000PuO2+              +1.000CO3-2              = PuO2CO3-              
+    log_k       5.1200 
+
+ +1.000PuO2+              +3.000CO3-2              = PuO2(CO3)3-5          
+    log_k       5.0300 
+
+# Pu(VI)    RECOMMENDED DATA
+############################
+
+ +1.000PuO2+2             +1.000H2O                -1.000H+                 = PuO2OH+               
+    log_k      -5.5000 
+
+ +1.000PuO2+2             +2.000H2O                -2.000H+                 = PuO2(OH)2             
+    log_k     -13.2000 
+    -gamma      0.00     0.00 
+
+ +2.000PuO2+2             +2.000H2O                -2.000H+                 = (PuO2)2(OH)2+2        
+    log_k      -7.5000 
+
+ +1.000PuO2+2             +1.000F-                 = PuO2F+                
+    log_k       4.5600 
+
+ +1.000PuO2+2             +2.000F-                 = PuO2F2                
+    log_k       7.2500 
+    -gamma      0.00     0.00 
+
+ +1.000PuO2+2             +1.000Cl-                = PuO2Cl+               
+    log_k       0.2300 
+
+ +1.000PuO2+2             +2.000Cl-                = PuO2Cl2               
+    log_k      -1.1500 
+    -gamma      0.00     0.00 
+
+ +1.000PuO2+2             +1.000SO4-2              = PuO2SO4               
+    log_k       3.3800 
+    -gamma      0.00     0.00 
+
+ +1.000PuO2+2             +2.000SO4-2              = PuO2(SO4)2-2          
+    log_k       4.4000 
+
+ +1.000PuO2+2             +1.000CO3-2              = PuO2CO3               
+    log_k       9.5000 
+    -gamma      0.00     0.00 
+
+ +1.000PuO2+2             +2.000CO3-2              = PuO2(CO3)2-2          
+    log_k      14.7000 
+
+ +1.000PuO2+2             +3.000CO3-2              = PuO2(CO3)3-4          
+    log_k      18.0000 
+
+# Pu(VI)   SUPPLEMENTAL DATA
+# ==========================
+
+ +1.000PuO2+2             +1.000SiO(OH)3-          = PuO2SiO(OH)3+         
+    log_k       6.0000 
+
+ +1.000PuO2+2             +1.000SiO2(OH)2-2        = PuO2SiO2(OH)2         
+    log_k      12.6000 
+    -gamma      0.00     0.00 
+
+#           RECOMMENDED DATA
+# U(VI)
+# Np(VI)    Mixed
+# Pu(VI)
+############################
+
+ +2.000UO2+2              +1.000NpO2+2             +6.000CO3-2              = (UO2)2NpO2(CO3)6-6    
+    log_k      53.5900 
+
+ +2.000UO2+2              +1.000PuO2+2             +6.000CO3-2              = (UO2)2PuO2(CO3)6-6    
+    log_k      52.7000 
+
+# Am(III)   RECOMMENDED DATA
+############################
+
+ +1.000Am+3               +1.000H2O                -1.000H+                 = AmOH+2                
+    log_k      -7.2000 
+
+ +1.000Am+3               +2.000H2O                -2.000H+                 = Am(OH)2+              
+    log_k     -15.1000 
+
+ +1.000Am+3               +3.000H2O                -3.000H+                 = Am(OH)3               
+    log_k     -26.2000 
+    -gamma      0.00     0.00 
+
+ +1.000Am+3               +1.000F-                 = AmF+2                 
+    log_k       3.4000 
+
+ +1.000Am+3               +2.000F-                 = AmF2+                 
+    log_k       5.8000 
+
+ +1.000Am+3               +1.000Cl-                = AmCl+2                
+    log_k       0.2400 
+
+ +1.000Am+3               +2.000Cl-                = AmCl2+                
+    log_k       -0.81 
+# Original value -0.74 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+ +1.000Am+3               +1.000SO4-2              = AmSO4+                
+    log_k       3.5000 
+# Original value 3.3 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+ +1.000Am+3               +2.000SO4-2              = Am(SO4)2-             
+    log_k       5.000 
+# Original value 3.7 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+ +1.000Am+3               +1.000NO3-               = AmNO3+2               
+    log_k       1.2800 
+# Original value 1.33 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+ +1.000Am+3               +2.000NO3-               = Am(NO3)2+               
+    log_k       0.8800 
+# This value was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+ +1.000Am+3               +1.000H2PO4-             = AmH2PO4+2             
+    log_k       2.4600 
+# Original value 3.00 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+ +1.000Am+3               +1.000CO3-2              = AmCO3+                
+    log_k       8.0000 
+
+ +1.000Am+3               +2.000CO3-2              = Am(CO3)2-             
+    log_k      12.9000 
+
+ +1.000Am+3               +3.000CO3-2              = Am(CO3)3-3            
+    log_k      15.0000 
+
+ +1.000Am+3               +1.000SiO(OH)3-          = AmSiO(OH)3+2          
+    log_k       8.1300 
+# Original value 8.1 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+ +1.000Am+3               +1.000HCO3-              = AmHCO3+2              
+    log_k       3.1000 
+
+ +1.000Am+3               +1.000SCN-               = AmSCN+2               
+    log_k       1.3000 
+
+# Am(III)  SUPPLEMENTAL DATA
+# ==========================
+
+ +1.000Ca+2               +1.000Am+3               +3.000H2O                -3.000H+                 = CaAm(OH)3+2           
+    log_k     -26.3000 
+
+ +2.000Ca+2               +1.000Am+3               +4.000H2O                -4.000H+                 = Ca2Am(OH)4+3          
+    log_k     -37.2000 
+
+ +3.000Ca+2               +1.000Am+3               +6.000H2O                -6.000H+                 = Ca3Am(OH)6+3          
+    log_k     -60.7000 
+
+# Am(V)     RECOMMENDED DATA
+############################
+
+ +1.000AmO2+              +1.000H2O                -1.000H+                 = AmO2OH                
+    log_k     -11.3000 
+    -gamma      0.00     0.00 
+
+ +1.000AmO2+              +2.000H2O                -2.000H+                 = AmO2(OH)2-            
+    log_k     -23.6000 
+
+ +1.000AmO2+              +1.000CO3-2              = AmO2CO3-              
+    log_k       5.1000 
+
+ +1.000AmO2+              +2.000CO3-2              = AmO2(CO3)2-3          
+    log_k       6.7000 
+
+ +1.000AmO2+              +3.000CO3-2              = AmO2(CO3)3-5          
+    log_k       5.1000 
+
+# Cm(III)   RECOMMENDED DATA
+############################
+
+ +1.000Cm+3               +1.000H2O                -1.000H+                 = CmOH+2                
+    log_k      -7.2000 
+
+ +1.000Cm+3               +2.000H2O                -2.000H+                 = Cm(OH)2+              
+    log_k     -15.1000 
+
+ +1.000Cm+3               +3.000H2O                -3.000H+                 = Cm(OH)3               
+    log_k     -26.2000 
+    -gamma      0.00     0.00 
+
+ +1.000Cm+3               +1.000F-                 = CmF+2                 
+    log_k       3.4000 
+
+ +1.000Cm+3               +2.000F-                 = CmF2+                 
+    log_k       5.8000 
+
+ +1.000Cm+3               +1.000Cl-                = CmCl+2                
+    log_k       0.2400 
+
+ +1.000Cm+3               +2.000Cl-                = CmCl2+                
+    log_k      -0.7400 
+
+ +1.000Cm+3               +1.000SO4-2              = CmSO4+                
+    log_k       3.3000 
+
+ +1.000Cm+3               +2.000SO4-2              = Cm(SO4)2-             
+    log_k       3.7000 
+
+ +1.000Cm+3               +1.000NO3-               = CmNO3+2               
+    log_k       1.3300 
+
+ +1.000Cm+3               +1.000H2PO4-             = CmH2PO4+2             
+    log_k       3.0000 
+
+ +1.000Cm+3               +1.000CO3-2              = CmCO3+                
+    log_k       8.0000 
+
+ +1.000Cm+3               +2.000CO3-2              = Cm(CO3)2-             
+    log_k      12.9000 
+
+ +1.000Cm+3               +3.000CO3-2              = Cm(CO3)3-3            
+    log_k      15.0000 
+
+ +1.000Cm+3               +1.000HCO3-              = CmHCO3+2              
+    log_k       3.1000 
+
+ +1.000Cm+3               +1.000SiO(OH)3-          = CmSiO(OH)3+2          
+    log_k       8.1000
+    
+ +1.000Cm+3               +1.000SCN-               = CmSCN+2               
+    log_k       1.3000  
+
+# Cm(III)  SUPPLEMENTAL DATA
+# ==========================
+
+ +1.000Ca+2               +1.000Cm+3               +3.000H2O                -3.000H+                 = CaCm(OH)3+2           
+    log_k     -26.3000 
+
+ +2.000Ca+2               +1.000Cm+3               +4.000H2O                -4.000H+                 = Ca2Cm(OH)4+3          
+    log_k     -37.2000 
+
+ +3.000Ca+2               +1.000Cm+3               +6.000H2O                -6.000H+                 = Ca3Cm(OH)6+3          
+    log_k     -60.7000 
+
+###################################################################################################################
+
+# New implemented aqueous species - Updated values
+
+################################################################################################################### 
+
+### Iron from NEA TDB, Vol. 13a  ##################################################################################
+
+
++1.000Fe+2      = 1.000Fe+3  +   e-             
+    	log_k     -13.051
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013]; their Fe+2 + H+ = Fe+3 + 0.5H2(g) with logK -13.051
+
+### Oxide/Hydroxide ############
+
++1.000Fe+2   + 1.000H2O                 = FeOH+       +        H+          
+    	log_k      -9.1
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
++1.000Fe+3   + 1.000H2O                 = FeOH+2      +        H+          
+    	log_k      -2.1500 
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
++1.000Fe+3   + 2.000H2O                 = Fe(OH)2+    +       2H+          
+    	log_k      -4.8
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
++2.000Fe+3   + 2.000H2O                 = Fe2(OH)2+4  +       2H+         
+    	log_k      -2.82 
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
+### Carbonate ############
+
++1.000Fe+3   +3.000CO3-2              = Fe(CO3)3-3                 
+    	log_k      24.0 
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
++1.000Fe+3   +1.000CO3-2 + H2O        = Fe(OH)CO3   +   H+               
+	log_k       10.7
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013]
+
++1.000Fe+2   +2.000HCO3-   = Fe(CO3)2-2 + 2H+               
+    	log_k      -13.62 
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013], converted from 
+	# FeCO3(cr) + CO2(g) + H2O(l) = Fe(CO3)2-2 + 2H+ with logK -21.794
+
+### Chloride ############
+
++1.000Fe+3          +1.000Cl-                       = FeCl+2                
+    	log_k       1.52
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
++1.000Fe+3          +2.000Cl-                       = FeCl2+                
+    	log_k       2.2
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
++1.000Fe+3          +3.000Cl-                       = FeCl3                 
+    	log_k       1.02
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
++1.000Fe+3          +4.000Cl-                      = FeCl4-                 
+    	log_k       -0.98
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
+### Fluoride ############
+
++1.000Fe+2               +1.000F-                 = FeF+                  
+    	log_k       1.7 
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
+### Sulfate ############
+
++1.000Fe+2               +1.000SO4-2              = FeSO4                 
+    	log_k       2.44 
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
++1.000Fe+3               +1.000SO4-2               = FeSO4+                
+    	log_k       4.25
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
++1.000Fe+3               +2.000SO4-2              = Fe(SO4)2-             
+    	log_k       6.22 
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
+######################################################################################################################
+
+PHASES
+
+# PMATCH MINERALS
+
+# Minerals  RECOMMENDED DATA
+
+##### Original PSI/NAGRA TDB 12/07  #################################################################################
+
+Anhydrite             
+CaSO4                  =  +1.000Ca+2               +1.000SO4-2             
+    log_k      -4.3575 
+
+Aragonite             
+CaCO3                  =  +1.000Ca+2               -1.000H+                 +1.000HCO3-             
+    log_k       1.9928 
+
+As(cr)                
+As                     =  +1.000HAsO4-2            +7.000H+                 +5.000e-                 -4.000H2O               
+    log_k     -40.9892 
+
+Barite                
+BaSO4                  =  +1.000Ba+2               +1.000SO4-2             
+    log_k      -9.9704 
+
+Brucite               
+Mg(OH)2                =  +1.000Mg+2               +2.000H2O                -2.000H+                
+    log_k      16.8400 
+
+Calcite               
+CaCO3                  =  +1.000Ca+2               -1.000H+                 +1.000HCO3-             
+    log_k       1.8490 
+
+MgCalcite_NT14    # for PW in OPA section at Mt. Russelin (borehole NT-14) 
+CaCO3                  =  +1.000Ca+2               -1.000H+                 +1.000HCO3-             
+    log_k       2.01672 # calculated by Marco to account for Mg incorporation in pure mineral 
+
+Celestite             
+SrSO4                  =  +1.000Sr+2               +1.000SO4-2             
+    log_k      -6.6319 
+
+Dolomite(dis)         
+CaMg(CO3)2             =  +1.000Ca+2               +1.000Mg+2               -2.000H+                 +2.000HCO3-             
+    log_k       4.1180 
+
+Dolomite(ord)         
+CaMg(CO3)2             =  +1.000Ca+2               +1.000Mg+2               -2.000H+                 +2.000HCO3-             
+    log_k       3.5680 
+
+#Fe(cr)                
+#Fe                     =  +1.000Fe+2               +2.000e-                
+#    log_k      13.8226 
+# commented out, as we added Fe+3 data from NEA TDB Vol. 13a
+
+Fluorite              
+CaF2                   =  +1.000Ca+2               +2.000F-                
+    log_k     -10.5997 
+
+#Goethite              
+#FeOOH                  =  +2.000H2O                -3.000H+                 +1.000Fe+3              
+#    log_k      -1.0000 
+# commented out, as we added Fe+3 data from NEA TDB Vol. 13a
+
+Graphite              
+C                      =  +1.000HCO3-              +5.000H+                 +4.000e-                 -3.000H2O               
+    log_k     -21.8192 
+
+Gypsum                
+CaSO4:2H2O             =  +1.000Ca+2               +1.000SO4-2              +2.000H2O               
+    log_k      -4.5809 
+
+Hausmannite           
+MnMn2O4                =  +3.000Mn+2               +4.000H2O                -8.000H+                 -2.000e-                
+    log_k      61.0300 
+
+Manganite             
+MnOOH                  =  +1.000Mn+2               +2.000H2O                -3.000H+                 -1.000e-                
+    log_k      25.3400 
+
+#Melanterite           
+#FeSO4:7H2O             =  +1.000Fe+2               +1.000SO4-2              +7.000H2O               
+#    log_k      -2.2093 
+# commented out, as we added Fe+3 data from NEA TDB Vol. 13a
+
+Mo(cr)                
+Mo                     =  +1.000MoO4-2             +8.000H+                 +6.000e-                 -4.000H2O               
+    log_k      19.6670 
+#   bug: log_k entered manually
+
+Tugarinovite          
+MoO2                   =  +1.000MoO4-2             +4.000H+                 +2.000e-                 -2.000H2O               
+    log_k      29.9560 
+#   bug: log_k entered manually
+
+Molybdite             
+MoO3                   =  +1.000MoO4-2             +2.000H+                 -1.000H2O               
+    log_k      12.0550 
+#   bug: log_k entered manually
+
+Nb2O5(cr)             
+Nb2O5                  =  +2.000NbO3-              +2.000H+                 -1.000H2O               
+    log_k      24.3410 
+#   bug: log_k entered manually
+
+NbO2(cr)              
+NbO2                   =  +1.000NbO3-              +2.000H+                 +1.000e-                 -1.000H2O               
+    log_k       7.9780 
+#   bug: log_k entered manually
+
+Portlandite           
+Ca(OH)2                =  +1.000Ca+2               +2.000H2O                -2.000H+                
+    log_k      22.8000 
+
+Pyrochroite           
+Mn(OH)2                =  +1.000Mn+2               +2.000H2O                -2.000H+                
+    log_k      15.2000 
+
+Pyrolusite            
+MnO2                   =  +1.000Mn+2               +2.000H2O                -4.000H+                 -2.000e-                
+    log_k      41.3800 
+
+Rhodochrosite         
+MnCO3                  =  +1.000Mn+2               +1.000HCO3-              -1.000H+                
+    log_k      -0.8011 
+
+Rhodochrosite(syn)    
+MnCO3                  =  +1.000Mn+2               +1.000HCO3-              -1.000H+                
+    log_k      -0.0611 
+
+#Siderite              
+#FeCO3                  =  +1.000Fe+2               +1.000HCO3-              -1.000H+                
+#    log_k      -0.5612 
+# commented out, as we added Fe+3 data from NEA TDB Vol. 13a
+
+#FeCO3(pr)             
+#FeCO3                  =  +1.000Fe+2               +1.000HCO3-              -1.000H+                
+#    log_k      -0.1211 
+# commented out, as we added Fe+3 data from NEA TDB Vol. 13a
+
+Strontianite          
+SrCO3                  =  +1.000Sr+2               -1.000H+                 +1.000HCO3-             
+    log_k       1.0583 
+
+Witherite             
+BaCO3                  =  +1.000Ba+2               -1.000H+                 +1.000HCO3-             
+    log_k       1.7672 
+
+#Hematite              
+#Fe2O3                  =  +3.000H2O                -6.000H+                 +2.000Fe+3              
+#    log_k       1.1200 
+# commented out, as we added Fe+3 data from NEA TDB Vol. 13a
+
+Pyrite                
+FeS2                   =  +1.000Fe+2               +2.000HS-                -2.000H+                 -2.000e-                
+    log_k     -18.5000 
+# commented out, as we added Fe+3 data from NEA TDB Vol. 13a
+
+#Troilite              
+#FeS                    =  +1.000Fe+2               +1.000HS-                -1.000H+                
+#    log_k      -5.3100 
+# commented out, as we added Fe+3 data from NEA TDB Vol. 13a
+
+Magnesite             
+MgCO3                  =  +1.000Mg+2               -1.000H+                 +1.000HCO3-             
+    log_k       2.0410 
+
+S(rhomb)              
+S                      =  +1.000HS-                -1.000H+                 -2.000e-                
+    log_k      -2.1440 
+
+#Fe(OH)3(am)           
+#Fe(OH)3                =  +3.000H2O                -3.000H+                 +1.000Fe+3              
+#    log_k       5.0000 
+# commented out, as we added Fe+3 data from NEA TDB Vol. 13a
+
+#Fe(OH)3(mic)          
+#Fe(OH)3                =  +3.000H2O                -3.000H+                 +1.000Fe+3              
+#    log_k       3.0000 
+# commented out, as we added Fe+3 data from NEA TDB Vol. 13a
+
+#Magnetite             
+#FeFe2O4                =  +1.000Fe+2               +4.000H2O                -8.000H+                 +2.000Fe+3              
+#    log_k      10.0200 
+# commented out, as we added Fe+3 data from NEA TDB Vol. 13a
+
+#Gibbsite              
+#Al(OH)3                =  +1.000Al+3               +3.000H2O                -3.000H+                
+#    log_k       7.7559 
+# commented out, as we added data for a generic and amorphous gibbsite
+
+
+# Si(IV)    RECOMMENDED DATA
+############################
+
+Quartz                
+SiO2                   =  +1.000Si(OH)4            -2.000H2O               
+    log_k      -3.7460 
+
+SiO2(am)              
+SiO2                   =  +1.000Si(OH)4            -2.000H2O               
+    log_k      -2.7140 
+
+Kaolinite             
+Al2Si2O5(OH)4          =  +2.000Al+3               +2.000Si(OH)4            +1.000H2O                -6.000H+                
+    log_k       7.4350 
+
+# Ni(II)    RECOMMENDED DATA
+############################
+
+NiCO3(cr)             
+NiCO3                  =  +1.000Ni+2               +1.000CO3-2             
+    log_k     -11.0000 
+
+Ni(OH)2(cr,beta)     
+Ni(OH)2                =  +1.000Ni+2               +2.000H2O                -2.000H+                
+    log_k      11.0200 
+
+NiO(cr)               
+NiO                    =  +1.000Ni+2               +1.000H2O                -2.000H+                
+    log_k      12.4800 
+
+NiCO3:5.5H2O(s)       
+NiCO3:5.5H2O           =  +1.000Ni+2               +1.000CO3-2              +5.500H2O               
+    log_k      -7.5300 
+
+Ni3(AsO4)2:8H2O(s)    
+Ni3(AsO4)2:8H2O        =  +3.000Ni+2               +2.000AsO4-3             +8.000H2O               
+    log_k     -28.1000 
+
+# Se(-II)  SUPPLEMENTAL DATA
+# ==========================
+
+MnSe(s)               
+MnSe                   =  +1.000Mn+2               +1.000Se-2              
+    log_k     -16.0000 
+
+# Se(IV)    RECOMMENDED DATA
+############################
+
+Se(cr)                
+Se                     =  +1.000SeO3-2             +6.000H+                 +4.000e-                 -3.000H2O               
+    log_k     -61.1500 
+
+NiSeO3:2H2O(cr)       
+NiSeO3:2H2O            =  +1.000Ni+2               +1.000SeO3-2             +2.000H2O               
+    log_k      -5.8000 
+
+MnSeO3:2H2O(cr)       
+MnSeO3:2H2O            =  +1.000Mn+2               +1.000SeO3-2             +2.000H2O               
+    log_k      -7.6000 
+
+MgSeO3:6H2O(cr)       
+MgSeO3:6H2O            =  +1.000Mg+2               +1.000SeO3-2             +6.000H2O               
+    log_k      -5.8200 
+
+CaSeO3:H2O(cr)        
+CaSeO3:H2O             =  +1.000Ca+2               +1.000SeO3-2             +1.000H2O               
+    log_k      -6.4000 
+
+SrSeO3(cr)            
+SrSeO3                 =  +1.000Sr+2               +1.000SeO3-2            
+    log_k      -6.3000 
+
+BaSeO3(cr)            
+BaSeO3                 =  +1.000Ba+2               +1.000SeO3-2            
+    log_k      -6.5000 
+
+# Se(VI)    RECOMMENDED DATA
+############################
+
+BaSeO4(cr)            
+BaSeO4                 =  +1.000Ba+2               +1.000SeO4-2            
+    log_k      -7.5600 
+
+# Zr(IV)    RECOMMENDED DATA
+############################
+
+Baddeleyite           
+ZrO2                   =  +1.000Zr+4               +2.000H2O                -4.000H+                
+    log_k      -7.0000 
+
+Zr(OH)4(am,fr)        
+Zr(OH)4                =  +1.000Zr+4               +4.000H2O                -4.000H+                
+    log_k      -3.2400 
+
+# Zr(IV)   SUPPLEMENTAL DATA
+# ==========================
+
+Zr(HPO4)2:H2O(cr)     
+Zr(HPO4)2:H2O          =  +1.000Zr+4               +2.000H3PO4              +1.000H2O                -4.000H+                
+    log_k     -22.8000 
+
+
+# Tc(IV)    RECOMMENDED DATA
+############################
+
+TcO2:1.6H2O(s)        
+TcO2:1.6H2O            =  +1.000TcO(OH)2           +0.600H2O               
+    log_k      -8.4000 
+
+# Pd(II)    RECOMMENDED DATA
+############################
+
+Pd(cr)                
+Pd                     =  +1.000Pd+2               +2.000e-                
+    log_k     -30.8000 
+
+Pd(OH)2(s)            
+Pd(OH)2                =  +1.000Pd+2               -2.000H+                 +2.000H2O               
+    log_k      -3.3000 
+
+# Tn(II)    RECOMMENDED DATA
+############################
+
+Tn(cr)                
+Tn                     =  +1.00Tn+2               +2.000e-                
+    log_k       4.6300 
+
+TnO(s)                
+TnO                    =  +1.000Tn+2               +1.000H2O                -2.000H+                
+    log_k       2.5000 
+
+TnS(pr)               
+TnS                    =  +1.000Tn+2               +1.000HS-                -1.000H+                
+    log_k     -14.7000 
+
+# Sn(IV)    RECOMMENDED DATA
+############################
+
+Cassiterite           
+SnO2                   =  +1.000Sn(OH)4            -2.000H2O               
+    log_k      -8.0000 
+
+SnO2(am)              
+SnO2                   =  +1.000Sn(OH)4            -2.000H2O               
+    log_k      -7.3000 
+
+CaSn(OH)6(s)          
+CaSn(OH)6              =  +1.000Sn(OH)4            +2.000H2O                +1.000Ca+2               -2.000H+                
+    log_k       8.7000 
+
+# Ra(II)    RECOMMENDED DATA
+############################
+
+RaCO3(cr)             
+RaCO3                  =  +1.000Ra+2               +1.000CO3-2             
+    log_k      -8.3000 
+
+RaSO4(cr)             
+RaSO4                  =  +1.000Ra+2               +1.000SO4-2             
+    log_k     -10.2600 
+
+# Eu(III)   RECOMMENDED DATA
+############################
+
+Eu(OH)3(cr)           
+Eu(OH)3                =  +1.000Eu+3               +3.000H2O                -3.000H+                
+    log_k      14.9000 
+
+Eu(OH)3(am)           
+Eu(OH)3                =  +1.000Eu+3               +3.000H2O                -3.000H+                
+    log_k      17.6000 
+
+Eu2(CO3)3(cr)         
+Eu2(CO3)3              =  +2.000Eu+3               +3.000CO3-2             
+    log_k     -35.0000 
+
+
+EuOHCO3(cr)           
+EuOHCO3                =  +1.000Eu+3               +1.000OH-                +1.000CO3-2             
+    log_k     -21.7000 
+
+EuF3(cr)              
+EuF3                   =  +1.000Eu+3               +3.000F-                
+    log_k     -17.4000 
+
+# Th(IV)    RECOMMENDED DATA
+############################
+
+ThO2(am,hyd,fr)       
+ThO2                   =  +1.000Th+4               +2.000H2O                -4.000H+                
+    log_k       9.3000 
+
+ThO2(am,hyd,ag)       
+ThO2                   =  +1.000Th+4               +2.000H2O                -4.000H+                
+    log_k       8.5000 
+
+ThF4(cr,hyd)          
+ThF4                   =  +1.000Th+4               +4.000F-                
+    log_k     -31.8000 
+
+Na6Th(CO3)5:12H2O(cr) 
+Na6Th(CO3)5:12H2O      =  +6.000Na+                +1.000Th+4               +5.000CO3-2             +12.000H2O               
+    log_k     -42.2000 
+
+# Th(IV)   SUPPLEMENTAL DATA
+# ==========================
+
+Th3(PO4)4(s)          
+Th3(PO4)4              =  +3.000Th+4               +4.000PO4-3             
+    log_k    -112.0000 
+
+# U(IV)     RECOMMENDED DATA
+############################
+
+UF4:2.5H2O(cr)        
+UF4:2.5H2O             =  +1.000U+4                +4.000F-                 +2.500H2O               
+    log_k     -30.1200 
+
+U(OH)2SO4(cr)         
+U(OH)2SO4              =  +1.000U+4                +1.000SO4-2              +2.000H2O                -2.000H+                
+    log_k      -3.1700 
+
+UO2(am,hyd)           
+UO2                    =  +1.000U+4                +2.000H2O                -4.000H+                
+    log_k       1.5000 
+
+# U(IV)    SUPPLEMENTAL DATA
+# ==========================
+
+USiO4(s)  # Coffinit            
+USiO4                  =  +1.000U+4                +1.000Si(OH)4            -4.000H+                
+    log_k      -1.5000 
+
+# U(VI)    RECOMMENDED DATA  -  With Update from THEREDA database
+####################################################################
+
+### U(VI)-Oxides ############
+
+Metaschoepite         
+UO3:2H2O               =  +1.000UO2+2              +3.000H2O                -2.000H+                
+    	log_k       5.35 
+# Original value 5.96 was updated from THEREDA database [primary reference [ALT/YAL2017])
+
+Becquerelite          
+CaU6O19:11H2O          =  +1.000Ca+2               +6.000UO2+2             +18.000H2O               -14.000H+                
+    	log_k      40.5000 
+
+Clarkeite   
+Na2U2O7:H2O	     =     +2.000Na+           +2.000UO2+2                +4.000H2O      -6.000H+                                  
+	log_k     24.4
+# This value was added from THEREDA database [primary reference [ALT/YAL2017])
+
+K2U2O7:1.5H2O(cr)   
+K2U2O7:1.5H2O	     =     +2.000K+           +2.000UO2+2                +4.500H2O      -6.000H+                                  
+	log_k     24.0
+# This value was added from THEREDA database [primary reference [CEV/YAL2018])
+
+K-Compreignacite        
+K2U6O19:11H2O          =  +2.000K+      +6.000UO2+2             +18.000H2O               -14.000H+                
+    	log_k      37.8 
+# Original value 37.10 was updated from THEREDA database [primary reference [CEV/YAL2018])
+
+Na-Compreignacite
+Na2(UO2)6O4(OH)6:7H2O  = 2.000Na+ 	+ 6.000UO2+2 		+ 17.000H2O  		- 14.000H+  
+	log_k	39.4
+# This value was added from THEREDA database (primary reference  [GOR/FEI2008])
+
+CaU2O7:3H2O(cr)        
+CaU2O7:3H2O   + 6.000H+    =  1.000Ca+2      +2.000UO2+2     +6.000H2O                    
+    	log_k   23.4 
+# This value was added from THEREDA database (primary reference [ALT/NEC2006])
+
+
+### U(VI)-Carbonates ###########
+
+Cejkaite
+Na4UO2(CO3)3 = 4.000Na+ + 3.000CO3-2 + 1.000UO2+2 
+	log_k	-27.18
+# This value was added from THEREDA database (primary reference [GUI/FAN2003])
+
+Rutherfordine         
+UO2CO3                 =  +1.000UO2+2              +1.000CO3-2             
+    log_k     -14.7600 
+
+
+### U(VI)-Silicates ############
+
+Boltwoodite        
+KUO2(SiO3OH):H2O     =  +1.000K+   +1.000UO2+2     +1.000Si(OH)4   +1.000H2O                -3.000H+                
+    log_k       4.12 
+# This value was added from THEREDA database (primary reference [SHV/MAZ2011])
+
+Na-Boltwoodite        
+NaUO2(SiO3OH):H2O     =  +1.000Na+    +1.000UO2+2      +1.000Si(OH)4    +1.000H2O         -3.000H+                
+    log_k       6.07
+# This value was added from THEREDA database (primary reference [SHV/MAZ2011])
+
+Soddyite              
+(UO2)2SiO4:2H2O        =  +2.000UO2+2              +1.000Si(OH)4            +2.000H2O                -4.000H+                
+    log_k       5.75 
+# Original value 6.2 was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+Uranophane            
+Ca(UO2)2(SiO3OH)2:5H2O =  +1.000Ca+2               +2.000UO2+2              +2.000Si(OH)4            +5.000H2O                -6.000H+                
+    log_k       10.82
+# This value was added from THEREDA database (primary reference [SHV/MAZ2011])
+
+Weeksite           
+K2(UO2)2(Si2O5)3:4H2O =  +2.000K+  +2.000UO2+2     +6.000Si(OH)4            -6.000H+                 -5.000H2O               
+    	log_k       16.91 
+# This value was added from THEREDA database (primary reference [HEM1982])
+
+Na-Weeksite           
+Na2(UO2)2(Si2O5)3:4H2O =  +2.000Na+                +2.000UO2+2              +6.000Si(OH)4            -6.000H+                 -5.000H2O               
+    log_k       1.5
+
+Sklodowskite         
+Mg(UO2)2(SiO3OH)2:6H2O =  +1.000Mg+2    +2.000UO2+2    +2.000Si(OH)4            -6.000H+                 +6.000H2O               
+    	log_k       14.48 
+# This value was added from THEREDA database (primary reference [HEM1982])
+
+Haiweeite          
+Ca(UO2)2(Si2O5)3:5H2O =  +1.000Ca+2  +2.000UO2+2     +6.000Si(OH)4            -6.000H+                 -4.000H2O               
+    	log_k       -5.52
+# This value was added from THEREDA database (primary reference [HEM1982])
+
+### U(VI)-Sulphates #############
+
+UO2SO4:2.5H2O(cr) 
+UO2SO4:2.5H2O      =  +1.000UO2+2              +1.000SO4-2              +2.500H2O                            
+    	log_k      -1.589
+# Updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+UO2SO4:3.0H2O(cr) 
+UO2SO4:3.0H2O      =  +1.000UO2+2              +1.000SO4-2              +3.000H2O                            
+    	log_k      -1.50
+# Updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+UO2SO4:3.5H2O(cr) 
+UO2SO4:3.5H2O      =  +1.000UO2+2              +1.000SO4-2              +3.500H2O                            
+    	log_k      -1.585
+# Updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+Zippeite
+K3(UO2)4(SO4)2O3OH:3.3H2O    = +3.000K+     + 4.000UO2+2 + 2.000SO4-2 + 7.300H2O  -7H+
+    	log_k      4.14
+# This value was added from THEREDA database (primary reference [SHA/SZY2016])
+
+
+### U(VI)-Phosphate ###########
+
+Autunite 
+Ca(UO2)2(PO4)2:3H2O      =  1.000Ca+2     +2.000UO2+2              +2.000PO4-3              +3.000H2O               
+    	log_k      -48.36
+# This value was added from THEREDA database (primary reference [GOR/SHV2009])
+
+Saaleite 
+Mg(UO2)2(PO4)2      =  1.000Mg+2     +2.000UO2+2              +2.000PO4-3                             
+    	log_k      -46.32
+# This value was added from THEREDA database (primary reference [MUT/HIR1968])
+
+Chernikovite          
+UO2HPO4:4H2O           =  +1.000UO2+2              +1.000H3PO4              +4.000H2O                -2.000H+                
+    log_k      -2.5000 
+
+(UO2)3(PO4)2:4H2O(cr) 
+(UO2)3(PO4)2:4H2O      =  +3.000UO2+2              +2.000H3PO4              +4.000H2O                -6.000H+                
+    log_k      -5.9600 
+
+(UO2)3(PO4)2:6H2O(cr) 
+(UO2)3(PO4)2:6H2O      =  +3.000UO2+2               +2.000PO4-3              +6.000H2O                             
+    	log_k      -49.91
+# This value was added from THEREDA database (primary reference [GUI/FAN2003])
+
+UO2(H2PO4)2:3H2O(cr) 
+UO2(H2PO4)2:3H2O      =  +1.000UO2+2              +2.000H3PO4              +3.000H2O                -2.000H+                
+    	log_k      -1.7
+# This value was added from THEREDA database (primary reference [GRE/FUG1992])
+
+
+
+# Np(IV)    RECOMMENDED DATA
+############################
+
+NpO2(am,hyd)          
+NpO2                   =  +1.000Np+4               +2.000H2O                -4.000H+                
+    log_k      -0.7000 
+
+# Np(V)     RECOMMENDED DATA
+############################
+
+NpO2OH(am,fr)         
+NpO2OH                 =  +1.000NpO2+              +1.000H2O                -1.000H+                
+    log_k       5.3000 
+
+NaNpO2CO3:3.5H2O(cr)  
+NaNpO2CO3:3.5H2O       =  +1.000Na+                +1.000NpO2+              +1.000CO3-2              +3.500H2O               
+    log_k     -11.0000 
+
+Na3NpO2(CO3)2(cr)     
+Na3NpO2(CO3)2          =  +3.000Na+                +1.000NpO2+              +2.000CO3-2             
+    log_k     -14.2200 
+
+KNpO2CO3(s)           
+KNpO2CO3               =  +1.000K+                 +1.000NpO2+              +1.000CO3-2             
+    log_k     -13.1500 
+
+K3NpO2(CO3)2(s)       
+K3NpO2(CO3)2           =  +3.000K+                 +1.000NpO2+              +2.000CO3-2             
+    log_k     -15.4600 
+
+NpO2OH(am,ag)         
+NpO2OH                 =  +1.000NpO2+              +1.000H2O                -1.000H+                
+    log_k       4.7000 
+
+# Np(VI)    RECOMMENDED DATA
+############################
+
+NpO2CO3(s)            
+NpO2CO3                =  +1.000NpO2+2             +1.000CO3-2             
+    log_k     -14.6000 
+
+NpO3:H2O(cr)          
+NpO3:H2O               =  +1.000NpO2+2             +2.000H2O                -2.000H+                
+    log_k       5.4700 
+
+K4NpO2(CO3)3(s)       
+K4NpO2(CO3)3           =  +4.000K+                 +1.000NpO2+2             +3.000CO3-2             
+    log_k     -26.4000 
+
+(NH4)4NpO2(CO3)3(s)   
+(NH4)4NpO2(CO3)3       =  +4.000NH4+               +1.000NpO2+2             +3.000CO3-2             
+    log_k     -26.8100 
+
+# Pu(III)   RECOMMENDED DATA
+############################
+
+Pu(OH)3(cr)           
+Pu(OH)3                =  +1.000Pu+3               +3.000H2O                -3.000H+                
+    log_k      15.8000 
+
+PuPO4(s,hyd)          
+PuPO4                  =  +1.000Pu+3               +1.000PO4-3             
+    log_k     -24.6000 
+
+# Pu(IV)    RECOMMENDED DATA
+############################
+
+Pu(HPO4)2(am,hyd)     
+Pu(HPO4)2              =  +1.000Pu+4               +2.000HPO4-2            
+    log_k     -30.4500 
+
+PuO2(hyd,ag)          
+PuO2                   =  +1.000Pu+4               +2.000H2O                -4.000H+                
+    log_k      -2.3300 
+
+# Pu(V)     RECOMMENDED DATA
+############################
+
+PuO2OH(am)            
+PuO2OH                 =  +1.000PuO2+              +1.000H2O                -1.000H+                
+    log_k       5.0000 
+
+# Pu(VI)    RECOMMENDED DATA
+############################
+
+PuO2(OH)2:H2O(cr)     
+PuO2(OH)2:H2O          =  +1.000PuO2+2             +3.000H2O                -2.000H+                
+    log_k       5.5000 
+
+PuO2CO3(s)            
+PuO2CO3                =  +1.000PuO2+2             +1.000CO3-2             
+    log_k     -14.6500 
+
+# Am(III)   RECOMMENDED DATA
+############################
+
+Am(OH)3(cr)           
+Am(OH)3                =  +1.000Am+3               +3.000H2O                -3.000H+                
+    log_k      15.6000 
+
+Am(OH)3(am)           
+Am(OH)3                =  +1.000Am+3               +3.000H2O                -3.000H+                
+    log_k      16.9000 
+
+Am(CO3)1.5(am,hyd)    
+Am(CO3)1.5             =  +1.000Am+3               +1.500CO3-2             
+    log_k     -16.7000 
+
+AmOHCO3:0.5H2O(cr)    
+AmOHCO3:0.5H2O         =  +1.000Am+3               +1.000OH-                +1.000CO3-2              +0.500H2O               
+    log_k     -22.4000 
+
+AmOHCO3(am,hyd)       
+AmOHCO3                =  +1.000Am+3               +1.000OH-                +1.000CO3-2             
+    log_k     -20.2000 
+
+NaAm(CO3)2:5H2O(cr)   
+NaAm(CO3)2:5H2O        =  +1.000Na+                +1.000Am+3               +2.000CO3-2              +5.000H2O               
+    log_k     -21.0000 
+
+Am2(CO3)3(am)           
+Am2(CO3)3              =  +2.000Am+3               +3.000CO3-2               
+    log_k     -33.4
+# This value was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+AmPO4(am,hyd)           
+AmPO4                =  +1.000Am+3               +1.000PO4-3               
+    log_k     -24.79 
+# This value was updated from NEA Second Update, Vol. 14 (Grenthe et al. 2020) 
+
+
+# Am(V)     RECOMMENDED DATA
+############################
+
+AmO2OH(am)            
+AmO2OH                 =  +1.000AmO2+              +1.000H2O                -1.000H+                
+    log_k       5.3000 
+
+NaAmO2CO3(s)          
+NaAmO2CO3              =  +1.000Na+                +1.000AmO2+              +1.000CO3-2             
+    log_k     -10.9000 
+
+# Cm(III)  SUPPLEMENTAL DATA
+# ==========================
+
+Cm(OH)3(am,coll)      
+Cm(OH)3                =  +1.000Cm+3               +3.000H2O                -3.000H+                
+    log_k      17.2000 
+
+
+###################################################################################################################
+
+# New implemented solid phases - Updated values
+
+################################################################################################################### 
+
+### IRON - NEA TDB Vol. 13a ###########################################################################################
+
+Fe(cr)                
+Fe       =  +1.000Fe+2  + 2.000e-                             
+    	log_k      15.893 
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013]; their Fe(cr) + 2.0H+ = Fe+2 + 1.0H2(g) with logK 15.893
+
+### Fe-Oxide/Hydroxide ########
+
+Hematite
+Fe2O3   + 3.000H2O        =    +2.000Fe+3      +  6.000OH-                 
+    	log_k      -84.11
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013]; there 0.5Fe2O3 logK -42.05
+
+Maghemite
+Fe2O3   + 3.000H2O        =    +2.000Fe+3      +  6.000OH-                 
+    	log_k      -81.2
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013]; there 0.5Fe2O3 logK -40.59
+
+#Magnetite
+#Fe3O4   + 4.000H2O        =    1.000Fe+2  +2.000Fe+3      +  8.000OH-      # Equation not clear             
+#    	log_k      -101.67
+#	# Data from NEA TDB Vol. 13a [Lemire et al., 2013]; there given only Gibbs-Energy 
+
+Goethite
+FeOOH 	+ 1.000H2O        =    +1.000Fe+3      +  3.000OH-                 
+    	log_k       -41.83
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
+Lepidocrosite
+FeOOH 	+ 1.000H2O        =    +1.000Fe+3      +  3.000OH-                 
+    	log_k       -40.13
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
+Ferrihydrite
+Fe(OH)3         =    1.000Fe+3      +  3.000OH-                
+    	log_k      -38.97
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
+### Fe-Carbonate ########
+
+Siderite
+FeCO3        =   1.000Fe+2 + 1.000HCO3- - 1.000H+               
+    	log_k      -0.349
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013]; calculated from Gibbs-Energy 
+
+### Fe-Chloride #########
+
+#FeCl2:H2O(cr)           
+#FeCl2:H2O              		=   +1.000FeCl2(cr)   +  1.000H2O       
+#    	log_k       4.38
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
+#FeCl2:2H2O(cr)           
+#FeCl2:2H2O   + 2.000H2O     	=    +1.000FeCl2:4H2O              
+#    	log_k       4.131
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
+#FeCl2:4H2O(cr)           
+#FeCl2:4H2O        		=    +1.000FeCl2(cr)  + 4.000H2O          
+#    	log_k       -5.921
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
+### Fe-Sulfate #########
+
+FeS(cr)             
+FeS         +  2.000H+           =  +1.000Fe+2               +1.000H2S                
+    	log_k      3.8
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013] 
+
+Melanterite           
+FeSO4:7H2O             =  1.000Fe+2               +1.000SO4-2              +7.000H2O               
+    	log_k      -2.279 
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013]
+
+FeSO4:4H2O(cr)           
+FeSO4:4H2O             =  1.000Fe+2               +1.000SO4-2              +4.000H2O                            
+   	log_k      -1.654
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013]; converted NEA-equation 
+
+FeSO4:H2O(cr)           
+FeSO4:H2O              =  1.000Fe+2               +1.000SO4-2              +1.000H2O                           
+    	log_k      -0.9908
+	# Data from NEA TDB Vol. 13a [Lemire et al., 2013]; converted NEA-equation 
+
+
+#### ANDRA Database ThermoChimie_PHREEQC_eDH_v9b0.dat ############################################################
+
+Albite
+NaAlSi3O8 = +1.000Na+     +1.000Al+3     -4.000H+     +3.000Si(OH)4     -4.000H2O
+     log_k     2.74         #
+      # delta_h  -82.813       kJ/mol        #
+       # Enthalpy of formation:           -3936.19      kJ/mol        00ARN/STE
+       # Type: Albite-low
+  # Data from ANDRA Data Base ThermoChimie
+
+Anorthite
+CaAl2Si2O8 = +1.000Ca+2   +2.000Al+3     -8.000H+     +2.000Si(OH)4
+     log_k     25.31        #
+     # delta_h  -314.358      kJ/mol        #
+     # Enthalpy of formation:           -4227.83      kJ/mol        00ARN/STE
+  # Data from ANDRA Data Base ThermoChimie
+
+Chlorite
+(Mg2.964Fe1.712Fe0.215Al1.116Ca0.011)(Si2.633Al1.367)O10(OH)8 = +0.011Ca+2     +2.964Mg+2     +0.215Fe+3     +1.712Fe+2     +2.483Al+3     -17.468H+     +2.633Si(OH)4     +7.468H2O
+     log_k     61.23        #
+     #delta_h  -632.836      kJ/mol        #
+       # Enthalpy of formation:           -8240.69      kJ/mol        06GAI
+       # Type: Chlorite-Cca-2
+  # Data from ANDRA Data Base ThermoChimie
+
+
+Illite
+K0.85Fe0.25Al2.6Si3.15O10(OH)2 = +0.850K+     +0.250Fe+3     +2.600Al+3     -9.400H+     +3.150Si(OH)4     -0.600H2O
+     log_k     10.07        #
+     #delta_h  -252.345      kJ/mol        #
+     # Enthalpy of formation:           -5805.328     kJ/mol        07VIE
+     # Type: Illite-FeIII
+  # Data from ANDRA Data Base ThermoChimie
+
+Montmorillonite
+Na0.33Mg0.33Fe0.67Al1.0Si4O10(OH)2 = +0.330Mg+2     +0.330Na+     +0.670Fe+3     +1.000Al+3     -6.000H+     +4.000Si(OH)4     -4.000H2O
+     log_k     2.89
+  #delta_h  -137.779      kJ/mol
+  # Enthalpy of formation:           -5368.33      kJ/mol        07VIE
+      # Type: Fe-Montmorillonite-Na
+  # Data from ANDRA Data Base ThermoChimie
+
+
+##### Other Literature ######################################################################################
+
+Gibbsite(gen)
+Al(OH)3              =  +1.000Al+3               +3.000H2O                -3.000H+
+    log_k       10.35
+# Data for a generic Gibbsite phase from fit to experimental Gorleben data
+
+Gibbsite(am)
+Al(OH)3              =  +1.000Al+3               +3.000H2O                -3.000H+
+    log_k       9.6661
+# Data from Lindsay (1979)
+
+K-feldspar  # Orthoclase
+KAlSi3O8 + 4H+ + 4H2O = Al+3 + 3Si(OH)4 + K+
+       log_k     -0.12
+#      log_k calculated by logK(T)-functions (Stefánsson and Arnórsson, 2000) using T=298,15K
+#      microcline, the triclinic form of K-feldspar, was used as an analogue 
+#      published in Richter et al. (2016)
+
+Muscovite
+KAl3Si3O10(OH)2 = +1.000K+     +3.000Al+3     -10.000H+     +3.000Si(OH)4
+    log_k     14.15 # ± 0.74 (the error representing 2sigma)        #
+#   only calculations based on formation data are possible and the respective solubility constants were averaged 
+#   published in Richter et al. (2016)
+
+
+#######################################################################################################
+
+
+# PMATCH GASES
+
+CH4(g)                
+CH4                    =  +1.000CH4               
+    log_k      -2.8565 
+
+CO2(g)                
+CO2                    =  +1.000H+                 -1.000H2O                +1.000HCO3-             
+    log_k      -7.8198 
+
+H2(g)                 
+H2                     =  +1.000H2                
+    log_k      -3.1056 
+
+N2(g)                 
+N2                     =  +1.000N2                
+    log_k      -3.1864 
+
+O2(g)                 
+O2                     =  +1.000O2                
+    log_k      -2.8944 
+
+H2S(g)                
+H2S                    =  +1.000HS-                +1.000H+                
+    log_k      -8.0100 
+
+H2Se(g)               
+H2Se                   =  +1.000H2Se              
+    log_k      -1.1000 
+
+
+#####################################################################################################################
+
+# Implemented Exchange Species relevant for the Opalinus Clay 
+
+#####################################################################################################################
+
+#       Genereal Information: 
+#        
+#       Exchange Daten for all clay minerals (X), Montmorillonite (Y), Illite (Z) 
+#       Allocation CEC -> 25 % Montmorillonite, 75 % Illite (clay minerals: Illite, Illite/Smectite mixed layers = 50 % Illite and 50 % Montmorillonite (Smectite))
+
+EXCHANGE_MASTER_SPECIES 
+ X X-                   # all clay minerals
+ Z Z-                   # Illite 
+ Y Y-                   # Montmorillonite 
+
+EXCHANGE_SPECIES
+ X- = X- 
+    log_k 0.0 
+
+ X- + H+ = HX              # GD-Exp. Wersin et al. (2009), p. 53
+    log_k = 0.0
+
+ X- + Na+ = NaX
+    log_k = 0.0
+
+ X- + K+ = KX
+    log_k = 1.4            # value from Pearson et al. (2011), PC-C Modellierung  
+
+ 2X- + Ca+2 = CaX2
+   # log_k = 0.7           # value from Pearson et al. (2011) PC-C Modellierung 
+     log_k = 0.8           # value from Wersin et al. (2009), GD-Exp. 
+
+ 2X- + Mg+2 = MgX2
+   # log_k = 0.7           # value from Pearson et al. (2011) PC-C Modellierung 
+    log_k = 0.8            # value from Wersin et al. (2009), GD-Exp.
+
+ 2X- + Sr+2 = SrX2
+   # log_k = 0.7           # value from Pearson et al. (2011) PC-C Modellierung
+    log_k = 0.8            # value from Wersin et al. (2009), GD-Exp.
+
+ 2X- + Fe+2 = FeX2
+   # log_k = 0.7           # value from Pearson et al. (2011) PC-C Modellierung   
+    log_k = 0.8            # value from Wersin et al. (2009), GD-Exp.
+
+### Illite ###
+
+ Z- = Z- 
+    log_k 0.0 
+
+ Z- + H+ = HZ              # GD-Exp. Wersin et al. (2009), p. 53
+    log_k = 0.0
+
+ Z- + Na+ = NaZ
+    log_k = 0.0
+
+ Z- + K+ = KZ 
+    log_k = 0.92           # value from Wersin et al. (2009), GD-Experiment, Tab. 3-3 (Illite)   
+
+ 2Z- + Ca+2 = CaZ2
+    log_k = 0.24           # s.o. 
+
+ 2Z- + Mg+2 = MgZ2
+    log_k = 0.58           # s.o.
+
+ 2Z- + Sr+2 = SrZ2 
+    log_k = 0.24           # s.o.
+ 
+ 2Z- + Fe+2 = FeZ2
+    log_k = 0.7           # value from Pearson et al. (2011), PC-C modelling
+
+ 2Z- + UO2+2 = UO2Z2   
+    log_k = 0.65          # value from M.Stockmann (HZDR); Illite: Kc=4.5 from /BB05/ (PSI-Report)
+
+### Montmorillonite ###    
+
+ Y- = Y-
+    log_k = 0.0
+ Y- + Na+ = NaY
+    log_k = 0.0
+ Y- + H+ = HY             # GD-Exp. Wersin et al. (2009), p. 53
+    log_k = 0.0 
+ Y- + K+ = KY 
+    log_k = 1.1           # value from Wersin et al. (2009), GD-Experiment, Tab. 3-3 (Smektite)
+ 2Y- + Mg+2 = MgY2
+    log_k = 0.36          # s.o.           
+ 2Y- + Ca+2 = CaY2 
+    log_k = 0.42          # s.o.
+ 2Y- + Sr+2 = SrY2 
+    log_k = 0.37          # s.o.
+ 2Y- + Fe+2 = FeY2
+    log_k = 0.8           # value from Baeyens & Bradbury (2017), TR 17-13, Kc = 6.3, Tab. F1 and Soltermann (2014)
+ 2Y- + UO2+2 = UO2Y2   
+   log_k = 0.15           # value from M.Stockmann (HZDR); Montmorillonite: Kc=1.4 from /BB05a/ 
+                
+
+######################################################################################################################
+
+# Implemented surface species relevant in the context of the WEIMAR project (far-field of a nuclear waste repository)
+
+###################################################################################################################### 
+
+#     	General information:
+#
+# 	This data compilation focuses on surface complexation parameters (reaction equations, pK- and logK-values) for 
+#	representative sorbates (pair of element and minerals). All values are taken from the
+#	sorption database RES³T [Brendler et al. 2003] or were fitted from representative published experimental values. 
+#	As SCM Type primary the Diffuse Double Layer Model (DDL) is preferred, but in case of no/low SCM data sets 
+#	additionally other SCM models are used. Generic sites (»XOH) are prefered, with no differentiation between weak 
+#	and strong sites. All pK- and logK-values were normalized to the reference binding site 2.31 sites/nm² and corrected
+#	to ionic strenght IS=0 using the Davies equation. Full bibliographic references are available in RES³T (www.hzdr.de/res3t).
+#
+#
+#       Additions made by Theresa: 
+#       SCM-Daten für Tonminerale (Montmorrillonit = Smektit, Illit, Kaolinit, Chlorit) ergänzt basierend auf Joseph et al. (2013) = JOS13. 
+#       DDL-Modell bevorzugt mit strong (sOH) und weak (wOH) binding sites für Illit und Montmorillonit. 
+# 
+
+SURFACE_MASTER_SPECIES
+
+	Ill_w		Ill_wOH		# Ill	= Mineral group: 3-layer-clay minerals (illite)
+        Ill_s           Ill_sOH         # _w = weak binding sites, _s = strong binding sites 
+        
+        Kln_a           Kln_aOH         # Kln   = Mineral group: 2-layer clay minerals (kaolinite)
+        Kln_si          Kln_siOH        # _a = aluminol sites, _si = silanol sites  
+
+        Mll_w           Mll_wOH         # Mll   = Mineral group: 3-layer clay minerals (smectite = montmorillonite)
+        Mll_s           Mll_sOH         # _w = weak binding sites, _s = strong binding sites 
+
+        Chl             ChlOH           # Chl   = Mineral group: 4-layer clay minerals (chlorite)
+
+SURFACE_SPECIES					
+
+### Kaolinite ##################################################################################################
+	
+### Aluminol sites ###
+
+	Kln_aOH = Kln_aOH
+	log_K	0.0
+    	Kln_aOH + H+ = Kln_aOH2+
+	log_K	8.33		   				# mean of /TS96/ and /CW88/
+	Kln_aOH = Kln_aO- + H+
+	#log_K  -9.09         					# mean of /TS96/ and /CW88/
+        log_K	-9.73                                           # /JOS13/
+
+	Kln_aOH + UO2+2 = Kln_aOHUO2+2
+#	log_k	9.2						# /PAY92/ (in TS96)
+        log_k   9.5                                             # normiert auf 1.155 sites/nm2
+	Kln_aOH + UO2+2 = Kln_aOUO2+ + H+
+#	log_k	2.18						# /PAY92/ (in TS96)
+        log_k   2.48                                            # normiert auf 1.155 sites/nm2
+ 	Kln_aOH + UO2+2 + H2O = Kln_aOUO2(OH) + 2H+
+#	log_k	-4.74						# /PAY92/ (in TS96)
+        log_k   -4.44                                           # normiert auf 1.155 sites/nm2
+ 	
+### Silanol sites ###
+	
+        Kln_siOH = Kln_siOH
+	log_K	0.0
+
+	Kln_siOH = Kln_siO- + H+
+        log_K	-6.9                                            # /JOS13/
+
+        Kln_siOH + UO2+2 = Kln_siOHUO2+2
+	log_k	6.03						# /JOS13/
+	Kln_siOH + UO2+2 = Kln_siOUO2+ + H+
+	log_k   1.26						# /JOS13/
+ 	Kln_siOH + UO2+2 + H2O = Kln_siOUO2(OH) + 2H+
+	log_k   -5.54						# /JOS13/, korrigiert von MS (HZDR)
+
+### Illite ###################################################################################################
+   	
+### weak-binding sites ###
+
+	Ill_wOH = Ill_wOH
+	log_K	0.0
+    	Ill_wOH + H+ = Ill_wOH2+
+	#log_K  5.12                				# mean of /BB97b/, /WMDV98/, and /WAKWW94/
+        log_K = 4.59                                            # /JOS13/
+	Ill_wOH = Ill_wO- + H+
+	#log_K   -7.71               				# mean of /BB97b/, /WMDV98/, and /WAKWW94/
+        log_K = -7.11                                           # /JOS13/
+    
+   # U(VI)
+	Ill_wOH + UO2+2 = Ill_wOUO2+ + H+
+	#log_k   0.25						# mean of /BB05a/, /BB05c/ and /MBDSB12/ --> NE Model
+        log_k = -0.81                                           # /JOS13/
+    	Ill_wOH + UO2+2 + H2O = Ill_wOUO2(OH) + 2H+
+	#log_k   -5.75 						# mean of /BB05a/, /BB05c/ and /MBDSB12/ --> NE Model
+        log_k = -6.21                                           # /JOS13/
+
+### strong-binding sites ###
+        
+	Ill_sOH = Ill_sOH
+	log_K	0.0
+    	Ill_sOH + H+ = Ill_sOH2+
+	#log_K  5.12                				# mean of /BB97b/, /WMDV98/, and /WAKWW94/
+        log_K = 4.9                                             # /JOS13/
+	Ill_sOH = Ill_sO- + H+
+	#log_K   -7.71               				# mean of /BB97b/, /WMDV98/, and /WAKWW94/
+        log_K = -6.8                                            # /JOS13/
+
+   # U(VI)
+	Ill_sOH + UO2+2 = Ill_sOUO2+ + H+
+	#log_k   0.25						# mean of /BB05a/, /BB05c/ and /MBDSB12/ --> NE Model
+        log_k = 2.                                              # /JOS13/
+    	Ill_sOH + UO2+2 + H2O = Ill_sOUO2(OH) + 2H+
+	#log_k   -5.75 						# mean of /BB05a/, /BB05c/ and /MBDSB12/ --> NE Model
+        log_k = -4.2                                            # /JOS13/
+        Ill_sOH + UO2+2 + 2H2O = Ill_sOUO2(OH)2-1 + 3H+          
+        log_k = -10.9                                           # /JOS13/
+        Ill_sOH + UO2+2 + 3H2O = Ill_sOUO2(OH)3-2 + 4H+ 
+        log_k = -18.1                                           # /JOS13/
+
+   # U(IV) 
+   #     Ill_sOH + U+4 + H2O  = Ill_sOUOH+2 + 2H+
+   #     log_k = 7.1                                             # TR 17-11, Tab. A-3
+   #     Ill_sOH + U+4 + 2H2O = Ill_sOU(OH)2+1 + 3H+          
+   #     log_k = 3.6                                             # TR 17-11, Tab. A-3
+   #     Ill_sOH + U+4 + 4H2O = Ill_sOU(OH)4 + 5H+
+   #     log_k = -1.6                                            # TR 17-11, Tab. A-3
+
+### Montmorillonite ################################################################################################
+
+### weak-binding sites ###
+       
+	Mll_wOH = Mll_wOH
+	log_K	0.0
+    	Mll_wOH + H+ = Mll_wOH2+
+        log_K = 3.98                                            # /JOS13/
+	Mll_wOH = Mll_wO- + H+
+        log_K = -8.42                                           # /JOS13/
+   
+   # U(VI) 
+	Mll_wOH + UO2+2 = Mll_wOUO2+ + H+
+        log_k = 0.18                                            # /JOS13/
+    	Mll_wOH + UO2+2 + H2O = Mll_wOUO2(OH) + 2H+
+        log_k = -6.22                                           # /JOS13/
+
+### strong-binding sites ###
+
+	Mll_sOH = Mll_sOH
+	log_K	0.0
+    	Mll_sOH + H+ = Mll_sOH2+
+        log_K = 4.34                                            # /JOS13/
+	Mll_sOH = Mll_sO- + H+
+        log_K = -8.06                                           # /JOS13/
+
+   # U(VI) 
+	Mll_sOH + UO2+2 = Mll_sOUO2+ + H+
+        log_k = 2.94                                            # /JOS13/
+    	Mll_sOH + UO2+2 + H2O = Mll_sOUO2(OH) + 2H+
+        log_k = -3.56                                           # /JOS13/
+        Mll_sOH + UO2+2 + 2H2O = Mll_sOUO2(OH)2-1 + 3H+          
+        log_k = -11.16                                          # /JOS13/
+        Mll_sOH + UO2+2 + 3H2O = Mll_sOUO2(OH)3-2 + 4H+ 
+        log_k = -20.66                                          # /JOS13/
+
+   # U(IV) 
+   #     Mll_sOH + U+4 + H2O  = Mll_sOUOH+2 + 2H+
+   #     log_k = 7.7                                             # TR 17-11, Tab. A-3
+   #     Mll_sOH + U+4 + 2H2O = Mll_sOU(OH)2+1 + 3H+          
+   #     log_k = 4.0                                             # TR 17-11, Tab. A-3
+   #     Mll_sOH + U+4 + 4H2O = Mll_sOU(OH)4 + 5H+
+   #     log_k = -1.4                                            # TR 17-11, Tab. A-3
+
+### Chlorite #########################################################################################################
+
+	ChlOH = ChlOH
+	log_K	0.0
+    	ChlOH + H+ = ChlOH2+
+        log_K = 10.2                                            # /JOS13/
+
+	ChlOH + UO2+2 = ChlOUO2+ + H+
+        log_K = 4.51                                            # /JOS13/
+
+
+END

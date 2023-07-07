@@ -4,7 +4,6 @@
 #include "poet/ChemistryModule.hpp"
 
 #include <algorithm>
-#include <bits/stdint-uintn.h>
 #include <cstddef>
 #include <cstdint>
 #include <iomanip>
