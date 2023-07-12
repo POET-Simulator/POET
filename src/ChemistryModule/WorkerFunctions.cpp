@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-04-24 16:55:34 mluebke"
+//  Time-stamp: "Last modified 2023-07-12 12:56:17 mluebke"
 
 #include "IrmResult.h"
 #include "poet/ChemistryModule.hpp"
@@ -101,6 +101,12 @@ void poet::ChemistryModule::WorkerLoop() {
         break;
       }
       WorkerMetricsToMaster(type);
+      break;
+    }
+    case CHEM_PROGRESSBAR: {
+      bool enable;
+      ChemBCast(&enable, 1, MPI_CXX_BOOL);
+      setProgressBarPrintout(enable);
       break;
     }
     case CHEM_BREAK_MAIN_LOOP: {

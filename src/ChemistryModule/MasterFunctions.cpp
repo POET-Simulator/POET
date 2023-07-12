@@ -240,7 +240,7 @@ void poet::ChemistryModule::MasterRunParallel() {
   // grid.shuffleAndExport(mpi_buffer);
   std::vector<double> mpi_buffer =
       shuffleField(chem_field.AsVector(), this->n_cells, this->prop_count,
-                         wp_sizes_vector.size());
+                   wp_sizes_vector.size());
 
   /* setup local variables */
   pkg_to_send = wp_sizes_vector.size();
@@ -263,7 +263,9 @@ void poet::ChemistryModule::MasterRunParallel() {
   // while there are still packages to recv
   while (pkg_to_recv > 0) {
     // print a progressbar to stdout
-    printProgressbar((int)i_pkgs, (int)wp_sizes_vector.size());
+    if (print_progessbar) {
+      printProgressbar((int)i_pkgs, (int)wp_sizes_vector.size());
+    }
     // while there are still packages to send
     if (pkg_to_send > 0) {
       // send packages to all free workers ...
@@ -288,7 +290,7 @@ void poet::ChemistryModule::MasterRunParallel() {
   // grid.importAndUnshuffle(mpi_buffer);
   std::vector<double> out_vec{mpi_buffer};
   unshuffleField(mpi_buffer, this->n_cells, this->prop_count,
-                       wp_sizes_vector.size(), out_vec);
+                 wp_sizes_vector.size(), out_vec);
   chem_field.SetFromVector(out_vec);
 
   /* do master stuff */
@@ -331,4 +333,13 @@ poet::ChemistryModule::CalculateWPSizesVector(uint32_t n_cells,
   }
 
   return wp_sizes_vector;
+}
+
+void poet::ChemistryModule::setProgressBarPrintout(bool enabled) {
+  if (is_master) {
+    int type = CHEM_PROGRESSBAR;
+    ChemBCast(&type, 1, MPI_INT);
+    ChemBCast(&enabled, 1, MPI_CXX_BOOL);
+  }
+  this->print_progessbar = enabled;
 }
