@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-04-24 14:30:06 mluebke"
+//  Time-stamp: "Last modified 2023-07-12 12:50:53 mluebke"
 
 #ifndef CHEMISTRYMODULE_H_
 #define CHEMISTRYMODULE_H_
@@ -274,6 +274,13 @@ public:
    * \return Reference to the chemical field.
    */
   Field &getField() { return this->chem_field; }
+
+  /**
+   * **Master only** Enable/disable progress bar.
+   *
+   * \param enabled True if print progressbar, false if not.
+   */
+  void setProgressBarPrintout(bool enabled);
 #endif
 protected:
 #ifdef POET_USE_PRM
@@ -290,6 +297,7 @@ protected:
     CHEM_DHT_READ_FILE,
     CHEM_WORK_LOOP,
     CHEM_PERF,
+    CHEM_PROGRESSBAR,
     CHEM_BREAK_MAIN_LOOP
   };
 
@@ -390,6 +398,8 @@ protected:
   double send_recv_t = 0.;
 
   std::array<double, 2> base_totals{0};
+
+  bool print_progessbar{false};
 
 #endif
 

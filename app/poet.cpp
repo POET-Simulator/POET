@@ -131,6 +131,10 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
   poet::ChemistryModule::SingleCMap init_df = DFToHashMap(d_params.initial_t);
   chem.initializeField(diffusion.getField());
 
+  if (params.getNumParams().print_progressbar) {
+    chem.setProgressBarPrintout(true);
+  }
+
   if (params.getNumParams().dht_enabled) {
     chem.SetDHTEnabled(true, params.getNumParams().dht_size_per_process,
                        chem_params.dht_species);

@@ -141,6 +141,8 @@ int SimParams::parseFromCmdl(char *argv[], RInside &R) {
     return poet::PARSER_ERROR;
   }
 
+  simparams.print_progressbar = cmdl[{"P", "progress"}];
+
   /*Parse DHT arguments*/
   simparams.dht_enabled = cmdl["dht"];
   // cout << "CPP: DHT is " << ( dht_enabled ? "ON" : "OFF" ) << '\n';

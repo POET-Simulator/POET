@@ -67,6 +67,9 @@ typedef struct {
   unsigned int wp_size;
   /** indicates if resulting grid should be stored after every iteration */
   bool store_result;
+  /** indicating whether the progress bar during chemistry simulation should be
+   * printed or not */
+  bool print_progressbar;
 } t_simparams;
 
 using GridParams = struct s_GridParams {
@@ -233,7 +236,8 @@ public:
 private:
   std::list<std::string> validateOptions(argh::parser cmdl);
 
-  const std::set<std::string> flaglist{"ignore-result", "dht", "dht-nolog"};
+  const std::set<std::string> flaglist{"ignore-result", "dht", "dht-nolog", "P",
+                                       "progress"};
   const std::set<std::string> paramlist{"work-package-size", "dht-signif",
                                         "dht-strategy",      "dht-size",
                                         "dht-snaps",         "dht-file"};
