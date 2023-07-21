@@ -19,12 +19,12 @@
 */
 
 #include "poet/ChemistryModule.hpp"
-#include <RInside.h>
 #include <Rcpp.h>
 #include <cstdint>
 #include <cstdlib>
 #include <poet/DiffusionModule.hpp>
 #include <poet/Grid.hpp>
+#include <poet/RInsidePOET.hpp>
 #include <poet/SimParams.hpp>
 
 #include <cstring>
@@ -292,8 +292,7 @@ int main(int argc, char *argv[]) {
     return EXIT_SUCCESS;
   }
 
-  /* initialize R runtime */
-  RInside R(argc, argv);
+  RInsidePOET &R = RInsidePOET::getInstance();
 
   /*Loading Dependencies*/
   // TODO: kann raus
