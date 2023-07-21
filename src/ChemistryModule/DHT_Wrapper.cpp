@@ -1,3 +1,5 @@
+//  Time-stamp: "Last modified 2023-07-21 17:22:00 mluebke"
+
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
@@ -61,9 +63,6 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, uint32_t dht_size,
                           &poet::Murmur2_64A);
 
   this->dht_signif_vector.resize(key_size, DHT_KEY_SIGNIF_DEFAULT);
-  this->dht_signif_vector[0] = DHT_KEY_SIGNIF_TOTALS;
-  this->dht_signif_vector[1] = DHT_KEY_SIGNIF_TOTALS;
-  this->dht_signif_vector[2] = DHT_KEY_SIGNIF_CHARGE;
 
   this->dht_prop_type_vector.resize(key_count, DHT_TYPE_DEFAULT);
   this->dht_prop_type_vector[0] = DHT_TYPE_TOTAL;
@@ -192,13 +191,11 @@ std::vector<DHT_Keyelement> DHT_Wrapper::fuzzForDHT(int var_count, void *key,
           this->dht_prop_type_vector[i] == DHT_TYPE_DEFAULT) {
         continue;
       }
-      if (this->dht_prop_type_vector[i] == DHT_TYPE_IGNORE) {
-        continue;
-      }
       if (this->dht_prop_type_vector[i] == DHT_TYPE_TOTAL) {
         curr_key -= base_totals[totals_i++];
       }
-      vecFuzz[i].sc_notation = round_key_element(curr_key, dht_signif_vector[i]);
+      vecFuzz[i].sc_notation =
+          round_key_element(curr_key, dht_signif_vector[i]);
     }
   }
   // if timestep differs over iterations set current current time step at the
@@ -215,12 +212,4 @@ void poet::DHT_Wrapper::SetSignifVector(std::vector<uint32_t> signif_vec) {
   }
 
   this->dht_signif_vector = signif_vec;
-}
-void poet::DHT_Wrapper::SetPropTypeVector(std::vector<uint32_t> prop_type_vec) {
-  if (prop_type_vec.size() != this->key_count) {
-    throw std::runtime_error(
-        "Prop type vector size mismatches count of key elements.");
-  }
-
-  this->dht_prop_type_vector = prop_type_vec;
 }

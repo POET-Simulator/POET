@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-07-12 12:56:17 mluebke"
+//  Time-stamp: "Last modified 2023-07-21 17:22:19 mluebke"
 
 #include "IrmResult.h"
 #include "poet/ChemistryModule.hpp"
@@ -68,13 +68,6 @@ void poet::ChemistryModule::WorkerLoop() {
       std::vector<uint32_t> input_vec;
 
       SetDHTSignifVector(input_vec);
-      break;
-    }
-    case CHEM_DHT_PROP_TYPE_VEC: {
-      std::vector<uint32_t> input_vec(this->prop_count);
-      ChemBCast(input_vec.data(), this->prop_count, MPI_UINT32_T);
-
-      SetDHTPropTypeVector(input_vec);
       break;
     }
     case CHEM_DHT_SNAPS: {

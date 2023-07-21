@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-07-21 12:35:23 mluebke"
+//  Time-stamp: "Last modified 2023-07-21 17:20:10 mluebke"
 
 #ifndef CHEMISTRYMODULE_H_
 #define CHEMISTRYMODULE_H_
@@ -162,13 +162,7 @@ public:
    * is defined by prop_type vector (ChemistryModule::GetPropNames).
    */
   void SetDHTSignifVector(std::vector<uint32_t> &signif_vec);
-  /**
-   * **Master only** Set the DHT rounding type of each species. See
-   * DHT_PROP_TYPES enumemartion for explanation.
-   *
-   * \param proptype_vec Vector defining DHT prop type for each species.
-   */
-  void SetDHTPropTypeVector(std::vector<uint32_t> proptype_vec);
+
   /**
    * **Master only** Load the state of the DHT from given file.
    *
@@ -272,7 +266,6 @@ protected:
     CHEM_INIT_SPECIES,
     CHEM_DHT_ENABLE,
     CHEM_DHT_SIGNIF_VEC,
-    CHEM_DHT_PROP_TYPE_VEC,
     CHEM_DHT_SNAPS,
     CHEM_DHT_READ_FILE,
     CHEM_WORK_LOOP,

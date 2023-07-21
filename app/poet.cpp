@@ -141,9 +141,6 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
     if (!chem_params.dht_signif.empty()) {
       chem.SetDHTSignifVector(chem_params.dht_signif);
     }
-    if (!params.getDHTPropTypeVector().empty()) {
-      chem.SetDHTPropTypeVector(params.getDHTPropTypeVector());
-    }
     if (!params.getDHTFile().empty()) {
       chem.ReadDHTFile(params.getDHTFile());
     }

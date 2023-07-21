@@ -198,7 +198,6 @@ public:
   auto getEvictions() { return this->dht_evictions; };
 
   void SetSignifVector(std::vector<uint32_t> signif_vec);
-  void SetPropTypeVector(std::vector<uint32_t> prop_type_vec);
 
   void setBaseTotals(const std::array<double, 2> &bt) {
     this->base_totals = bt;
