@@ -1,5 +1,5 @@
 <!--
-    Time-stamp: "Last modified 2023-07-20 11:30:44 delucia"
+    Time-stamp: "Last modified 2023-07-21 12:34:43 mluebke"
 -->
 
 # POET
@@ -69,8 +69,6 @@ following available options:
   DHT usage. Defaults to _OFF_.
 - **POET_ENABLE_TESTING**=_boolean_ - enables small set of unit tests (more to
   come). Defaults to _OFF_.
-- **POET_USE_PRM_BACKEND**=_bollean_ - use the PhreeqcRM parallelization instead
-  of POET's one. Intended for debugging purposes for modellers.
   
 ### Example: Build from scratch
 

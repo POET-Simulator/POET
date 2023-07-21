@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-07-12 12:50:53 mluebke"
+//  Time-stamp: "Last modified 2023-07-21 12:35:23 mluebke"
 
 #ifndef CHEMISTRYMODULE_H_
 #define CHEMISTRYMODULE_H_
@@ -24,20 +24,6 @@ namespace poet {
  */
 class ChemistryModule : public PhreeqcRM {
 public:
-#ifdef POET_USE_PRM
-  /**
-   * Creates a new instance of Chemistry module with given grid cell count and
-   * using MPI communicator.
-   *
-   * Constructor is just a wrapper around PhreeqcRM's constructor, so just calls
-   * the base class constructor.
-   *
-   * \param nxyz Count of grid cells.
-   * \param communicator MPI communicator where work will be distributed.
-   */
-  ChemistryModule(uint32_t nxyz, MPI_Comm communicator)
-      : PhreeqcRM(nxyz, communicator), n_cells(nxyz){};
-#else
   /**
    * Creates a new instance of Chemistry module with given grid cell count, work
    * package size and communicator.
@@ -59,7 +45,6 @@ public:
    * Deconstructor, which frees DHT data structure if used.
    */
   ~ChemistryModule();
-#endif
 
   /**
    * Parses the input script and extract information needed during runtime.
@@ -91,8 +76,6 @@ public:
    * Return the accumulated runtime in seconds for chemical simulation.
    */
   auto GetChemistryTime() const { return this->chem_t; }
-
-#ifndef POET_USE_PRM
 
   /**
    * Create a new worker instance inside given MPI communicator.
@@ -126,9 +109,9 @@ public:
    * Enumerating DHT file options
    */
   enum {
-      DHT_FILES_DISABLED = 0, //!< disabled file output
-      DHT_FILES_SIMEND,       //!< only output of snapshot after simulation
-      DHT_FILES_ITEREND       //!< output snapshots after each iteration
+    DHT_FILES_DISABLED = 0, //!< disabled file output
+    DHT_FILES_SIMEND,       //!< only output of snapshot after simulation
+    DHT_FILES_ITEREND       //!< output snapshots after each iteration
   };
 
   /**
@@ -281,11 +264,8 @@ public:
    * \param enabled True if print progressbar, false if not.
    */
   void setProgressBarPrintout(bool enabled);
-#endif
+
 protected:
-#ifdef POET_USE_PRM
-  void PrmToPoetField(std::vector<double> &field);
-#else
   enum {
     CHEM_INIT,
     CHEM_WP_SIZE,
@@ -400,8 +380,6 @@ protected:
   std::array<double, 2> base_totals{0};
 
   bool print_progessbar{false};
-
-#endif
 
   double chem_t = 0.;
 
