@@ -12,7 +12,6 @@
 #include <utility>
 #include <vector>
 
-#ifndef POET_USE_PRM
 poet::ChemistryModule::ChemistryModule(uint32_t nxyz, uint32_t wp_size,
                                        MPI_Comm communicator)
     : PhreeqcRM(nxyz, 1), group_comm(communicator), wp_size(wp_size) {
@@ -42,10 +41,7 @@ poet::ChemistryModule::createWorker(MPI_Comm communicator) {
   return ChemistryModule(wp_size, wp_size, communicator);
 }
 
-#endif
-
 void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
-#ifndef POET_USE_PRM
   if (this->is_master) {
     int f_type = CHEM_INIT;
     PropagateFunctionType(f_type);
@@ -54,7 +50,6 @@ void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
     ChemBCast(&count, 1, MPI_INT);
     ChemBCast(const_cast<char *>(input_script_path.data()), count, MPI_CHAR);
   }
-#endif
 
   this->RunFile(true, true, false, input_script_path);
   this->RunString(true, false, false, "DELETE; -all; PRINT; -warnings 0;");
@@ -69,7 +64,6 @@ void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
   char equilibrium = (speciesPerModule[3] == 0 ? -1 : 1);
   char surface = (speciesPerModule[4] == 0 ? -1 : 1);
 
-#ifdef POET_USE_PRM
   std::vector<int> ic1;
   ic1.resize(this->nxyz * 7, -1);
   // TODO: hardcoded reaction modules
@@ -84,25 +78,8 @@ void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
   }
 
   this->InitialPhreeqc2Module(ic1);
-#else
-  std::vector<int> ic1;
-  ic1.resize(this->nxyz * 7, -1);
-  // TODO: hardcoded reaction modules
-  for (int i = 0; i < nxyz; i++) {
-    ic1[i] = 1;                   // Solution 1
-    ic1[nxyz + i] = equilibrium;  // Equilibrium 1
-    ic1[2 * nxyz + i] = exchange; // Exchange none
-    ic1[3 * nxyz + i] = surface;  // Surface none
-    ic1[4 * nxyz + i] = -1;       // Gas phase none
-    ic1[5 * nxyz + i] = -1;       // Solid solutions none
-    ic1[6 * nxyz + i] = kinetics; // Kinetics 1
-  }
-
-  this->InitialPhreeqc2Module(ic1);
-#endif
 }
 
-#ifndef POET_USE_PRM
 void poet::ChemistryModule::initializeField(const Field &trans_field) {
 
   if (is_master) {
@@ -368,27 +345,3 @@ void poet::ChemistryModule::unshuffleField(const std::vector<double> &in_buffer,
     }
   }
 }
-
-#else // POET_USE_PRM
-
-inline void poet::ChemistryModule::PrmToPoetField(std::vector<double> &field) {
-  this->getDumpedField(field);
-}
-
-void poet::ChemistryModule::RunCells() {
-  PhreeqcRM::RunCells();
-
-  std::vector<double> tmp_field;
-
-  PrmToPoetField(tmp_field);
-  this->field = tmp_field;
-
-  for (uint32_t i = 0; i < field.size(); i++) {
-    uint32_t back_i = static_cast<uint32_t>(i / this->nxyz);
-    uint32_t mod_i = i % this->nxyz;
-
-    field[i] = tmp_field[back_i + (mod_i * this->prop_count)];
-  }
-}
-
-#endif
