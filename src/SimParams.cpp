@@ -220,55 +220,7 @@ int SimParams::parseFromCmdl(char *argv[], RInside &R) {
   return poet::PARSER_OK;
 }
 
-void SimParams::initVectorParams(RInside &R) {
-  if (simparams.dht_enabled) {
-    /*Load significance vector from R setup file (or set default)*/
-    bool signif_vector_exists = R.parseEval("exists('signif_vector')");
-    if (signif_vector_exists) {
-      dht_signif_vector = as<std::vector<uint32_t>>(R["signif_vector"]);
-    }
-
-    /*Load property type vector from R setup file (or set default)*/
-    bool prop_type_vector_exists = R.parseEval("exists('prop_type')");
-    if (prop_type_vector_exists) {
-      std::vector<std::string> prop_type_R =
-          as<std::vector<string>>(R["prop_type"]);
-      this->dht_prop_type_vector.clear();
-      this->dht_prop_type_vector.reserve(prop_type_R.size());
-
-      for (const auto &type : prop_type_R) {
-        if (type == "act") {
-          this->dht_prop_type_vector.push_back(DHT_TYPE_CHARGE);
-          continue;
-        }
-
-        if (type == "ignore") {
-          this->dht_prop_type_vector.push_back(DHT_TYPE_IGNORE);
-          continue;
-        }
-
-        this->dht_prop_type_vector.push_back(DHT_TYPE_DEFAULT);
-      }
-    }
-
-    if (simparams.world_rank == 0) {
-      // MDL: new output on signif_vector and prop_type
-      if (signif_vector_exists) {
-        cout << "CPP: using problem-specific rounding digits: " << endl;
-        R.parseEval("print(data.frame(prop=prop, type=prop_type, "
-                    "digits=signif_vector))");
-      } else {
-        cout << "CPP: using DHT default rounding digits = "
-             << simparams.dht_significant_digits << endl;
-      }
-
-      // MDL: pass to R the DHT stuff. These variables exist
-      // only if dht_enabled is true
-      R["dht_final_signif"] = dht_signif_vector;
-      R["dht_final_proptype"] = dht_prop_type_vector;
-    }
-  }
-}
+void SimParams::initVectorParams(RInside &R) {}
 
 std::list<std::string> SimParams::validateOptions(argh::parser cmdl) {
   /* store all unknown parameters here */

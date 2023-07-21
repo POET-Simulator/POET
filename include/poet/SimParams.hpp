@@ -194,16 +194,6 @@ public:
   auto getDHTSignifVector() const { return this->dht_signif_vector; };
 
   /**
-   * @brief Get the DHT_Prop_Type_Vector
-   *
-   * Returns a vector indicating of which type a variable of a grid cell is.
-   *
-   * @return std::vector<std::string> Vector if strings defining a type of a
-   * variable
-   */
-  auto getDHTPropTypeVector() const { return this->dht_prop_type_vector; };
-
-  /**
    * @brief Return name of DHT snapshot.
    *
    * Name of the DHT file which is used to initialize the DHT with a previously
@@ -245,7 +235,6 @@ private:
   t_simparams simparams;
 
   std::vector<uint32_t> dht_signif_vector;
-  std::vector<uint32_t> dht_prop_type_vector;
 
   std::string dht_file;
   std::string filesim;

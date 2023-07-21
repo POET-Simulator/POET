@@ -274,23 +274,6 @@ void poet::ChemistryModule::SetDHTSignifVector(
   this->dht->SetSignifVector(signif_vec);
 }
 
-void poet::ChemistryModule::SetDHTPropTypeVector(
-    std::vector<uint32_t> proptype_vec) {
-  if (this->is_master) {
-    if (proptype_vec.size() != this->prop_count) {
-      throw std::runtime_error("Prop type vector sizes mismatches prop count.");
-    }
-
-    int ftype = CHEM_DHT_PROP_TYPE_VEC;
-    PropagateFunctionType(ftype);
-    ChemBCast(proptype_vec.data(), proptype_vec.size(), MPI_UINT32_T);
-
-    return;
-  }
-
-  this->dht->SetPropTypeVector(proptype_vec);
-}
-
 void poet::ChemistryModule::ReadDHTFile(const std::string &input_file) {
   if (this->is_master) {
     int ftype = CHEM_DHT_READ_FILE;
