@@ -1,6 +1,6 @@
-## Time-stamp: "Last modified 2023-04-24 15:43:26 mluebke"
+## Time-stamp: "Last modified 2023-07-27 15:10:04 mluebke"
 
-database <- normalizePath("../share/poet/examples/phreeqc_kin.dat")
+database <- normalizePath("../share/poet/bench/dolo/phreeqc_kin.dat")
 input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
 
 #################################################################
@@ -8,8 +8,8 @@ input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
 ##                     Grid initialization                     ##
 #################################################################
 
-n <- 2000
-m <- 1000
+n <- 400
+m <- 200
 
 types <- c("scratch", "phreeqc", "rds")
 
@@ -28,7 +28,7 @@ init_cell <- list(
 
 grid <- list(
   n_cells = c(n, m),
-  s_cells = c(2, 1),
+  s_cells = c(5, 2.5),
   type = types[1],
   init_cell = as.data.frame(init_cell, check.names = FALSE),
   props = names(init_cell),
@@ -44,11 +44,11 @@ grid <- list(
 
 ## initial conditions
 init_diffu <- list(
-  "H" = 0.000211313883539788,
-  "O" = 0.00398302904424952,
-  "Charge" = -5.0822e-19,
-  "C(4)" = 1.2279E-4,
-  "Ca" = 1.2279E-4,
+  "H" = 1.110124E+02,
+  "O" = 5.550833E+01,
+  "Charge" = -1.216307659761E-09,
+  "C(4)" = 1.230067028174E-04,
+  "Ca" = 1.230067028174E-04,
   "Cl" = 0,
   "Mg" = 0
 )
@@ -67,37 +67,38 @@ alpha_diffu <- c(
 ## list of boundary conditions/inner nodes
 vecinj_diffu <- list(
     list(
-        "H" = 0.0001540445,
-        "O" = 0.002148006,
-        "Charge" = 1.90431e-16,
+        "H" = 1.110124E+02,
+        "O" = 5.550796E+01,
+        "Charge" = -3.230390327801E-08,
         "C(4)" = 0,
         "Ca" = 0,
         "Cl" = 0.002,
         "Mg" = 0.001
     ),
     list(
-        "H" = 0.0001610193,
-        "O" = 0.002386934,
+        "H" = 110.683,
+        "O" = 55.3413,
         "Charge" = 1.90431e-16,
         "C(4)" = 0,
         "Ca" = 0.0,
         "Cl" = 0.004,
         "Mg" = 0.002
-    )
+    ),
+    init_diffu
 )
 
 vecinj_inner <- list(
-  l1 = c(1,400,200),
-  l2 = c(2,1400,800),
-  l3 = c(2,1600,800)
+  l1 = c(1, floor(n / 2), floor(m / 2))
+  # l2 = c(2,1400,800),
+  # l3 = c(2,1600,800)
 )
 
 boundary <- list(
-#  "N" = c(1, rep(0, n-1)),
-  "N" = rep(0, n),
-  "E" = rep(0, m),
-  "S" = rep(0, n),
-  "W" = rep(0, m)
+  #  "N" = c(1, rep(0, n-1)),
+  "N" = rep(3, n),
+  "E" = rep(3, m),
+  "S" = rep(3, n),
+  "W" = rep(3, m)
 )
 
 diffu_list <- names(alpha_diffu)
@@ -120,16 +121,22 @@ diffusion <- list(
 
 
 ## # Needed when using DHT
-dht_species <- c("H", "O", "Charge", "C(4)", "Ca", "Cl", "Mg", "Calcite",
-                 "Dolomite")
-#dht_signif <- rep(15, length(dht_species))
-dht_signif <- c(10, 10, 3, 5, 5, 5, 5, 5, 5)
+dht_species <- c(
+  "H" = 3,
+  "O" = 3,
+  "Charge" = 3,
+  "C(4)" = 6,
+  "Ca" = 6,
+  "Cl" = 3,
+  "Mg" = 5,
+  "Calcite" = 4,
+  "Dolomite" = 4
+)
 
 chemistry <- list(
   database = database,
   input_script = input_script,
-  dht_species = dht_species,
-  dht_signif = dht_signif
+  dht_species = dht_species
 )
 
 #################################################################
@@ -138,8 +145,8 @@ chemistry <- list(
 #################################################################
 
 
-iterations <- 500
-dt <- 50
+iterations <- 20000
+dt <- 200
 
 setup <- list(
   grid = grid,
@@ -148,5 +155,5 @@ setup <- list(
   iterations = iterations,
   timesteps = rep(dt, iterations),
   store_result = TRUE,
-  out_save = seq(5, iterations, by=5)
+  out_save = c(1, seq(50, iterations, by = 50))
 )

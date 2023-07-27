@@ -26,15 +26,16 @@
 #include <string_view>
 #include <vector>
 
+#include "ChemistryModule.hpp"
 #include "argh.hpp" // Argument handler https://github.com/adishavit/argh
 #include <RInside.h>
 #include <Rcpp.h>
 // BSD-licenced
 
 /** Standard DHT Size. Defaults to 1 GB (1000 MB) */
-constexpr uint32_t DHT_SIZE_PER_PROCESS_MB = 1E3;
+constexpr uint32_t DHT_SIZE_PER_PROCESS_MB = 1.5E3;
 /** Standard work package size */
-#define WORK_PACKAGE_SIZE_DEFAULT 5
+#define WORK_PACKAGE_SIZE_DEFAULT 32
 
 namespace poet {
 

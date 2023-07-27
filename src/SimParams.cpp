@@ -87,15 +87,14 @@ poet::ChemistryParams::s_ChemistryParams(RInside &R) {
       Rcpp::as<std::string>(R.parseEval("mysetup$chemistry$database"));
   this->input_script =
       Rcpp::as<std::string>(R.parseEval("mysetup$chemistry$input_script"));
+
   if (Rcpp::as<bool>(
           R.parseEval("'dht_species' %in% names(mysetup$chemistry)"))) {
-    this->dht_species = Rcpp::as<std::vector<std::string>>(
+    auto dht_species = Rcpp::as<Rcpp::NumericVector>(
         R.parseEval("mysetup$chemistry$dht_species"));
-  }
-  if (Rcpp::as<bool>(
-          R.parseEval("'dht_signif' %in% names(mysetup$chemistry)"))) {
-    this->dht_signif = Rcpp::as<std::vector<std::uint32_t>>(
-        R.parseEval("mysetup$chemistry$dht_signif"));
+
+    this->dht_species = Rcpp::as<std::vector<std::string>>(dht_species.names());
+    this->dht_signif = Rcpp::as<std::vector<std::uint32_t>>(dht_species);
   }
 }
 

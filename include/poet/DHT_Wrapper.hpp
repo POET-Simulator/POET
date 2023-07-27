@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-04-24 16:23:42 mluebke"
+//  Time-stamp: "Last modified 2023-07-26 11:57:38 mluebke"
 
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
@@ -24,9 +24,13 @@
 #define DHT_WRAPPER_H
 
 #include "poet/DHT_Types.hpp"
+#include "poet/LookupKey.hpp"
+#include "poet/Rounding.hpp"
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <string>
+#include <utility>
 #include <vector>
 
 extern "C" {
@@ -37,35 +41,7 @@ extern "C" {
 
 namespace poet {
 
-struct DHT_SCNotation {
-  std::int8_t exp : 8;
-  std::int64_t significant : 56;
-};
-
-union DHT_Keyelement {
-  double fp_elemet;
-  DHT_SCNotation sc_notation;
-};
-
-using DHT_ResultObject = struct DHTResobj {
-  uint32_t length;
-  std::vector<std::vector<DHT_Keyelement>> keys;
-  std::vector<std::vector<double>> results;
-  std::vector<bool> needPhreeqc;
-};
-
-/**
- * @brief Return user-defined md5sum
- *
- * This function will calculate a hashsum with the help of md5sum. Therefore the
- * md5sum for a given key is calculated and divided into two 64-bit parts. These
- * will be XORed and returned as the hash.
- *
- * @param key_size Size of key in bytes
- * @param key Pointer to key
- * @return uint64_t Hashsum as an unsigned 64-bit integer
- */
-static uint64_t get_md5(int key_size, void *key);
+using DHT_Location = std::pair<std::uint32_t, std::uint32_t>;
 
 /**
  * @brief C++-Wrapper around DHT implementation
@@ -76,6 +52,20 @@ static uint64_t get_md5(int key_size, void *key);
  */
 class DHT_Wrapper {
 public:
+  using DHT_ResultObject = struct DHTResobj {
+    uint32_t length;
+    std::vector<LookupKey> keys;
+    std::vector<std::vector<double>> results;
+    std::vector<double> old_values;
+    std::vector<bool> needPhreeqc;
+    std::vector<DHT_Location> locations;
+  };
+
+  static constexpr std::int32_t DHT_KEY_INPUT_CUSTOM =
+      std::numeric_limits<std::int32_t>::min();
+
+  static constexpr int DHT_KEY_SIGNIF_DEFAULT = 5;
+
   /**
    * @brief Construct a new dht wrapper object
    *
@@ -91,9 +81,9 @@ public:
    * for key creation.
    * @param data_count Count of data entries
    */
-  DHT_Wrapper(MPI_Comm dht_comm, uint32_t dht_size,
-              const std::vector<std::uint32_t> &key_indices,
-              uint32_t data_count);
+  DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
+              const std::vector<std::int32_t> &key_indices,
+              const std::vector<std::string> &key_names, uint32_t data_count);
   /**
    * @brief Destroy the dht wrapper object
    *
@@ -104,6 +94,9 @@ public:
    *
    */
   ~DHT_Wrapper();
+
+  DHT_Wrapper &operator=(const DHT_Wrapper &) = delete;
+  DHT_Wrapper(const DHT_Wrapper &) = delete;
 
   /**
    * @brief Check if values of workpackage are stored in DHT
@@ -123,7 +116,7 @@ public:
    */
   auto checkDHT(int length, double dt, const std::vector<double> &work_package,
                 std::vector<std::uint32_t> &curr_mapping)
-      -> const poet::DHT_ResultObject &;
+      -> const DHT_ResultObject &;
 
   /**
    * @brief Write simulated values into DHT
@@ -184,44 +177,63 @@ public:
   auto getHits() { return this->dht_hits; };
 
   /**
-   * @brief Get the Misses object
-   *
-   * @return uint64_t Count of read misses
-   */
-  auto getMisses() { return this->dht_miss; };
-
-  /**
    * @brief Get the Evictions object
    *
    * @return uint64_t Count of evictions
    */
   auto getEvictions() { return this->dht_evictions; };
 
+  void resetCounter() {
+    this->dht_hits = 0;
+    this->dht_evictions = 0;
+  }
+
   void SetSignifVector(std::vector<uint32_t> signif_vec);
 
-  void setBaseTotals(const std::array<double, 2> &bt) {
-    this->base_totals = bt;
+  auto GetSignifVector() { return this->dht_signif_vector; };
+
+  auto getDataCount() { return this->data_count; }
+  auto getCommunicator() { return this->communicator; }
+  DHT *getDHT() { return this->dht_object; };
+
+  DHT_ResultObject &getDHTResults() { return this->dht_results; }
+
+  const auto &getKeyElements() const { return this->input_key_elements; }
+
+  void setBaseTotals(double tot_h, double tot_o) {
+    this->base_totals = {tot_h, tot_o};
   }
+
+  std::uint32_t getInputCount() const {
+    return this->input_key_elements.size();
+  }
+
+  std::uint32_t getOutputCount() const { return this->data_count; }
 
 private:
   uint32_t key_count;
   uint32_t data_count;
 
   DHT *dht_object;
+  MPI_Comm communicator;
 
-  std::vector<DHT_Keyelement> fuzzForDHT(int var_count, void *key, double dt);
+  LookupKey fuzzForDHT(int var_count, void *key, double dt);
+
+  std::vector<double>
+  outputToInputAndRates(const std::vector<double> &old_results,
+                        const std::vector<double> &new_results);
+
+  std::vector<double>
+  inputAndRatesToOutput(const std::vector<double> &dht_data);
 
   uint32_t dht_hits = 0;
-  uint32_t dht_miss = 0;
   uint32_t dht_evictions = 0;
 
   std::vector<uint32_t> dht_signif_vector;
   std::vector<std::uint32_t> dht_prop_type_vector;
-  std::vector<std::uint32_t> input_key_elements;
+  std::vector<std::int32_t> input_key_elements;
 
-  static constexpr int DHT_KEY_SIGNIF_DEFAULT = 5;
-  static constexpr int DHT_KEY_SIGNIF_TOTALS = 10;
-  static constexpr int DHT_KEY_SIGNIF_CHARGE = 3;
+  std::vector<std::string> key_names;
 
   DHT_ResultObject dht_results;
 

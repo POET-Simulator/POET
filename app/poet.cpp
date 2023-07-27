@@ -70,7 +70,7 @@ void writeFieldsToR(RInside &R, const Field &trans, const Field &chem) {
 void set_chem_parameters(poet::ChemistryModule &chem, uint32_t wp_size,
                          const std::string &database_path) {
   chem.SetErrorHandlerMode(1);
-  chem.SetComponentH2O(true);
+  chem.SetComponentH2O(false);
   chem.SetRebalanceFraction(0.5);
   chem.SetRebalanceByCell(true);
   chem.UseSolutionDensityVolume(false);
@@ -123,7 +123,7 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
 
   double sim_time = .0;
 
-  ChemistryModule chem(nxyz_master, params.getNumParams().wp_size,
+  ChemistryModule chem(nxyz_master, params.getNumParams().wp_size, maxiter,
                        MPI_COMM_WORLD);
   set_chem_parameters(chem, nxyz_master, chem_params.database_path);
   chem.RunInitFile(chem_params.input_script);
@@ -151,8 +151,9 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
 
   /* SIMULATION LOOP */
 
-  double dStartTime = MPI_Wtime();
+  double dSimTime{0};
   for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
+    double start_t = MPI_Wtime();
     uint32_t tick = 0;
     // cout << "CPP: Evaluating next time step" << endl;
     // R.parseEvalQ("mysetup <- master_iteration_setup(mysetup)");
@@ -200,7 +201,8 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
          << endl;
 
     // MPI_Barrier(MPI_COMM_WORLD);
-
+    double end_t = MPI_Wtime();
+    dSimTime += end_t - start_t;
   } // END SIMULATION LOOP
 
   R.parseEvalQ("profiling <- list()");
@@ -232,8 +234,6 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
   if (params.getNumParams().dht_enabled) {
     R["dht_hits"] = Rcpp::wrap(chem.GetWorkerDHTHits());
     R.parseEvalQ("profiling$dht_hits <- dht_hits");
-    R["dht_miss"] = Rcpp::wrap(chem.GetWorkerDHTMiss());
-    R.parseEvalQ("profiling$dht_miss <- dht_miss");
     R["dht_evictions"] = Rcpp::wrap(chem.GetWorkerDHTEvictions());
     R.parseEvalQ("profiling$dht_evictions <- dht_evictions");
     R["dht_get_time"] = Rcpp::wrap(chem.GetWorkerDHTGetTimings());
@@ -245,7 +245,7 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
   chem.MasterLoopBreak();
   diffusion.end();
 
-  return MPI_Wtime() - dStartTime;
+  return dSimTime;
 }
 
 int main(int argc, char *argv[]) {
