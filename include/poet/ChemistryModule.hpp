@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-04-24 14:30:06 mluebke"
+//  Time-stamp: "Last modified 2023-07-27 15:05:26 mluebke"
 
 #ifndef CHEMISTRYMODULE_H_
 #define CHEMISTRYMODULE_H_
@@ -24,20 +24,6 @@ namespace poet {
  */
 class ChemistryModule : public PhreeqcRM {
 public:
-#ifdef POET_USE_PRM
-  /**
-   * Creates a new instance of Chemistry module with given grid cell count and
-   * using MPI communicator.
-   *
-   * Constructor is just a wrapper around PhreeqcRM's constructor, so just calls
-   * the base class constructor.
-   *
-   * \param nxyz Count of grid cells.
-   * \param communicator MPI communicator where work will be distributed.
-   */
-  ChemistryModule(uint32_t nxyz, MPI_Comm communicator)
-      : PhreeqcRM(nxyz, communicator), n_cells(nxyz){};
-#else
   /**
    * Creates a new instance of Chemistry module with given grid cell count, work
    * package size and communicator.
@@ -53,13 +39,13 @@ public:
    * \param wp_size Count of grid cells to fill each work package at maximum.
    * \param communicator MPI communicator to distribute work in.
    */
-  ChemistryModule(uint32_t nxyz, uint32_t wp_size, MPI_Comm communicator);
+  ChemistryModule(uint32_t nxyz, uint32_t wp_size, std::uint32_t maxiter,
+                  MPI_Comm communicator);
 
   /**
    * Deconstructor, which frees DHT data structure if used.
    */
   ~ChemistryModule();
-#endif
 
   /**
    * Parses the input script and extract information needed during runtime.
@@ -91,8 +77,6 @@ public:
    * Return the accumulated runtime in seconds for chemical simulation.
    */
   auto GetChemistryTime() const { return this->chem_t; }
-
-#ifndef POET_USE_PRM
 
   /**
    * Create a new worker instance inside given MPI communicator.
@@ -126,9 +110,9 @@ public:
    * Enumerating DHT file options
    */
   enum {
-      DHT_FILES_DISABLED = 0, //!< disabled file output
-      DHT_FILES_SIMEND,       //!< only output of snapshot after simulation
-      DHT_FILES_ITEREND       //!< output snapshots after each iteration
+    DHT_SNAPS_DISABLED = 0, //!< disabled file output
+    DHT_SNAPS_SIMEND,       //!< only output of snapshot after simulation
+    DHT_SNAPS_ITEREND       //!< output snapshots after each iteration
   };
 
   /**
@@ -162,7 +146,7 @@ public:
    * \param size_mb Size in megabyte to allocate for the DHT if enabled.
    * \param key_species Name of species to be used for key creation.
    */
-  void SetDHTEnabled(bool enable, uint32_t size_mb,
+  void SetDHTEnabled(bool enable, std::uint64_t size_mb,
                      const std::vector<std::string> &key_species);
   /**
    * **Master only** Set DHT snapshots to specific mode.
@@ -179,13 +163,7 @@ public:
    * is defined by prop_type vector (ChemistryModule::GetPropNames).
    */
   void SetDHTSignifVector(std::vector<uint32_t> &signif_vec);
-  /**
-   * **Master only** Set the DHT rounding type of each species. See
-   * DHT_PROP_TYPES enumemartion for explanation.
-   *
-   * \param proptype_vec Vector defining DHT prop type for each species.
-   */
-  void SetDHTPropTypeVector(std::vector<uint32_t> proptype_vec);
+
   /**
    * **Master only** Load the state of the DHT from given file.
    *
@@ -255,13 +233,6 @@ public:
   std::vector<uint32_t> GetWorkerDHTHits() const;
 
   /**
-   * **Master only** Collect and return DHT misses of all workers.
-   *
-   * \return Vector of all count of DHT misses.
-   */
-  std::vector<uint32_t> GetWorkerDHTMiss() const;
-
-  /**
    * **Master only** Collect and return DHT evictions of all workers.
    *
    * \return Vector of all count of DHT evictions.
@@ -274,18 +245,23 @@ public:
    * \return Reference to the chemical field.
    */
   Field &getField() { return this->chem_field; }
-#endif
+
+  /**
+   * **Master only** Enable/disable progress bar.
+   *
+   * \param enabled True if print progressbar, false if not.
+   */
+  void setProgressBarPrintout(bool enabled) {
+    this->print_progessbar = enabled;
+  };
+
 protected:
-#ifdef POET_USE_PRM
-  void PrmToPoetField(std::vector<double> &field);
-#else
   enum {
     CHEM_INIT,
     CHEM_WP_SIZE,
     CHEM_INIT_SPECIES,
     CHEM_DHT_ENABLE,
     CHEM_DHT_SIGNIF_VEC,
-    CHEM_DHT_PROP_TYPE_VEC,
     CHEM_DHT_SNAPS,
     CHEM_DHT_READ_FILE,
     CHEM_WORK_LOOP,
@@ -301,9 +277,11 @@ protected:
     WORKER_DHT_FILL,
     WORKER_IDLE,
     WORKER_DHT_HITS,
-    WORKER_DHT_MISS,
-    WORKER_DHT_EVICTIONS
+    WORKER_DHT_EVICTIONS,
   };
+
+  std::vector<uint32_t> dht_hits;
+  std::vector<uint32_t> dht_evictions;
 
   struct worker_s {
     double phreeqc_t = 0.;
@@ -359,8 +337,10 @@ protected:
   void unshuffleField(const std::vector<double> &in_buffer,
                       uint32_t size_per_prop, uint32_t prop_count,
                       uint32_t wp_count, std::vector<double> &out_field);
-  std::vector<std::uint32_t>
+  std::vector<std::int32_t>
   parseDHTSpeciesVec(const std::vector<std::string> &species_vec) const;
+
+  void BCastStringVec(std::vector<std::string> &io);
 
   int comm_size, comm_rank;
   MPI_Comm group_comm;
@@ -370,7 +350,7 @@ protected:
 
   uint32_t wp_size{CHEM_DEFAULT_WP_SIZE};
   bool dht_enabled{false};
-  int dht_snaps_type{DHT_FILES_DISABLED};
+  int dht_snaps_type{DHT_SNAPS_DISABLED};
   std::string dht_file_out_dir;
 
   poet::DHT_Wrapper *dht = nullptr;
@@ -391,9 +371,11 @@ protected:
 
   std::array<double, 2> base_totals{0};
 
-#endif
+  bool print_progessbar{false};
 
-  double chem_t = 0.;
+  std::uint32_t file_pad;
+
+  double chem_t{0.};
 
   uint32_t n_cells = 0;
   uint32_t prop_count = 0;

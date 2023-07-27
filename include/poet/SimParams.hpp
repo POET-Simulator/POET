@@ -26,15 +26,16 @@
 #include <string_view>
 #include <vector>
 
+#include "ChemistryModule.hpp"
 #include "argh.hpp" // Argument handler https://github.com/adishavit/argh
 #include <RInside.h>
 #include <Rcpp.h>
 // BSD-licenced
 
 /** Standard DHT Size. Defaults to 1 GB (1000 MB) */
-constexpr uint32_t DHT_SIZE_PER_PROCESS_MB = 1E3;
+constexpr uint32_t DHT_SIZE_PER_PROCESS_MB = 1.5E3;
 /** Standard work package size */
-#define WORK_PACKAGE_SIZE_DEFAULT 5
+#define WORK_PACKAGE_SIZE_DEFAULT 32
 
 namespace poet {
 
@@ -67,6 +68,9 @@ typedef struct {
   unsigned int wp_size;
   /** indicates if resulting grid should be stored after every iteration */
   bool store_result;
+  /** indicating whether the progress bar during chemistry simulation should be
+   * printed or not */
+  bool print_progressbar;
 } t_simparams;
 
 using GridParams = struct s_GridParams {
@@ -191,16 +195,6 @@ public:
   auto getDHTSignifVector() const { return this->dht_signif_vector; };
 
   /**
-   * @brief Get the DHT_Prop_Type_Vector
-   *
-   * Returns a vector indicating of which type a variable of a grid cell is.
-   *
-   * @return std::vector<std::string> Vector if strings defining a type of a
-   * variable
-   */
-  auto getDHTPropTypeVector() const { return this->dht_prop_type_vector; };
-
-  /**
    * @brief Return name of DHT snapshot.
    *
    * Name of the DHT file which is used to initialize the DHT with a previously
@@ -233,7 +227,8 @@ public:
 private:
   std::list<std::string> validateOptions(argh::parser cmdl);
 
-  const std::set<std::string> flaglist{"ignore-result", "dht", "dht-nolog"};
+  const std::set<std::string> flaglist{"ignore-result", "dht", "dht-nolog", "P",
+                                       "progress"};
   const std::set<std::string> paramlist{"work-package-size", "dht-signif",
                                         "dht-strategy",      "dht-size",
                                         "dht-snaps",         "dht-file"};
@@ -241,7 +236,6 @@ private:
   t_simparams simparams;
 
   std::vector<uint32_t> dht_signif_vector;
-  std::vector<uint32_t> dht_prop_type_vector;
 
   std::string dht_file;
   std::string filesim;
