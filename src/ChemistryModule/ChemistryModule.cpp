@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cmath>
 #include <cstdint>
 #include <map>
 #include <mpi.h>
@@ -13,10 +12,8 @@
 #include <utility>
 #include <vector>
 
-constexpr uint32_t MB_FACTOR = 1E6;
-
+#ifndef POET_USE_PRM
 poet::ChemistryModule::ChemistryModule(uint32_t nxyz, uint32_t wp_size,
-                                       std::uint32_t maxiter,
                                        MPI_Comm communicator)
     : PhreeqcRM(nxyz, 1), group_comm(communicator), wp_size(wp_size) {
 
@@ -28,10 +25,7 @@ poet::ChemistryModule::ChemistryModule(uint32_t nxyz, uint32_t wp_size,
 
   if (!is_sequential && is_master) {
     MPI_Bcast(&wp_size, 1, MPI_UINT32_T, 0, this->group_comm);
-    MPI_Bcast(&maxiter, 1, MPI_UINT32_T, 0, this->group_comm);
   }
-
-  this->file_pad = std::ceil(std::log10(maxiter + 1));
 }
 
 poet::ChemistryModule::~ChemistryModule() {
@@ -45,13 +39,13 @@ poet::ChemistryModule::createWorker(MPI_Comm communicator) {
   uint32_t wp_size;
   MPI_Bcast(&wp_size, 1, MPI_UINT32_T, 0, communicator);
 
-  std::uint32_t maxiter;
-  MPI_Bcast(&maxiter, 1, MPI_UINT32_T, 0, communicator);
-
-  return ChemistryModule(wp_size, wp_size, maxiter, communicator);
+  return ChemistryModule(wp_size, wp_size, communicator);
 }
 
+#endif
+
 void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
+#ifndef POET_USE_PRM
   if (this->is_master) {
     int f_type = CHEM_INIT;
     PropagateFunctionType(f_type);
@@ -60,6 +54,7 @@ void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
     ChemBCast(&count, 1, MPI_INT);
     ChemBCast(const_cast<char *>(input_script_path.data()), count, MPI_CHAR);
   }
+#endif
 
   this->RunFile(true, true, false, input_script_path);
   this->RunString(true, false, false, "DELETE; -all; PRINT; -warnings 0;");
@@ -74,6 +69,7 @@ void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
   char equilibrium = (speciesPerModule[3] == 0 ? -1 : 1);
   char surface = (speciesPerModule[4] == 0 ? -1 : 1);
 
+#ifdef POET_USE_PRM
   std::vector<int> ic1;
   ic1.resize(this->nxyz * 7, -1);
   // TODO: hardcoded reaction modules
@@ -88,8 +84,25 @@ void poet::ChemistryModule::RunInitFile(const std::string &input_script_path) {
   }
 
   this->InitialPhreeqc2Module(ic1);
+#else
+  std::vector<int> ic1;
+  ic1.resize(this->nxyz * 7, -1);
+  // TODO: hardcoded reaction modules
+  for (int i = 0; i < nxyz; i++) {
+    ic1[i] = 1;                   // Solution 1
+    ic1[nxyz + i] = equilibrium;  // Equilibrium 1
+    ic1[2 * nxyz + i] = exchange; // Exchange none
+    ic1[3 * nxyz + i] = surface;  // Surface none
+    ic1[4 * nxyz + i] = -1;       // Gas phase none
+    ic1[5 * nxyz + i] = -1;       // Solid solutions none
+    ic1[6 * nxyz + i] = kinetics; // Kinetics 1
+  }
+
+  this->InitialPhreeqc2Module(ic1);
+#endif
 }
 
+#ifndef POET_USE_PRM
 void poet::ChemistryModule::initializeField(const Field &trans_field) {
 
   if (is_master) {
@@ -132,9 +145,7 @@ void poet::ChemistryModule::initializeField(const Field &trans_field) {
   }
 
   // now sort the new values
-  std::sort(new_solution_names.begin() + 3, new_solution_names.end());
-  this->SetPOETSolutionNames(new_solution_names);
-  this->speciesPerModule[0] = new_solution_names.size();
+  std::sort(new_solution_names.begin() + 4, new_solution_names.end());
 
   // and append other processes than solutions
   std::vector<std::string> new_prop_names = new_solution_names;
@@ -144,6 +155,8 @@ void poet::ChemistryModule::initializeField(const Field &trans_field) {
   std::vector<std::string> old_prop_names{this->prop_names};
   this->prop_names = std::move(new_prop_names);
   this->prop_count = prop_names.size();
+
+  this->SetPOETSolutionNames(new_solution_names);
 
   if (is_master) {
     this->n_cells = trans_field.GetRequestedVecSize();
@@ -161,58 +174,37 @@ void poet::ChemistryModule::initializeField(const Field &trans_field) {
 
     std::vector<std::vector<double>> initial_values;
 
-    for (const auto &vec : trans_field.As2DVector()) {
-      initial_values.push_back(vec);
-    }
-
-    this->base_totals = {initial_values.at(0).at(0),
-                         initial_values.at(1).at(0)};
-    ChemBCast(base_totals.data(), 2, MPI_DOUBLE);
-
-    for (int i = speciesPerModule[0]; i < phreeqc_init.size(); i++) {
+    for (int i = 0; i < phreeqc_init.size(); i++) {
       std::vector<double> init(n_cells, phreeqc_init[i]);
       initial_values.push_back(std::move(init));
     }
 
     chem_field.InitFromVec(initial_values, prop_names);
-  } else {
-    ChemBCast(base_totals.data(), 2, MPI_DOUBLE);
   }
 }
 
 void poet::ChemistryModule::SetDHTEnabled(
-    bool enable, std::uint64_t size_mb,
+    bool enable, uint32_t size_mb,
     const std::vector<std::string> &key_species) {
 
   constexpr uint32_t MB_FACTOR = 1E6;
-  std::vector<std::int32_t> key_inidices;
-
-  std::vector<std::string> worker_copy;
+  std::vector<std::uint32_t> key_inidices;
 
   if (this->is_master) {
     int ftype = CHEM_DHT_ENABLE;
     PropagateFunctionType(ftype);
     ChemBCast(&enable, 1, MPI_CXX_BOOL);
-    ChemBCast(&size_mb, 1, MPI_UINT64_T);
-
-    // HACK: ugh, another problem with const qualifiers ...
-    auto non_const_keys = key_species;
-    BCastStringVec(non_const_keys);
-
-    int vec_size = key_species.size();
-    ChemBCast(&vec_size, 1, MPI_INT);
+    ChemBCast(&size_mb, 1, MPI_UINT32_T);
 
     key_inidices = parseDHTSpeciesVec(key_species);
-    ChemBCast(key_inidices.data(), key_inidices.size(), MPI_INT32_T);
+    int vec_size = key_inidices.size();
+    ChemBCast(&vec_size, 1, MPI_INT);
+    ChemBCast(key_inidices.data(), key_inidices.size(), MPI_UINT32_T);
   } else {
-
-    BCastStringVec(worker_copy);
-
     int vec_size;
     ChemBCast(&vec_size, 1, MPI_INT);
-
     key_inidices.resize(vec_size);
-    ChemBCast(key_inidices.data(), vec_size, MPI_INT32_T);
+    ChemBCast(key_inidices.data(), vec_size, MPI_UINT32_T);
   }
 
   this->dht_enabled = enable;
@@ -232,17 +224,17 @@ void poet::ChemistryModule::SetDHTEnabled(
       delete this->dht;
     }
 
-    const std::uint64_t dht_size = size_mb * MB_FACTOR;
+    const uint32_t dht_size = size_mb * MB_FACTOR;
 
-    this->dht = new DHT_Wrapper(dht_comm, dht_size, std::move(key_inidices),
-                                std::move(worker_copy), this->prop_count);
-    this->dht->setBaseTotals(base_totals.at(0), base_totals.at(1));
+    this->dht =
+        new DHT_Wrapper(dht_comm, dht_size, key_inidices, this->prop_count);
+    // this->dht->setBaseTotals(this->base_totals);
   }
 }
 
-inline std::vector<std::int32_t> poet::ChemistryModule::parseDHTSpeciesVec(
+inline std::vector<std::uint32_t> poet::ChemistryModule::parseDHTSpeciesVec(
     const std::vector<std::string> &species_vec) const {
-  std::vector<int32_t> species_indices;
+  std::vector<uint32_t> species_indices;
 
   if (species_vec.empty()) {
     species_indices.resize(this->prop_count);
@@ -258,40 +250,14 @@ inline std::vector<std::int32_t> poet::ChemistryModule::parseDHTSpeciesVec(
   for (const auto &name : species_vec) {
     auto it = std::find(this->prop_names.begin(), this->prop_names.end(), name);
     if (it == prop_names.end()) {
-      species_indices.push_back(DHT_Wrapper::DHT_KEY_INPUT_CUSTOM);
-      continue;
+      throw std::runtime_error(
+          "DHT species name was not found in prop name vector!");
     }
     const std::uint32_t index = it - prop_names.begin();
     species_indices.push_back(index);
   }
 
   return species_indices;
-}
-
-void poet::ChemistryModule::BCastStringVec(std::vector<std::string> &io) {
-  if (this->is_master) {
-    int vec_size = io.size();
-    ChemBCast(&vec_size, 1, MPI_INT);
-
-    for (const auto &value : io) {
-      int buf_size = value.size() + 1;
-      ChemBCast(&buf_size, 1, MPI_INT);
-      ChemBCast(const_cast<char *>(value.c_str()), buf_size, MPI_CHAR);
-    }
-  } else {
-    int vec_size;
-    ChemBCast(&vec_size, 1, MPI_INT);
-
-    io.resize(vec_size);
-
-    for (int i = 0; i < vec_size; i++) {
-      int buf_size;
-      ChemBCast(&buf_size, 1, MPI_INT);
-      char buf[buf_size];
-      ChemBCast(buf, buf_size, MPI_CHAR);
-      io[i] = std::string{buf};
-    }
-  }
 }
 
 void poet::ChemistryModule::SetDHTSnaps(int type, const std::string &out_dir) {
@@ -329,6 +295,23 @@ void poet::ChemistryModule::SetDHTSignifVector(
   ChemBCast(signif_vec.data(), data_count, MPI_UINT32_T);
 
   this->dht->SetSignifVector(signif_vec);
+}
+
+void poet::ChemistryModule::SetDHTPropTypeVector(
+    std::vector<uint32_t> proptype_vec) {
+  if (this->is_master) {
+    if (proptype_vec.size() != this->prop_count) {
+      throw std::runtime_error("Prop type vector sizes mismatches prop count.");
+    }
+
+    int ftype = CHEM_DHT_PROP_TYPE_VEC;
+    PropagateFunctionType(ftype);
+    ChemBCast(proptype_vec.data(), proptype_vec.size(), MPI_UINT32_T);
+
+    return;
+  }
+
+  this->dht->SetPropTypeVector(proptype_vec);
 }
 
 void poet::ChemistryModule::ReadDHTFile(const std::string &input_file) {
@@ -385,3 +368,27 @@ void poet::ChemistryModule::unshuffleField(const std::vector<double> &in_buffer,
     }
   }
 }
+
+#else // POET_USE_PRM
+
+inline void poet::ChemistryModule::PrmToPoetField(std::vector<double> &field) {
+  this->getDumpedField(field);
+}
+
+void poet::ChemistryModule::RunCells() {
+  PhreeqcRM::RunCells();
+
+  std::vector<double> tmp_field;
+
+  PrmToPoetField(tmp_field);
+  this->field = tmp_field;
+
+  for (uint32_t i = 0; i < field.size(); i++) {
+    uint32_t back_i = static_cast<uint32_t>(i / this->nxyz);
+    uint32_t mod_i = i % this->nxyz;
+
+    field[i] = tmp_field[back_i + (mod_i * this->prop_count)];
+  }
+}
+
+#endif

@@ -24,6 +24,7 @@ find_package(RRuntime REQUIRED)
 
 add_subdirectory(src)
 add_subdirectory(R_lib)
+add_subdirectory(data)
 add_subdirectory(app)
 add_subdirectory(bench)
 

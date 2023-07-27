@@ -39,38 +39,10 @@ using namespace std;
 using namespace poet;
 using namespace Rcpp;
 
-poet::ChemistryModule::SingleCMap DFToHashMap(const Rcpp::DataFrame &df) {
-  std::unordered_map<std::string, double> out_map;
-  vector<string> col_names = Rcpp::as<vector<string>>(df.names());
-
-  for (const auto &name : col_names) {
-    double val = df[name.c_str()];
-    out_map.insert({name, val});
-  }
-
-  return out_map;
-}
-
-// HACK: this is a step back as the order and also the count of fields is
-// predefined, but it will change in the future
-void writeFieldsToR(RInside &R, const Field &trans, const Field &chem) {
-  R["TMP"] = Rcpp::wrap(trans.AsVector());
-  R["TMP_PROPS"] = Rcpp::wrap(trans.GetProps());
-  R.parseEval(std::string(
-      "mysetup$state_T <- setNames(data.frame(matrix(TMP, nrow=" +
-      std::to_string(trans.GetRequestedVecSize()) + ")), TMP_PROPS)"));
-
-  R["TMP"] = Rcpp::wrap(chem.AsVector());
-  R["TMP_PROPS"] = Rcpp::wrap(chem.GetProps());
-  R.parseEval(std::string(
-      "mysetup$state_C <- setNames(data.frame(matrix(TMP, nrow=" +
-      std::to_string(chem.GetRequestedVecSize()) + ")), TMP_PROPS)"));
-}
-
 void set_chem_parameters(poet::ChemistryModule &chem, uint32_t wp_size,
                          const std::string &database_path) {
   chem.SetErrorHandlerMode(1);
-  chem.SetComponentH2O(true);
+  chem.SetComponentH2O(false);
   chem.SetRebalanceFraction(0.5);
   chem.SetRebalanceByCell(true);
   chem.UseSolutionDensityVolume(false);
@@ -111,43 +83,27 @@ void set_chem_parameters(poet::ChemistryModule &chem, uint32_t wp_size,
   chem.LoadDatabase(database_path);
 }
 
-inline double RunMasterLoop(SimParams &params, RInside &R,
+inline double RunMasterLoop(SimParams &params, RInside &R, Grid &grid,
                             ChemistryParams &chem_params,
                             const GridParams &g_params, uint32_t nxyz_master) {
 
-  DiffusionParams d_params{R};
-  DiffusionModule diffusion(d_params, g_params);
+  DiffusionModule diffusion(poet::DiffusionParams(R), grid);
   /* Iteration Count is dynamic, retrieving value from R (is only needed by
    * master for the following loop) */
   uint32_t maxiter = R.parseEval("mysetup$iterations");
 
   double sim_time = .0;
 
-  ChemistryModule chem(nxyz_master, params.getNumParams().wp_size,
-                       MPI_COMM_WORLD);
+  ChemistryModule chem(grid.GetTotalCellCount(), MPI_COMM_WORLD);
   set_chem_parameters(chem, nxyz_master, chem_params.database_path);
   chem.RunInitFile(chem_params.input_script);
 
-  poet::ChemistryModule::SingleCMap init_df = DFToHashMap(d_params.initial_t);
-  chem.initializeField(diffusion.getField());
+  chem.SetTimeStep(0);
+  chem.RunCells();
 
-  if (params.getNumParams().dht_enabled) {
-    chem.SetDHTEnabled(true, params.getNumParams().dht_size_per_process,
-                       chem_params.dht_species);
-    if (!chem_params.dht_signif.empty()) {
-      chem.SetDHTSignifVector(chem_params.dht_signif);
-    }
-    if (!params.getDHTPropTypeVector().empty()) {
-      chem.SetDHTPropTypeVector(params.getDHTPropTypeVector());
-    }
-    if (!params.getDHTFile().empty()) {
-      chem.ReadDHTFile(params.getDHTFile());
-    }
-    if (params.getNumParams().dht_snaps > 0) {
-      chem.SetDHTSnaps(params.getNumParams().dht_snaps, params.getOutDir());
-    }
-  }
-
+  StateMemory *chem_state = grid.RegisterState("state_C", chem.GetPropNames());
+  auto &chem_field = chem_state->mem;
+  chem_field = chem.GetField();
   /* SIMULATION LOOP */
 
   double dStartTime = MPI_Wtime();
@@ -169,17 +125,19 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
     // TODO: transport to diffusion
     diffusion.simulate(dt);
 
-    chem.getField().UpdateFromField(diffusion.getField());
+    grid.PreModuleFieldCopy(tick++);
 
     cout << "CPP: Chemistry" << endl;
 
     chem.SetTimeStep(dt);
 
+    chem.SetConcentrations(chem_field);
     chem.SetTimeStep(dt);
     chem.RunCells();
+    chem_field = chem.GetField();
 
-    writeFieldsToR(R, diffusion.getField(), chem.GetField());
-    diffusion.getField().UpdateFromField(chem.GetField());
+    grid.WriteFieldsToR(R);
+    grid.PreModuleFieldCopy(tick++);
 
     R["req_dt"] = dt;
     R["simtime"] = (sim_time += dt);
@@ -207,41 +165,7 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
   R["simtime_chemistry"] = chem.GetChemistryTime();
   R.parseEvalQ("profiling$simtime_chemistry <- simtime_chemistry");
 
-  R["chemistry_loop"] = chem.GetMasterLoopTime();
-  R.parseEvalQ("profiling$chemistry_loop <- chemistry_loop");
-
-  R["chemistry_sequential"] = chem.GetMasterSequentialTime();
-  R.parseEvalQ("profiling$simtime_sequential <- chemistry_sequential");
-
-  R["idle_master"] = chem.GetMasterIdleTime();
-  R.parseEvalQ("profiling$idle_master <- idle_master");
-
-  R["idle_worker"] = Rcpp::wrap(chem.GetWorkerIdleTimings());
-  R.parseEvalQ("profiling$idle_worker <- idle_worker");
-
-  R["phreeqc_time"] = Rcpp::wrap(chem.GetWorkerPhreeqcTimings());
-  R.parseEvalQ("profiling$phreeqc <- phreeqc_time");
-
-  R["simtime_transport"] = diffusion.getTransportTime();
-  R.parseEvalQ("profiling$simtime_transport <- simtime_transport");
-
-  // R["phreeqc_count"] = phreeqc_counts;
-  // R.parseEvalQ("profiling$phreeqc_count <- phreeqc_count");
-
-  if (params.getNumParams().dht_enabled) {
-    R["dht_hits"] = Rcpp::wrap(chem.GetWorkerDHTHits());
-    R.parseEvalQ("profiling$dht_hits <- dht_hits");
-    R["dht_miss"] = Rcpp::wrap(chem.GetWorkerDHTMiss());
-    R.parseEvalQ("profiling$dht_miss <- dht_miss");
-    R["dht_evictions"] = Rcpp::wrap(chem.GetWorkerDHTEvictions());
-    R.parseEvalQ("profiling$dht_evictions <- dht_evictions");
-    R["dht_get_time"] = Rcpp::wrap(chem.GetWorkerDHTGetTimings());
-    R.parseEvalQ("profiling$dht_get_time <- dht_get_time");
-    R["dht_fill_time"] = Rcpp::wrap(chem.GetWorkerDHTFillTimings());
-    R.parseEvalQ("profiling$dht_fill_time <- dht_fill_time");
-  }
-
-  chem.MasterLoopBreak();
+  chem.MpiWorkerBreak();
   diffusion.end();
 
   return MPI_Wtime() - dStartTime;
@@ -264,21 +188,10 @@ int main(int argc, char *argv[]) {
 
   if (world_rank > 0) {
     {
-      uint32_t c_size;
-      MPI_Bcast(&c_size, 1, MPI_UINT32_T, 0, MPI_COMM_WORLD);
-
-      char *buffer = new char[c_size + 1];
-      MPI_Bcast(buffer, c_size, MPI_CHAR, 0, MPI_COMM_WORLD);
-      buffer[c_size] = '\0';
-
-      // ChemistryModule worker(nxyz, nxyz, MPI_COMM_WORLD);
-      ChemistryModule worker =
-          poet::ChemistryModule::createWorker(MPI_COMM_WORLD);
-      set_chem_parameters(worker, worker.GetWPSize(), std::string(buffer));
-
-      delete[] buffer;
-
-      worker.WorkerLoop();
+      uint32_t nxyz;
+      MPI_Bcast(&nxyz, 1, MPI_UINT32_T, 0, MPI_COMM_WORLD);
+      ChemistryModule worker(nxyz, MPI_COMM_WORLD);
+      worker.MpiWorker();
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -315,9 +228,14 @@ int main(int argc, char *argv[]) {
   std::string master_init_code = "mysetup <- master_init(setup=setup)";
   R.parseEval(master_init_code);
 
+  Grid grid;
   GridParams g_params(R);
 
-  params.initVectorParams(R);
+  grid.InitModuleFromParams(g_params);
+  grid.PushbackModuleFlow(poet::DIFFUSION_MODULE_NAME, CHEMISTRY_MODULE_NAME);
+  grid.PushbackModuleFlow(CHEMISTRY_MODULE_NAME, poet::DIFFUSION_MODULE_NAME);
+
+  params.initVectorParams(R, grid.GetSpeciesCount());
 
   // MDL: store all parameters
   if (world_rank == 0) {
@@ -334,14 +252,11 @@ int main(int argc, char *argv[]) {
   poet::ChemistryParams chem_params(R);
 
   /* THIS IS EXECUTED BY THE MASTER */
-  std::string db_path = chem_params.database_path;
-  uint32_t c_size = db_path.size();
-  MPI_Bcast(&c_size, 1, MPI_UINT32_T, 0, MPI_COMM_WORLD);
+  uint32_t nxyz = grid.GetTotalCellCount();
+  MPI_Bcast(&nxyz, 1, MPI_UINT32_T, 0, MPI_COMM_WORLD);
+  uint32_t nxyz_master = grid.GetTotalCellCount();
 
-  MPI_Bcast(db_path.data(), c_size, MPI_CHAR, 0, MPI_COMM_WORLD);
-  uint32_t nxyz_master = (world_size == 1 ? g_params.total_n : 1);
-
-  dSimTime = RunMasterLoop(params, R, chem_params, g_params, nxyz_master);
+  dSimTime = RunMasterLoop(params, R, grid, chem_params, g_params, nxyz_master);
 
   cout << "CPP: finished simulation loop" << endl;
 

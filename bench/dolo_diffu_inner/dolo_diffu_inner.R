@@ -1,6 +1,6 @@
-## Time-stamp: "Last modified 2023-07-27 14:58:41 mluebke"
+## Time-stamp: "Last modified 2023-04-24 15:12:02 mluebke"
 
-database <- normalizePath("../share/poet/bench/dolo/phreeqc_kin.dat")
+database <- normalizePath("../share/poet/examples/phreeqc_kin.dat")
 input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
 
 #################################################################
@@ -8,8 +8,8 @@ input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
 ##                     Grid initialization                     ##
 #################################################################
 
-n <- 2000
-m <- 1000
+n <- 100
+m <- 100
 
 types <- c("scratch", "phreeqc", "rds")
 
@@ -17,7 +17,7 @@ init_cell <- list(
   "H" = 110.683,
   "O" = 55.3413,
   "Charge" = -5.0822e-19,
-  "C" = 1.2279E-4,
+  "C(4)" = 1.2279E-4,
   "Ca" = 1.2279E-4,
   "Cl" = 0,
   "Mg" = 0,
@@ -28,7 +28,7 @@ init_cell <- list(
 
 grid <- list(
   n_cells = c(n, m),
-  s_cells = c(2, 1),
+  s_cells = c(1, 1),
   type = types[1],
   init_cell = as.data.frame(init_cell, check.names = FALSE),
   props = names(init_cell),
@@ -87,17 +87,17 @@ vecinj_diffu <- list(
 )
 
 vecinj_inner <- list(
-  l1 = c(1,400,200),
-  l2 = c(2,1400,800),
-  l3 = c(2,1600,800)
+  l1 = c(1,20,20),
+  l2 = c(2,80,80),
+  l3 = c(2,60,80)
 )
 
 boundary <- list(
 #  "N" = c(1, rep(0, n-1)),
   "N" = rep(0, n),
-  "E" = rep(0, m),
+  "E" = rep(0, n),
   "S" = rep(0, n),
-  "W" = rep(0, m)
+  "W" = rep(0, n)
 )
 
 diffu_list <- names(alpha_diffu)
@@ -118,22 +118,18 @@ diffusion <- list(
 ##                  Chemistry module (Phreeqc)                 ##
 #################################################################
 
+
 ## # Needed when using DHT
-dht_species <- c("H" = 10,
-                 "O" = 10,
-                 "Charge" = 3,
-                 "C(4)" = 5,
-                 "Ca" = 5,
-                 "Cl" = 5,
-                 "Mg" = 5,
-                 "Calcite" = 5,
-                 "Dolomite" =5
-                 )
+dht_species <- c("H", "O", "Charge", "C(4)", "Ca", "Cl", "Mg", "Calcite",
+                 "Dolomite")
+#dht_signif <- rep(15, length(dht_species))
+dht_signif <- c(10, 10, 3, 5, 5, 5, 5, 5, 5)
 
 chemistry <- list(
   database = database,
   input_script = input_script,
-  dht_species = dht_species
+  dht_species = dht_species,
+  dht_signif = dht_signif
 )
 
 #################################################################
@@ -142,8 +138,8 @@ chemistry <- list(
 #################################################################
 
 
-iterations <- 500
-dt <- 50
+iterations <- 10
+dt <- 200
 
 setup <- list(
   grid = grid,
@@ -151,6 +147,5 @@ setup <- list(
   chemistry = chemistry,
   iterations = iterations,
   timesteps = rep(dt, iterations),
-  store_result = TRUE,
-  out_save = seq(5, iterations, by=5)
+  store_result = TRUE
 )

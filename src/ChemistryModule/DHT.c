@@ -1,4 +1,3 @@
-/// Time-stamp: "Last modified 2023-06-28 15:58:19 mluebke"
 /*
 ** Copyright (C) 2017-2021 Max Luebke (University of Potsdam)
 **
@@ -16,12 +15,10 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include <mpi.h>
 #include <poet/DHT.h>
 
 #include <inttypes.h>
 #include <math.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,8 +52,7 @@ static int read_flag(char flag_byte) {
 }
 
 DHT *DHT_create(MPI_Comm comm, uint64_t size, unsigned int data_size,
-                unsigned int key_size,
-                uint64_t (*hash_func)(int, const void *)) {
+                unsigned int key_size, uint64_t (*hash_func)(int, const void *)) {
   DHT *object;
   MPI_Win window;
   void *mem_alloc;
@@ -65,20 +61,17 @@ DHT *DHT_create(MPI_Comm comm, uint64_t size, unsigned int data_size,
   // calculate how much bytes for the index are needed to address count of
   // buckets per process
   index_bytes = (int)ceil(log2(size));
-  if (index_bytes % 8 != 0)
-    index_bytes = index_bytes + (8 - (index_bytes % 8));
+  if (index_bytes % 8 != 0) index_bytes = index_bytes + (8 - (index_bytes % 8));
 
   // allocate memory for dht-object
   object = (DHT *)malloc(sizeof(DHT));
-  if (object == NULL)
-    return NULL;
+  if (object == NULL) return NULL;
 
   // every memory allocation has 1 additional byte for flags etc.
   if (MPI_Alloc_mem(size * (1 + data_size + key_size), MPI_INFO_NULL,
                     &mem_alloc) != 0)
     return NULL;
-  if (MPI_Comm_size(comm, &comm_size) != 0)
-    return NULL;
+  if (MPI_Comm_size(comm, &comm_size) != 0) return NULL;
 
   // since MPI_Alloc_mem doesn't provide memory allocation with the memory set
   // to zero, we're doing this here
@@ -111,8 +104,7 @@ DHT *DHT_create(MPI_Comm comm, uint64_t size, unsigned int data_size,
   DHT_stats *stats;
 
   stats = (DHT_stats *)malloc(sizeof(DHT_stats));
-  if (stats == NULL)
-    return NULL;
+  if (stats == NULL) return NULL;
 
   object->stats = stats;
   object->stats->writes_local = (int *)calloc(comm_size, sizeof(int));
@@ -126,8 +118,7 @@ DHT *DHT_create(MPI_Comm comm, uint64_t size, unsigned int data_size,
   return object;
 }
 
-int DHT_write(DHT *table, void *send_key, void *send_data, uint32_t *proc,
-              uint32_t *index) {
+int DHT_write(DHT *table, void *send_key, void *send_data) {
   unsigned int dest_rank, i;
   int result = DHT_SUCCESS;
 
@@ -155,8 +146,7 @@ int DHT_write(DHT *table, void *send_key, void *send_data, uint32_t *proc,
                 1 + table->data_size + table->key_size, MPI_BYTE,
                 table->window) != 0)
       return DHT_MPI_ERROR;
-    if (MPI_Win_flush(dest_rank, table->window) != 0)
-      return DHT_MPI_ERROR;
+    if (MPI_Win_flush(dest_rank, table->window) != 0) return DHT_MPI_ERROR;
 
     // increment eviction counter if receiving key doesn't match sending key
     // entry has write flag and last index is reached.
@@ -188,21 +178,12 @@ int DHT_write(DHT *table, void *send_key, void *send_data, uint32_t *proc,
               table->window) != 0)
     return DHT_MPI_ERROR;
   // unlock window of target rank
-  if (MPI_Win_unlock(dest_rank, table->window) != 0)
-    return DHT_MPI_ERROR;
-
-  if (proc) {
-    *proc = dest_rank;
-  }
-
-  if (index) {
-    *index = table->index[i];
-  }
+  if (MPI_Win_unlock(dest_rank, table->window) != 0) return DHT_MPI_ERROR;
 
   return result;
 }
 
-int DHT_read(DHT *table, const void *send_key, void *destination) {
+int DHT_read(DHT *table, void *send_key, void *destination) {
   unsigned int dest_rank, i;
 
 #ifdef DHT_STATISTICS
@@ -224,8 +205,7 @@ int DHT_read(DHT *table, const void *send_key, void *destination) {
                 1 + table->data_size + table->key_size, MPI_BYTE,
                 table->window) != 0)
       return DHT_MPI_ERROR;
-    if (MPI_Win_flush(dest_rank, table->window) != 0)
-      return DHT_MPI_ERROR;
+    if (MPI_Win_flush(dest_rank, table->window) != 0) return DHT_MPI_ERROR;
 
     // increment read error counter if write flag isn't set ...
     if ((read_flag(*(char *)table->recv_entry)) == 0) {
@@ -234,8 +214,7 @@ int DHT_read(DHT *table, const void *send_key, void *destination) {
       table->stats->read_misses += 1;
 #endif
       // unlock window and return
-      if (MPI_Win_unlock(dest_rank, table->window) != 0)
-        return DHT_MPI_ERROR;
+      if (MPI_Win_unlock(dest_rank, table->window) != 0) return DHT_MPI_ERROR;
       return DHT_READ_MISS;
     }
 
@@ -248,8 +227,7 @@ int DHT_read(DHT *table, const void *send_key, void *destination) {
         table->stats->read_misses += 1;
 #endif
         // unlock window an return
-        if (MPI_Win_unlock(dest_rank, table->window) != 0)
-          return DHT_MPI_ERROR;
+        if (MPI_Win_unlock(dest_rank, table->window) != 0) return DHT_MPI_ERROR;
         return DHT_READ_MISS;
       }
     } else
@@ -257,8 +235,7 @@ int DHT_read(DHT *table, const void *send_key, void *destination) {
   }
 
   // unlock window of target rank
-  if (MPI_Win_unlock(dest_rank, table->window) != 0)
-    return DHT_MPI_ERROR;
+  if (MPI_Win_unlock(dest_rank, table->window) != 0) return DHT_MPI_ERROR;
 
   // if matching key was found copy data into memory of passed pointer
   memcpy((char *)destination, (char *)table->recv_entry + table->key_size + 1,
@@ -280,15 +257,17 @@ int DHT_to_file(DHT *table, const char *filename) {
 
   // write header (key_size and data_size)
   if (rank == 0) {
-    if (MPI_File_write_shared(file, &table->key_size, 1, MPI_INT,
-                              MPI_STATUS_IGNORE) != 0)
+    if (MPI_File_write(file, &table->key_size, 1, MPI_INT, MPI_STATUS_IGNORE) !=
+        0)
       return DHT_FILE_WRITE_ERROR;
-    if (MPI_File_write_shared(file, &table->data_size, 1, MPI_INT,
-                              MPI_STATUS_IGNORE) != 0)
+    if (MPI_File_write(file, &table->data_size, 1, MPI_INT,
+                       MPI_STATUS_IGNORE) != 0)
       return DHT_FILE_WRITE_ERROR;
   }
 
-  MPI_Barrier(table->communicator);
+  // seek file pointer behind header for all processes
+  if (MPI_File_seek_shared(file, DHT_FILEHEADER_SIZE, MPI_SEEK_SET) != 0)
+    return DHT_FILE_IO_ERROR;
 
   char *ptr;
   int bucket_size = table->key_size + table->data_size + 1;
@@ -304,12 +283,8 @@ int DHT_to_file(DHT *table, const char *filename) {
         return DHT_FILE_WRITE_ERROR;
     }
   }
-
-  MPI_Barrier(table->communicator);
-
   // close file
-  if (MPI_File_close(&file) != 0)
-    return DHT_FILE_IO_ERROR;
+  if (MPI_File_close(&file) != 0) return DHT_FILE_IO_ERROR;
 
   return DHT_SUCCESS;
 }
@@ -328,8 +303,7 @@ int DHT_from_file(DHT *table, const char *filename) {
     return DHT_FILE_IO_ERROR;
 
   // get file size
-  if (MPI_File_get_size(file, &f_size) != 0)
-    return DHT_FILE_IO_ERROR;
+  if (MPI_File_get_size(file, &f_size) != 0) return DHT_FILE_IO_ERROR;
 
   MPI_Comm_rank(table->communicator, &rank);
 
@@ -348,10 +322,8 @@ int DHT_from_file(DHT *table, const char *filename) {
     return DHT_FILE_READ_ERROR;
 
   // compare if written header data and key size matches current sizes
-  if (*(int *)buffer != table->key_size)
-    return DHT_WRONG_FILE;
-  if (*(int *)(buffer + 4) != table->data_size)
-    return DHT_WRONG_FILE;
+  if (*(int *)buffer != table->key_size) return DHT_WRONG_FILE;
+  if (*(int *)(buffer + 4) != table->data_size) return DHT_WRONG_FILE;
 
   // set offset for each process
   offset = bucket_size * table->comm_size;
@@ -376,16 +348,14 @@ int DHT_from_file(DHT *table, const char *filename) {
     // extract key and data and write to DHT
     key = buffer;
     data = (buffer + table->key_size);
-    if (DHT_write(table, key, data, NULL, NULL) == DHT_MPI_ERROR)
-      return DHT_MPI_ERROR;
+    if (DHT_write(table, key, data) == DHT_MPI_ERROR) return DHT_MPI_ERROR;
 
     // increment current position
     cur_pos += offset;
   }
 
   free(buffer);
-  if (MPI_File_close(&file) != 0)
-    return DHT_FILE_IO_ERROR;
+  if (MPI_File_close(&file) != 0) return DHT_FILE_IO_ERROR;
 
   return DHT_SUCCESS;
 }
@@ -407,10 +377,8 @@ int DHT_free(DHT *table, int *eviction_counter, int *readerror_counter) {
       return DHT_MPI_ERROR;
     *readerror_counter = buf;
   }
-  if (MPI_Win_free(&(table->window)) != 0)
-    return DHT_MPI_ERROR;
-  if (MPI_Free_mem(table->mem_alloc) != 0)
-    return DHT_MPI_ERROR;
+  if (MPI_Win_free(&(table->window)) != 0) return DHT_MPI_ERROR;
+  if (MPI_Free_mem(table->mem_alloc) != 0) return DHT_MPI_ERROR;
   free(table->recv_entry);
   free(table->send_entry);
   free(table->index);
@@ -439,8 +407,7 @@ int DHT_print_statistics(DHT *table) {
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 
   // obtaining all values from all processes in the communicator
-  if (rank == 0)
-    read_misses = (int *)malloc(table->comm_size * sizeof(int));
+  if (rank == 0) read_misses = (int *)malloc(table->comm_size * sizeof(int));
   if (MPI_Gather(&table->stats->read_misses, 1, MPI_INT, read_misses, 1,
                  MPI_INT, 0, table->communicator) != 0)
     return DHT_MPI_ERROR;
@@ -449,8 +416,7 @@ int DHT_print_statistics(DHT *table) {
     return DHT_MPI_ERROR;
   table->stats->read_misses = 0;
 
-  if (rank == 0)
-    evictions = (int *)malloc(table->comm_size * sizeof(int));
+  if (rank == 0) evictions = (int *)malloc(table->comm_size * sizeof(int));
   if (MPI_Gather(&table->stats->evictions, 1, MPI_INT, evictions, 1, MPI_INT, 0,
                  table->communicator) != 0)
     return DHT_MPI_ERROR;
@@ -459,8 +425,7 @@ int DHT_print_statistics(DHT *table) {
     return DHT_MPI_ERROR;
   table->stats->evictions = 0;
 
-  if (rank == 0)
-    w_access = (int *)malloc(table->comm_size * sizeof(int));
+  if (rank == 0) w_access = (int *)malloc(table->comm_size * sizeof(int));
   if (MPI_Gather(&table->stats->w_access, 1, MPI_INT, w_access, 1, MPI_INT, 0,
                  table->communicator) != 0)
     return DHT_MPI_ERROR;
@@ -469,8 +434,7 @@ int DHT_print_statistics(DHT *table) {
     return DHT_MPI_ERROR;
   table->stats->w_access = 0;
 
-  if (rank == 0)
-    r_access = (int *)malloc(table->comm_size * sizeof(int));
+  if (rank == 0) r_access = (int *)malloc(table->comm_size * sizeof(int));
   if (MPI_Gather(&table->stats->r_access, 1, MPI_INT, r_access, 1, MPI_INT, 0,
                  table->communicator) != 0)
     return DHT_MPI_ERROR;
@@ -479,14 +443,13 @@ int DHT_print_statistics(DHT *table) {
     return DHT_MPI_ERROR;
   table->stats->r_access = 0;
 
-  if (rank == 0)
-    written_buckets = (int *)calloc(table->comm_size, sizeof(int));
+  if (rank == 0) written_buckets = (int *)calloc(table->comm_size, sizeof(int));
   if (MPI_Reduce(table->stats->writes_local, written_buckets, table->comm_size,
                  MPI_INT, MPI_SUM, 0, table->communicator) != 0)
     return DHT_MPI_ERROR;
 
-  if (rank == 0) { // only process with rank 0 will print out results as a
-                   // table
+  if (rank == 0) {  // only process with rank 0 will print out results as a
+                    // table
     int sum_written_buckets = 0;
 
     for (int i = 0; i < table->comm_size; i++) {

@@ -2,7 +2,6 @@
 #include "poet/ChemistryModule.hpp"
 
 #include <algorithm>
-#include <cstddef>
 #include <cstdint>
 #include <mpi.h>
 #include <stdexcept>
@@ -63,71 +62,19 @@ std::vector<double> poet::ChemistryModule::GetWorkerIdleTimings() const {
 std::vector<uint32_t> poet::ChemistryModule::GetWorkerDHTHits() const {
   int type = CHEM_PERF;
   MPI_Bcast(&type, 1, MPI_INT, 0, this->group_comm);
-  type = WORKER_DHT_HITS;
+  return MasterGatherWorkerMetrics(WORKER_DHT_HITS);
+}
+
+std::vector<uint32_t> poet::ChemistryModule::GetWorkerDHTMiss() const {
+  int type = CHEM_PERF;
   MPI_Bcast(&type, 1, MPI_INT, 0, this->group_comm);
-
-  MPI_Status probe;
-  MPI_Probe(MPI_ANY_SOURCE, WORKER_DHT_HITS, this->group_comm, &probe);
-  int count;
-  MPI_Get_count(&probe, MPI_UINT32_T, &count);
-
-  std::vector<uint32_t> ret(count);
-  MPI_Recv(ret.data(), count, MPI_UINT32_T, probe.MPI_SOURCE, WORKER_DHT_HITS,
-           this->group_comm, NULL);
-
-  return ret;
+  return MasterGatherWorkerMetrics(WORKER_DHT_MISS);
 }
 
 std::vector<uint32_t> poet::ChemistryModule::GetWorkerDHTEvictions() const {
   int type = CHEM_PERF;
   MPI_Bcast(&type, 1, MPI_INT, 0, this->group_comm);
-  type = WORKER_DHT_EVICTIONS;
-  MPI_Bcast(&type, 1, MPI_INT, 0, this->group_comm);
-
-  MPI_Status probe;
-  MPI_Probe(MPI_ANY_SOURCE, WORKER_DHT_EVICTIONS, this->group_comm, &probe);
-  int count;
-  MPI_Get_count(&probe, MPI_UINT32_T, &count);
-
-  std::vector<uint32_t> ret(count);
-  MPI_Recv(ret.data(), count, MPI_UINT32_T, probe.MPI_SOURCE, WORKER_DHT_EVICTIONS,
-           this->group_comm, NULL);
-
-  return ret;
-}
-
-inline std::vector<double> shuffleField(const std::vector<double> &in_field,
-                                        uint32_t size_per_prop,
-                                        uint32_t prop_count,
-                                        uint32_t wp_count) {
-  std::vector<double> out_buffer(in_field.size());
-  uint32_t write_i = 0;
-  for (uint32_t i = 0; i < wp_count; i++) {
-    for (uint32_t j = i; j < size_per_prop; j += wp_count) {
-      for (uint32_t k = 0; k < prop_count; k++) {
-        out_buffer[(write_i * prop_count) + k] =
-            in_field[(k * size_per_prop) + j];
-      }
-      write_i++;
-    }
-  }
-  return out_buffer;
-}
-
-inline void unshuffleField(const std::vector<double> &in_buffer,
-                           uint32_t size_per_prop, uint32_t prop_count,
-                           uint32_t wp_count, std::vector<double> &out_field) {
-  uint32_t read_i = 0;
-
-  for (uint32_t i = 0; i < wp_count; i++) {
-    for (uint32_t j = i; j < size_per_prop; j += wp_count) {
-      for (uint32_t k = 0; k < prop_count; k++) {
-        out_field[(k * size_per_prop) + j] =
-            in_buffer[(read_i * prop_count) + k];
-      }
-      read_i++;
-    }
-  }
+  return MasterGatherWorkerMetrics(WORKER_DHT_EVICTIONS);
 }
 
 inline void printProgressbar(int count_pkgs, int n_wp, int barWidth = 70) {
@@ -243,15 +190,12 @@ inline void poet::ChemistryModule::MasterRecvPkgs(worker_list_t &w_list,
 }
 
 void poet::ChemistryModule::RunCells() {
-  double start_t{MPI_Wtime()};
   if (this->is_sequential) {
     MasterRunSequential();
     return;
   }
 
   MasterRunParallel();
-  double end_t{MPI_Wtime()};
-  this->chem_t += end_t - start_t;
 }
 
 void poet::ChemistryModule::MasterRunSequential() {
@@ -267,6 +211,7 @@ void poet::ChemistryModule::MasterRunSequential() {
 
 void poet::ChemistryModule::MasterRunParallel() {
   /* declare most of the needed variables here */
+  double chem_a, chem_b;
   double seq_a, seq_b, seq_c, seq_d;
   double worker_chemistry_a, worker_chemistry_b;
   double sim_e_chemistry, sim_f_chemistry;
@@ -282,6 +227,9 @@ void poet::ChemistryModule::MasterRunParallel() {
   double dt = this->PhreeqcRM::GetTimeStep();
   static uint32_t iteration = 0;
 
+  /* start time measurement of whole chemistry simulation */
+  chem_a = MPI_Wtime();
+
   /* start time measurement of sequential part */
   seq_a = MPI_Wtime();
 
@@ -292,7 +240,7 @@ void poet::ChemistryModule::MasterRunParallel() {
   // grid.shuffleAndExport(mpi_buffer);
   std::vector<double> mpi_buffer =
       shuffleField(chem_field.AsVector(), this->n_cells, this->prop_count,
-                   wp_sizes_vector.size());
+                         wp_sizes_vector.size());
 
   /* setup local variables */
   pkg_to_send = wp_sizes_vector.size();
@@ -315,9 +263,7 @@ void poet::ChemistryModule::MasterRunParallel() {
   // while there are still packages to recv
   while (pkg_to_recv > 0) {
     // print a progressbar to stdout
-    if (print_progessbar) {
-      printProgressbar((int)i_pkgs, (int)wp_sizes_vector.size());
-    }
+    printProgressbar((int)i_pkgs, (int)wp_sizes_vector.size());
     // while there are still packages to send
     if (pkg_to_send > 0) {
       // send packages to all free workers ...
@@ -342,7 +288,7 @@ void poet::ChemistryModule::MasterRunParallel() {
   // grid.importAndUnshuffle(mpi_buffer);
   std::vector<double> out_vec{mpi_buffer};
   unshuffleField(mpi_buffer, this->n_cells, this->prop_count,
-                 wp_sizes_vector.size(), out_vec);
+                       wp_sizes_vector.size(), out_vec);
   chem_field.SetFromVector(out_vec);
 
   /* do master stuff */
@@ -360,6 +306,8 @@ void poet::ChemistryModule::MasterRunParallel() {
   for (int i = 1; i < this->comm_size; i++) {
     MPI_Send(NULL, 0, MPI_DOUBLE, i, LOOP_END, this->group_comm);
   }
+  chem_b = MPI_Wtime();
+  this->chem_t += chem_b - chem_a;
 
   this->simtime += dt;
   iteration++;
@@ -374,8 +322,7 @@ std::vector<uint32_t>
 poet::ChemistryModule::CalculateWPSizesVector(uint32_t n_cells,
                                               uint32_t wp_size) const {
   bool mod_pkgs = (n_cells % wp_size) != 0;
-  uint32_t n_packages =
-      (uint32_t)(n_cells / wp_size) + static_cast<int>(mod_pkgs);
+  uint32_t n_packages = (uint32_t)(n_cells / wp_size) + mod_pkgs;
 
   std::vector<uint32_t> wp_sizes_vector(n_packages, 0);
 

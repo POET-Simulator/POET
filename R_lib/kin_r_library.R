@@ -264,9 +264,9 @@ StoreSetup <- function(setup) {
   if (dht_enabled) {
     to_store$DHT <- list(
       enabled   = dht_enabled,
-      log       = dht_log
-      #signif    = dht_final_signif,
-      #proptype  = dht_final_proptype
+      log       = dht_log,
+      signif    = dht_final_signif,
+      proptype  = dht_final_proptype
     )
   } else {
     to_store$DHT <- FALSE

@@ -2,7 +2,7 @@
 ### SURFACE and with the RATES for Calcite and Dolomite to use with
 ### RedModRphree
 
-### Time-stamp: "Last modified 2023-05-23 10:35:56 mluebke"
+### Time-stamp: "Last modified 2018-05-06 14:36:23 delucia"
 
 # PHREEQC.DAT for calculating pressure dependence of reactions, with
 #   molal volumina of aqueous species and of minerals, and
@@ -1276,9 +1276,9 @@ Calcite
 	110 logK25=-5.81
 	120 mech_c=(10^logK25)*(e^(-Ea/R*deltaT))
 	130 rate=mech_a+mech_c
-	140 IF (SI("Calcite")<0 AND M>0) then moles=parm(1)*rate*(1-SR("Calcite")) # dissolution
+	## 140 IF SI("Calcite")<0 then moles=parm(1)*rate*(1-SR("Calcite")) # dissolution
         ## 145 IF SI("Calcite")>0 then moles=parm(1)*M*rate*(-1+SR("Calcite")) # precipitation
-	## 150 moles=parm(1)*rate*(1-SR("Calcite")) # precipitation
+	150 moles=parm(1)*rate*(1-SR("Calcite")) # precipitation
 	200 save moles*time
 -end
 

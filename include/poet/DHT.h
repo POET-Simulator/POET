@@ -67,7 +67,7 @@
  */
 typedef struct {
   /** Count of writes to specific process this process did. */
-  int *writes_local;
+  int* writes_local;
   /** Writes after last call of DHT_print_statistics. */
   int old_writes;
   /** How many read misses occur? */
@@ -100,24 +100,24 @@ typedef struct {
   /** Size of the MPI communicator respectively all participating processes. */
   int comm_size;
   /** Pointer to a hashfunction. */
-  uint64_t (*hash_func)(int, const void *);
+  uint64_t (*hash_func)(int, const void*);
   /** Pre-allocated memory where a bucket can be received. */
-  void *recv_entry;
+  void* recv_entry;
   /** Pre-allocated memory where a bucket to send can be stored. */
-  void *send_entry;
+  void* send_entry;
   /** Allocated memory on which the MPI window was created. */
-  void *mem_alloc;
+  void* mem_alloc;
   /** Count of read misses over all time. */
   int read_misses;
   /** Count of evictions over all time. */
   int evictions;
   /** Array of indeces where a bucket can be stored. */
-  uint64_t *index;
+  uint64_t* index;
   /** Count of possible indeces. */
   unsigned int index_count;
 #ifdef DHT_STATISTICS
   /** Detailed statistics of the usage of the DHT. */
-  DHT_stats *stats;
+  DHT_stats* stats;
 #endif
 } DHT;
 
@@ -141,9 +141,9 @@ typedef struct {
  * @return DHT* The returned value is the \a DHT-object which serves as a handle
  * for all DHT operations. If an error occured NULL is returned.
  */
-extern DHT *DHT_create(MPI_Comm comm, uint64_t size_per_process,
+extern DHT* DHT_create(MPI_Comm comm, uint64_t size_per_process,
                        unsigned int data_size, unsigned int key_size,
-                       uint64_t (*hash_func)(int, const void *));
+                       uint64_t (*hash_func)(int, const void*));
 
 /**
  * @brief Write data into DHT.
@@ -161,14 +161,10 @@ extern DHT *DHT_create(MPI_Comm comm, uint64_t size_per_process,
  * @param table Pointer to the \a DHT-object.
  * @param key Pointer to the key.
  * @param data Pointer to the data.
- * @param proc If not NULL, returns the process number written to.
- * @param index If not NULL, returns the index of the bucket where the data was
- * written to.
  * @return int Returns either DHT_SUCCESS on success or correspondending error
  * value on eviction or error.
  */
-extern int DHT_write(DHT *table, void *key, void *data, uint32_t *proc,
-                     uint32_t *index);
+extern int DHT_write(DHT* table, void* key, void* data);
 
 /**
  * @brief Read data from DHT.
@@ -191,7 +187,7 @@ extern int DHT_write(DHT *table, void *key, void *data, uint32_t *proc,
  * @return int Returns either DHT_SUCCESS on success or correspondending error
  * value on read miss or error.
  */
-extern int DHT_read(DHT *table, const void *key, void *destination);
+extern int DHT_read(DHT* table, void* key, void* destination);
 
 /**
  * @brief Write current state of DHT to file.
@@ -207,7 +203,7 @@ extern int DHT_read(DHT *table, const void *key, void *destination);
  * @return int Returns DHT_SUCCESS on succes, DHT_FILE_IO_ERROR if file can't be
  * opened/closed or DHT_WRITE_ERROR if file is not writable.
  */
-extern int DHT_to_file(DHT *table, const char *filename);
+extern int DHT_to_file(DHT* table, const char* filename);
 
 /**
  * @brief Read state of DHT from file.
@@ -227,7 +223,7 @@ extern int DHT_to_file(DHT *table, const char *filename);
  * file doesn't match expectation. This is possible if the data size or key size
  * is different.
  */
-extern int DHT_from_file(DHT *table, const char *filename);
+extern int DHT_from_file(DHT* table, const char* filename);
 
 /**
  * @brief Free ressources of DHT.
@@ -245,7 +241,7 @@ extern int DHT_from_file(DHT *table, const char *filename);
  * @return int Returns either DHT_SUCCESS on success or DHT_MPI_ERROR on
  * internal MPI error.
  */
-extern int DHT_free(DHT *table, int *eviction_counter, int *readerror_counter);
+extern int DHT_free(DHT* table, int* eviction_counter, int* readerror_counter);
 
 /**
  * @brief Prints a table with statistics about current use of DHT.
@@ -271,7 +267,7 @@ extern int DHT_free(DHT *table, int *eviction_counter, int *readerror_counter);
  * @return int Returns DHT_SUCCESS on success or DHT_MPI_ERROR on internal MPI
  * error.
  */
-extern int DHT_print_statistics(DHT *table);
+extern int DHT_print_statistics(DHT* table);
 
 /**
  * @brief Determine destination rank and index.
@@ -290,8 +286,8 @@ extern int DHT_print_statistics(DHT *table);
  * @param index_count Count of possible indeces.
  */
 static void determine_dest(uint64_t hash, int comm_size,
-                           unsigned int table_size, unsigned int *dest_rank,
-                           uint64_t *index, unsigned int index_count);
+                           unsigned int table_size, unsigned int* dest_rank,
+                           uint64_t* index, unsigned int index_count);
 
 /**
  * @brief Set the occupied flag.
@@ -300,7 +296,7 @@ static void determine_dest(uint64_t hash, int comm_size,
  *
  * @param flag_byte First byte of a bucket.
  */
-static void set_flag(char *flag_byte);
+static void set_flag(char* flag_byte);
 
 /**
  * @brief Get the occupied flag.

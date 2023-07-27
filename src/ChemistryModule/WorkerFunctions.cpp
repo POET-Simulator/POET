@@ -1,8 +1,7 @@
-//  Time-stamp: "Last modified 2023-07-27 15:21:16 mluebke"
+//  Time-stamp: "Last modified 2023-04-24 16:55:34 mluebke"
 
 #include "IrmResult.h"
 #include "poet/ChemistryModule.hpp"
-#include "poet/DHT_Wrapper.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -14,8 +13,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-
-namespace poet {
 
 inline std::string get_string(int root, MPI_Comm communicator) {
   int count;
@@ -58,8 +55,8 @@ void poet::ChemistryModule::WorkerLoop() {
       bool enable;
       ChemBCast(&enable, 1, MPI_CXX_BOOL);
 
-      std::uint64_t size_mb;
-      ChemBCast(&size_mb, 1, MPI_UINT64_T);
+      uint32_t size_mb;
+      ChemBCast(&size_mb, 1, MPI_UINT32_T);
 
       std::vector<std::string> name_dummy;
 
@@ -70,6 +67,13 @@ void poet::ChemistryModule::WorkerLoop() {
       std::vector<uint32_t> input_vec;
 
       SetDHTSignifVector(input_vec);
+      break;
+    }
+    case CHEM_DHT_PROP_TYPE_VEC: {
+      std::vector<uint32_t> input_vec(this->prop_count);
+      ChemBCast(input_vec.data(), this->prop_count, MPI_UINT32_T);
+
+      SetDHTPropTypeVector(input_vec);
       break;
     }
     case CHEM_DHT_SNAPS: {
@@ -241,25 +245,23 @@ void poet::ChemistryModule::WorkerPostIter(MPI_Status &prope_status,
   MPI_Recv(NULL, 0, MPI_DOUBLE, 0, LOOP_END, this->group_comm,
            MPI_STATUS_IGNORE);
   if (this->dht_enabled) {
-    dht_hits.push_back(dht->getHits());
-    dht_evictions.push_back(dht->getEvictions());
-    dht->resetCounter();
+    this->dht->printStatistics();
 
-    if (this->dht_snaps_type == DHT_SNAPS_ITEREND) {
+    if (this->dht_snaps_type == DHT_FILES_ITEREND) {
       WorkerWriteDHTDump(iteration);
     }
   }
 }
 void poet::ChemistryModule::WorkerPostSim(uint32_t iteration) {
-  if (this->dht_enabled && this->dht_snaps_type == DHT_SNAPS_SIMEND) {
+  if (this->dht_enabled && this->dht_snaps_type == DHT_FILES_SIMEND) {
     WorkerWriteDHTDump(iteration);
   }
 }
 
 void poet::ChemistryModule::WorkerWriteDHTDump(uint32_t iteration) {
   std::stringstream out;
-  out << this->dht_file_out_dir << "/iter_" << std::setfill('0')
-      << std::setw(this->file_pad) << iteration << ".dht";
+  out << this->dht_file_out_dir << "/iter_" << std::setfill('0') << std::setw(3)
+      << iteration << ".dht";
   int res = dht->tableToFile(out.str().c_str());
   if (res != DHT_SUCCESS && this->comm_rank == 2)
     std::cerr
@@ -353,37 +355,24 @@ void poet::ChemistryModule::WorkerPerfToMaster(int type,
 }
 
 void poet::ChemistryModule::WorkerMetricsToMaster(int type) {
-  MPI_Comm worker_comm = dht->getCommunicator();
-  int worker_rank;
-  MPI_Comm_rank(worker_comm, &worker_rank);
-
-  MPI_Comm &group_comm = this->group_comm;
-
-  auto reduce_and_send = [&worker_rank, &worker_comm, &group_comm](
-                             std::vector<std::uint32_t> &send_buffer, int tag) {
-    std::vector<uint32_t> to_master(send_buffer.size());
-    MPI_Reduce(send_buffer.data(), to_master.data(), send_buffer.size(),
-               MPI_UINT32_T, MPI_SUM, 0, worker_comm);
-
-    if (worker_rank == 0) {
-      MPI_Send(to_master.data(), to_master.size(), MPI_UINT32_T, 0, tag,
-               group_comm);
-    }
-  };
-
+  uint32_t value;
   switch (type) {
   case WORKER_DHT_HITS: {
-    reduce_and_send(dht_hits, WORKER_DHT_HITS);
+    value = dht->getHits();
+    break;
+  }
+  case WORKER_DHT_MISS: {
+    value = dht->getMisses();
     break;
   }
   case WORKER_DHT_EVICTIONS: {
-    reduce_and_send(dht_evictions, WORKER_DHT_EVICTIONS);
+    value = dht->getEvictions();
     break;
   }
   default: {
     throw std::runtime_error("Unknown perf type in master's message.");
   }
   }
+  MPI_Gather(&value, 1, MPI_UINT32_T, NULL, 1, MPI_UINT32_T, 0,
+             this->group_comm);
 }
-
-} // namespace poet
