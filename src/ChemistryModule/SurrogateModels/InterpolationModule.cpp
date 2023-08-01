@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-08-01 17:54:53 mluebke"
+//  Time-stamp: "Last modified 2023-08-01 23:18:45 mluebke"
 
 #include "poet/DHT_Wrapper.hpp"
 #include "poet/HashFunctions.hpp"
@@ -115,54 +115,9 @@ void InterpolationModule::tryInterpolation(
     // }
     // mean_water /= pht_result.size;
 
-    auto calcMassBalance = [](const std::vector<double> &input) {
-      double C, Ca, Mg;
-      C = input[3] + input[7] + 2 * input[9];
-      Ca = input[4] + input[7] + input[9];
-      Mg = input[6] + input[9];
-
-      return std::array<double, 3>{C, Ca, Mg};
-    };
-
-    auto mass_in = calcMassBalance(dht_results.results[i]);
-
-    const auto DHT_inputElements = dht_instance.getKeyElements();
-
-    // HACK: transform input elements to uint, as there shall no any user
-    // defined key species present yet
-
-    // std::vector<std::uint32_t> interp_inputElements;
-    // std::transform(DHT_inputElements.begin(), DHT_inputElements.end(),
-    //                interp_inputElements.begin(), [](std::int32_t x) {
-    //                  if (x < 0) {
-    //                    x = 0;
-    //                  }
-    //                  return x;
-    //                });
-
     interp_result.results[i] =
         f_interpolate(dht_instance.getKeyElements(), dht_results.results[i],
                       pht_result.in_values, pht_result.out_values);
-
-    auto mass_out = calcMassBalance(interp_result.results[i]);
-
-    double diff[3];
-
-    std::transform(mass_in.begin(), mass_in.end(), mass_out.begin(), diff,
-                   std::minus<>());
-
-    bool exceeding = false;
-    for (const auto comp : diff) {
-      if (std::abs(comp) > 1e-10) {
-        exceeding = true;
-        break;
-      }
-    }
-
-    if (exceeding) {
-      interp_result.status[i] = INSUFFICIENT_DATA;
-      continue;
-    }
 
     if (interp_result.results[i][7] < 0 || interp_result.results[i][9] < 0) {
       interp_result.status[i] = INSUFFICIENT_DATA;
