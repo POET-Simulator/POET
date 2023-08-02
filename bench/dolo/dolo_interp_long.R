@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-08-01 18:34:47 mluebke"
+## Time-stamp: "Last modified 2023-08-02 13:47:06 mluebke"
 
 database <- normalizePath("../share/poet/bench/dolo/phreeqc_kin.dat")
 input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
@@ -29,11 +29,7 @@ init_cell <- list(
 grid <- list(
   n_cells = c(n, m),
   s_cells = c(5, 2.5),
-  type = types[1],
-  init_cell = as.data.frame(init_cell, check.names = FALSE),
-  props = names(init_cell),
-  database = database,
-  input_script = input_script
+  type = types[1]
 )
 
 

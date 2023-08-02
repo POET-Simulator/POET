@@ -56,14 +56,6 @@ poet::GridParams::s_GridParams(RInside &R) {
       (dim == 1 ? this->n_cells[0] : this->n_cells[0] * this->n_cells[1]);
 
   this->type = Rcpp::as<std::string>(R.parseEval("mysetup$grid$type"));
-  this->init_df =
-      Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$grid$init_cell"));
-  this->props =
-      Rcpp::as<std::vector<std::string>>(R.parseEval("mysetup$grid$props"));
-  this->input_script =
-      Rcpp::as<std::string>(R.parseEval("mysetup$grid$input_script"));
-  this->database_path =
-      Rcpp::as<std::string>(R.parseEval("mysetup$grid$database"));
 }
 
 poet::DiffusionParams::s_DiffusionParams(RInside &R) {

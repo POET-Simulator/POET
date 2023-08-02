@@ -240,11 +240,12 @@ private:
   std::list<std::string> validateOptions(argh::parser cmdl);
 
   const std::set<std::string> flaglist{
-      "ignore-result", "dht", "dht-nolog", "P", "progress", "interp"};
+      "ignore-result", "dht", "P", "progress", "interp"};
   const std::set<std::string> paramlist{
-      "work-package-size", "dht-signif", "dht-strategy",
-      "dht-size",          "dht-snaps",  "dht-file",
-      "interp-size",       "interp-min", "interp-bucket-entries"};
+      "work-package-size", "dht-strategy",
+      "dht-size",          "dht-snaps",
+      "dht-file",          "interp-size",
+      "interp-min",        "interp-bucket-entries"};
 
   t_simparams simparams;
 

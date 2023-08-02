@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-04-24 16:51:23 mluebke"
+## Time-stamp: "Last modified 2023-08-02 13:59:22 mluebke"
 
 database <- normalizePath("../share/poet/bench/barite/db_barite.dat")
 input_script <- normalizePath("../share/poet/bench/barite/barite.pqi")
@@ -28,11 +28,7 @@ init_cell <- list(
 grid <- list(
   n_cells = c(n, m),
   s_cells = c(1, 1),
-  type = types[1],
-  init_cell = as.data.frame(init_cell, check.names = FALSE),
-  props = names(init_cell),
-  database = database,
-  input_script = input_script
+  type = types[1]
 )
 
 
