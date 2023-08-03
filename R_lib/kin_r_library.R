@@ -64,28 +64,33 @@ master_init <- function(setup) {
 ## calculated time step if store_result is TRUE and increments the
 ## iteration counter
 master_iteration_end <- function(setup) {
-  iter <- setup$iter
-  ## MDL Write on disk state_T and state_C after every iteration
-  ## comprised in setup$out_save
-  if (setup$store_result) {
-    if (iter %in% setup$out_save) {
-      nameout <- paste0(fileout, "/iter_", sprintf("%03d", iter), ".rds")
-      info <- list(
-        tr_req_dt = as.integer(setup$req_dt)
-        #    tr_allow_dt = setup$allowed_dt,
-        #    tr_inniter = as.integer(setup$inniter)
-      )
-      saveRDS(list(
-        T = setup$state_T, C = setup$state_C,
-        simtime = as.integer(setup$simtime),
-        tr_info = info
-      ), file = nameout)
-      msgm("results stored in <", nameout, ">")
+    iter <- setup$iter
+    ## max digits for iterations
+    dgts <-  as.integer(ceiling(log10(setup$iterations + 1)))
+    ## string format to use in sprintf 
+    fmt <- paste0("%0", dgts, "d")
+    
+    ## Write on disk state_T and state_C after every iteration
+    ## comprised in setup$out_save
+    if (setup$store_result) {
+        if (iter %in% setup$out_save) {
+            nameout <- paste0(fileout, "/iter_", sprintf(fmt=fmt, iter), ".rds")
+            info <- list(
+                tr_req_dt = as.integer(setup$req_dt)
+                ## tr_allow_dt = setup$allowed_dt,
+                ## tr_inniter = as.integer(setup$inniter)
+            )
+            saveRDS(list(
+                T = setup$state_T, C = setup$state_C,
+                simtime = as.integer(setup$simtime),
+                tr_info = info
+            ), file = nameout)
+            msgm("results stored in <", nameout, ">")
+        }
     }
-  }
-  msgm("done iteration", iter, "/", setup$maxiter)
-  setup$iter <- setup$iter + 1
-  return(setup)
+    msgm("done iteration", iter, "/", setup$maxiter)
+    setup$iter <- setup$iter + 1
+    return(setup)
 }
 
 ## function for the workers to compute chemistry through PHREEQC
@@ -264,9 +269,9 @@ StoreSetup <- function(setup) {
   if (dht_enabled) {
     to_store$DHT <- list(
       enabled   = dht_enabled,
-      log       = dht_log,
-      signif    = dht_final_signif,
-      proptype  = dht_final_proptype
+      log       = dht_log
+      #signif    = dht_final_signif,
+      #proptype  = dht_final_proptype
     )
   } else {
     to_store$DHT <- FALSE

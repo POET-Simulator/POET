@@ -1,6 +1,6 @@
-## Time-stamp: "Last modified 2023-04-24 15:12:02 mluebke"
+## Time-stamp: "Last modified 2023-08-02 13:59:02 mluebke"
 
-database <- normalizePath("../share/poet/examples/phreeqc_kin.dat")
+database <- normalizePath("../share/poet/bench/dolo/phreeqc_kin.dat")
 input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
 
 #################################################################
@@ -29,11 +29,7 @@ init_cell <- list(
 grid <- list(
   n_cells = c(n, m),
   s_cells = c(1, 1),
-  type = types[1],
-  init_cell = as.data.frame(init_cell, check.names = FALSE),
-  props = names(init_cell),
-  database = database,
-  input_script = input_script
+  type = types[1]
 )
 
 
@@ -44,8 +40,8 @@ grid <- list(
 
 ## initial conditions
 init_diffu <- list(
-  "H" = 0.000211313883539788,
-  "O" = 0.00398302904424952,
+  "H" = 110.683,
+  "O" = 55.3413,
   "Charge" = -5.0822e-19,
   "C(4)" = 1.2279E-4,
   "Ca" = 1.2279E-4,
@@ -67,8 +63,8 @@ alpha_diffu <- c(
 ## list of boundary conditions/inner nodes
 vecinj_diffu <- list(
     list(
-        "H" = 0.0001540445,
-        "O" = 0.002148006,
+        "H" = 110.683,
+        "O" = 55.3413,
         "Charge" = 1.90431e-16,
         "C(4)" = 0,
         "Ca" = 0,
@@ -76,8 +72,8 @@ vecinj_diffu <- list(
         "Mg" = 0.001
     ),
     list(
-        "H" = 0.0001610193,
-        "O" = 0.002386934,
+        "H" = 110.683,
+        "O" = 55.3413,
         "Charge" = 1.90431e-16,
         "C(4)" = 0,
         "Ca" = 0.0,
@@ -120,16 +116,21 @@ diffusion <- list(
 
 
 ## # Needed when using DHT
-dht_species <- c("H", "O", "Charge", "C(4)", "Ca", "Cl", "Mg", "Calcite",
-                 "Dolomite")
-#dht_signif <- rep(15, length(dht_species))
-dht_signif <- c(10, 10, 3, 5, 5, 5, 5, 5, 5)
+dht_species <- c("H" = 10,
+                 "O" = 10,
+                 "Charge" = 3,
+                 "C(4)" = 5,
+                 "Ca" = 5,
+                 "Cl" = 5,
+                 "Mg" = 5,
+                 "Calcite" = 5,
+                 "Dolomite" =5
+                 )
 
 chemistry <- list(
   database = database,
   input_script = input_script,
-  dht_species = dht_species,
-  dht_signif = dht_signif
+  dht_species = dht_species
 )
 
 #################################################################

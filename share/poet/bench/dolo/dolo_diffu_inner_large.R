@@ -1,6 +1,6 @@
-## Time-stamp: "Last modified 2023-04-24 15:43:26 mluebke"
+## Time-stamp: "Last modified 2023-08-02 13:59:12 mluebke"
 
-database <- normalizePath("../share/poet/examples/phreeqc_kin.dat")
+database <- normalizePath("../share/poet/bench/dolo/phreeqc_kin.dat")
 input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
 
 #################################################################
@@ -29,11 +29,7 @@ init_cell <- list(
 grid <- list(
   n_cells = c(n, m),
   s_cells = c(2, 1),
-  type = types[1],
-  init_cell = as.data.frame(init_cell, check.names = FALSE),
-  props = names(init_cell),
-  database = database,
-  input_script = input_script
+  type = types[1]
 )
 
 
@@ -118,18 +114,22 @@ diffusion <- list(
 ##                  Chemistry module (Phreeqc)                 ##
 #################################################################
 
-
 ## # Needed when using DHT
-dht_species <- c("H", "O", "Charge", "C(4)", "Ca", "Cl", "Mg", "Calcite",
-                 "Dolomite")
-#dht_signif <- rep(15, length(dht_species))
-dht_signif <- c(10, 10, 3, 5, 5, 5, 5, 5, 5)
+dht_species <- c("H" = 10,
+                 "O" = 10,
+                 "Charge" = 3,
+                 "C(4)" = 5,
+                 "Ca" = 5,
+                 "Cl" = 5,
+                 "Mg" = 5,
+                 "Calcite" = 5,
+                 "Dolomite" =5
+                 )
 
 chemistry <- list(
   database = database,
   input_script = input_script,
-  dht_species = dht_species,
-  dht_signif = dht_signif
+  dht_species = dht_species
 )
 
 #################################################################

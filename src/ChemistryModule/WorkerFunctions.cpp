@@ -1,9 +1,13 @@
-//  Time-stamp: "Last modified 2023-04-24 16:55:34 mluebke"
+//  Time-stamp: "Last modified 2023-08-01 17:22:20 mluebke"
 
 #include "IrmResult.h"
 #include "poet/ChemistryModule.hpp"
+#include "poet/DHT_Wrapper.hpp"
+#include "poet/Interpolation.hpp"
 
 #include <algorithm>
+#include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <iomanip>
@@ -13,6 +17,147 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+namespace poet {
+
+//std::vector<double>
+//inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
+//                         const std::vector<double> &from,
+//                         const std::vector<std::vector<double>> &input,
+//                         const std::vector<std::vector<double>> &output) {
+//  std::vector<double> results = from;
+//
+//  const std::uint32_t buffer_size = input.size() + 1;
+//  double buffer[buffer_size];
+//  double from_rescaled;
+//
+//  const std::uint32_t data_set_n = input.size();
+//  double rescaled[to_calc.size()][data_set_n + 1];
+//  double weights[data_set_n];
+//
+//  // rescaling over all key elements
+//  for (int key_comp_i = 0; key_comp_i < to_calc.size(); key_comp_i++) {
+//    const auto output_comp_i = to_calc[key_comp_i];
+//
+//    // rescale input between 0 and 1
+//    for (int point_i = 0; point_i < data_set_n; point_i++) {
+//      rescaled[key_comp_i][point_i] = input[point_i][key_comp_i];
+//    }
+//
+//    rescaled[key_comp_i][data_set_n] = from[output_comp_i];
+//
+//    const double min = *std::min_element(rescaled[key_comp_i],
+//                                         rescaled[key_comp_i] + data_set_n + 1);
+//    const double max = *std::max_element(rescaled[key_comp_i],
+//                                         rescaled[key_comp_i] + data_set_n + 1);
+//
+//    for (int point_i = 0; point_i < data_set_n; point_i++) {
+//      rescaled[key_comp_i][point_i] =
+//          ((max - min) != 0
+//               ? (rescaled[key_comp_i][point_i] - min) / (max - min)
+//               : 0);
+//    }
+//    rescaled[key_comp_i][data_set_n] =
+//        ((max - min) != 0 ? (from[output_comp_i] - min) / (max - min) : 0);
+//  }
+//
+//  // calculate distances for each data set
+//  double inv_sum = 0;
+//  for (int point_i = 0; point_i < data_set_n; point_i++) {
+//    double distance = 0;
+//    for (int key_comp_i = 0; key_comp_i < to_calc.size(); key_comp_i++) {
+//      distance += std::pow(
+//          rescaled[key_comp_i][point_i] - rescaled[key_comp_i][data_set_n], 2);
+//    }
+//    weights[point_i] = 1 / std::sqrt(distance);
+//    assert(!std::isnan(weights[point_i]));
+//    inv_sum += weights[point_i];
+//  }
+//
+//  assert(!std::isnan(inv_sum));
+//
+//  // actual interpolation
+//  // bool has_h = false;
+//  // bool has_o = false;
+//
+//  for (int key_comp_i = 0; key_comp_i < to_calc.size(); key_comp_i++) {
+//    const auto output_comp_i = to_calc[key_comp_i];
+//    double key_delta = 0;
+//
+//    // if (interp_i == 0) {
+//    //   has_h = true;
+//    // }
+//
+//    // if (interp_i == 1) {
+//    //   has_o = true;
+//    // }
+//
+//    for (int j = 0; j < data_set_n; j++) {
+//      key_delta += weights[j] * input[j][key_comp_i];
+//    }
+//
+//    key_delta /= inv_sum;
+//
+//    results[output_comp_i] = from[output_comp_i] + key_delta;
+//  }
+//
+//  // if (!has_h) {
+//  //   double new_val = 0;
+//  //   for (int j = 0; j < data_set_n; j++) {
+//  //     new_val += weights[j] * output[j][0];
+//  //   }
+//  //   results[0] = new_val / inv_sum;
+//  // }
+//
+//  // if (!has_h) {
+//  //   double new_val = 0;
+//  //   for (int j = 0; j < data_set_n; j++) {
+//  //     new_val += weights[j] * output[j][1];
+//  //   }
+//  //   results[1] = new_val / inv_sum;
+//  // }
+//
+//  // for (std::uint32_t i = 0; i < to_calc.size(); i++) {
+//  //   const std::uint32_t interp_i = to_calc[i];
+//
+//  //   // rescale input between 0 and 1
+//  //   for (int j = 0; j < input.size(); j++) {
+//  //     buffer[j] = input[j].at(i);
+//  //   }
+//
+//  //   buffer[buffer_size - 1] = from[interp_i];
+//
+//  //   const double min = *std::min_element(buffer, buffer + buffer_size);
+//  //   const double max = *std::max_element(buffer, buffer + buffer_size);
+//
+//  //   for (int j = 0; j < input.size(); j++) {
+//  //     buffer[j] = ((max - min) != 0 ? (buffer[j] - min) / (max - min) : 1);
+//  //   }
+//  //   from_rescaled =
+//  //       ((max - min) != 0 ? (from[interp_i] - min) / (max - min) : 0);
+//
+//  //   double inv_sum = 0;
+//
+//  //   // calculate distances for each point
+//  //   for (int i = 0; i < input.size(); i++) {
+//  //     const double distance = std::pow(buffer[i] - from_rescaled, 2);
+//
+//  //     buffer[i] = distance > 0 ? (1 / std::sqrt(distance)) : 0;
+//  //     inv_sum += buffer[i];
+//  //   }
+//  //   // calculate new values
+//  //   double new_val = 0;
+//  //   for (int i = 0; i < output.size(); i++) {
+//  //     new_val += buffer[i] * output[i][interp_i];
+//  //   }
+//  //   results[interp_i] = new_val / inv_sum;
+//  //   if (std::isnan(results[interp_i])) {
+//  //     std::cout << "nan with new_val = " << output[0][i] << std::endl;
+//  //   }
+//  // }
+//
+//  return results;
+//}
 
 inline std::string get_string(int root, MPI_Comm communicator) {
   int count;
@@ -49,43 +194,6 @@ void poet::ChemistryModule::WorkerLoop() {
     case CHEM_INIT_SPECIES: {
       Field dummy{0};
       initializeField(dummy);
-      break;
-    }
-    case CHEM_DHT_ENABLE: {
-      bool enable;
-      ChemBCast(&enable, 1, MPI_CXX_BOOL);
-
-      uint32_t size_mb;
-      ChemBCast(&size_mb, 1, MPI_UINT32_T);
-
-      std::vector<std::string> name_dummy;
-
-      SetDHTEnabled(enable, size_mb, name_dummy);
-      break;
-    }
-    case CHEM_DHT_SIGNIF_VEC: {
-      std::vector<uint32_t> input_vec;
-
-      SetDHTSignifVector(input_vec);
-      break;
-    }
-    case CHEM_DHT_PROP_TYPE_VEC: {
-      std::vector<uint32_t> input_vec(this->prop_count);
-      ChemBCast(input_vec.data(), this->prop_count, MPI_UINT32_T);
-
-      SetDHTPropTypeVector(input_vec);
-      break;
-    }
-    case CHEM_DHT_SNAPS: {
-      int type;
-      ChemBCast(&type, 1, MPI_INT);
-
-      SetDHTSnaps(type, get_string(0, this->group_comm));
-
-      break;
-    }
-    case CHEM_DHT_READ_FILE: {
-      ReadDHTFile(get_string(0, this->group_comm));
       break;
     }
     case CHEM_WORK_LOOP: {
@@ -204,7 +312,9 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
     dht->checkDHT(local_work_package_size, dt, vecCurrWP, vecMappingWP);
     dht_get_end = MPI_Wtime();
 
-    // DHT_Results.ResultsToMapping(vecMappingWP);
+    if (interp_enabled) {
+      interp->tryInterpolation(dht->getDHTResults(), vecMappingWP);
+    }
   }
 
   phreeqc_time_start = MPI_Wtime();
@@ -218,6 +328,9 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
 
   if (dht_enabled) {
     dht->resultsToWP(vecCurrWP);
+    if (interp_enabled) {
+      interp->resultsToWP(vecCurrWP);
+    }
   }
 
   /* send results to master */
@@ -230,6 +343,10 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
     dht_fill_start = MPI_Wtime();
     dht->fillDHT(local_work_package_size, vecCurrWP);
     dht_fill_end = MPI_Wtime();
+
+    if (interp_enabled) {
+      interp->writePairs(dht->getDHTResults());
+    }
 
     timings.dht_get += dht_get_end - dht_get_start;
     timings.dht_fill += dht_fill_end - dht_fill_start;
@@ -245,23 +362,44 @@ void poet::ChemistryModule::WorkerPostIter(MPI_Status &prope_status,
   MPI_Recv(NULL, 0, MPI_DOUBLE, 0, LOOP_END, this->group_comm,
            MPI_STATUS_IGNORE);
   if (this->dht_enabled) {
-    this->dht->printStatistics();
+    dht_hits.push_back(dht->getHits());
+    dht_evictions.push_back(dht->getEvictions());
+    dht->resetCounter();
 
-    if (this->dht_snaps_type == DHT_FILES_ITEREND) {
+    if (this->interp_enabled) {
+      interp_calls.push_back(interp->getInterpolationCount());
+      interp->resetCounter();
+      interp->writePHTStats();
+    }
+
+    if (this->dht_snaps_type == DHT_SNAPS_ITEREND) {
       WorkerWriteDHTDump(iteration);
+
+      if (this->interp_enabled) {
+        std::stringstream out;
+        out << this->dht_file_out_dir << "/iter_" << std::setfill('0')
+            << std::setw(this->file_pad) << iteration << ".pht";
+        interp->dumpPHTState(out.str());
+      }
     }
   }
 }
 void poet::ChemistryModule::WorkerPostSim(uint32_t iteration) {
-  if (this->dht_enabled && this->dht_snaps_type == DHT_FILES_SIMEND) {
+  if (this->dht_enabled && this->dht_snaps_type == DHT_SNAPS_SIMEND) {
     WorkerWriteDHTDump(iteration);
+    if (this->interp_enabled) {
+      std::stringstream out;
+      out << this->dht_file_out_dir << "/iter_" << std::setfill('0')
+          << std::setw(this->file_pad) << iteration << ".pht";
+      interp->dumpPHTState(out.str());
+    }
   }
 }
 
 void poet::ChemistryModule::WorkerWriteDHTDump(uint32_t iteration) {
   std::stringstream out;
-  out << this->dht_file_out_dir << "/iter_" << std::setfill('0') << std::setw(3)
-      << iteration << ".dht";
+  out << this->dht_file_out_dir << "/iter_" << std::setfill('0')
+      << std::setw(this->file_pad) << iteration << ".dht";
   int res = dht->tableToFile(out.str().c_str());
   if (res != DHT_SUCCESS && this->comm_rank == 2)
     std::cerr
@@ -348,6 +486,26 @@ void poet::ChemistryModule::WorkerPerfToMaster(int type,
                this->group_comm);
     break;
   }
+  case WORKER_IP_WRITE: {
+    double val = interp->getPHTWriteTime();
+    MPI_Gather(&val, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0, this->group_comm);
+    break;
+  }
+  case WORKER_IP_READ: {
+    double val = interp->getPHTReadTime();
+    MPI_Gather(&val, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0, this->group_comm);
+    break;
+  }
+  case WORKER_IP_GATHER: {
+    double val = interp->getDHTGatherTime();
+    MPI_Gather(&val, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0, this->group_comm);
+    break;
+  }
+  case WORKER_IP_FC: {
+    double val = interp->getInterpolationTime();
+    MPI_Gather(&val, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0, this->group_comm);
+    break;
+  }
   default: {
     throw std::runtime_error("Unknown perf type in master's message.");
   }
@@ -355,24 +513,46 @@ void poet::ChemistryModule::WorkerPerfToMaster(int type,
 }
 
 void poet::ChemistryModule::WorkerMetricsToMaster(int type) {
-  uint32_t value;
+  MPI_Comm worker_comm = dht->getCommunicator();
+  int worker_rank;
+  MPI_Comm_rank(worker_comm, &worker_rank);
+
+  MPI_Comm &group_comm = this->group_comm;
+
+  auto reduce_and_send = [&worker_rank, &worker_comm, &group_comm](
+                             std::vector<std::uint32_t> &send_buffer, int tag) {
+    std::vector<uint32_t> to_master(send_buffer.size());
+    MPI_Reduce(send_buffer.data(), to_master.data(), send_buffer.size(),
+               MPI_UINT32_T, MPI_SUM, 0, worker_comm);
+
+    if (worker_rank == 0) {
+      MPI_Send(to_master.data(), to_master.size(), MPI_UINT32_T, 0, tag,
+               group_comm);
+    }
+  };
+
   switch (type) {
   case WORKER_DHT_HITS: {
-    value = dht->getHits();
-    break;
-  }
-  case WORKER_DHT_MISS: {
-    value = dht->getMisses();
+    reduce_and_send(dht_hits, WORKER_DHT_HITS);
     break;
   }
   case WORKER_DHT_EVICTIONS: {
-    value = dht->getEvictions();
+    reduce_and_send(dht_evictions, WORKER_DHT_EVICTIONS);
     break;
+  }
+  case WORKER_IP_CALLS: {
+    reduce_and_send(interp_calls, WORKER_IP_CALLS);
+    return;
+  }
+  case WORKER_PHT_CACHE_HITS: {
+    std::vector<std::uint32_t> input = this->interp->getPHTLocalCacheHits();
+    reduce_and_send(input, WORKER_PHT_CACHE_HITS);
+    return;
   }
   default: {
     throw std::runtime_error("Unknown perf type in master's message.");
   }
   }
-  MPI_Gather(&value, 1, MPI_UINT32_T, NULL, 1, MPI_UINT32_T, 0,
-             this->group_comm);
 }
+
+} // namespace poet

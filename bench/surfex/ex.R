@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-04-17 12:29:27 mluebke"
+## Time-stamp: "Last modified 2023-08-02 13:59:35 mluebke"
 
 database <- normalizePath("./SMILE_2021_11_01_TH.dat")
 input_script <- normalizePath("./ExBase.pqi")
@@ -40,11 +40,7 @@ init_cell <- list(H = 1.476571028625e-01,
 grid <- list(
   n_cells = c(n, m),
   s_cells = c(1, 1),
-  type = "scratch",
-  init_cell = as.data.frame(init_cell, check.names = FALSE),
-  props = names(init_cell),
-  database = database,
-  input_script = input_script
+  type = "scratch"
 )
 
 

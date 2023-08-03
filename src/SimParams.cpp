@@ -56,14 +56,6 @@ poet::GridParams::s_GridParams(RInside &R) {
       (dim == 1 ? this->n_cells[0] : this->n_cells[0] * this->n_cells[1]);
 
   this->type = Rcpp::as<std::string>(R.parseEval("mysetup$grid$type"));
-  this->init_df =
-      Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$grid$init_cell"));
-  this->props =
-      Rcpp::as<std::vector<std::string>>(R.parseEval("mysetup$grid$props"));
-  this->input_script =
-      Rcpp::as<std::string>(R.parseEval("mysetup$grid$input_script"));
-  this->database_path =
-      Rcpp::as<std::string>(R.parseEval("mysetup$grid$database"));
 }
 
 poet::DiffusionParams::s_DiffusionParams(RInside &R) {
@@ -82,20 +74,20 @@ poet::DiffusionParams::s_DiffusionParams(RInside &R) {
       Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$diffusion$vecinj_index"));
 }
 
-poet::ChemistryParams::s_ChemistryParams(RInside &R) {
+void poet::ChemistryParams::initFromR(RInsidePOET &R) {
   this->database_path =
       Rcpp::as<std::string>(R.parseEval("mysetup$chemistry$database"));
   this->input_script =
       Rcpp::as<std::string>(R.parseEval("mysetup$chemistry$input_script"));
-  if (Rcpp::as<bool>(
-          R.parseEval("'dht_species' %in% names(mysetup$chemistry)"))) {
-    this->dht_species = Rcpp::as<std::vector<std::string>>(
-        R.parseEval("mysetup$chemistry$dht_species"));
+
+  if (R.checkIfExists("dht_species", "mysetup$chemistry")) {
+    this->dht_signifs =
+        R.wrapNamedVector<std::uint32_t>("mysetup$chemistry$dht_species");
   }
-  if (Rcpp::as<bool>(
-          R.parseEval("'dht_signif' %in% names(mysetup$chemistry)"))) {
-    this->dht_signif = Rcpp::as<std::vector<std::uint32_t>>(
-        R.parseEval("mysetup$chemistry$dht_signif"));
+
+  if (R.checkIfExists("pht_species", "mysetup$chemistry")) {
+    this->pht_signifs =
+        R.wrapNamedVector<std::uint32_t>("mysetup$chemistry$pht_species");
   }
 }
 
@@ -104,7 +96,7 @@ SimParams::SimParams(int world_rank_, int world_size_) {
   this->simparams.world_size = world_size_;
 }
 
-int SimParams::parseFromCmdl(char *argv[], RInside &R) {
+int SimParams::parseFromCmdl(char *argv[], RInsidePOET &R) {
   // initialize argh object
   argh::parser cmdl(argv);
 
@@ -141,32 +133,28 @@ int SimParams::parseFromCmdl(char *argv[], RInside &R) {
     return poet::PARSER_ERROR;
   }
 
+  simparams.print_progressbar = cmdl[{"P", "progress"}];
+
   /*Parse DHT arguments*/
-  simparams.dht_enabled = cmdl["dht"];
+  chem_params.use_dht = cmdl["dht"];
   // cout << "CPP: DHT is " << ( dht_enabled ? "ON" : "OFF" ) << '\n';
 
-  if (simparams.dht_enabled) {
-    cmdl("dht-strategy", 0) >> simparams.dht_strategy;
-    // cout << "CPP: DHT strategy is " << dht_strategy << endl;
-
-    cmdl("dht-signif", 5) >> simparams.dht_significant_digits;
-    // cout << "CPP: DHT significant digits = " << dht_significant_digits <<
-    // endl;
-
-    simparams.dht_log = !(cmdl["dht-nolog"]);
-    // cout << "CPP: DHT logarithm before rounding: " << ( dht_logarithm ? "ON"
-    // : "OFF" ) << endl;
-
-    cmdl("dht-size", DHT_SIZE_PER_PROCESS_MB) >> simparams.dht_size_per_process;
+  if (chem_params.use_dht) {
+    cmdl("dht-size", DHT_SIZE_PER_PROCESS_MB) >> chem_params.dht_size;
     // cout << "CPP: DHT size per process (Byte) = " << dht_size_per_process <<
     // endl;
 
-    cmdl("dht-snaps", 0) >> simparams.dht_snaps;
+    cmdl("dht-snaps", 0) >> chem_params.dht_snaps;
 
-    cmdl("dht-file") >> dht_file;
+    cmdl("dht-file") >> chem_params.dht_file;
   }
   /*Parse work package size*/
   cmdl("work-package-size", WORK_PACKAGE_SIZE_DEFAULT) >> simparams.wp_size;
+
+  chem_params.use_interp = cmdl["interp"];
+  cmdl("interp-size", 100) >> chem_params.pht_size;
+  cmdl("interp-min", 5) >> chem_params.interp_min_entries;
+  cmdl("interp-bucket-entries", 20) >> chem_params.pht_max_entries;
 
   /*Parse output options*/
   simparams.store_result = !cmdl["ignore-result"];
@@ -175,24 +163,26 @@ int SimParams::parseFromCmdl(char *argv[], RInside &R) {
     cout << "CPP: Complete results storage is "
          << (simparams.store_result ? "ON" : "OFF") << endl;
     cout << "CPP: Work Package Size: " << simparams.wp_size << endl;
-    cout << "CPP: DHT is " << (simparams.dht_enabled ? "ON" : "OFF") << '\n';
+    cout << "CPP: DHT is " << (chem_params.use_dht ? "ON" : "OFF") << '\n';
 
-    if (simparams.dht_enabled) {
+    if (chem_params.use_dht) {
       cout << "CPP: DHT strategy is " << simparams.dht_strategy << endl;
       cout << "CPP: DHT key default digits (ignored if 'signif_vector' is "
               "defined) = "
            << simparams.dht_significant_digits << endl;
       cout << "CPP: DHT logarithm before rounding: "
            << (simparams.dht_log ? "ON" : "OFF") << endl;
-      cout << "CPP: DHT size per process (Byte) = "
-           << simparams.dht_size_per_process << endl;
-      cout << "CPP: DHT save snapshots is " << simparams.dht_snaps << endl;
-      cout << "CPP: DHT load file is " << dht_file << endl;
+      cout << "CPP: DHT size per process (Byte) = " << chem_params.dht_size
+           << endl;
+      cout << "CPP: DHT save snapshots is " << chem_params.dht_snaps << endl;
+      cout << "CPP: DHT load file is " << chem_params.dht_file << endl;
     }
   }
 
   cmdl(1) >> filesim;
   cmdl(2) >> out_dir;
+
+  chem_params.dht_outdir = out_dir;
 
   /* distribute information to R runtime */
   // if local_rank == 0 then master else worker
@@ -208,65 +198,20 @@ int SimParams::parseFromCmdl(char *argv[], RInside &R) {
   // work package size
   R["work_package_size"] = simparams.wp_size;
   // dht enabled?
-  R["dht_enabled"] = simparams.dht_enabled;
+  R["dht_enabled"] = chem_params.use_dht;
   // log before rounding?
   R["dht_log"] = simparams.dht_log;
 
   // eval the init string, ignoring any returns
   R.parseEvalQ("source(filesim)");
+  R.parseEvalQ("mysetup <- setup");
+
+  this->chem_params.initFromR(R);
 
   return poet::PARSER_OK;
 }
 
-void SimParams::initVectorParams(RInside &R) {
-  if (simparams.dht_enabled) {
-    /*Load significance vector from R setup file (or set default)*/
-    bool signif_vector_exists = R.parseEval("exists('signif_vector')");
-    if (signif_vector_exists) {
-      dht_signif_vector = as<std::vector<uint32_t>>(R["signif_vector"]);
-    }
-
-    /*Load property type vector from R setup file (or set default)*/
-    bool prop_type_vector_exists = R.parseEval("exists('prop_type')");
-    if (prop_type_vector_exists) {
-      std::vector<std::string> prop_type_R =
-          as<std::vector<string>>(R["prop_type"]);
-      this->dht_prop_type_vector.clear();
-      this->dht_prop_type_vector.reserve(prop_type_R.size());
-
-      for (const auto &type : prop_type_R) {
-        if (type == "act") {
-          this->dht_prop_type_vector.push_back(DHT_TYPE_CHARGE);
-          continue;
-        }
-
-        if (type == "ignore") {
-          this->dht_prop_type_vector.push_back(DHT_TYPE_IGNORE);
-          continue;
-        }
-
-        this->dht_prop_type_vector.push_back(DHT_TYPE_DEFAULT);
-      }
-    }
-
-    if (simparams.world_rank == 0) {
-      // MDL: new output on signif_vector and prop_type
-      if (signif_vector_exists) {
-        cout << "CPP: using problem-specific rounding digits: " << endl;
-        R.parseEval("print(data.frame(prop=prop, type=prop_type, "
-                    "digits=signif_vector))");
-      } else {
-        cout << "CPP: using DHT default rounding digits = "
-             << simparams.dht_significant_digits << endl;
-      }
-
-      // MDL: pass to R the DHT stuff. These variables exist
-      // only if dht_enabled is true
-      R["dht_final_signif"] = dht_signif_vector;
-      R["dht_final_proptype"] = dht_prop_type_vector;
-    }
-  }
-}
+void SimParams::initVectorParams(RInside &R) {}
 
 std::list<std::string> SimParams::validateOptions(argh::parser cmdl) {
   /* store all unknown parameters here */

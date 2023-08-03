@@ -19,12 +19,12 @@
 */
 
 #include "poet/ChemistryModule.hpp"
-#include <RInside.h>
 #include <Rcpp.h>
 #include <cstdint>
 #include <cstdlib>
 #include <poet/DiffusionModule.hpp>
 #include <poet/Grid.hpp>
+#include <poet/RInsidePOET.hpp>
 #include <poet/SimParams.hpp>
 
 #include <cstring>
@@ -70,7 +70,7 @@ void writeFieldsToR(RInside &R, const Field &trans, const Field &chem) {
 void set_chem_parameters(poet::ChemistryModule &chem, uint32_t wp_size,
                          const std::string &database_path) {
   chem.SetErrorHandlerMode(1);
-  chem.SetComponentH2O(true);
+  chem.SetComponentH2O(false);
   chem.SetRebalanceFraction(0.5);
   chem.SetRebalanceByCell(true);
   chem.UseSolutionDensityVolume(false);
@@ -112,7 +112,6 @@ void set_chem_parameters(poet::ChemistryModule &chem, uint32_t wp_size,
 }
 
 inline double RunMasterLoop(SimParams &params, RInside &R,
-                            ChemistryParams &chem_params,
                             const GridParams &g_params, uint32_t nxyz_master) {
 
   DiffusionParams d_params{R};
@@ -123,35 +122,24 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
 
   double sim_time = .0;
 
-  ChemistryModule chem(nxyz_master, params.getNumParams().wp_size,
-                       MPI_COMM_WORLD);
-  set_chem_parameters(chem, nxyz_master, chem_params.database_path);
-  chem.RunInitFile(chem_params.input_script);
+  ChemistryModule chem(nxyz_master, params.getNumParams().wp_size, maxiter,
+                       params.getChemParams(), MPI_COMM_WORLD);
+
+  set_chem_parameters(chem, nxyz_master, params.getChemParams().database_path);
+  chem.RunInitFile(params.getChemParams().input_script);
 
   poet::ChemistryModule::SingleCMap init_df = DFToHashMap(d_params.initial_t);
   chem.initializeField(diffusion.getField());
 
-  if (params.getNumParams().dht_enabled) {
-    chem.SetDHTEnabled(true, params.getNumParams().dht_size_per_process,
-                       chem_params.dht_species);
-    if (!chem_params.dht_signif.empty()) {
-      chem.SetDHTSignifVector(chem_params.dht_signif);
-    }
-    if (!params.getDHTPropTypeVector().empty()) {
-      chem.SetDHTPropTypeVector(params.getDHTPropTypeVector());
-    }
-    if (!params.getDHTFile().empty()) {
-      chem.ReadDHTFile(params.getDHTFile());
-    }
-    if (params.getNumParams().dht_snaps > 0) {
-      chem.SetDHTSnaps(params.getNumParams().dht_snaps, params.getOutDir());
-    }
+  if (params.getNumParams().print_progressbar) {
+    chem.setProgressBarPrintout(true);
   }
 
   /* SIMULATION LOOP */
 
-  double dStartTime = MPI_Wtime();
+  double dSimTime{0};
   for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
+    double start_t = MPI_Wtime();
     uint32_t tick = 0;
     // cout << "CPP: Evaluating next time step" << endl;
     // R.parseEvalQ("mysetup <- master_iteration_setup(mysetup)");
@@ -199,7 +187,8 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
          << endl;
 
     // MPI_Barrier(MPI_COMM_WORLD);
-
+    double end_t = MPI_Wtime();
+    dSimTime += end_t - start_t;
   } // END SIMULATION LOOP
 
   R.parseEvalQ("profiling <- list()");
@@ -228,23 +217,36 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
   // R["phreeqc_count"] = phreeqc_counts;
   // R.parseEvalQ("profiling$phreeqc_count <- phreeqc_count");
 
-  if (params.getNumParams().dht_enabled) {
+  if (params.getChemParams().use_dht) {
     R["dht_hits"] = Rcpp::wrap(chem.GetWorkerDHTHits());
     R.parseEvalQ("profiling$dht_hits <- dht_hits");
-    R["dht_miss"] = Rcpp::wrap(chem.GetWorkerDHTMiss());
-    R.parseEvalQ("profiling$dht_miss <- dht_miss");
     R["dht_evictions"] = Rcpp::wrap(chem.GetWorkerDHTEvictions());
     R.parseEvalQ("profiling$dht_evictions <- dht_evictions");
     R["dht_get_time"] = Rcpp::wrap(chem.GetWorkerDHTGetTimings());
     R.parseEvalQ("profiling$dht_get_time <- dht_get_time");
     R["dht_fill_time"] = Rcpp::wrap(chem.GetWorkerDHTFillTimings());
     R.parseEvalQ("profiling$dht_fill_time <- dht_fill_time");
+    if (params.getChemParams().use_interp) {
+      R["interp_w"] = Rcpp::wrap(chem.GetWorkerInterpolationWriteTimings());
+      R.parseEvalQ("profiling$interp_write <- interp_w");
+      R["interp_r"] = Rcpp::wrap(chem.GetWorkerInterpolationReadTimings());
+      R.parseEvalQ("profiling$interp_read <- interp_r");
+      R["interp_g"] = Rcpp::wrap(chem.GetWorkerInterpolationGatherTimings());
+      R.parseEvalQ("profiling$interp_gather <- interp_g");
+      R["interp_fc"] =
+          Rcpp::wrap(chem.GetWorkerInterpolationFunctionCallTimings());
+      R.parseEvalQ("profiling$interp_function_calls <- interp_fc");
+      R["interp_calls"] = Rcpp::wrap(chem.GetWorkerInterpolationCalls());
+      R.parseEvalQ("profiling$interp_calls <- interp_calls");
+      R["interp_cached"] = Rcpp::wrap(chem.GetWorkerPHTCacheHits());
+      R.parseEvalQ("profiling$interp_cached <- interp_cached");
+    }
   }
 
   chem.MasterLoopBreak();
   diffusion.end();
 
-  return MPI_Wtime() - dStartTime;
+  return dSimTime;
 }
 
 int main(int argc, char *argv[]) {
@@ -264,19 +266,23 @@ int main(int argc, char *argv[]) {
 
   if (world_rank > 0) {
     {
-      uint32_t c_size;
-      MPI_Bcast(&c_size, 1, MPI_UINT32_T, 0, MPI_COMM_WORLD);
 
-      char *buffer = new char[c_size + 1];
-      MPI_Bcast(buffer, c_size, MPI_CHAR, 0, MPI_COMM_WORLD);
-      buffer[c_size] = '\0';
+      SimParams params(world_rank, world_size);
+      int pret = params.parseFromCmdl(argv, RInsidePOET::getInstance());
+
+      if (pret == poet::PARSER_ERROR) {
+        MPI_Finalize();
+        return EXIT_FAILURE;
+      } else if (pret == poet::PARSER_HELP) {
+        MPI_Finalize();
+        return EXIT_SUCCESS;
+      }
 
       // ChemistryModule worker(nxyz, nxyz, MPI_COMM_WORLD);
-      ChemistryModule worker =
-          poet::ChemistryModule::createWorker(MPI_COMM_WORLD);
-      set_chem_parameters(worker, worker.GetWPSize(), std::string(buffer));
-
-      delete[] buffer;
+      ChemistryModule worker = poet::ChemistryModule::createWorker(
+          MPI_COMM_WORLD, params.getChemParams());
+      set_chem_parameters(worker, worker.GetWPSize(),
+                          params.getChemParams().database_path);
 
       worker.WorkerLoop();
     }
@@ -288,8 +294,7 @@ int main(int argc, char *argv[]) {
     return EXIT_SUCCESS;
   }
 
-  /* initialize R runtime */
-  RInside R(argc, argv);
+  RInsidePOET &R = RInsidePOET::getInstance();
 
   /*Loading Dependencies*/
   // TODO: kann raus
@@ -331,17 +336,9 @@ int main(int argc, char *argv[]) {
 
   // MPI_Barrier(MPI_COMM_WORLD);
 
-  poet::ChemistryParams chem_params(R);
-
-  /* THIS IS EXECUTED BY THE MASTER */
-  std::string db_path = chem_params.database_path;
-  uint32_t c_size = db_path.size();
-  MPI_Bcast(&c_size, 1, MPI_UINT32_T, 0, MPI_COMM_WORLD);
-
-  MPI_Bcast(db_path.data(), c_size, MPI_CHAR, 0, MPI_COMM_WORLD);
   uint32_t nxyz_master = (world_size == 1 ? g_params.total_n : 1);
 
-  dSimTime = RunMasterLoop(params, R, chem_params, g_params, nxyz_master);
+  dSimTime = RunMasterLoop(params, R, g_params, nxyz_master);
 
   cout << "CPP: finished simulation loop" << endl;
 
