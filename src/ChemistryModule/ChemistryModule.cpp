@@ -90,7 +90,7 @@ inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
     // }
 
     for (int j = 0; j < data_set_n; j++) {
-      key_delta += weights[j] * output[j][key_comp_i];
+      key_delta += weights[j] * output[j][output_comp_i];
     }
 
     key_delta /= inv_sum;
