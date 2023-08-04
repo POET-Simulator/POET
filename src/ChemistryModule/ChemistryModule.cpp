@@ -472,7 +472,7 @@ void poet::ChemistryModule::initializeInterp(
     }
 
     auto key_indices =
-        parseDHTSpeciesVec(key_species, dht->getKeySpecies().getNames());
+        parseDHTSpeciesVec(map_copy, dht->getKeySpecies().getNames());
 
     if (this->interp) {
       this->interp.reset();
