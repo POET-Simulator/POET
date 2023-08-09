@@ -27,6 +27,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Macros.hpp"
 #include "DataStructures.hpp"
 #include "RInsidePOET.hpp"
 #include "argh.hpp" // Argument handler https://github.com/adishavit/argh

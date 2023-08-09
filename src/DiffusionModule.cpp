@@ -18,9 +18,10 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "poet/SimParams.hpp"
-#include "tug/BoundaryCondition.hpp"
-#include "tug/Diffusion.hpp"
+#include <poet/Macros.hpp>
+#include <poet/SimParams.hpp>
+#include <tug/BoundaryCondition.hpp>
+#include <tug/Diffusion.hpp>
 #include <Rcpp.h>
 #include <algorithm>
 #include <cstdint>
@@ -153,32 +154,32 @@ void DiffusionModule::simulate(double dt) {
 
   sim_b_transport = MPI_Wtime();
 
-  std::cout << "DiffusionModule::simulate(): Starting diffusion ..."
-            << std::flush;
-
+  MSG_NOENDL("DiffusionModule::simulate(): Starting diffusion ...");
+  std::cout << std::flush;
+  
   std::vector<std::vector<double>> field_2d = t_field.As2DVector();
 
   this->diff_input.setTimestep(dt);
 
   for (int i = 0; i < field_2d.size(); i++) {
-    std::vector<double> in_alpha(this->n_cells_per_prop, this->alpha[i]);
-    this->diff_input.setBoundaryCondition(this->bc_vec[i]);
-
-    if (this->dim == this->DIM_1D) {
-      tug::diffusion::BTCS_1D(this->diff_input, field_2d[i].data(),
-                              in_alpha.data());
-    } else {
-      tug::diffusion::ADI_2D(this->diff_input, field_2d[i].data(),
-                             in_alpha.data());
-    }
+      std::vector<double> in_alpha(this->n_cells_per_prop, this->alpha[i]);
+      this->diff_input.setBoundaryCondition(this->bc_vec[i]);
+      
+      if (this->dim == this->DIM_1D) {
+	  tug::diffusion::BTCS_1D(this->diff_input, field_2d[i].data(),
+				  in_alpha.data());
+      } else {
+	  tug::diffusion::ADI_2D(this->diff_input, field_2d[i].data(),
+				 in_alpha.data());
+      }
   }
-
+  
   t_field.SetFromVector(field_2d);
-
-  std::cout << " done!\n";
-
+  
+  std::cout << " done!" << std::endl;
+  
   sim_a_transport = MPI_Wtime();
-
+  
   transport_t += sim_a_transport - sim_b_transport;
 }
 

@@ -18,14 +18,15 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "poet/ChemistryModule.hpp"
 #include <Rcpp.h>
 #include <cstdint>
 #include <cstdlib>
+#include <poet/Macros.hpp>
 #include <poet/DiffusionModule.hpp>
 #include <poet/Grid.hpp>
 #include <poet/RInsidePOET.hpp>
 #include <poet/SimParams.hpp>
+#include <poet/ChemistryModule.hpp>
 
 #include <cstring>
 #include <iostream>
@@ -146,12 +147,13 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
 
     double dt = Rcpp::as<double>(
         R.parseEval("mysetup$timesteps[" + std::to_string(iter) + "]"));
-    cout << "CPP: Next time step is " << dt << "[s]" << endl;
+
+    //  cout << "CPP: Next time step is " << dt << "[s]" << endl;
+    MSG("Next time step is " + std::to_string(dt) + " [s]");
 
     /* displaying iteration number, with C++ and R iterator */
-    cout << "CPP: Going through iteration " << iter << endl;
-    cout << "CPP: R's $iter: " << ((uint32_t)(R.parseEval("mysetup$iter")))
-         << ". Iteration" << endl;
+    MSG("Going through iteration " + std::to_string(iter));
+    MSG("R's $iter: "  + std::to_string((uint32_t)(R.parseEval("mysetup$iter"))) + ". Iteration");
 
     /* run transport */
     // TODO: transport to diffusion
@@ -159,9 +161,7 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
 
     chem.getField().UpdateFromField(diffusion.getField());
 
-    cout << "CPP: Chemistry" << endl;
-
-    chem.SetTimeStep(dt);
+    MSG("Chemistry step");
 
     chem.SetTimeStep(dt);
     chem.RunCells();
@@ -181,10 +181,8 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
     // store_result is TRUE)
     R.parseEvalQ("mysetup <- master_iteration_end(setup=mysetup)");
 
-    cout << endl
-         << "CPP: End of *coupling* iteration " << iter << "/" << maxiter
-         << endl
-         << endl;
+    MSG("End of *coupling* iteration " + std::to_string(iter) + "/" + std::to_string(maxiter));
+    MSG();
 
     // MPI_Barrier(MPI_COMM_WORLD);
     double end_t = MPI_Wtime();
@@ -261,7 +259,7 @@ int main(int argc, char *argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
   if (world_rank == 0) {
-    cout << "Running POET in version " << poet_version << endl << endl;
+      MSG("Running POET version " + std::string(poet_version));
   }
 
   if (world_rank > 0) {
@@ -288,7 +286,9 @@ int main(int argc, char *argv[]) {
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
-    cout << "CPP: finished, cleanup of process " << world_rank << endl;
+    
+    MSG("finished, cleanup of process " + std::to_string(world_rank));
+
     MPI_Finalize();
 
     return EXIT_SUCCESS;
@@ -312,7 +312,7 @@ int main(int argc, char *argv[]) {
     return EXIT_SUCCESS;
   }
 
-  cout << "CPP: R Init (RInside) on process " << world_rank << endl;
+  MSG("RInside initialized on process " + std::to_string(world_rank));
 
   R.parseEvalQ("mysetup <- setup");
   // if (world_rank == 0) { // get timestep vector from
@@ -326,12 +326,12 @@ int main(int argc, char *argv[]) {
 
   // MDL: store all parameters
   if (world_rank == 0) {
-    cout << "CPP: Calling R Function to store calling parameters" << endl;
-    R.parseEvalQ("StoreSetup(setup=mysetup)");
+      MSG("Calling R Function to store calling parameters");
+      R.parseEvalQ("StoreSetup(setup=mysetup)");
   }
 
   if (world_rank == 0) {
-    cout << "CPP: Init done on process with rank " << world_rank << endl;
+      MSG("Init done on process with rank " + std::to_string(world_rank));
   }
 
   // MPI_Barrier(MPI_COMM_WORLD);
@@ -340,9 +340,9 @@ int main(int argc, char *argv[]) {
 
   dSimTime = RunMasterLoop(params, R, g_params, nxyz_master);
 
-  cout << "CPP: finished simulation loop" << endl;
+  MSG("finished simulation loop");
 
-  cout << "CPP: start timing profiling" << endl;
+  MSG("start timing profiling");
 
   R["simtime"] = dSimTime;
   R.parseEvalQ("profiling$simtime <- simtime");
@@ -351,16 +351,15 @@ int main(int argc, char *argv[]) {
   r_vis_code = "saveRDS(profiling, file=paste0(fileout,'/timings.rds'));";
   R.parseEval(r_vis_code);
 
-  cout << "CPP: Done! Results are stored as R objects into <"
-       << params.getOutDir() << "/timings.rds>" << endl;
+  MSG("Done! Results are stored as R objects into <" + params.getOutDir() + "/timings.rds>");
 
   MPI_Barrier(MPI_COMM_WORLD);
 
-  cout << "CPP: finished, cleanup of process " << world_rank << endl;
+  MSG("finished, cleanup of process " + std::to_string(world_rank));
   MPI_Finalize();
 
   if (world_rank == 0) {
-    cout << "CPP: done, bye!" << endl;
+      MSG("done, bye!");
   }
 
   exit(0);
