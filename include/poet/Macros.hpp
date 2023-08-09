@@ -1,6 +1,9 @@
-//  Time-stamp: "Last modified 2023-08-09 12:10:57 delucia"
+//  Time-stamp: "Last modified 2023-08-09 14:16:04 mluebke"
 #ifndef MACROS_H
 #define MACROS_H
+
+#include <iostream>
+#include <string>
 
 // Prepend "msg" with name of calling function 
 #define MSG(msg)    std::cout << "CPP: " << __func__ << ": " << std::string(msg) << std::endl;
