@@ -177,6 +177,13 @@ int SimParams::parseFromCmdl(char *argv[], RInsidePOET &R) {
       cout << "CPP: DHT save snapshots is " << chem_params.dht_snaps << endl;
       cout << "CPP: DHT load file is " << chem_params.dht_file << endl;
     }
+
+    if (chem_params.use_interp) {
+	cout << "CPP: PHT interpolation enabled: " << chem_params.use_interp << endl;
+	cout << "CPP: PHT interp-size = " << chem_params.pht_size << endl;
+	cout << "CPP: PHT interp-min  = " << chem_params.interp_min_entries << endl;
+	cout << "CPP: PHT interp-bucket-entries = " << chem_params.pht_max_entries << endl;
+    }
   }
 
   cmdl(1) >> filesim;
