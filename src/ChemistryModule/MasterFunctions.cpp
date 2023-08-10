@@ -90,8 +90,8 @@ std::vector<uint32_t> poet::ChemistryModule::GetWorkerDHTEvictions() const {
   MPI_Get_count(&probe, MPI_UINT32_T, &count);
 
   std::vector<uint32_t> ret(count);
-  MPI_Recv(ret.data(), count, MPI_UINT32_T, probe.MPI_SOURCE, WORKER_DHT_EVICTIONS,
-           this->group_comm, NULL);
+  MPI_Recv(ret.data(), count, MPI_UINT32_T, probe.MPI_SOURCE,
+           WORKER_DHT_EVICTIONS, this->group_comm, NULL);
 
   return ret;
 }
@@ -322,9 +322,24 @@ void poet::ChemistryModule::RunCells() {
 void poet::ChemistryModule::MasterRunSequential() {
   std::vector<double> shuffled_field =
       shuffleField(chem_field.AsVector(), n_cells, prop_count, 1);
-  this->setDumpedField(shuffled_field);
+
+  std::vector<std::vector<double>> input;
+  for (std::size_t i = 0; i < n_cells; i++) {
+    input.push_back(
+        std::vector<double>(shuffled_field.begin() + (i * prop_count),
+                            shuffled_field.begin() + ((i + 1) * prop_count)));
+  }
+
+  this->setDumpedField(input);
   PhreeqcRM::RunCells();
-  this->getDumpedField(shuffled_field);
+  this->getDumpedField(input);
+
+  shuffled_field.clear();
+  for (std::size_t i = 0; i < n_cells; i++) {
+    shuffled_field.insert(shuffled_field.end(), input[i].begin(),
+                          input[i].end());
+  }
+
   std::vector<double> out_vec{shuffled_field};
   unshuffleField(shuffled_field, n_cells, prop_count, 1, out_vec);
   chem_field.SetFromVector(out_vec);

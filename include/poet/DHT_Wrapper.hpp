@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-08-01 13:48:34 mluebke"
+//  Time-stamp: "Last modified 2023-08-08 18:01:12 mluebke"
 
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
@@ -25,7 +25,7 @@
 
 #include "DataStructures.hpp"
 #include "LookupKey.hpp"
-#include "poet/DHT_Types.hpp"
+#include "enums.hpp"
 #include "poet/HashFunctions.hpp"
 #include "poet/LookupKey.hpp"
 #include "poet/Rounding.hpp"
@@ -57,12 +57,9 @@ using DHT_Location = std::pair<std::uint32_t, std::uint32_t>;
 class DHT_Wrapper {
 public:
   using DHT_ResultObject = struct DHTResobj {
-    uint32_t length;
     std::vector<LookupKey> keys;
-    std::vector<std::vector<double>> results;
-    std::vector<double> old_values;
-    std::vector<bool> needPhreeqc;
     std::vector<DHT_Location> locations;
+    std::vector<bool> filledDHT;
   };
 
   static constexpr std::int32_t DHT_KEY_INPUT_CUSTOM =
@@ -119,9 +116,7 @@ public:
    * @param[in,out] work_package Pointer to current work package
    * @param dt Current timestep of simulation
    */
-  auto checkDHT(int length, double dt, const std::vector<double> &work_package,
-                std::vector<std::uint32_t> &curr_mapping)
-      -> const DHT_ResultObject &;
+  auto checkDHT(WorkPackage &work_package) -> const DHT_ResultObject &;
 
   /**
    * @brief Write simulated values into DHT
@@ -139,7 +134,7 @@ public:
    * outputs of the PHREEQC simulation
    * @param dt Current timestep of simulation
    */
-  void fillDHT(int length, const std::vector<double> &work_package);
+  void fillDHT(const WorkPackage &work_package);
 
   void resultsToWP(std::vector<double> &work_package);
 
@@ -214,6 +209,14 @@ public:
 
   std::uint32_t getOutputCount() const { return this->data_count; }
 
+  inline void prepareKeys(const std::vector<std::vector<double>> &input_values,
+                          double dt) {
+    dht_results.keys.resize(input_values.size());
+    for (std::size_t i = 0; i < input_values.size(); i++) {
+      dht_results.keys[i] = fuzzForDHT(input_values[i], dt);
+    }
+  }
+
 private:
   uint32_t key_count;
   uint32_t data_count;
@@ -221,7 +224,7 @@ private:
   DHT *dht_object;
   MPI_Comm communicator;
 
-  LookupKey fuzzForDHT(int var_count, void *key, double dt);
+  LookupKey fuzzForDHT(const std::vector<double> &cell, double dt);
 
   std::vector<double>
   outputToInputAndRates(const std::vector<double> &old_results,

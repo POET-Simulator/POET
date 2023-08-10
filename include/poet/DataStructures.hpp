@@ -1,12 +1,28 @@
 #ifndef DATASTRUCTURES_H_
 #define DATASTRUCTURES_H_
 
+#include "enums.hpp"
+
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace poet {
+
+struct WorkPackage {
+  std::size_t size;
+  std::vector<std::vector<double>> input;
+  std::vector<std::vector<double>> output;
+  std::vector<std::uint8_t> mapping;
+
+  WorkPackage(size_t _size) : size(_size) {
+    input.resize(size);
+    output.resize(size);
+    mapping.resize(size, CHEM_PQC);
+  }
+};
 
 template <typename value_type> class NamedVector {
 public:

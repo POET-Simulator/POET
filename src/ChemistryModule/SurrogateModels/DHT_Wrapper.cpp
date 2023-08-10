@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-08-01 13:41:57 mluebke"
+//  Time-stamp: "Last modified 2023-08-09 14:05:01 mluebke"
 
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
@@ -21,11 +21,11 @@
 */
 
 #include "poet/DHT_Wrapper.hpp"
-#include "poet/DHT_Types.hpp"
 #include "poet/HashFunctions.hpp"
 #include "poet/Interpolation.hpp"
 #include "poet/LookupKey.hpp"
 #include "poet/Rounding.hpp"
+#include "poet/enums.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -83,29 +83,18 @@ DHT_Wrapper::~DHT_Wrapper() {
   // free DHT
   DHT_free(dht_object, NULL, NULL);
 }
-auto DHT_Wrapper::checkDHT(int length, double dt,
-                           const std::vector<double> &work_package,
-                           std::vector<std::uint32_t> &curr_mapping)
+auto DHT_Wrapper::checkDHT(WorkPackage &work_package)
     -> const DHT_ResultObject & {
 
-  dht_results.length = length;
-  dht_results.keys.resize(length);
-  dht_results.results.resize(length);
-  dht_results.needPhreeqc.resize(length);
+  const auto length = work_package.size;
 
   std::vector<double> bucket_writer(this->data_count +
                                     input_key_elements.size());
-  std::vector<std::uint32_t> new_mapping;
 
   // loop over every grid cell contained in work package
   for (int i = 0; i < length; i++) {
     // point to current grid cell
-    void *key = (void *)&(work_package[i * this->data_count]);
-    auto &data = dht_results.results[i];
     auto &key_vector = dht_results.keys[i];
-
-    // data.resize(this->data_count);
-    key_vector = fuzzForDHT(this->key_count, key, dt);
 
     // overwrite input with data from DHT, IF value is found in DHT
     int res =
@@ -113,67 +102,49 @@ auto DHT_Wrapper::checkDHT(int length, double dt,
 
     switch (res) {
     case DHT_SUCCESS:
-      dht_results.results[i] = inputAndRatesToOutput(bucket_writer);
-      dht_results.needPhreeqc[i] = false;
+      work_package.output[i] = inputAndRatesToOutput(bucket_writer);
+      work_package.mapping[i] = CHEM_DHT;
       this->dht_hits++;
       break;
     case DHT_READ_MISS:
-      dht_results.needPhreeqc[i] = true;
-      new_mapping.push_back(curr_mapping[i]);
-      dht_results.results[i] = std::vector<double>{
-          &work_package[i * this->data_count],
-          &work_package[i * this->data_count] + this->data_count};
-
-      // HACK: apply normalization to total H and O in results field of DHT
-      // dht_results.results[i][0] -= base_totals[0];
-      // dht_results.results[i][1] -= base_totals[1];
       break;
     }
   }
 
-  curr_mapping = std::move(new_mapping);
-  dht_results.old_values = work_package;
-
   return dht_results;
 }
 
-void DHT_Wrapper::fillDHT(int length, const std::vector<double> &work_package) {
+void DHT_Wrapper::fillDHT(const WorkPackage &work_package) {
+
+  const auto length = work_package.size;
 
   // loop over every grid cell contained in work package
   dht_results.locations.resize(length);
+  dht_results.filledDHT = std::vector<bool>(length, false);
   for (int i = 0; i < length; i++) {
     // If true grid cell was simulated, needs to be inserted into dht
-    if (dht_results.needPhreeqc[i]) {
+    if (work_package.mapping[i] == CHEM_PQC) {
 
       // check if calcite or dolomite is absent and present, resp.n and vice
       // versa in input/output. If this is the case -> Do not write to DHT!
       // HACK: hardcoded, should be fixed!
-      if ((dht_results.old_values[i * this->data_count + 7] == 0) !=
-          (work_package[i * this->data_count + 7] == 0)) {
-        dht_results.needPhreeqc[i] = false;
+      if ((work_package.input[i][7] == 0) != (work_package.output[i][7] == 0)) {
         continue;
       }
 
-      if ((dht_results.old_values[i * this->data_count + 9] == 0) !=
-          (work_package[i * this->data_count + 9] == 0)) {
-        dht_results.needPhreeqc[i] = false;
+      if ((work_package.input[i][9] == 0) != (work_package.output[i][9] == 0)) {
         continue;
       }
 
       uint32_t proc, index;
-      const auto &key = dht_results.keys[i];
-      const auto curr_old_data = std::vector<double>(
-          dht_results.old_values.begin() + (i * this->data_count),
-          dht_results.old_values.begin() + ((i + 1) * this->data_count));
-      const auto curr_new_data = std::vector<double>(
-          work_package.begin() + (i * this->data_count),
-          work_package.begin() + ((i + 1) * this->data_count));
-      const auto data = outputToInputAndRates(curr_old_data, curr_new_data);
+      auto &key = dht_results.keys[i];
+      const auto data =
+          outputToInputAndRates(work_package.input[i], work_package.output[i]);
       // void *data = (void *)&(work_package[i * this->data_count]);
       // fuzz data (round, logarithm etc.)
 
       // insert simulated data with fuzzed key into DHT
-      int res = DHT_write(this->dht_object, (void *)(key.data()),
+      int res = DHT_write(this->dht_object, key.data(),
                           const_cast<double *>(data.data()), &proc, &index);
 
       dht_results.locations[i] = {proc, index};
@@ -182,6 +153,8 @@ void DHT_Wrapper::fillDHT(int length, const std::vector<double> &work_package) {
       if ((res != DHT_SUCCESS) && (res == DHT_WRITE_SUCCESS_WITH_EVICTION)) {
         dht_evictions++;
       }
+
+      dht_results.filledDHT[i] = true;
     }
   }
 }
@@ -218,14 +191,14 @@ DHT_Wrapper::inputAndRatesToOutput(const std::vector<double> &dht_data) {
   return output;
 }
 
-void DHT_Wrapper::resultsToWP(std::vector<double> &work_package) {
-  for (int i = 0; i < dht_results.length; i++) {
-    if (!dht_results.needPhreeqc[i]) {
-      std::copy(dht_results.results[i].begin(), dht_results.results[i].end(),
-                work_package.begin() + (data_count * i));
-    }
-  }
-}
+// void DHT_Wrapper::resultsToWP(std::vector<double> &work_package) {
+//   for (int i = 0; i < dht_results.length; i++) {
+//     if (!dht_results.needPhreeqc[i]) {
+//       std::copy(dht_results.results[i].begin(), dht_results.results[i].end(),
+//                 work_package.begin() + (data_count * i));
+//     }
+//   }
+// }
 
 int DHT_Wrapper::tableToFile(const char *filename) {
   int res = DHT_to_file(dht_object, filename);
@@ -255,11 +228,10 @@ void DHT_Wrapper::printStatistics() {
   }
 }
 
-LookupKey DHT_Wrapper::fuzzForDHT(int var_count, void *key, double dt) {
+LookupKey DHT_Wrapper::fuzzForDHT(const std::vector<double> &cell, double dt) {
   const auto c_zero_val = std::pow(10, AQUEOUS_EXP);
 
-  const Lookup_Keyelement dummy = {.0};
-  LookupKey vecFuzz(var_count + 1, dummy);
+  LookupKey vecFuzz(this->key_count + 1, {.0});
   DHT_Rounder rounder;
 
   int totals_i = 0;
@@ -269,7 +241,7 @@ LookupKey DHT_Wrapper::fuzzForDHT(int var_count, void *key, double dt) {
     if (input_key_elements[i] == DHT_KEY_INPUT_CUSTOM) {
       continue;
     }
-    double curr_key = ((double *)key)[input_key_elements[i]];
+    double curr_key = cell[input_key_elements[i]];
     if (curr_key != 0) {
       if (curr_key < c_zero_val &&
           this->dht_prop_type_vector[i] == DHT_TYPE_DEFAULT) {
@@ -284,7 +256,7 @@ LookupKey DHT_Wrapper::fuzzForDHT(int var_count, void *key, double dt) {
     }
   }
   // add timestep to the end of the key as double value
-  vecFuzz[var_count].fp_element = dt;
+  vecFuzz[this->key_count].fp_element = dt;
 
   return vecFuzz;
 }

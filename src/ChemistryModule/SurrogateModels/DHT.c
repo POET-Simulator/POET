@@ -1,4 +1,4 @@
-/// Time-stamp: "Last modified 2023-06-28 15:58:19 mluebke"
+/// Time-stamp: "Last modified 2023-08-10 11:50:46 mluebke"
 /*
 ** Copyright (C) 2017-2021 Max Luebke (University of Potsdam)
 **
@@ -35,8 +35,8 @@ static void determine_dest(uint64_t hash, int comm_size,
   /** how many bytes do we need for one index? */
   int index_size = sizeof(double) - (index_count - 1);
   for (int i = 0; i < index_count; i++) {
-    tmp_index = 0;
-    memcpy(&tmp_index, (char *)&hash + i, index_size);
+    tmp_index = (hash >> (i * 8)) & ((1ULL << (index_size * 8)) - 1);
+    /* memcpy(&tmp_index, (char *)&hash + i, index_size); */
     index[i] = (uint64_t)(tmp_index % table_size);
   }
   *dest_rank = (unsigned int)(hash % comm_size);

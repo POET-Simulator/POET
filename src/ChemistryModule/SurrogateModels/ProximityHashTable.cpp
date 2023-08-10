@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-08-01 17:11:42 mluebke"
+//  Time-stamp: "Last modified 2023-08-09 13:32:11 mluebke"
 
 #include "poet/DHT_Wrapper.hpp"
 #include "poet/HashFunctions.hpp"
@@ -106,9 +106,8 @@ void ProximityHashTable::writeLocationToPHT(LookupKey key,
 }
 
 const ProximityHashTable::PHT_Result &ProximityHashTable::query(
-    const LookupKey &key, const std::vector<std::uint32_t> &signif,
-    std::uint32_t min_entries_needed, std::uint32_t input_count,
-    std::uint32_t output_count) {
+    const LookupKey &key, const std::uint32_t min_entries_needed,
+    const std::uint32_t input_count, const std::uint32_t output_count) {
 
   double start_r = MPI_Wtime();
   const auto cache_ret = localCache[key];
@@ -158,27 +157,6 @@ const ProximityHashTable::PHT_Result &ProximityHashTable::query(
     buffer += input_count;
     lookup_results.out_values.push_back(
         std::vector<double>(buffer, buffer + output_count));
-
-    // if (!similarityCheck(check_key, key, signif)) {
-    //   // TODO: original stored location in PHT was overwritten in DHT.
-    //   Need to
-    //   // handle this!
-    //   lookup_results.size--;
-    //   if (lookup_results.size < min_entries_needed) {
-    //     lookup_results.size = 0;
-    //     break;
-    //   }
-    //   continue;
-    // }
-
-    // auto input = convertKeysFromDHT(buffer_start, dht_key_count);
-    // // remove timestep from the key
-    // input.pop_back();
-    // lookup_results.in_keys.push_back(input);
-
-    // auto *data = reinterpret_cast<double *>(buffer + dht_key_count);
-    // lookup_results.out_values.push_back(
-    //     std::vector<double>(data, data + dht_data_count));
   }
 
   if (lookup_results.size != 0) {

@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-08-01 23:18:45 mluebke"
+//  Time-stamp: "Last modified 2023-08-09 13:41:53 mluebke"
 
 #include "poet/DHT_Wrapper.hpp"
 #include "poet/HashFunctions.hpp"
@@ -48,31 +48,32 @@ void InterpolationModule::initPHT(std::uint32_t key_count,
       key_size, data_size, entries_per_bucket, size_per_process, communicator);
 }
 
-void InterpolationModule::writePairs(const DHT_Wrapper::DHT_ResultObject &in) {
-  for (int i = 0; i < in.length; i++) {
-    if (in.needPhreeqc[i]) {
+void InterpolationModule::writePairs() {
+  const auto in = this->dht_instance.getDHTResults();
+  for (int i = 0; i < in.filledDHT.size(); i++) {
+    if (in.filledDHT[i]) {
       const auto coarse_key = roundKey(in.keys[i]);
       pht->writeLocationToPHT(coarse_key, in.locations[i]);
     }
   }
 }
 
-void InterpolationModule::tryInterpolation(
-    DHT_Wrapper::DHT_ResultObject &dht_results,
-    std::vector<std::uint32_t> &curr_mapping) {
-  interp_result.status.resize(dht_results.length, NOT_NEEDED);
-  interp_result.results.resize(dht_results.length, {});
+void InterpolationModule::tryInterpolation(WorkPackage &work_package) {
+  interp_result.status.resize(work_package.size, NOT_NEEDED);
 
-  for (int i = 0; i < dht_results.length; i++) {
-    if (!dht_results.needPhreeqc[i]) {
+  const auto dht_results = this->dht_instance.getDHTResults();
+
+  for (int i = 0; i < work_package.size; i++) {
+    if (work_package.mapping[i] != CHEM_PQC) {
       interp_result.status[i] = NOT_NEEDED;
       continue;
     }
 
+    const auto rounded_key = roundKey(dht_results.keys[i]);
+
     auto pht_result =
-        pht->query(roundKey(dht_results.keys[i]), this->key_signifs.getValues(),
-                   this->min_entries_needed, dht_instance.getInputCount(),
-                   dht_instance.getOutputCount());
+        pht->query(rounded_key, this->min_entries_needed,
+                   dht_instance.getInputCount(), dht_instance.getOutputCount());
 
     int pht_i = 0;
 
@@ -85,9 +86,9 @@ void InterpolationModule::tryInterpolation(
       auto out_it = pht_result.out_values.begin() + pht_i;
 
       bool same_sig_calcite = (pht_result.in_values[pht_i][7] == 0) ==
-                              (dht_results.results[i][7] == 0);
+                              (work_package.input[i][7] == 0);
       bool same_sig_dolomite = (pht_result.in_values[pht_i][8] == 0) ==
-                               (dht_results.results[i][9] == 0);
+                               (work_package.input[i][9] == 0);
       if (!same_sig_calcite || !same_sig_dolomite) {
         pht_result.size -= 1;
         pht_result.in_values.erase(in_it);
@@ -104,7 +105,7 @@ void InterpolationModule::tryInterpolation(
     }
 
 #ifdef POET_PHT_ADD
-    this->pht->incrementReadCounter(roundKey(dht_results.keys[i]));
+    this->pht->incrementReadCounter(roundKey(roundedKey));
 #endif
 
     double start_fc = MPI_Wtime();
@@ -115,11 +116,11 @@ void InterpolationModule::tryInterpolation(
     // }
     // mean_water /= pht_result.size;
 
-    interp_result.results[i] =
-        f_interpolate(dht_instance.getKeyElements(), dht_results.results[i],
+    work_package.output[i] =
+        f_interpolate(dht_instance.getKeyElements(), work_package.input[i],
                       pht_result.in_values, pht_result.out_values);
 
-    if (interp_result.results[i][7] < 0 || interp_result.results[i][9] < 0) {
+    if (work_package.output[i][7] < 0 || work_package.output[i][9] < 0) {
       interp_result.status[i] = INSUFFICIENT_DATA;
       continue;
     }
@@ -129,10 +130,7 @@ void InterpolationModule::tryInterpolation(
 
     this->interpolations++;
 
-    curr_mapping.erase(std::remove(curr_mapping.begin(), curr_mapping.end(), i),
-                       curr_mapping.end());
-
-    dht_results.needPhreeqc[i] = false;
+    work_package.mapping[i] = CHEM_INTERP;
     interp_result.status[i] = RES_OK;
   }
 }

@@ -1,10 +1,10 @@
-//  Time-stamp: "Last modified 2023-08-01 17:22:20 mluebke"
+//  Time-stamp: "Last modified 2023-08-10 12:14:24 mluebke"
 
-#include "IrmResult.h"
 #include "poet/ChemistryModule.hpp"
 #include "poet/DHT_Wrapper.hpp"
 #include "poet/Interpolation.hpp"
 
+#include <IrmResult.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -19,146 +19,6 @@
 #include <vector>
 
 namespace poet {
-
-//std::vector<double>
-//inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
-//                         const std::vector<double> &from,
-//                         const std::vector<std::vector<double>> &input,
-//                         const std::vector<std::vector<double>> &output) {
-//  std::vector<double> results = from;
-//
-//  const std::uint32_t buffer_size = input.size() + 1;
-//  double buffer[buffer_size];
-//  double from_rescaled;
-//
-//  const std::uint32_t data_set_n = input.size();
-//  double rescaled[to_calc.size()][data_set_n + 1];
-//  double weights[data_set_n];
-//
-//  // rescaling over all key elements
-//  for (int key_comp_i = 0; key_comp_i < to_calc.size(); key_comp_i++) {
-//    const auto output_comp_i = to_calc[key_comp_i];
-//
-//    // rescale input between 0 and 1
-//    for (int point_i = 0; point_i < data_set_n; point_i++) {
-//      rescaled[key_comp_i][point_i] = input[point_i][key_comp_i];
-//    }
-//
-//    rescaled[key_comp_i][data_set_n] = from[output_comp_i];
-//
-//    const double min = *std::min_element(rescaled[key_comp_i],
-//                                         rescaled[key_comp_i] + data_set_n + 1);
-//    const double max = *std::max_element(rescaled[key_comp_i],
-//                                         rescaled[key_comp_i] + data_set_n + 1);
-//
-//    for (int point_i = 0; point_i < data_set_n; point_i++) {
-//      rescaled[key_comp_i][point_i] =
-//          ((max - min) != 0
-//               ? (rescaled[key_comp_i][point_i] - min) / (max - min)
-//               : 0);
-//    }
-//    rescaled[key_comp_i][data_set_n] =
-//        ((max - min) != 0 ? (from[output_comp_i] - min) / (max - min) : 0);
-//  }
-//
-//  // calculate distances for each data set
-//  double inv_sum = 0;
-//  for (int point_i = 0; point_i < data_set_n; point_i++) {
-//    double distance = 0;
-//    for (int key_comp_i = 0; key_comp_i < to_calc.size(); key_comp_i++) {
-//      distance += std::pow(
-//          rescaled[key_comp_i][point_i] - rescaled[key_comp_i][data_set_n], 2);
-//    }
-//    weights[point_i] = 1 / std::sqrt(distance);
-//    assert(!std::isnan(weights[point_i]));
-//    inv_sum += weights[point_i];
-//  }
-//
-//  assert(!std::isnan(inv_sum));
-//
-//  // actual interpolation
-//  // bool has_h = false;
-//  // bool has_o = false;
-//
-//  for (int key_comp_i = 0; key_comp_i < to_calc.size(); key_comp_i++) {
-//    const auto output_comp_i = to_calc[key_comp_i];
-//    double key_delta = 0;
-//
-//    // if (interp_i == 0) {
-//    //   has_h = true;
-//    // }
-//
-//    // if (interp_i == 1) {
-//    //   has_o = true;
-//    // }
-//
-//    for (int j = 0; j < data_set_n; j++) {
-//      key_delta += weights[j] * input[j][key_comp_i];
-//    }
-//
-//    key_delta /= inv_sum;
-//
-//    results[output_comp_i] = from[output_comp_i] + key_delta;
-//  }
-//
-//  // if (!has_h) {
-//  //   double new_val = 0;
-//  //   for (int j = 0; j < data_set_n; j++) {
-//  //     new_val += weights[j] * output[j][0];
-//  //   }
-//  //   results[0] = new_val / inv_sum;
-//  // }
-//
-//  // if (!has_h) {
-//  //   double new_val = 0;
-//  //   for (int j = 0; j < data_set_n; j++) {
-//  //     new_val += weights[j] * output[j][1];
-//  //   }
-//  //   results[1] = new_val / inv_sum;
-//  // }
-//
-//  // for (std::uint32_t i = 0; i < to_calc.size(); i++) {
-//  //   const std::uint32_t interp_i = to_calc[i];
-//
-//  //   // rescale input between 0 and 1
-//  //   for (int j = 0; j < input.size(); j++) {
-//  //     buffer[j] = input[j].at(i);
-//  //   }
-//
-//  //   buffer[buffer_size - 1] = from[interp_i];
-//
-//  //   const double min = *std::min_element(buffer, buffer + buffer_size);
-//  //   const double max = *std::max_element(buffer, buffer + buffer_size);
-//
-//  //   for (int j = 0; j < input.size(); j++) {
-//  //     buffer[j] = ((max - min) != 0 ? (buffer[j] - min) / (max - min) : 1);
-//  //   }
-//  //   from_rescaled =
-//  //       ((max - min) != 0 ? (from[interp_i] - min) / (max - min) : 0);
-//
-//  //   double inv_sum = 0;
-//
-//  //   // calculate distances for each point
-//  //   for (int i = 0; i < input.size(); i++) {
-//  //     const double distance = std::pow(buffer[i] - from_rescaled, 2);
-//
-//  //     buffer[i] = distance > 0 ? (1 / std::sqrt(distance)) : 0;
-//  //     inv_sum += buffer[i];
-//  //   }
-//  //   // calculate new values
-//  //   double new_val = 0;
-//  //   for (int i = 0; i < output.size(); i++) {
-//  //     new_val += buffer[i] * output[i][interp_i];
-//  //   }
-//  //   results[interp_i] = new_val / inv_sum;
-//  //   if (std::isnan(results[interp_i])) {
-//  //     std::cout << "nan with new_val = " << output[0][i] << std::endl;
-//  //   }
-//  // }
-//
-//  return results;
-//}
-
 inline std::string get_string(int root, MPI_Comm communicator) {
   int count;
   MPI_Bcast(&count, 1, MPI_INT, root, communicator);
@@ -256,8 +116,6 @@ void poet::ChemistryModule::WorkerProcessPkgs(struct worker_s &timings,
 void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
                                          int double_count,
                                          struct worker_s &timings) {
-  int local_work_package_size = 0;
-
   static int counter = 1;
 
   double dht_get_start, dht_get_end;
@@ -268,12 +126,11 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
   double dt;
   double current_sim_time;
 
-  const uint32_t n_cells_times_props = this->prop_count * this->wp_size;
-  std::vector<double> vecCurrWP(n_cells_times_props + BUFFER_OFFSET);
   int count = double_count;
+  std::vector<double> mpi_buffer(count);
 
   /* receive */
-  MPI_Recv(vecCurrWP.data(), count, MPI_DOUBLE, 0, LOOP_WORK, this->group_comm,
+  MPI_Recv(mpi_buffer.data(), count, MPI_DOUBLE, 0, LOOP_WORK, this->group_comm,
            MPI_STATUS_IGNORE);
 
   /* decrement count of work_package by BUFFER_OFFSET */
@@ -283,72 +140,70 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
    * mpi_buffer */
 
   // work_package_size
-  local_work_package_size = vecCurrWP[count];
+  poet::WorkPackage s_curr_wp(mpi_buffer[count]);
 
   // current iteration of simulation
-  iteration = vecCurrWP[count + 1];
+  iteration = mpi_buffer[count + 1];
 
   // current timestep size
-  dt = vecCurrWP[count + 2];
+  dt = mpi_buffer[count + 2];
 
   // current simulation time ('age' of simulation)
-  current_sim_time = vecCurrWP[count + 3];
+  current_sim_time = mpi_buffer[count + 3];
 
   /* 4th double value is currently a placeholder */
   // placeholder = mpi_buffer[count+4];
 
-  vecCurrWP.resize(n_cells_times_props);
-  std::vector<std::uint32_t> vecMappingWP(local_work_package_size);
+  for (std::size_t wp_i = 0; wp_i < s_curr_wp.size; wp_i++) {
+    s_curr_wp.input[wp_i] =
+        std::vector<double>(mpi_buffer.begin() + this->prop_count * wp_i,
+                            mpi_buffer.begin() + this->prop_count * (wp_i + 1));
+  }
 
-  {
-    std::uint32_t i = 0;
-    std::generate(vecMappingWP.begin(), vecMappingWP.end(),
-                  [&] { return i++; });
+  // std::cout << this->comm_rank << ":" << counter++ << std::endl;
+  if (dht_enabled || interp_enabled) {
+    dht->prepareKeys(s_curr_wp.input, dt);
   }
 
   if (dht_enabled) {
     /* check for values in DHT */
     dht_get_start = MPI_Wtime();
-    dht->checkDHT(local_work_package_size, dt, vecCurrWP, vecMappingWP);
+    dht->checkDHT(s_curr_wp);
     dht_get_end = MPI_Wtime();
+    timings.dht_get += dht_get_end - dht_get_start;
+  }
 
-    if (interp_enabled) {
-      interp->tryInterpolation(dht->getDHTResults(), vecMappingWP);
-    }
+  if (interp_enabled) {
+    interp->tryInterpolation(s_curr_wp);
   }
 
   phreeqc_time_start = MPI_Wtime();
 
-  if (WorkerRunWorkPackage(vecCurrWP, vecMappingWP, current_sim_time, dt) !=
-      IRM_OK) {
-    throw std::runtime_error("Phreeqc threw an error!");
+  if (WorkerRunWorkPackage(s_curr_wp, current_sim_time, dt) != IRM_OK) {
+    std::cerr << "Phreeqc error" << std::endl;
   };
 
   phreeqc_time_end = MPI_Wtime();
 
-  if (dht_enabled) {
-    dht->resultsToWP(vecCurrWP);
-    if (interp_enabled) {
-      interp->resultsToWP(vecCurrWP);
-    }
+  for (std::size_t wp_i = 0; wp_i < s_curr_wp.size; wp_i++) {
+    std::copy(s_curr_wp.output[wp_i].begin(), s_curr_wp.output[wp_i].end(),
+              mpi_buffer.begin() + this->prop_count * wp_i);
   }
 
   /* send results to master */
   MPI_Request send_req;
-  MPI_Isend(vecCurrWP.data(), count, MPI_DOUBLE, 0, LOOP_WORK, MPI_COMM_WORLD,
+  MPI_Isend(mpi_buffer.data(), count, MPI_DOUBLE, 0, LOOP_WORK, MPI_COMM_WORLD,
             &send_req);
 
-  if (dht_enabled) {
+  if (dht_enabled || interp_enabled) {
     /* write results to DHT */
     dht_fill_start = MPI_Wtime();
-    dht->fillDHT(local_work_package_size, vecCurrWP);
+    dht->fillDHT(s_curr_wp);
     dht_fill_end = MPI_Wtime();
 
     if (interp_enabled) {
-      interp->writePairs(dht->getDHTResults());
+      interp->writePairs();
     }
-
-    timings.dht_get += dht_get_end - dht_get_start;
     timings.dht_fill += dht_fill_end - dht_fill_start;
   }
 
@@ -429,36 +284,39 @@ void poet::ChemistryModule::WorkerReadDHTDump(
 }
 
 IRM_RESULT
-poet::ChemistryModule::WorkerRunWorkPackage(
-    std::vector<double> &vecWP, std::vector<std::uint32_t> &vecMapping,
-    double dSimTime, double dTimestep) {
-  if ((this->wp_size * this->prop_count) != vecWP.size()) {
-    return IRM_INVALIDARG;
-  }
-
+poet::ChemistryModule::WorkerRunWorkPackage(WorkPackage &work_package,
+                                            double dSimTime, double dTimestep) {
   // check if we actually need to start phreeqc
-  bool bRunPhreeqc = false;
-  for (const auto &aMappingNum : vecMapping) {
-    if (aMappingNum != -1) {
-      bRunPhreeqc = true;
-      break;
+  std::vector<std::uint32_t> pqc_mapping;
+
+  for (std::size_t i = 0; i < work_package.size; i++) {
+    if (work_package.mapping[i] == CHEM_PQC) {
+      pqc_mapping.push_back(i);
     }
   }
 
-  if (!bRunPhreeqc) {
+  if (pqc_mapping.empty()) {
     return IRM_OK;
   }
 
   IRM_RESULT result;
-  this->PhreeqcRM::setPOETMapping(vecMapping);
-  this->setDumpedField(vecWP);
+  this->PhreeqcRM::setPOETMapping(pqc_mapping);
+  this->setDumpedField(work_package.input);
 
   this->PhreeqcRM::SetTime(dSimTime);
   this->PhreeqcRM::SetTimeStep(dTimestep);
 
   result = this->PhreeqcRM::RunCells();
 
-  this->getDumpedField(vecWP);
+  std::vector<std::vector<double>> output_tmp(work_package.size);
+
+  this->getDumpedField(output_tmp);
+
+  for (std::size_t i = 0; i < work_package.size; i++) {
+    if (work_package.mapping[i] == CHEM_PQC) {
+      work_package.output[i] = output_tmp[i];
+    }
+  }
 
   return result;
 }

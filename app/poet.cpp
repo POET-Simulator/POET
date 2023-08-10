@@ -224,21 +224,21 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
     R.parseEvalQ("profiling$dht_get_time <- dht_get_time");
     R["dht_fill_time"] = Rcpp::wrap(chem.GetWorkerDHTFillTimings());
     R.parseEvalQ("profiling$dht_fill_time <- dht_fill_time");
-    if (params.getChemParams().use_interp) {
-      R["interp_w"] = Rcpp::wrap(chem.GetWorkerInterpolationWriteTimings());
-      R.parseEvalQ("profiling$interp_write <- interp_w");
-      R["interp_r"] = Rcpp::wrap(chem.GetWorkerInterpolationReadTimings());
-      R.parseEvalQ("profiling$interp_read <- interp_r");
-      R["interp_g"] = Rcpp::wrap(chem.GetWorkerInterpolationGatherTimings());
-      R.parseEvalQ("profiling$interp_gather <- interp_g");
-      R["interp_fc"] =
-          Rcpp::wrap(chem.GetWorkerInterpolationFunctionCallTimings());
-      R.parseEvalQ("profiling$interp_function_calls <- interp_fc");
-      R["interp_calls"] = Rcpp::wrap(chem.GetWorkerInterpolationCalls());
-      R.parseEvalQ("profiling$interp_calls <- interp_calls");
-      R["interp_cached"] = Rcpp::wrap(chem.GetWorkerPHTCacheHits());
-      R.parseEvalQ("profiling$interp_cached <- interp_cached");
-    }
+  }
+  if (params.getChemParams().use_interp) {
+    R["interp_w"] = Rcpp::wrap(chem.GetWorkerInterpolationWriteTimings());
+    R.parseEvalQ("profiling$interp_write <- interp_w");
+    R["interp_r"] = Rcpp::wrap(chem.GetWorkerInterpolationReadTimings());
+    R.parseEvalQ("profiling$interp_read <- interp_r");
+    R["interp_g"] = Rcpp::wrap(chem.GetWorkerInterpolationGatherTimings());
+    R.parseEvalQ("profiling$interp_gather <- interp_g");
+    R["interp_fc"] =
+        Rcpp::wrap(chem.GetWorkerInterpolationFunctionCallTimings());
+    R.parseEvalQ("profiling$interp_function_calls <- interp_fc");
+    R["interp_calls"] = Rcpp::wrap(chem.GetWorkerInterpolationCalls());
+    R.parseEvalQ("profiling$interp_calls <- interp_calls");
+    R["interp_cached"] = Rcpp::wrap(chem.GetWorkerPHTCacheHits());
+    R.parseEvalQ("profiling$interp_cached <- interp_cached");
   }
 
   chem.MasterLoopBreak();

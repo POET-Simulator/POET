@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-08-01 18:10:48 mluebke"
+//  Time-stamp: "Last modified 2023-08-09 12:52:37 mluebke"
 
 #ifndef INTERPOLATION_H_
 #define INTERPOLATION_H_
@@ -65,10 +65,9 @@ public:
   void writeLocationToPHT(LookupKey key, DHT_Location location);
 
   const PHT_Result &query(const LookupKey &key,
-                          const std::vector<std::uint32_t> &signif,
-                          std::uint32_t min_entries_needed,
-                          std::uint32_t input_count,
-                          std::uint32_t output_count);
+                          const std::uint32_t min_entries_needed,
+                          const std::uint32_t input_count,
+                          const std::uint32_t output_count);
 
   std::uint64_t getLocations(const LookupKey &key);
 
@@ -185,10 +184,9 @@ public:
 
   auto getMinEntriesNeeded() { return this->min_entries_needed; }
 
-  void writePairs(const DHT_Wrapper::DHT_ResultObject &in);
+  void writePairs();
 
-  void tryInterpolation(DHT_Wrapper::DHT_ResultObject &dht_results,
-                        std::vector<std::uint32_t> &curr_mapping);
+  void tryInterpolation(WorkPackage &work_package);
 
   void resultsToWP(std::vector<double> &work_package) const;
 

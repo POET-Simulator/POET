@@ -1,15 +1,15 @@
-//  Time-stamp: "Last modified 2023-08-01 13:13:18 mluebke"
+//  Time-stamp: "Last modified 2023-08-08 13:15:49 mluebke"
 
 #ifndef CHEMISTRYMODULE_H_
 #define CHEMISTRYMODULE_H_
 
 #include "DHT_Wrapper.hpp"
+#include "DataStructures.hpp"
 #include "Field.hpp"
 #include "Interpolation.hpp"
 #include "IrmResult.h"
 #include "PhreeqcRM.h"
 #include "SimParams.hpp"
-#include "DataStructures.hpp"
 
 #include <array>
 #include <cstddef>
@@ -322,9 +322,8 @@ protected:
   void WorkerPerfToMaster(int type, const struct worker_s &timings);
   void WorkerMetricsToMaster(int type);
 
-  IRM_RESULT WorkerRunWorkPackage(std::vector<double> &vecWP,
-                                  std::vector<std::uint32_t> &vecMapping,
-                                  double dSimTime, double dTimestep);
+  IRM_RESULT WorkerRunWorkPackage(WorkPackage &work_package, double dSimTime,
+                                  double dTimestep);
 
   std::vector<uint32_t> CalculateWPSizesVector(uint32_t n_cells,
                                                uint32_t wp_size) const;

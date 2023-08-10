@@ -293,16 +293,23 @@ void poet::ChemistryModule::initializeField(const Field &trans_field) {
     this->n_cells = trans_field.GetRequestedVecSize();
     chem_field = Field(n_cells);
 
-    std::vector<double> phreeqc_init;
-    this->getDumpedField(phreeqc_init);
+    std::vector<std::vector<double>> phreeqc_dump(this->nxyz);
+    this->getDumpedField(phreeqc_dump);
 
     if (is_sequential) {
-      std::vector<double> init_vec{phreeqc_init};
-      this->unshuffleField(phreeqc_init, n_cells, prop_count, 1, init_vec);
+      std::vector<double> init_vec;
+      for (std::size_t i = 0; i < n_cells; i++) {
+        init_vec.insert(init_vec.end(), phreeqc_dump[i].begin(),
+                        phreeqc_dump[i].end());
+      }
+
+      const auto tmp_buffer{init_vec};
+      this->unshuffleField(tmp_buffer, n_cells, prop_count, 1, init_vec);
       chem_field.InitFromVec(init_vec, prop_names);
       return;
     }
 
+    std::vector<double> &phreeqc_init = phreeqc_dump[0];
     std::vector<std::vector<double>> initial_values;
 
     for (const auto &vec : trans_field.As2DVector()) {
