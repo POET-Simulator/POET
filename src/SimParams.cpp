@@ -160,23 +160,6 @@ int SimParams::parseFromCmdl(char *argv[], RInsidePOET &R) {
   /*Parse output options*/
   simparams.store_result = !cmdl["ignore-result"];
 
-  cout << "CPP: Complete results storage is "
-       << (simparams.store_result ? "ON" : "OFF") << endl;
-  cout << "CPP: Work Package Size: " << simparams.wp_size << endl;
-  cout << "CPP: DHT is " << (chem_params.use_dht ? "ON" : "OFF") << '\n';
-
-  if (chem_params.use_dht || chem_params.use_interp) {
-    cout << "CPP: DHT strategy is " << simparams.dht_strategy << endl;
-    cout << "CPP: DHT key default digits (ignored if 'signif_vector' is "
-            "defined) = "
-         << simparams.dht_significant_digits << endl;
-    cout << "CPP: DHT logarithm before rounding: "
-         << (simparams.dht_log ? "ON" : "OFF") << endl;
-    cout << "CPP: DHT size per process (Byte) = " << chem_params.dht_size
-         << endl;
-    cout << "CPP: DHT save snapshots is " << chem_params.dht_snaps << endl;
-    cout << "CPP: DHT load file is " << chem_params.dht_file << endl;
-  }
   /*Parse work package size*/
   cmdl("work-package-size", WORK_PACKAGE_SIZE_DEFAULT) >> simparams.wp_size;
 
