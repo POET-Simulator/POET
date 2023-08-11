@@ -37,6 +37,7 @@ build-poet:       # This job runs in the build stage, which runs first.
   artifacts:
     paths:
       - build
+    expire_in: 1 day
 
 test-poet:
   stage: test
