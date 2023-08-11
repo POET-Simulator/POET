@@ -34,8 +34,6 @@ build-poet:       # This job runs in the build stage, which runs first.
     - mkdir build && cd build
     - cmake -DPOET_ENABLE_TESTING=ON ..
     - make -j$(nproc)
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   artifacts:
     paths:
       - build
@@ -47,8 +45,6 @@ test-poet:
   script:
     - cd build
     - make -j$(nproc) check
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
 
 archive-sources:       # This job runs in the build stage, which runs first.
   image: python:3
