@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-08-09 13:41:53 mluebke"
+//  Time-stamp: "Last modified 2023-08-11 11:01:11 delucia"
 
 #include "poet/DHT_Wrapper.hpp"
 #include "poet/HashFunctions.hpp"
@@ -105,7 +105,7 @@ void InterpolationModule::tryInterpolation(WorkPackage &work_package) {
     }
 
 #ifdef POET_PHT_ADD
-    this->pht->incrementReadCounter(roundKey(roundedKey));
+    this->pht->incrementReadCounter(roundKey(rounded_key));
 #endif
 
     double start_fc = MPI_Wtime();
