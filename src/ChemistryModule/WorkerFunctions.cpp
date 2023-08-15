@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-08-11 14:07:03 delucia"
+//  Time-stamp: "Last modified 2023-08-15 17:33:00 mluebke"
 
 #include "poet/ChemistryModule.hpp"
 #include "poet/DHT_Wrapper.hpp"
@@ -232,18 +232,20 @@ void poet::ChemistryModule::WorkerPostIter(MPI_Status &prope_status,
     interp_calls.push_back(interp->getInterpolationCount());
     interp->resetCounter();
     interp->writePHTStats();
-    out << this->dht_file_out_dir << "/iter_" << std::setfill('0')
-	<< std::setw(this->file_pad) << iteration << ".pht";
-    interp->dumpPHTState(out.str());
+    if (this->dht_snaps_type == DHT_SNAPS_ITEREND) {
+      out << this->dht_file_out_dir << "/iter_" << std::setfill('0')
+          << std::setw(this->file_pad) << iteration << ".pht";
+      interp->dumpPHTState(out.str());
+    }
   }
 }
 
 
 void poet::ChemistryModule::WorkerPostSim(uint32_t iteration) {
-  if (this->dht_enabled && this->dht_snaps_type == DHT_SNAPS_SIMEND) {
+  if (this->dht_enabled && this->dht_snaps_type >= DHT_SNAPS_ITEREND) {
     WorkerWriteDHTDump(iteration);
   }
-  if (this->interp_enabled) {
+  if (this->interp_enabled && this->dht_snaps_type >= DHT_SNAPS_ITEREND) {
     std::stringstream out;
     out << this->dht_file_out_dir << "/iter_" << std::setfill('0')
 	<< std::setw(this->file_pad) << iteration << ".pht";
