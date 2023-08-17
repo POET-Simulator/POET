@@ -1,8 +1,10 @@
+//  Time-stamp: "Last modified 2023-08-15 12:12:36 delucia"
+
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
 **
-** Copyright (C) 2018-2022 Marco De Lucia, Max Luebke (GFZ Potsdam)
+** Copyright (C) 2018-2023 Marco De Lucia, Max Luebke (GFZ Potsdam)
 **
 ** POET is free software; you can redistribute it and/or modify it under the
 ** terms of the GNU General Public License as published by the Free Software
@@ -144,9 +146,9 @@ int SimParams::parseFromCmdl(char *argv[], RInsidePOET &R) {
 
   simparams.print_progressbar = cmdl[{"P", "progress"}];
 
-  simparams.print_progressbar = cmdl[{"P", "progress"}];
+  // simparams.print_progressbar = cmdl[{"P", "progress"}];
 
-  /*Parse DHT arguments*/
+  /* Parse DHT arguments */
   chem_params.use_dht = cmdl["dht"];
   chem_params.use_interp = cmdl["interp"];
   // cout << "CPP: DHT is " << ( dht_enabled ? "ON" : "OFF" ) << '\n';
