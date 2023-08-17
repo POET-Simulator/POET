@@ -2,5 +2,6 @@
 #define TESTRINSIDEPOET_H_
 
 inline const char *RInside_source_file = "@TEST_RInsideSourceFile@";
+inline const char *SampleInputScript = "@TEST_SampleInputScript@";
 
 #endif // TESTRINSIDEPOET_H_

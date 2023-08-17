@@ -11,6 +11,7 @@ add_library(poetlib
   Chemistry/SurrogateModels/ProximityHashTable.cpp
   DataStructures/Field.cpp
   Transport/DiffusionModule.cpp
+  Transport/AdvectionModule.cpp
 )
 
 target_link_libraries(poetlib PUBLIC
