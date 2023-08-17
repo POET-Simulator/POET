@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-07-26 10:20:10 mluebke"
+//  Time-stamp: "Last modified 2023-08-11 10:12:52 mluebke"
 
 #ifndef LOOKUPKEY_H_
 #define LOOKUPKEY_H_
@@ -27,8 +27,6 @@ union Lookup_Keyelement {
 
 class LookupKey : public std::vector<Lookup_Keyelement> {
 public:
-  explicit LookupKey(size_type count);
-
   using std::vector<Lookup_Keyelement>::vector;
 
   std::vector<double> to_double() const;

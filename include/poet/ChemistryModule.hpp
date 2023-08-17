@@ -1,11 +1,10 @@
-//  Time-stamp: "Last modified 2023-08-08 13:15:49 mluebke"
+//  Time-stamp: "Last modified 2023-08-15 14:36:28 mluebke"
 
 #ifndef CHEMISTRYMODULE_H_
 #define CHEMISTRYMODULE_H_
 
 #include "DHT_Wrapper.hpp"
 #include "DataStructures.hpp"
-#include "Field.hpp"
 #include "Interpolation.hpp"
 #include "IrmResult.h"
 #include "PhreeqcRM.h"
@@ -382,7 +381,7 @@ protected:
   uint32_t prop_count = 0;
   std::vector<std::string> prop_names;
 
-  Field chem_field{0};
+  Field chem_field;
 
   static constexpr int MODULE_COUNT = 5;
 

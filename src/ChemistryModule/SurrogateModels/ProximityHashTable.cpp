@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-08-09 13:32:11 mluebke"
+//  Time-stamp: "Last modified 2023-08-15 14:50:59 mluebke"
 
 #include "poet/DHT_Wrapper.hpp"
 #include "poet/HashFunctions.hpp"
@@ -203,7 +203,7 @@ void ProximityHashTable::Cache::operator()(const LookupKey &key,
     if (this->free_mem < 0) {
       const LookupKey &to_del = this->lru_queue.back();
       const auto elem_d = this->find(to_del);
-      this->free_mem += elem_d->second.getSize();
+      this->free_mem += elem_d->second.getMemSize();
       this->erase(to_del);
       this->keyfinder.erase(to_del);
       this->lru_queue.pop_back();
@@ -212,7 +212,7 @@ void ProximityHashTable::Cache::operator()(const LookupKey &key,
     this->insert({key, val});
     this->lru_queue.emplace_front(key);
     this->keyfinder[key] = lru_queue.begin();
-    this->free_mem -= val.getSize();
+    this->free_mem -= val.getMemSize();
     return;
   }
 

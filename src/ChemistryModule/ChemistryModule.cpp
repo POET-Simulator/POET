@@ -291,7 +291,6 @@ void poet::ChemistryModule::initializeField(const Field &trans_field) {
 
   if (is_master) {
     this->n_cells = trans_field.GetRequestedVecSize();
-    chem_field = Field(n_cells);
 
     std::vector<std::vector<double>> phreeqc_dump(this->nxyz);
     this->getDumpedField(phreeqc_dump);
@@ -305,7 +304,7 @@ void poet::ChemistryModule::initializeField(const Field &trans_field) {
 
       const auto tmp_buffer{init_vec};
       this->unshuffleField(tmp_buffer, n_cells, prop_count, 1, init_vec);
-      chem_field.InitFromVec(init_vec, prop_names);
+      this->chem_field = Field(n_cells, init_vec, prop_names);
       return;
     }
 
@@ -325,7 +324,7 @@ void poet::ChemistryModule::initializeField(const Field &trans_field) {
       initial_values.push_back(std::move(init));
     }
 
-    chem_field.InitFromVec(initial_values, prop_names);
+    this->chem_field = Field(n_cells, initial_values, prop_names);
   } else {
     ChemBCast(base_totals.data(), 2, MPI_DOUBLE);
   }
@@ -366,11 +365,9 @@ void poet::ChemistryModule::initializeDHT(
     auto map_copy = key_species;
 
     if (key_species.empty()) {
-      const auto &all_species = this->prop_names;
-      for (std::size_t i = 0; i < all_species.size(); i++) {
-        map_copy.insert(std::make_pair(all_species[i],
-                                       DHT_Wrapper::DHT_KEY_SIGNIF_DEFAULT));
-      }
+      std::vector<std::uint32_t> default_signif(
+          this->prop_names.size(), DHT_Wrapper::DHT_KEY_SIGNIF_DEFAULT);
+      map_copy = NamedVector<std::uint32_t>(this->prop_names, default_signif);
     }
 
     auto key_indices = parseDHTSpeciesVec(key_species, this->prop_names);
@@ -381,8 +378,9 @@ void poet::ChemistryModule::initializeDHT(
 
     const std::uint64_t dht_size = size_mb * MB_FACTOR;
 
-    this->dht = new DHT_Wrapper(dht_comm, dht_size, map_copy, key_indices,
-                                this->prop_count);
+    this->dht =
+        new DHT_Wrapper(dht_comm, dht_size, map_copy, key_indices,
+                        this->prop_names, params.hooks, this->prop_count);
     this->dht->setBaseTotals(base_totals.at(0), base_totals.at(1));
   }
 }
@@ -488,8 +486,8 @@ void poet::ChemistryModule::initializeInterp(
     const uint64_t pht_size = size_mb * MB_FACTOR;
 
     interp = std::make_unique<poet::InterpolationModule>(
-        bucket_size, pht_size, min_entries, *(this->dht), map_copy,
-        key_indices);
+        bucket_size, pht_size, min_entries, *(this->dht), map_copy, key_indices,
+        this->prop_names, this->params.hooks);
 
     interp->setInterpolationFunction(inverseDistanceWeighting);
   }

@@ -342,7 +342,7 @@ void poet::ChemistryModule::MasterRunSequential() {
 
   std::vector<double> out_vec{shuffled_field};
   unshuffleField(shuffled_field, n_cells, prop_count, 1, out_vec);
-  chem_field.SetFromVector(out_vec);
+  chem_field = out_vec;
 }
 
 void poet::ChemistryModule::MasterRunParallel() {
@@ -423,7 +423,7 @@ void poet::ChemistryModule::MasterRunParallel() {
   std::vector<double> out_vec{mpi_buffer};
   unshuffleField(mpi_buffer, this->n_cells, this->prop_count,
                  wp_sizes_vector.size(), out_vec);
-  chem_field.SetFromVector(out_vec);
+  chem_field = out_vec;
 
   /* do master stuff */
 

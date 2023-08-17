@@ -18,15 +18,15 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include <poet/Macros.hpp>
-#include <poet/SimParams.hpp>
-#include <tug/BoundaryCondition.hpp>
-#include <tug/Diffusion.hpp>
 #include <Rcpp.h>
 #include <algorithm>
 #include <cstdint>
 #include <poet/DiffusionModule.hpp>
 #include <poet/Grid.hpp>
+#include <poet/Macros.hpp>
+#include <poet/SimParams.hpp>
+#include <tug/BoundaryCondition.hpp>
+#include <tug/Diffusion.hpp>
 
 #include <array>
 #include <cassert>
@@ -58,17 +58,18 @@ inline const char *convert_bc_to_config_file(uint8_t in) {
 
 DiffusionModule::DiffusionModule(const poet::DiffusionParams &diffu_args,
                                  const poet::GridParams &grid_params)
-    : t_field{grid_params.total_n}, n_cells_per_prop(grid_params.total_n) {
+    : n_cells_per_prop(grid_params.total_n) {
   this->diff_input.setGridCellN(grid_params.n_cells[0], grid_params.n_cells[1]);
   this->diff_input.setDomainSize(grid_params.s_cells[0],
                                  grid_params.s_cells[1]);
 
   this->dim = grid_params.dim;
 
-  this->initialize(diffu_args);
+  this->initialize(diffu_args, grid_params.total_n);
 }
 
-void DiffusionModule::initialize(const poet::DiffusionParams &args) {
+void DiffusionModule::initialize(const poet::DiffusionParams &args,
+                                 std::uint32_t n_grid_cells) {
   // const poet::DiffusionParams args(this->R);
 
   // name of props
@@ -87,7 +88,7 @@ void DiffusionModule::initialize(const poet::DiffusionParams &args) {
     this->alpha.push_back(args.alpha[this->prop_names[i]]);
 
     const double val = args.initial_t[prop_names[i]];
-    std::vector<double> init_val(t_field.GetRequestedVecSize(), val);
+    std::vector<double> init_val(n_grid_cells, val);
     initial_values.push_back(std::move(init_val));
 
     if (this->dim == this->DIM_2D) {
@@ -100,7 +101,7 @@ void DiffusionModule::initialize(const poet::DiffusionParams &args) {
     }
   }
 
-  t_field.InitFromVec(initial_values, prop_names);
+  this->t_field = Field(n_grid_cells, initial_values, prop_names);
 
   // apply boundary conditions to each ghost node
   uint8_t bc_size = (this->dim == this->DIM_1D ? 2 : 4);
@@ -156,30 +157,30 @@ void DiffusionModule::simulate(double dt) {
 
   MSG_NOENDL("DiffusionModule::simulate(): Starting diffusion ...");
   std::cout << std::flush;
-  
+
   std::vector<std::vector<double>> field_2d = t_field.As2DVector();
 
   this->diff_input.setTimestep(dt);
 
   for (int i = 0; i < field_2d.size(); i++) {
-      std::vector<double> in_alpha(this->n_cells_per_prop, this->alpha[i]);
-      this->diff_input.setBoundaryCondition(this->bc_vec[i]);
-      
-      if (this->dim == this->DIM_1D) {
-	  tug::diffusion::BTCS_1D(this->diff_input, field_2d[i].data(),
-				  in_alpha.data());
-      } else {
-	  tug::diffusion::ADI_2D(this->diff_input, field_2d[i].data(),
-				 in_alpha.data());
-      }
+    std::vector<double> in_alpha(this->n_cells_per_prop, this->alpha[i]);
+    this->diff_input.setBoundaryCondition(this->bc_vec[i]);
+
+    if (this->dim == this->DIM_1D) {
+      tug::diffusion::BTCS_1D(this->diff_input, field_2d[i].data(),
+                              in_alpha.data());
+    } else {
+      tug::diffusion::ADI_2D(this->diff_input, field_2d[i].data(),
+                             in_alpha.data());
+    }
   }
-  
-  t_field.SetFromVector(field_2d);
-  
-  std::cout << " done!" << std::endl;
-  
+
+  t_field = field_2d;
+
+  std::cout << " done!\n";
+
   sim_a_transport = MPI_Wtime();
-  
+
   transport_t += sim_a_transport - sim_b_transport;
 }
 

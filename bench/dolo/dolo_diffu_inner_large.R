@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-08-02 13:59:12 mluebke"
+## Time-stamp: "Last modified 2023-08-16 17:05:04 mluebke"
 
 database <- normalizePath("../share/poet/bench/dolo/phreeqc_kin.dat")
 input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
@@ -62,34 +62,34 @@ alpha_diffu <- c(
 
 ## list of boundary conditions/inner nodes
 vecinj_diffu <- list(
-    list(
-        "H" = 0.0001540445,
-        "O" = 0.002148006,
-        "Charge" = 1.90431e-16,
-        "C(4)" = 0,
-        "Ca" = 0,
-        "Cl" = 0.002,
-        "Mg" = 0.001
-    ),
-    list(
-        "H" = 0.0001610193,
-        "O" = 0.002386934,
-        "Charge" = 1.90431e-16,
-        "C(4)" = 0,
-        "Ca" = 0.0,
-        "Cl" = 0.004,
-        "Mg" = 0.002
-    )
+  list(
+    "H" = 0.0001540445,
+    "O" = 0.002148006,
+    "Charge" = 1.90431e-16,
+    "C(4)" = 0,
+    "Ca" = 0,
+    "Cl" = 0.002,
+    "Mg" = 0.001
+  ),
+  list(
+    "H" = 0.0001610193,
+    "O" = 0.002386934,
+    "Charge" = 1.90431e-16,
+    "C(4)" = 0,
+    "Ca" = 0.0,
+    "Cl" = 0.004,
+    "Mg" = 0.002
+  )
 )
 
 vecinj_inner <- list(
-  l1 = c(1,400,200),
-  l2 = c(2,1400,800),
-  l3 = c(2,1600,800)
+  l1 = c(1, 400, 200),
+  l2 = c(2, 1400, 800),
+  l3 = c(2, 1600, 800)
 )
 
 boundary <- list(
-#  "N" = c(1, rep(0, n-1)),
+  #  "N" = c(1, rep(0, n-1)),
   "N" = rep(0, n),
   "E" = rep(0, m),
   "S" = rep(0, n),
@@ -115,21 +115,59 @@ diffusion <- list(
 #################################################################
 
 ## # Needed when using DHT
-dht_species <- c("H" = 10,
-                 "O" = 10,
-                 "Charge" = 3,
-                 "C(4)" = 5,
-                 "Ca" = 5,
-                 "Cl" = 5,
-                 "Mg" = 5,
-                 "Calcite" = 5,
-                 "Dolomite" =5
-                 )
+dht_species <- c(
+  "H" = 10,
+  "O" = 10,
+  "Charge" = 3,
+  "C(4)" = 5,
+  "Ca" = 5,
+  "Cl" = 5,
+  "Mg" = 5,
+  "Calcite" = 5,
+  "Dolomite" = 5
+)
+
+check_sign_cal_dol_dht <- function(old, new) {
+  if ((old["Calcite"] == 0) != (new["Calcite"] == 0)) {
+    return(TRUE)
+  }
+  if ((old["Dolomite"] == 0) != (new["Dolomite"] == 0)) {
+    return(TRUE)
+  }
+  return(FALSE)
+}
+
+fuzz_input_dht_keys <- function(input) {
+  return(input[names(dht_species)])
+}
+
+check_sign_cal_dol_interp <- function(to_interp, data_set) {
+  data_set <- as.data.frame(do.call(rbind, data_set), check.names = FALSE, optional = TRUE)
+  names(data_set) <- names(dht_species)
+  cal <- (data_set$Calcite == 0) == (to_interp["Calcite"] == 0)
+  dol <- (data_set$Dolomite == 0) == (to_interp["Dolomite"] == 0)
+
+  cal_dol_same_sig <- cal == dol
+  return(rev(which(!cal_dol_same_sig)))
+}
+
+check_neg_cal_dol <- function(result) {
+  neg_sign <- (result["Calcite"] <- 0) || (result["Dolomite"] < 0)
+  return(any(neg_sign))
+}
+
+hooks <- list(
+  dht_fill = check_sign_cal_dol_dht,
+  dht_fuzz = fuzz_input_dht_keys,
+  interp_pre_func = check_sign_cal_dol_interp,
+  interp_post_func = check_neg_cal_dol
+)
 
 chemistry <- list(
   database = database,
   input_script = input_script,
-  dht_species = dht_species
+  dht_species = dht_species,
+  hooks = hooks
 )
 
 #################################################################
@@ -148,5 +186,5 @@ setup <- list(
   iterations = iterations,
   timesteps = rep(dt, iterations),
   store_result = TRUE,
-  out_save = seq(5, iterations, by=5)
+  out_save = seq(5, iterations, by = 5)
 )

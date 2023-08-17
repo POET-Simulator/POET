@@ -83,14 +83,22 @@ void poet::ChemistryParams::initFromR(RInsidePOET &R) {
       Rcpp::as<std::string>(R.parseEval("mysetup$chemistry$input_script"));
 
   if (R.checkIfExists("dht_species", "mysetup$chemistry")) {
-    this->dht_signifs =
-        R.wrapNamedVector<std::uint32_t>("mysetup$chemistry$dht_species");
+    this->dht_signifs = Rcpp::as<NamedVector<std::uint32_t>>(
+        R.parseEval(("mysetup$chemistry$dht_species")));
   }
 
   if (R.checkIfExists("pht_species", "mysetup$chemistry")) {
-    this->pht_signifs =
-        R.wrapNamedVector<std::uint32_t>("mysetup$chemistry$pht_species");
+    this->pht_signifs = Rcpp::as<NamedVector<std::uint32_t>>(
+        R.parseEval(("mysetup$chemistry$pht_species")));
   }
+  this->hooks.dht_fill =
+      RHookFunction<bool>(R, "mysetup$chemistry$hooks$dht_fill");
+  this->hooks.dht_fuzz =
+      RHookFunction<std::vector<double>>(R, "mysetup$chemistry$hooks$dht_fuzz");
+  this->hooks.interp_pre = RHookFunction<std::vector<std::size_t>>(
+      R, "mysetup$chemistry$hooks$interp_pre_func");
+  this->hooks.interp_post =
+      RHookFunction<bool>(R, "mysetup$chemistry$hooks$interp_post_func");
 }
 
 SimParams::SimParams(int world_rank_, int world_size_) {

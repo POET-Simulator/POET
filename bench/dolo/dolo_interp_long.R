@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-08-02 13:47:06 mluebke"
+## Time-stamp: "Last modified 2023-08-16 14:57:25 mluebke"
 
 database <- normalizePath("../share/poet/bench/dolo/phreeqc_kin.dat")
 input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
@@ -62,25 +62,25 @@ alpha_diffu <- c(
 
 ## list of boundary conditions/inner nodes
 vecinj_diffu <- list(
-    list(
-        "H" = 1.110124E+02,
-        "O" = 5.550796E+01,
-        "Charge" = -3.230390327801E-08,
-        "C(4)" = 0,
-        "Ca" = 0,
-        "Cl" = 0.002,
-        "Mg" = 0.001
-    ),
-    list(
-        "H" = 110.683,
-        "O" = 55.3413,
-        "Charge" = 1.90431e-16,
-        "C(4)" = 0,
-        "Ca" = 0.0,
-        "Cl" = 0.004,
-        "Mg" = 0.002
-    ),
-    init_diffu
+  list(
+    "H" = 1.110124E+02,
+    "O" = 5.550796E+01,
+    "Charge" = -3.230390327801E-08,
+    "C(4)" = 0,
+    "Ca" = 0,
+    "Cl" = 0.002,
+    "Mg" = 0.001
+  ),
+  list(
+    "H" = 110.683,
+    "O" = 55.3413,
+    "Charge" = 1.90431e-16,
+    "C(4)" = 0,
+    "Ca" = 0.0,
+    "Cl" = 0.004,
+    "Mg" = 0.002
+  ),
+  init_diffu
 )
 
 vecinj_inner <- list(
@@ -132,19 +132,56 @@ dht_species <- c(
 ## # Optional when using Interpolation (example with less key species and custom
 ## # significant digits)
 
-#pht_species <- c(
+# pht_species <- c(
 #  "C(4)" = 3,
 #  "Ca" = 3,
 #  "Mg" = 2,
 #  "Calcite" = 2,
 #  "Dolomite" = 2
-#)
+# )
+
+check_sign_cal_dol_dht <- function(old, new) {
+  if ((old["Calcite"] == 0) != (new["Calcite"] == 0)) {
+    return(TRUE)
+  }
+  if ((old["Dolomite"] == 0) != (new["Dolomite"] == 0)) {
+    return(TRUE)
+  }
+  return(FALSE)
+}
+
+fuzz_input_dht_keys <- function(input) {
+  return(input[names(dht_species)])
+}
+
+check_sign_cal_dol_interp <- function(to_interp, data_set) {
+  data_set <- as.data.frame(do.call(rbind, data_set), check.names = FALSE, optional = TRUE)
+  names(data_set) <- names(dht_species)
+  cal <- (data_set$Calcite == 0) == (to_interp["Calcite"] == 0)
+  dol <- (data_set$Dolomite == 0) == (to_interp["Dolomite"] == 0)
+
+  cal_dol_same_sig <- cal == dol
+  return(rev(which(!cal_dol_same_sig)))
+}
+
+check_neg_cal_dol <- function(result) {
+  neg_sign <- (result["Calcite"] <- 0) || (result["Dolomite"] < 0)
+  return(any(neg_sign))
+}
+
+hooks <- list(
+  dht_fill = check_sign_cal_dol_dht,
+  dht_fuzz = fuzz_input_dht_keys,
+  interp_pre_func = check_sign_cal_dol_interp,
+  interp_post_func = check_neg_cal_dol
+)
 
 chemistry <- list(
   database = database,
   input_script = input_script,
-  dht_species = dht_species
-#  pht_species = pht_species
+  dht_species = dht_species,
+  hooks = hooks
+  #  pht_species = pht_species
 )
 
 #################################################################

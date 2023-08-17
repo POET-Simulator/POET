@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-08-08 18:01:12 mluebke"
+//  Time-stamp: "Last modified 2023-08-15 14:57:51 mluebke"
 
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
@@ -25,6 +25,8 @@
 
 #include "DataStructures.hpp"
 #include "LookupKey.hpp"
+#include "RInsidePOET.hpp"
+#include "SimParams.hpp"
 #include "enums.hpp"
 #include "poet/HashFunctions.hpp"
 #include "poet/LookupKey.hpp"
@@ -85,6 +87,8 @@ public:
   DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
               const NamedVector<std::uint32_t> &key_species,
               const std::vector<std::int32_t> &key_indices,
+              const std::vector<std::string> &output_names,
+              const ChemistryParams::Chem_Hook_Functions &hooks,
               uint32_t data_count);
   /**
    * @brief Destroy the dht wrapper object
@@ -213,7 +217,11 @@ public:
                           double dt) {
     dht_results.keys.resize(input_values.size());
     for (std::size_t i = 0; i < input_values.size(); i++) {
-      dht_results.keys[i] = fuzzForDHT(input_values[i], dt);
+      if (this->hooks.dht_fuzz.isValid()) {
+        dht_results.keys[i] = fuzzForDHT_R(input_values[i], dt);
+      } else {
+        dht_results.keys[i] = fuzzForDHT(input_values[i], dt);
+      }
     }
   }
 
@@ -225,6 +233,7 @@ private:
   MPI_Comm communicator;
 
   LookupKey fuzzForDHT(const std::vector<double> &cell, double dt);
+  LookupKey fuzzForDHT_R(const std::vector<double> &cell, double dt);
 
   std::vector<double>
   outputToInputAndRates(const std::vector<double> &old_results,
@@ -241,6 +250,10 @@ private:
   std::vector<std::uint32_t> dht_signif_vector;
   std::vector<std::uint32_t> dht_prop_type_vector;
   std::vector<std::int32_t> input_key_elements;
+
+  const std::vector<std::string> &output_names;
+
+  const ChemistryParams::Chem_Hook_Functions &hooks;
 
   DHT_ResultObject dht_results;
 

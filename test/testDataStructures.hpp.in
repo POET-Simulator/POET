@@ -1,0 +1,6 @@
+#ifndef TESTRINSIDEPOET_H_
+#define TESTRINSIDEPOET_H_
+
+inline const char *RInside_source_file = "@TEST_RInsideSourceFile@";
+
+#endif // TESTRINSIDEPOET_H_

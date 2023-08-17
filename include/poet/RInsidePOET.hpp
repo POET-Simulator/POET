@@ -1,11 +1,11 @@
 #ifndef RPOET_H_
 #define RPOET_H_
 
-#include "DataStructures.hpp"
-
 #include <RInside.h>
 #include <Rcpp.h>
 #include <cstddef>
+#include <exception>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -28,34 +28,32 @@ public:
         this->parseEval("'" + R_name + "' %in% names(" + where + ")"));
   }
 
-  template <class T> inline T getSTL(const std::string &R_name) {
-    return Rcpp::as<T>(RInside::operator[](R_name));
-  }
-
-  template <typename value_type>
-  poet::NamedVector<value_type> wrapNamedVector(const std::string &R_name) {
-    std::size_t name_size = this->parseEval("length(names(" + R_name + "))");
-    if (name_size == 0) {
-      throw std::runtime_error("wrapNamedVector: " + R_name +
-                               " is not a named vector!");
-    }
-
-    auto names = Rcpp::as<std::vector<std::string>>(
-        this->parseEval("names(" + R_name + ")"));
-    auto values = Rcpp::as<Rcpp::NumericVector>(this->parseEval(R_name));
-
-    poet::NamedVector<value_type> ret_map;
-
-    for (std::size_t i = 0; i < names.size(); i++) {
-      ret_map.insert(
-          std::make_pair(names[i], static_cast<value_type>(values[i])));
-    }
-
-    return ret_map;
-  }
-
 private:
   RInsidePOET() : RInside(){};
+};
+
+template <typename T> class RHookFunction {
+public:
+  RHookFunction() {}
+  RHookFunction(RInside &R, const std::string &f_name) {
+    try {
+      this->func = Rcpp::Function(Rcpp::as<SEXP>(R.parseEval(f_name.c_str())));
+    } catch (const std::exception &e) {
+    }
+  }
+
+  template <typename... Args> T operator()(Args... args) const {
+    if (func.has_value()) {
+      return (Rcpp::as<T>(this->func.value()(args...)));
+    } else {
+      throw std::exception();
+    }
+  }
+
+  bool isValid() const { return this->func.has_value(); }
+
+private:
+  std::optional<Rcpp::Function> func;
 };
 
 #endif // RPOET_H_

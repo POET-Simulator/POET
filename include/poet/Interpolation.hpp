@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-08-09 12:52:37 mluebke"
+//  Time-stamp: "Last modified 2023-08-16 16:49:31 mluebke"
 
 #ifndef INTERPOLATION_H_
 #define INTERPOLATION_H_
@@ -9,6 +9,7 @@
 #include "LookupKey.hpp"
 #include "poet/DHT_Wrapper.hpp"
 #include "poet/Rounding.hpp"
+#include "poet/SimParams.hpp"
 #include <cassert>
 #include <iostream>
 #include <list>
@@ -46,7 +47,7 @@ public:
     std::vector<std::vector<double>> in_values;
     std::vector<std::vector<double>> out_values;
 
-    std::uint32_t getSize() const {
+    std::uint32_t getMemSize() const {
       std::uint32_t sum{0};
       for (const auto &results : out_values) {
         sum += results.size() * sizeof(double);
@@ -65,9 +66,9 @@ public:
   void writeLocationToPHT(LookupKey key, DHT_Location location);
 
   const PHT_Result &query(const LookupKey &key,
-                          const std::uint32_t min_entries_needed,
-                          const std::uint32_t input_count,
-                          const std::uint32_t output_count);
+                          std::uint32_t min_entries_needed,
+                          std::uint32_t input_count,
+                          std::uint32_t output_count);
 
   std::uint64_t getLocations(const LookupKey &key);
 
@@ -163,7 +164,9 @@ public:
                       std::uint64_t size_per_process,
                       std::uint32_t min_entries_needed, DHT_Wrapper &dht,
                       const NamedVector<std::uint32_t> &interp_key_signifs,
-                      const std::vector<std::int32_t> &dht_key_indices);
+                      const std::vector<std::int32_t> &dht_key_indices,
+                      const std::vector<std::string> &out_names,
+                      const ChemistryParams::Chem_Hook_Functions &hooks);
 
   enum result_status { RES_OK, INSUFFICIENT_DATA, NOT_NEEDED };
 
@@ -258,6 +261,10 @@ private:
 
     return out_key;
   }
+
+  const ChemistryParams::Chem_Hook_Functions &hooks;
+  const std::vector<std::string> &out_names;
+  const std::vector<std::string> dht_names;
 };
 } // namespace poet
 

@@ -21,12 +21,12 @@
 #include <Rcpp.h>
 #include <cstdint>
 #include <cstdlib>
-#include <poet/Macros.hpp>
+#include <poet/ChemistryModule.hpp>
 #include <poet/DiffusionModule.hpp>
 #include <poet/Grid.hpp>
+#include <poet/Macros.hpp>
 #include <poet/RInsidePOET.hpp>
 #include <poet/SimParams.hpp>
-#include <poet/ChemistryModule.hpp>
 
 #include <cstring>
 #include <iostream>
@@ -153,13 +153,15 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
 
     /* displaying iteration number, with C++ and R iterator */
     MSG("Going through iteration " + std::to_string(iter));
-    MSG("R's $iter: "  + std::to_string((uint32_t)(R.parseEval("mysetup$iter"))) + ". Iteration");
+    MSG("R's $iter: " +
+        std::to_string((uint32_t)(R.parseEval("mysetup$iter"))) +
+        ". Iteration");
 
     /* run transport */
     // TODO: transport to diffusion
     diffusion.simulate(dt);
 
-    chem.getField().UpdateFromField(diffusion.getField());
+    chem.getField().update(diffusion.getField());
 
     MSG("Chemistry step");
 
@@ -167,7 +169,7 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
     chem.RunCells();
 
     writeFieldsToR(R, diffusion.getField(), chem.GetField());
-    diffusion.getField().UpdateFromField(chem.GetField());
+    diffusion.getField().update(chem.GetField());
 
     R["req_dt"] = dt;
     R["simtime"] = (sim_time += dt);
@@ -181,7 +183,8 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
     // store_result is TRUE)
     R.parseEvalQ("mysetup <- master_iteration_end(setup=mysetup)");
 
-    MSG("End of *coupling* iteration " + std::to_string(iter) + "/" + std::to_string(maxiter));
+    MSG("End of *coupling* iteration " + std::to_string(iter) + "/" +
+        std::to_string(maxiter));
     MSG();
 
     // MPI_Barrier(MPI_COMM_WORLD);
@@ -258,15 +261,16 @@ int main(int argc, char *argv[]) {
 
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
+  RInsidePOET &R = RInsidePOET::getInstance();
+
   if (world_rank == 0) {
-      MSG("Running POET version " + std::string(poet_version));
+    MSG("Running POET version " + std::string(poet_version));
   }
 
   if (world_rank > 0) {
     {
-
       SimParams params(world_rank, world_size);
-      int pret = params.parseFromCmdl(argv, RInsidePOET::getInstance());
+      int pret = params.parseFromCmdl(argv, R);
 
       if (pret == poet::PARSER_ERROR) {
         MPI_Finalize();
@@ -286,15 +290,13 @@ int main(int argc, char *argv[]) {
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
-    
+
     MSG("finished, cleanup of process " + std::to_string(world_rank));
 
     MPI_Finalize();
 
     return EXIT_SUCCESS;
   }
-
-  RInsidePOET &R = RInsidePOET::getInstance();
 
   /*Loading Dependencies*/
   // TODO: kann raus
@@ -326,12 +328,12 @@ int main(int argc, char *argv[]) {
 
   // MDL: store all parameters
   if (world_rank == 0) {
-      MSG("Calling R Function to store calling parameters");
-      R.parseEvalQ("StoreSetup(setup=mysetup)");
+    MSG("Calling R Function to store calling parameters");
+    R.parseEvalQ("StoreSetup(setup=mysetup)");
   }
 
   if (world_rank == 0) {
-      MSG("Init done on process with rank " + std::to_string(world_rank));
+    MSG("Init done on process with rank " + std::to_string(world_rank));
   }
 
   // MPI_Barrier(MPI_COMM_WORLD);
@@ -351,7 +353,8 @@ int main(int argc, char *argv[]) {
   r_vis_code = "saveRDS(profiling, file=paste0(fileout,'/timings.rds'));";
   R.parseEval(r_vis_code);
 
-  MSG("Done! Results are stored as R objects into <" + params.getOutDir() + "/timings.rds>");
+  MSG("Done! Results are stored as R objects into <" + params.getOutDir() +
+      "/timings.rds>");
 
   MPI_Barrier(MPI_COMM_WORLD);
 
@@ -359,7 +362,7 @@ int main(int argc, char *argv[]) {
   MPI_Finalize();
 
   if (world_rank == 0) {
-      MSG("done, bye!");
+    MSG("done, bye!");
   }
 
   exit(0);

@@ -22,13 +22,14 @@
 #define PARSER_H
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
 
-#include "Macros.hpp"
 #include "DataStructures.hpp"
+#include "Macros.hpp"
 #include "RInsidePOET.hpp"
 #include "argh.hpp" // Argument handler https://github.com/adishavit/argh
 #include <RInside.h>
@@ -123,6 +124,13 @@ struct ChemistryParams {
   std::uint32_t pht_max_entries;
   std::uint32_t interp_min_entries;
   NamedVector<std::uint32_t> pht_signifs;
+
+  struct Chem_Hook_Functions {
+    RHookFunction<bool> dht_fill;
+    RHookFunction<std::vector<double>> dht_fuzz;
+    RHookFunction<std::vector<std::size_t>> interp_pre;
+    RHookFunction<bool> interp_post;
+  } hooks;
 
   void initFromR(RInsidePOET &R);
 };
@@ -240,8 +248,8 @@ public:
 private:
   std::list<std::string> validateOptions(argh::parser cmdl);
 
-  const std::set<std::string> flaglist{
-      "ignore-result", "dht", "P", "progress", "interp"};
+  const std::set<std::string> flaglist{"ignore-result", "dht", "P", "progress",
+                                       "interp"};
   const std::set<std::string> paramlist{
       "work-package-size", "dht-strategy",
       "dht-size",          "dht-snaps",

@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-08-09 14:05:01 mluebke"
+//  Time-stamp: "Last modified 2023-08-16 16:44:17 mluebke"
 
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
@@ -27,7 +27,10 @@
 #include "poet/Rounding.hpp"
 #include "poet/enums.hpp"
 
+#include "poet/RInsidePOET.hpp"
+
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -43,10 +46,12 @@ namespace poet {
 DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
                          const NamedVector<std::uint32_t> &key_species,
                          const std::vector<std::int32_t> &key_indices,
+                         const std::vector<std::string> &_output_names,
+                         const ChemistryParams::Chem_Hook_Functions &_hooks,
                          uint32_t data_count)
     : key_count(key_indices.size()), data_count(data_count),
       input_key_elements(key_indices), communicator(dht_comm),
-      key_species(key_species) {
+      key_species(key_species), output_names(_output_names), hooks(_hooks) {
   // initialize DHT object
   // key size = count of key elements + timestep
   uint32_t key_size = (key_count + 1) * sizeof(Lookup_Keyelement);
@@ -128,12 +133,13 @@ void DHT_Wrapper::fillDHT(const WorkPackage &work_package) {
       // check if calcite or dolomite is absent and present, resp.n and vice
       // versa in input/output. If this is the case -> Do not write to DHT!
       // HACK: hardcoded, should be fixed!
-      if ((work_package.input[i][7] == 0) != (work_package.output[i][7] == 0)) {
-        continue;
-      }
+      if (hooks.dht_fill.isValid()) {
+        NamedVector<double> old_values(output_names, work_package.input[i]);
+        NamedVector<double> new_values(output_names, work_package.output[i]);
 
-      if ((work_package.input[i][9] == 0) != (work_package.output[i][9] == 0)) {
-        continue;
+        if (hooks.dht_fill(old_values, new_values)) {
+          continue;
+        }
       }
 
       uint32_t proc, index;
@@ -226,6 +232,38 @@ void DHT_Wrapper::printStatistics() {
     // MPI ERROR ... WHAT TO DO NOW?
     // RUNNING CIRCLES WHILE SCREAMING
   }
+}
+
+LookupKey DHT_Wrapper::fuzzForDHT_R(const std::vector<double> &cell,
+                                    double dt) {
+  const auto c_zero_val = std::pow(10, AQUEOUS_EXP);
+
+  NamedVector<double> input_nv(this->output_names, cell);
+
+  const std::vector<double> eval_vec = hooks.dht_fuzz(input_nv);
+  assert(eval_vec.size() == this->key_count);
+  LookupKey vecFuzz(this->key_count + 1, {.0});
+
+  DHT_Rounder rounder;
+
+  int totals_i = 0;
+  // introduce fuzzing to allow more hits in DHT
+  // loop over every variable of grid cell
+  for (std::uint32_t i = 0; i < eval_vec.size(); i++) {
+    double curr_key = eval_vec[i];
+    if (curr_key != 0) {
+      if (this->dht_prop_type_vector[i] == DHT_TYPE_TOTAL) {
+        curr_key -= base_totals[totals_i++];
+      }
+      vecFuzz[i] =
+          rounder.round(curr_key, dht_signif_vector[i],
+                        this->dht_prop_type_vector[i] == DHT_TYPE_TOTAL);
+    }
+  }
+  // add timestep to the end of the key as double value
+  vecFuzz[this->key_count].fp_element = dt;
+
+  return vecFuzz;
 }
 
 LookupKey DHT_Wrapper::fuzzForDHT(const std::vector<double> &cell, double dt) {

@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-08-15 17:33:00 mluebke"
+//  Time-stamp: "Last modified 2023-08-16 14:50:04 mluebke"
 
 #include "poet/ChemistryModule.hpp"
 #include "poet/DHT_Wrapper.hpp"
@@ -52,7 +52,7 @@ void poet::ChemistryModule::WorkerLoop() {
       break;
     }
     case CHEM_INIT_SPECIES: {
-      Field dummy{0};
+      Field dummy;
       initializeField(dummy);
       break;
     }
@@ -220,8 +220,8 @@ void poet::ChemistryModule::WorkerPostIter(MPI_Status &prope_status,
   if (this->dht_enabled) {
     dht_hits.push_back(dht->getHits());
     dht_evictions.push_back(dht->getEvictions());
-    dht->resetCounter();	
-				
+    dht->resetCounter();
+
     if (this->dht_snaps_type == DHT_SNAPS_ITEREND) {
       WorkerWriteDHTDump(iteration);
     }
@@ -238,8 +238,9 @@ void poet::ChemistryModule::WorkerPostIter(MPI_Status &prope_status,
       interp->dumpPHTState(out.str());
     }
   }
-}
 
+  RInsidePOET::getInstance().parseEvalQ("gc()");
+}
 
 void poet::ChemistryModule::WorkerPostSim(uint32_t iteration) {
   if (this->dht_enabled && this->dht_snaps_type >= DHT_SNAPS_ITEREND) {
@@ -248,7 +249,7 @@ void poet::ChemistryModule::WorkerPostSim(uint32_t iteration) {
   if (this->interp_enabled && this->dht_snaps_type >= DHT_SNAPS_ITEREND) {
     std::stringstream out;
     out << this->dht_file_out_dir << "/iter_" << std::setfill('0')
-	<< std::setw(this->file_pad) << iteration << ".pht";
+        << std::setw(this->file_pad) << iteration << ".pht";
     interp->dumpPHTState(out.str());
   }
 }
@@ -265,7 +266,7 @@ void poet::ChemistryModule::WorkerWriteDHTDump(uint32_t iteration) {
     std::cout << "CPP: Worker: Successfully written DHT to file " << out.str()
               << "\n";
 }
-  
+
 void poet::ChemistryModule::WorkerReadDHTDump(
     const std::string &dht_input_file) {
   int res = dht->fileToTable((char *)dht_input_file.c_str());

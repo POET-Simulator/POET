@@ -21,7 +21,7 @@
 #ifndef DIFFUSION_MODULE_H
 #define DIFFUSION_MODULE_H
 
-#include "Field.hpp"
+#include "DataStructures.hpp"
 #include "SimParams.hpp"
 #include "poet/SimParams.hpp"
 #include <array>
@@ -94,7 +94,8 @@ private:
 
   enum { DIM_1D = 1, DIM_2D };
 
-  void initialize(const poet::DiffusionParams &args);
+  void initialize(const poet::DiffusionParams &args,
+                  std::uint32_t n_grid_cells);
 
   uint8_t dim;
 

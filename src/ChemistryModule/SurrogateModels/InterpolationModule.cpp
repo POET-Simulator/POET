@@ -1,10 +1,13 @@
-//  Time-stamp: "Last modified 2023-08-11 11:01:11 delucia"
+//  Time-stamp: "Last modified 2023-08-16 17:02:31 mluebke"
 
 #include "poet/DHT_Wrapper.hpp"
+#include "poet/DataStructures.hpp"
 #include "poet/HashFunctions.hpp"
 #include "poet/Interpolation.hpp"
 #include "poet/LookupKey.hpp"
 #include "poet/Rounding.hpp"
+#include <Rcpp/vector/instantiation.h>
+#include <Rinternals.h>
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -27,9 +30,13 @@ InterpolationModule::InterpolationModule(
     std::uint32_t entries_per_bucket, std::uint64_t size_per_process,
     std::uint32_t min_entries_needed, DHT_Wrapper &dht,
     const NamedVector<std::uint32_t> &interp_key_signifs,
-    const std::vector<std::int32_t> &dht_key_indices)
+    const std::vector<std::int32_t> &dht_key_indices,
+    const std::vector<std::string> &_out_names,
+    const ChemistryParams::Chem_Hook_Functions &_hooks)
     : dht_instance(dht), key_signifs(interp_key_signifs),
-      key_indices(dht_key_indices), min_entries_needed(min_entries_needed) {
+      key_indices(dht_key_indices), min_entries_needed(min_entries_needed),
+      dht_names(dht.getKeySpecies().getNames()), out_names(_out_names),
+      hooks(_hooks) {
 
   initPHT(this->key_signifs.size(), entries_per_bucket, size_per_process,
           dht.getCommunicator());
@@ -63,45 +70,41 @@ void InterpolationModule::tryInterpolation(WorkPackage &work_package) {
 
   const auto dht_results = this->dht_instance.getDHTResults();
 
-  for (int i = 0; i < work_package.size; i++) {
-    if (work_package.mapping[i] != CHEM_PQC) {
-      interp_result.status[i] = NOT_NEEDED;
+  for (int wp_i = 0; wp_i < work_package.size; wp_i++) {
+    if (work_package.mapping[wp_i] != CHEM_PQC) {
+      interp_result.status[wp_i] = NOT_NEEDED;
       continue;
     }
 
-    const auto rounded_key = roundKey(dht_results.keys[i]);
+    const auto rounded_key = roundKey(dht_results.keys[wp_i]);
 
     auto pht_result =
         pht->query(rounded_key, this->min_entries_needed,
                    dht_instance.getInputCount(), dht_instance.getOutputCount());
 
-    int pht_i = 0;
+    if (pht_result.size < this->min_entries_needed) {
+      interp_result.status[wp_i] = INSUFFICIENT_DATA;
+      continue;
+    }
 
-    while (pht_i < pht_result.size) {
+    if (hooks.interp_pre.isValid()) {
+      NamedVector<double> nv_in(this->out_names, work_package.input[wp_i]);
+
+      auto rm_indices = hooks.interp_pre(nv_in, pht_result.in_values);
+
+      pht_result.size -= rm_indices.size();
+
       if (pht_result.size < this->min_entries_needed) {
-        break;
-      }
-
-      auto in_it = pht_result.in_values.begin() + pht_i;
-      auto out_it = pht_result.out_values.begin() + pht_i;
-
-      bool same_sig_calcite = (pht_result.in_values[pht_i][7] == 0) ==
-                              (work_package.input[i][7] == 0);
-      bool same_sig_dolomite = (pht_result.in_values[pht_i][8] == 0) ==
-                               (work_package.input[i][9] == 0);
-      if (!same_sig_calcite || !same_sig_dolomite) {
-        pht_result.size -= 1;
-        pht_result.in_values.erase(in_it);
-        pht_result.out_values.erase(out_it);
+        interp_result.status[wp_i] = INSUFFICIENT_DATA;
         continue;
       }
 
-      pht_i += 1;
-    }
-
-    if (pht_result.size < this->min_entries_needed) {
-      interp_result.status[i] = INSUFFICIENT_DATA;
-      continue;
+      for (const auto &index : rm_indices) {
+        pht_result.in_values.erase(
+            std::next(pht_result.in_values.begin(), index - 1));
+        pht_result.out_values.erase(
+            std::next(pht_result.out_values.begin(), index - 1));
+      }
     }
 
 #ifdef POET_PHT_ADD
@@ -109,20 +112,17 @@ void InterpolationModule::tryInterpolation(WorkPackage &work_package) {
 #endif
 
     double start_fc = MPI_Wtime();
-    // mean water
-    // double mean_water = 0;
-    // for (int out_i = 0; out_i < pht_result.size; out_i++) {
-    //   mean_water += pht_result.out_values[out_i][0];
-    // }
-    // mean_water /= pht_result.size;
 
-    work_package.output[i] =
-        f_interpolate(dht_instance.getKeyElements(), work_package.input[i],
+    work_package.output[wp_i] =
+        f_interpolate(dht_instance.getKeyElements(), work_package.input[wp_i],
                       pht_result.in_values, pht_result.out_values);
 
-    if (work_package.output[i][7] < 0 || work_package.output[i][9] < 0) {
-      interp_result.status[i] = INSUFFICIENT_DATA;
-      continue;
+    if (hooks.interp_post.isValid()) {
+      NamedVector<double> nv_result(this->out_names, work_package.output[wp_i]);
+      if (hooks.interp_post(nv_result)) {
+        interp_result.status[wp_i] = INSUFFICIENT_DATA;
+        continue;
+      }
     }
 
     // interp_result.results[i][0] = mean_water;
@@ -130,8 +130,8 @@ void InterpolationModule::tryInterpolation(WorkPackage &work_package) {
 
     this->interpolations++;
 
-    work_package.mapping[i] = CHEM_INTERP;
-    interp_result.status[i] = RES_OK;
+    work_package.mapping[wp_i] = CHEM_INTERP;
+    interp_result.status[wp_i] = RES_OK;
   }
 }
 
