@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-08-18 21:33:27 delucia"
+## Time-stamp: "Last modified 2023-08-18 21:46:35 delucia"
 
 library(ReacTran)
 library(deSolve)
@@ -105,6 +105,29 @@ GenerateVelocities <- function(N, L, inj_h=20, bound_h=1, K=1E-4) {
     list(Charge=charge, outc=outc, U=U, xy=tab)
 }
 
+
+PlotFlow <- function(tab, skip=1, scale=TRUE, arr.len=0.05,
+                     arr.lwd = 1, ...) {
+    if (scale) {
+        tab$ux <- scale(tab$ux, center=FALSE)
+        tab$uy <- scale(tab$uy, center=FALSE)
+    } 
+
+    ngrid <- sqrt(nrow(tab))
+    dx    <- 2*tab$x[1]
+    fieldlen <- dx*ngrid
+
+    plot(0, 0, "n", xlim = c(0,fieldlen), ylim = c(0,fieldlen),
+         asp = 1, xlab="EASTING", ylab="NORTHING", las=1, ...)
+    
+    arrows(x0 = tab$x, y0 = tab$y,
+           x1 = tab$x - tab$uy, y1 = tab$y - tab$ux,
+           length=arr.len, lwd=arr.lwd)
+    
+    invisible()
+}
+
+
 ## square domain of 100x100 m discretized in 101x101 cells
 aa <- GenerateVelocities(N=201, L=100, inj_h=20, bound_h=1, K=1E-2)
 
@@ -119,4 +142,3 @@ PlotFlow(aa$xy, skip=1, scale=TRUE, arr.lwd = 0.5)
 
 
 image(matrix(log10(aa$xy$norm), ncol=201), asp=1)
-
