@@ -76,8 +76,24 @@ public:
 private:
   void initializeParams(RInsidePOET &R);
 
+  double calcDeltaConc(std::size_t cell_index, double bc_val,
+                       const std::vector<double> &spec_vec,
+                       const std::vector<double> &flux);
+
+  std::vector<double> CFLTimeVec(double req_dt,
+                                 const std::vector<double> &max_fluxes);
+
   std::array<std::uint32_t, 2> n_cells;
+  std::array<double, 2> s_cells;
+  std::uint32_t field_size;
+  double cell_volume;
+
+  std::vector<double> porosity;
+  std::vector<double> density;
+  std::vector<double> water_saturation;
+
   std::set<std::uint32_t> inactive_cells;
+  std::vector<double> boundary_condition;
 
   Field t_field;
 

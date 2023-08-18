@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-08-18 13:13:46 mluebke"
+## Time-stamp: "Last modified 2023-08-18 16:13:13 mluebke"
 
 database <- normalizePath("../share/poet/bench/dolo/phreeqc_kin.dat")
 input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
@@ -28,7 +28,7 @@ init_cell <- list(
 
 grid <- list(
   n_cells = c(n, m),
-  s_cells = c(1, 1),
+  s_cells = c(n, m),
   type = types[1]
 )
 
@@ -39,17 +39,26 @@ grid <- list(
 
 ## initial conditions
 init_adv <- c(
-  "H" = 110.683,
-  "O" = 55.3413,
-  "Charge" = -5.0822e-19,
-  "C(4)" = 1.2279E-4,
-  "Ca" = 1.2279E-4,
+  "H" = 110.124,
+  "O" = 55.0622,
+  "Charge" = -1.217e-09,
+  "C(4)" = 0,
+  "Ca" = 0,
   "Cl" = 0,
   "Mg" = 0
 )
 
 ## list of boundary conditions/inner nodes
 vecinj_adv <- list(
+  list(
+    "H" = 110.124,
+    "O" = 55.0622,
+    "Charge" = -1.217e-09,
+    "C(4)" = 0,
+    "Ca" = 0,
+    "Cl" = 0,
+    "Mg" = 0
+  ),
   list(
     "H" = 110.683,
     "O" = 55.3413,
@@ -62,7 +71,7 @@ vecinj_adv <- list(
 )
 
 vecinj_inner <- list(
-  l1 = c(1, 1, 1)
+  l1 = c(2, 1, 1)
 )
 
 # Create a list to store grid cell information
@@ -89,16 +98,16 @@ for (row in 1:n) {
 
     # Check and add connections to the east, south, west, and north cells
     # east
-    flux <- c(flux, -0.1)
+    flux <- c(flux, -1)
 
     # south
-    flux <- c(flux, -0.1)
+    flux <- c(flux, -1)
 
     # west
-    flux <- c(flux, 0.1)
+    flux <- c(flux, 1)
 
     # north
-    flux <- c(flux, 0.1)
+    flux <- c(flux, 1)
 
     # Store the connections in the flux_list
     flux_list[[index]] <- flux

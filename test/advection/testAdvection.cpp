@@ -1,10 +1,11 @@
 #include "testDataStructures.hpp"
 #include <cstddef>
 #include <poet/AdvectionModule.hpp>
+#include <string>
 
 using namespace poet;
 
-constexpr std::size_t MAX_ITER = 100;
+constexpr std::size_t MAX_ITER = 10;
 
 int main(int argc, char **argv) {
   auto &R = RInsidePOET::getInstance();
@@ -19,8 +20,9 @@ int main(int argc, char **argv) {
 
   for (std::size_t i = 0; i < MAX_ITER; i++) {
     adv.simulate(1);
+    const std::string save_q =
+        "saveRDS(field, 'adv_" + std::to_string(i + 1) + ".rds')";
+    R["field"] = adv.getField().asSEXP();
+    R.parseEval(save_q);
   }
-
-  R["field"] = adv.getField().asSEXP();
-  R.parseEval("saveRDS(field, 'adv_10.rds')");
 }

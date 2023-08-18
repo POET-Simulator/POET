@@ -2,23 +2,14 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <limits>
 #include <string>
 #include <vector>
 
 #include <Rcpp.h>
 
 namespace poet {
-
-// inline std::vector<std::vector<double>> getFlux(const Rcpp::List &flux_list)
-// {
-//   std::vector<std::vector<double>> fluxes(flux_lisVt.size());
-//   for (std::size_t i = 0; i < flux_list.size(); i++) {
-//     const auto flux_2d = Rcpp::as<std::vector<double>>(flux_list[i + 1]);
-//     fluxes[i] = flux_2d;
-//   }
-
-//   return fluxes;
-// }
 
 inline std::array<std::int32_t, 4> getIndices(std::int32_t index,
                                               std::int32_t n, std::int32_t m) {
@@ -38,13 +29,64 @@ inline std::array<std::int32_t, 4> getIndices(std::int32_t index,
 
 inline double getFluxApplyConc(bool inbound, std::uint32_t curr_index,
                                std::int32_t neighbor_index,
-                               const std::vector<double> &conc) {
-  if (inbound && neighbor_index >= 0) {
+                               const std::vector<double> &conc, double bc) {
+  // On inbound flux and non-boundary condition
+  if (inbound) {
+    if (neighbor_index == -1) {
+      return bc;
+    }
     return conc[neighbor_index];
   }
 
-  // outbound flow only affects current cell with given index
+  // inbound flow from boundary condition (open) or outbound flow
   return conc[curr_index];
+}
+
+inline double
+AdvectionModule::calcDeltaConc(std::size_t cell_index, double bc_val,
+                               const std::vector<double> &spec_vec,
+                               const std::vector<double> &flux) {
+  const auto neighbor_indices =
+      getIndices(cell_index, this->n_cells[0], this->n_cells[1]);
+  double ds{.0};
+  for (std::size_t neighbor_i = 0; neighbor_i < neighbor_indices.size();
+       neighbor_i++) {
+    const double &curr_flux = flux[neighbor_i];
+    const bool inbound = curr_flux > 0;
+    const double flux_apply_val = getFluxApplyConc(
+        inbound, cell_index, neighbor_indices[neighbor_i], spec_vec, bc_val);
+    ds += curr_flux * flux_apply_val;
+  }
+
+  return ds;
+}
+
+std::vector<double>
+AdvectionModule::CFLTimeVec(double req_dt,
+                            const std::vector<double> &max_fluxes) {
+  const auto field_size = this->n_cells[0] * this->n_cells[1];
+
+  double max_dt = std::numeric_limits<double>::max();
+
+  for (std::size_t i = 0; i < field_size; i++) {
+    const double dt =
+        (cell_volume * density[i] * water_saturation[i] * porosity[i]) /
+        max_fluxes[i];
+    if (dt < max_dt) {
+      max_dt = dt;
+    }
+  }
+
+  if (max_dt < req_dt) {
+    std::uint32_t min_floor = static_cast<std::uint32_t>(req_dt / max_dt);
+    std::vector<double> time_vec(min_floor, max_dt);
+
+    double diff = req_dt - (max_dt * min_floor);
+    time_vec.push_back(req_dt);
+    return time_vec;
+  }
+
+  return std::vector<double>(1, req_dt);
 }
 
 void AdvectionModule::simulate(double dt) {
@@ -54,7 +96,6 @@ void AdvectionModule::simulate(double dt) {
   // HACK: constant flux for this moment imported from R runtime
 
   RInsidePOET &R = RInsidePOET::getInstance();
-
   const auto flux_list =
       Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$advection$const_flux"));
   std::vector<std::vector<double>> flux(flux_list.size());
@@ -63,26 +104,41 @@ void AdvectionModule::simulate(double dt) {
     flux[i] = flux_2d;
   }
 
-  auto field_vec = t_field.As2DVector();
-  for (auto &species : field_vec) {
-    std::vector<double> spec_copy = species;
-    for (std::size_t cell_i = 0; cell_i < n * m; cell_i++) {
-      if (this->inactive_cells.find(cell_i) != this->inactive_cells.end()) {
-        continue;
-      }
-      const auto indices = getIndices(cell_i, n, m);
-      double ds{.0};
-      for (std::size_t neighbor_i = 0; neighbor_i < indices.size();
-           neighbor_i++) {
-        const double &curr_flux = flux[cell_i][neighbor_i];
-        const double flux_apply_val = getFluxApplyConc(
-            curr_flux > 0, cell_i, indices[neighbor_i], species);
-        ds += curr_flux * flux_apply_val;
-      }
-      spec_copy[cell_i] += ds;
+  MSG("Advection time step requested: " + std::to_string(dt));
+
+  std::vector<double> max_fluxes(flux.size());
+  for (std::size_t i = 0; i < max_fluxes.size(); i++) {
+    std::array<double, 4> abs_flux;
+    for (std::size_t j = 0; j < abs_flux.size(); j++) {
+      abs_flux[j] = std::abs(flux[i][j]);
     }
-    species = spec_copy;
+    max_fluxes[i] = *std::max_element(abs_flux.begin(), abs_flux.end());
   }
+
+  const auto time_vec = CFLTimeVec(dt, max_fluxes);
+
+  MSG("CFL yielding " + std::to_string(time_vec.size()) + " inner iterations");
+
+  auto field_vec = t_field.As2DVector();
+
+  for (std::size_t species_i = 0; species_i < field_vec.size(); species_i++) {
+    auto &species = field_vec[species_i];
+    std::vector<double> spec_copy = species;
+    for (const double &dt : time_vec) {
+      for (std::size_t cell_i = 0; cell_i < n * m; cell_i++) {
+        if (this->inactive_cells.find(cell_i) != this->inactive_cells.end()) {
+          continue;
+        }
+        double delta_conc =
+            calcDeltaConc(cell_i, this->boundary_condition[species_i], species,
+                          flux[species_i]);
+        spec_copy[cell_i] +=
+            (dt * delta_conc) / (porosity[cell_i] * cell_volume);
+      }
+      species = spec_copy;
+    }
+  }
+
   t_field = field_vec;
 }
 
@@ -92,7 +148,19 @@ void AdvectionModule::initializeParams(RInsidePOET &R) {
   const std::uint32_t m = this->n_cells[1] =
       R.parseEval("mysetup$grid$n_cells[2]");
 
-  const std::uint32_t field_size{n * m};
+  const std::uint32_t x = this->s_cells[0] =
+      R.parseEval("mysetup$grid$s_cells[1]");
+  const std::uint32_t y = this->s_cells[1] =
+      R.parseEval("mysetup$grid$s_cells[2]");
+
+  this->field_size = n * m;
+  this->cell_volume = (s_cells[0] * s_cells[1]) / this->field_size;
+
+  // HACK: For now, we neglect porisity, density and water saturation of the
+  // cell
+  this->porosity = std::vector<double>(field_size, 1.);
+  this->density = std::vector<double>(field_size, 1.);
+  this->water_saturation = std::vector<double>(field_size, 1.);
 
   const auto init_vec =
       Rcpp::as<Rcpp::NumericVector>(R.parseEval("mysetup$advection$init"));
@@ -110,6 +178,11 @@ void AdvectionModule::initializeParams(RInsidePOET &R) {
   const Rcpp::DataFrame vecinj = R.parseEval("mysetup$advection$vecinj");
   const Rcpp::DataFrame inner_vecinj =
       R.parseEval("mysetup$advection$vecinj_inner");
+
+  for (std::size_t i = 0; i < prop_names.size(); i++) {
+    const Rcpp::NumericVector species_vecinj = vecinj[prop_names[i]];
+    this->boundary_condition.push_back(species_vecinj[0]);
+  }
 
   // same logic as for diffusion module applied
   for (std::size_t i = 0; i < inner_vecinj.size(); i++) {
