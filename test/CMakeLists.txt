@@ -15,3 +15,7 @@ add_custom_target(check
     COMMAND $<TARGET_FILE:testPOET>
     DEPENDS testPOET
 )
+
+add_executable(advection advection/testAdvection.cpp)
+target_include_directories(advection PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(advection poet_lib)

@@ -27,6 +27,8 @@
 #include <Rcpp.h>
 #include <array>
 #include <cstdint>
+#include <map>
+#include <utility>
 #include <vector>
 
 namespace poet {
@@ -75,7 +77,7 @@ private:
   void initializeParams(RInsidePOET &R);
 
   std::array<std::uint32_t, 2> n_cells;
-  std::set<std::uint32_t> cells_const;
+  std::set<std::uint32_t> inactive_cells;
 
   Field t_field;
 

@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-08-17 16:28:57 mluebke"
+## Time-stamp: "Last modified 2023-08-18 13:13:46 mluebke"
 
 database <- normalizePath("../share/poet/bench/dolo/phreeqc_kin.dat")
 input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
@@ -8,8 +8,8 @@ input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
 ##                     Grid initialization                     ##
 #################################################################
 
-n <- 50
-m <- 50
+n <- 5
+m <- 5
 
 types <- c("scratch", "phreeqc", "rds")
 
@@ -66,37 +66,42 @@ vecinj_inner <- list(
 )
 
 # Create a list to store grid cell information
-grid_list <- vector("list", n * m)
+flux_list <- list()
 
 # Function to get the index of a grid cell given its row and column
 get_index <- function(row, col) {
-  return((row - 1) * m + col)
+  index <- (row - 1) * m + col
+  if (index < 1) {
+    index <- -1
+  } else if (index > n * m) {
+    index <- -1
+  }
+  return(index)
 }
 
-# Loop through each row and column to populate the grid_list
+# Loop through each row and column to populate the flux_list
 for (row in 1:n) {
   for (col in 1:m) {
     index <- get_index(row, col)
 
     # Initialize the connections for the current cell
-    connections <- c()
+    flux <- c()
 
     # Check and add connections to the east, south, west, and north cells
-    if (col < m) {
-      connections <- c(connections, get_index(row, col + 1))
-    }
-    if (row < n) {
-      connections <- c(connections, get_index(row + 1, col))
-    }
-    if (col > index) {
-      connections <- c(connections, get_index(row, col - 1))
-    }
-    if (row > index) {
-      connections <- c(connections, get_index(row - 1, col))
-    }
+    # east
+    flux <- c(flux, -0.1)
 
-    # Store the connections in the grid_list
-    grid_list[[index]] <- connections
+    # south
+    flux <- c(flux, -0.1)
+
+    # west
+    flux <- c(flux, 0.1)
+
+    # north
+    flux <- c(flux, 0.1)
+
+    # Store the connections in the flux_list
+    flux_list[[index]] <- flux
   }
 }
 
@@ -107,7 +112,7 @@ advection <- list(
   init = init_adv,
   vecinj = vecinj,
   vecinj_inner = vecinj_inner,
-  grid = grid_list
+  const_flux = flux_list
 )
 
 #################################################################
