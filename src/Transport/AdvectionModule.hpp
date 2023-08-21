@@ -71,7 +71,7 @@ public:
    *
    * \return Reference to the diffusion field.
    */
-  const Field &getField() const { return this->t_field; }
+  Field &getField() { return this->t_field; }
 
 private:
   void initializeParams(RInsidePOET &R);

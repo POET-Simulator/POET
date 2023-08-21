@@ -114,11 +114,14 @@ void set_chem_parameters(poet::ChemistryModule &chem, uint32_t wp_size,
   chem.LoadDatabase(database_path);
 }
 
-inline double RunMasterLoop(SimParams &params, RInside &R,
+inline double RunMasterLoop(SimParams &params, RInsidePOET &R,
                             const GridParams &g_params, uint32_t nxyz_master) {
 
-  DiffusionParams d_params{R};
-  DiffusionModule diffusion(d_params, g_params);
+  // DiffusionParams d_params{R};
+  // DiffusionModule diffusion(d_params, g_params);
+
+  AdvectionModule advection(R);
+
   /* Iteration Count is dynamic, retrieving value from R (is only needed by
    * master for the following loop) */
   uint32_t maxiter = R.parseEval("mysetup$iterations");
@@ -131,8 +134,7 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
   set_chem_parameters(chem, nxyz_master, params.getChemParams().database_path);
   chem.RunInitFile(params.getChemParams().input_script);
 
-  poet::ChemistryModule::SingleCMap init_df = DFToHashMap(d_params.initial_t);
-  chem.initializeField(diffusion.getField());
+  chem.initializeField(advection.getField());
 
   if (params.getNumParams().print_progressbar) {
     chem.setProgressBarPrintout(true);
@@ -161,17 +163,17 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
 
     /* run transport */
     // TODO: transport to diffusion
-    diffusion.simulate(dt);
+    advection.simulate(dt);
 
-    chem.getField().update(diffusion.getField());
+    chem.getField().update(advection.getField());
 
     MSG("Chemistry step");
 
     chem.SetTimeStep(dt);
     chem.RunCells();
 
-    writeFieldsToR(R, diffusion.getField(), chem.GetField());
-    diffusion.getField().update(chem.GetField());
+    writeFieldsToR(R, advection.getField(), chem.GetField());
+    advection.getField().update(chem.GetField());
 
     R["req_dt"] = dt;
     R["simtime"] = (sim_time += dt);
@@ -214,7 +216,7 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
   R["phreeqc_time"] = Rcpp::wrap(chem.GetWorkerPhreeqcTimings());
   R.parseEvalQ("profiling$phreeqc <- phreeqc_time");
 
-  R["simtime_transport"] = diffusion.getTransportTime();
+  R["simtime_transport"] = advection.getTransportTime();
   R.parseEvalQ("profiling$simtime_transport <- simtime_transport");
 
   // R["phreeqc_count"] = phreeqc_counts;
@@ -247,7 +249,6 @@ inline double RunMasterLoop(SimParams &params, RInside &R,
   }
 
   chem.MasterLoopBreak();
-  diffusion.end();
 
   return dSimTime;
 }

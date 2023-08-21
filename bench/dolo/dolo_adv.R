@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-08-18 16:13:13 mluebke"
+## Time-stamp: "Last modified 2023-08-21 12:08:54 mluebke"
 
 database <- normalizePath("../share/poet/bench/dolo/phreeqc_kin.dat")
 input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
@@ -8,8 +8,8 @@ input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
 ##                     Grid initialization                     ##
 #################################################################
 
-n <- 5
-m <- 5
+n <- 100
+m <- 100
 
 types <- c("scratch", "phreeqc", "rds")
 
@@ -28,7 +28,7 @@ init_cell <- list(
 
 grid <- list(
   n_cells = c(n, m),
-  s_cells = c(n, m),
+  s_cells = c(n*10, m*10),
   type = types[1]
 )
 
@@ -38,12 +38,15 @@ grid <- list(
 ##################################################################
 
 ## initial conditions
+
+## HACK: We need the chemical initialization here, as chem module initialization
+## depends on transport until now. This will change in the future.
 init_adv <- c(
   "H" = 110.124,
   "O" = 55.0622,
-  "Charge" = -1.217e-09,
-  "C(4)" = 0,
-  "Ca" = 0,
+  "Charge" = -1.216307659761E-09,
+  "C(4)" = 1.230067028174E-04,
+  "Ca" = 1.230067028174E-04,
   "Cl" = 0,
   "Mg" = 0
 )
@@ -88,6 +91,8 @@ get_index <- function(row, col) {
   return(index)
 }
 
+flux_val <- 0.1
+
 # Loop through each row and column to populate the flux_list
 for (row in 1:n) {
   for (col in 1:m) {
@@ -98,16 +103,16 @@ for (row in 1:n) {
 
     # Check and add connections to the east, south, west, and north cells
     # east
-    flux <- c(flux, -1)
+    flux <- c(flux, -flux_val)
 
     # south
-    flux <- c(flux, -1)
+    flux <- c(flux, -flux_val)
 
     # west
-    flux <- c(flux, 1)
+    flux <- c(flux, flux_val)
 
     # north
-    flux <- c(flux, 1)
+    flux <- c(flux, flux_val)
 
     # Store the connections in the flux_list
     flux_list[[index]] <- flux
@@ -193,7 +198,7 @@ chemistry <- list(
 
 
 iterations <- 10
-dt <- 200
+dt <- 500
 
 setup <- list(
   grid = grid,

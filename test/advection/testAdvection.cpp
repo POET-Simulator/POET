@@ -6,6 +6,7 @@
 using namespace poet;
 
 constexpr std::size_t MAX_ITER = 10;
+constexpr double DT = 200;
 
 int main(int argc, char **argv) {
   auto &R = RInsidePOET::getInstance();
@@ -19,7 +20,7 @@ int main(int argc, char **argv) {
   R.parseEval("saveRDS(field, 'adv_0.rds')");
 
   for (std::size_t i = 0; i < MAX_ITER; i++) {
-    adv.simulate(1);
+    adv.simulate(DT);
     const std::string save_q =
         "saveRDS(field, 'adv_" + std::to_string(i + 1) + ".rds')";
     R["field"] = adv.getField().asSEXP();

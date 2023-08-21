@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
+#include <mpi.h>
 #include <string>
 #include <vector>
 
@@ -90,6 +91,8 @@ AdvectionModule::CFLTimeVec(double req_dt,
 }
 
 void AdvectionModule::simulate(double dt) {
+  double start_t = MPI_Wtime();
+
   const auto &n = this->n_cells[0];
   const auto &m = this->n_cells[1];
 
@@ -133,7 +136,7 @@ void AdvectionModule::simulate(double dt) {
   for (std::size_t species_i = 0; species_i < field_vec.size(); species_i++) {
     auto &species = field_vec[species_i];
     std::vector<double> spec_copy = species;
-    for (const double &dt : time_vec) {
+    for (const double &curr_dt : time_vec) {
       for (std::size_t cell_i = 0; cell_i < n * m; cell_i++) {
 
         // if inactive cell -> skip
@@ -146,13 +149,15 @@ void AdvectionModule::simulate(double dt) {
             calcDeltaConc(cell_i, this->boundary_condition[species_i], species,
                           flux[species_i]);
         spec_copy[cell_i] +=
-            (dt * delta_conc) / (porosity[cell_i] * cell_volume);
+            (curr_dt * delta_conc) / (porosity[cell_i] * cell_volume);
       }
       species = spec_copy;
     }
   }
 
   t_field = field_vec;
+
+  this->transport_t += MPI_Wtime() - start_t;
 }
 
 void AdvectionModule::initializeParams(RInsidePOET &R) {
