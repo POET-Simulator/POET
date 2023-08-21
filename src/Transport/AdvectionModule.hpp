@@ -92,7 +92,7 @@ private:
   std::vector<double> density;
   std::vector<double> water_saturation;
 
-  std::set<std::uint32_t> inactive_cells;
+  std::map<std::uint32_t, std::vector<double>> inactive_cells;
   std::vector<double> boundary_condition;
 
   Field t_field;

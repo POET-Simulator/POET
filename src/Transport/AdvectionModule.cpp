@@ -121,14 +121,27 @@ void AdvectionModule::simulate(double dt) {
 
   auto field_vec = t_field.As2DVector();
 
+  // iterate over all inactive cells and set defined values, as chemistry module
+  // won't skip those cells until now
+
+  for (const auto &inac_cell : this->inactive_cells) {
+    for (std::size_t species_i = 0; species_i < field_vec.size(); species_i++) {
+      field_vec[species_i][inac_cell.first] = inac_cell.second[species_i];
+    }
+  }
+
   for (std::size_t species_i = 0; species_i < field_vec.size(); species_i++) {
     auto &species = field_vec[species_i];
     std::vector<double> spec_copy = species;
     for (const double &dt : time_vec) {
       for (std::size_t cell_i = 0; cell_i < n * m; cell_i++) {
+
+        // if inactive cell -> skip
+        const auto inactive_cell_it = this->inactive_cells.find(cell_i);
         if (this->inactive_cells.find(cell_i) != this->inactive_cells.end()) {
           continue;
         }
+
         double delta_conc =
             calcDeltaConc(cell_i, this->boundary_condition[species_i], species,
                           flux[species_i]);
@@ -188,11 +201,13 @@ void AdvectionModule::initializeParams(RInsidePOET &R) {
   for (std::size_t i = 0; i < inner_vecinj.size(); i++) {
     const Rcpp::NumericVector tuple = inner_vecinj[i];
     const std::uint32_t cell_index = (tuple[2] - 1) + ((tuple[1] - 1) * n);
+    std::vector<double> curr_cell_state(prop_names.size());
     for (std::size_t prop_i = 0; prop_i < prop_names.size(); prop_i++) {
       const Rcpp::NumericVector curr_prop_vec_inj = vecinj[prop_names[prop_i]];
       init_field[prop_i][cell_index] = curr_prop_vec_inj[tuple[0] - 1];
+      curr_cell_state[prop_i] = curr_prop_vec_inj[tuple[0] - 1];
     }
-    this->inactive_cells.insert(cell_index);
+    this->inactive_cells.insert({cell_index, std::move(curr_cell_state)});
   }
 
   this->t_field = Field(field_size, init_field, prop_names);
