@@ -145,9 +145,8 @@ void AdvectionModule::simulate(double dt) {
           continue;
         }
 
-        double delta_conc =
-            calcDeltaConc(cell_i, this->boundary_condition[species_i], species,
-                          flux[species_i]);
+        double delta_conc = calcDeltaConc(
+            cell_i, this->boundary_condition[species_i], species, flux[cell_i]);
         spec_copy[cell_i] +=
             (curr_dt * delta_conc) / (porosity[cell_i] * cell_volume);
       }
