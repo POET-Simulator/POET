@@ -1,8 +1,8 @@
-#include "testDataStructures.hpp"
-
 #include <cstddef>
 #include <poet/AdvectionModule.hpp>
 #include <string>
+
+#include "InputFiles.hpp"
 
 using namespace poet;
 

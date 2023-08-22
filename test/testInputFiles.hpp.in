@@ -1,7 +1,7 @@
-#ifndef TESTRINSIDEPOET_H_
-#define TESTRINSIDEPOET_H_
+#ifndef TESTINPUTFILES_H_
+#define TESTINPUTFILES_H_
 
 inline const char *RInside_source_file = "@TEST_RInsideSourceFile@";
 inline const char *SampleInputScript = "@TEST_SampleInputScript@";
 
-#endif // TESTRINSIDEPOET_H_
+#endif // TESTINPUTFILES_H_
