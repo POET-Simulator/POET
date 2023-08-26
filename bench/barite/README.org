@@ -1,0 +1,47 @@
+#+TITLE: Description of \texttt{barite} benchmark
+#+AUTHOR: MDL <delucia@gfz-potsdam.de>
+#+DATE: 2023-08-26
+#+STARTUP: inlineimages
+#+LATEX_CLASS_OPTIONS: [a4paper,9pt]
+#+LATEX_HEADER: \usepackage{fullpage}
+#+LATEX_HEADER: \usepackage{amsmath, systeme}
+#+LATEX_HEADER: \usepackage{graphicx}
+#+LATEX_HEADER: \usepackage{charter}
+#+OPTIONS: toc:nil
+
+* Quick start
+
+#+begin_src sh :language sh :frame single
+mpirun -np 4 ./poet barite.R barite_results
+#+end_src
+
+
+* Chemical system
+
+The benchmark accounts for reaction kinetics for celestite dissolution
+and barite precipitation. The system is initially at equilibrium with
+celestite; following diffusion of $BaCl_2$ celestite dissolution
+occurs Dissolution of celestite and the successive release of
+$SO_4^{2-}$ into solution causes barite to precipitate:
+
+
+$ \mathrm{Ba}^{2+}_{\mathrm{(aq)}} + \mathrm{SrSO}_{4, \mathrm{(s)}} \rightarrow \mathrm{BaSO}_{4,\mathrm{(s)}} + \mathrm{Sr}^{2+}_{\mathrm{(s)}} $
+
+Reaction rates are calculated using a general kinetics rate law for
+both dissolution and precipitation based on transition state
+theory:
+
+$ \frac{\mathrm{d}m_{m}}{\mathrm{d}t} = -\mathrm{SA}_m k_{\mathrm{r},m} (1-\mathrm{SR}_{m})$
+
+
+where $\mathrm{d}m\,(\mathrm{mol/s})$ is the rate of a mineral phase
+$m$, $\mathrm{SA}\,\mathrm{(m^2)}$ is the reactive surface area,
+$k_{\mathrm{r}}\,\mathrm{(mol/m^2/s)}$ is the rate constant, and
+$\mathrm{SR}\, {(\text{--})}$ is the saturation ratio, i.e., the ratio
+of the ion activity product of the reacting species and the solubility
+constant. 
+
+
+* List of Files
+
+
