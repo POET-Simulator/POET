@@ -77,7 +77,7 @@ benchmarks the surface areas are set to
 A starting seed for barite is given at 0.001 mol in each domain
 element.
 
-* TODO Nucleation
+* Nucleation (TODO)
 
 Geochemical benchmark inspired by Tranter et al. (2021) without
 nucleation. 
@@ -97,13 +97,8 @@ transported species: H, O, Charge, Ba, Cl, S(6), Sr.
 - Diffusion coefficients: isotropic homogeneous \alpha = 1E-06
 - Time steps & iterations: 20 iteration with \Delta t = 250 s
 - *DHT* parameters:
-| H      | 10 |
-| O      | 10 |
-| Charge |  3 |
-| Ba     |  5 |
-| Cl     |  5 |
-| S(6)   |  5 |
-| Sr     |  5 |
+  |  H |  O | Charge | Ba | Cl | S(6) | Sr |
+  | 10 | 10 |      3 |  5 |  5 |    5 |  5 |
 
 
 
@@ -115,14 +110,9 @@ transported species: H, O, Charge, Ba, Cl, S(6), Sr.
   BaCl_{2}
 - Diffusion coefficients: isotropic homogeneous \alpha = 1E-06
 - Time steps & iterations: 200 iterations with \Delta t = 250 s
-- *PHT* parameters:
-| H      | 10 |
-| O      | 10 |
-| Charge |  3 |
-| Ba     |  5 |
-| Cl     |  5 |
-| S(6)   |  5 |
-| Sr     |  5 |
+- *DHT* parameters:
+  |  H |  O | Charge | Ba | Cl | S(6) | Sr |
+  | 10 | 10 |      3 |  5 |  5 |    5 |  5 |
 
 * References
 

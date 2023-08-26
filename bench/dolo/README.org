@@ -1,4 +1,4 @@
-#+TITLE: Description of =barite= benchmark
+#+TITLE: Description of =dolo= benchmark
 #+AUTHOR: MDL <delucia@gfz-potsdam.de>
 #+DATE: 2023-08-26
 #+STARTUP: inlineimages
@@ -12,22 +12,22 @@
 * Quick start
 
 #+begin_src sh :language sh :frame single
-mpirun -np 4 ./poet dolomite.R dolomite_results
-mpirun -np 4 ./poet --interp  dolomite_interp_eval.R dolomite_results
+mpirun -np 4 ./poet dolo_diffu_inner.R dolo_diffu_inner_res
+mpirun -np 4 ./poet --dht --interp dolo_interp_long.R dolo_interp_long_res
 #+end_src
 
 * List of Files
 
-- =dolo.R=: POET input script for a 20x20 simulation grid
-- =dolo_diffu_inner.R=: POET input script for a 400x200 simulation
+- =dolo_diffu_inner.R=: POET input script for a 100x100 simulation
   grid
-- =dolo_diffu_inner_large.R=: POET input script for a 400x200
-  simulation grid
 - =dolo_interp_long.R=: POET input script for a 400x200 simulation
   grid
 - =phreeqc_kin.dat=: PHREEQC database containing the kinetic expressions
   for dolomite and celestite, stripped down from =phreeqc.dat=
 - =dol.pqi=: PHREEQC input script for the chemical system
+# - =dolo.R=: POET input script for a 20x20 simulation grid
+# - =dolo_diffu_inner_large.R=: POET input script for a 400x200
+#   simulation grid
 
 * Chemical system
 
@@ -119,15 +119,8 @@ implicit total H, total O and Charge as required by PHREEQC_RM.
 - Diffusion coefficients: isotropic homogeneous \alpha = 1E-06
 - Time steps & iterations: 10 iterations with \Delta t of 200 s
 - *DHT* parameters:
-  | H        | 10 |
-  | O        | 10 |
-  | Charge   |  3 |
-  | C(4)     |  5 |
-  | Ca       |  5 |
-  | Cl       |  5 |
-  | Mg       |  5 |
-  | Calcite  |  5 |
-  | Dolomite |  5 |
+  |  H |  O | Charge | C(4) | Ca | Cl | Mg | Calcite | Dolomite |
+  | 10 | 10 |      3 |    5 |  5 |  5 |  5 |       5 |        5 |
 - Hooks: the following hooks are defined:
   1. =dht_fill=: 
   2. =dht_fuzz=:
@@ -146,15 +139,8 @@ implicit total H, total O and Charge as required by PHREEQC_RM.
 - Diffusion coefficients: isotropic homogeneous \alpha = 1E-06
 - Time steps & iterations: 20000 iterations with \Delta t of 200 s
 - *DHT* parameters:
-  | H        | 10 |
-  | O        | 10 |
-  | Charge   |  3 |
-  | C(4)     |  5 |
-  | Ca       |  5 |
-  | Cl       |  5 |
-  | Mg       |  5 |
-  | Calcite  |  5 |
-  | Dolomite |  5 |
+  |  H |  O | Charge | C(4) | Ca | Cl | Mg | Calcite | Dolomite |
+  | 10 | 10 |      3 |    5 |  5 |  5 |  5 |       5 |        5 |
 - Hooks: the following hooks are defined:
   1. =dht_fill=: 
   2. =dht_fuzz=:

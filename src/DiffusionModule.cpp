@@ -177,11 +177,11 @@ void DiffusionModule::simulate(double dt) {
 
   t_field = field_2d;
 
-  std::cout << " done!\n";
 
   sim_a_transport = MPI_Wtime();
 
   transport_t += sim_a_transport - sim_b_transport;
+  std::cout << " done in "<< sim_a_transport - sim_b_transport << "sec" << std::endl;
 }
 
 void DiffusionModule::end() {
