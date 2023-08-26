@@ -1,4 +1,4 @@
-#+TITLE: Description of \texttt{barite} benchmark
+#+TITLE: Description of =barite= benchmark
 #+AUTHOR: MDL <delucia@gfz-potsdam.de>
 #+DATE: 2023-08-26
 #+STARTUP: inlineimages
@@ -19,28 +19,27 @@ mpirun -np 4 ./poet barite.R barite_results
 * Chemical system
 
 The benchmark depicts a porous system where pure water is initially at
-equilibrium with the *celestite* (strontium sulfate; brute formula:
-SrSO_4). A solution containing only dissolved Ba^{2+} and Cl^-
-diffuses into the system causing celestite dissolution. The resulting
-increased concentration of dissolved sulfate SO_4^{2-} induces
-precipitation of *barite* (barium sulfate; brute formula:
-BaSO_4^{2-}). The overall reaction can be written:
+equilibrium with *celestite* (strontium sulfate; brute formula:
+SrSO_4).
 
-Ba^{2+} + SrSO_4 \rightarrow BaSO_4 + Sr^{2+}
+A solution containing only dissolved Ba^{2+} and Cl^- diffuses into
+the system causing celestite dissolution. The increased concentration
+of dissolved sulfate SO_{4}^{2-} induces precipitation of *barite*
+(barium sulfate; brute formula: BaSO_{4}^{2-}). The overall reaction
+can be written:
+
+Ba^{2+} + celestite \rightarrow barite + Sr^{2+}
 
 Both celestite dissolution and barite precipitation are calculated
-using a general kinetics rate law based on transition state theory:
+using a kinetics rate law based on transition state theory:
 
-\frac{\mathrm{d}m_{m}}{\mathrm{d}t} = -\mathrm{SA}_m k_{\mathrm{r},m}
-(1-\mathrm{SR}_{m})
+rate = -S_{m} K (1-SR_{m})
 
+where the reaction rate has units mol/s, S_m (m^2) is the reactive
+surface area, K (mol/m^2/s) is the rate constant, and SR is the
+saturation ratio, i.e., the ratio of the ion activity product of the
+reacting species and the solubility constant.
 
-where $\mathrm{d}m\,(\mathrm{mol/s})$ is the rate of a mineral phase
-$m$, $\mathrm{SA}\,\mathrm{(m^2)}$ is the reactive surface area,
-$k_{\mathrm{r}}\,\mathrm{(mol/m^2/s)}$ is the rate constant, and
-$\mathrm{SR}\, {(\text{--})}$ is the saturation ratio, i.e., the ratio
-of the ion activity product of the reacting species and the solubility
-constant. 
 
 
 * List of Files
