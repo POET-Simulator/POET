@@ -13,8 +13,17 @@
 
 #+begin_src sh :language sh :frame single
 mpirun -np 4 ./poet barite.R barite_results
+mpirun -np 4 ./poet --interp  barite_interp_eval.R barite_results
 #+end_src
 
+* List of Files
+
+- =barite.R=: POET input script for a 20x20 simulation grid
+- =barite_interp_eval.R=: POET input script for a 400x200 simulation
+  grid
+- =db_barite.dat=: PHREEQC database containing the kinetic expressions
+  for barite and celestite, stripped down from =phreeqc.dat=
+- =barite.pqi=: PHREEQC input script defining the chemical system
 
 * Chemical system
 
@@ -35,13 +44,34 @@ using a kinetics rate law based on transition state theory:
 
 rate = -S_{m} K (1-SR_{m})
 
-where the reaction rate has units mol/s, S_m (m^2) is the reactive
-surface area, K (mol/m^2/s) is the rate constant, and SR is the
+where the reaction rate has units mol/s, S_{m} (m^{2}) is the reactive
+surface area, K (mol/m^{2}/s) is the rate constant, and SR is the
 saturation ratio, i.e., the ratio of the ion activity product of the
 reacting species and the solubility constant.
 
+For barite, the reaction rate is computed as sum of two mechanisms,
+/acid/ and /neutral/:
 
+    rate_{barite}  = S_{m} (acid + neutral) * (1 - SR_{barite})
 
-* List of Files
+where
 
+    acid = 10^{-6.9} \exp(\frac {-30800 \cdot T'} R) * act(H^{+})^{0.22}
 
+and
+
+    neutral = 10^{-7.9} \exp( \frac {-30800 * T'} R)
+
+R is the gas constant (8.314462 J / K / mol) and T' (K^{-1}) accounts
+for temperature dependence of the kinetic coefficients which are
+experimentally determined at 25 °C or 298.15 K
+
+    T' = (1 / K) - (1 / 298.15)
+       
+
+The kinetic rate law as implemented in the =db_barite.dat= file
+accepts one parameter which represents reactive surface area in m^{2}.
+For this benchmarks the surface areas are set to
+
+- S_{barite}: 50 m^{2}
+- S_{celestite}: 10 m^{2}  
