@@ -24,8 +24,9 @@ celestite; following diffusion of $BaCl_2$ celestite dissolution
 occurs Dissolution of celestite and the successive release of
 $SO_4^{2-}$ into solution causes barite to precipitate:
 
-
+#+begin_src tex
 $ \mathrm{Ba}^{2+}_{\mathrm{(aq)}} + \mathrm{SrSO}_{4, \mathrm{(s)}} \rightarrow \mathrm{BaSO}_{4,\mathrm{(s)}} + \mathrm{Sr}^{2+}_{\mathrm{(s)}} $
+#+end_src
 
 Reaction rates are calculated using a general kinetics rate law for
 both dissolution and precipitation based on transition state
