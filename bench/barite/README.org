@@ -128,6 +128,7 @@ transported species: H, O, Charge, Ba, Cl, S(6), Sr.
 
 - Tranter, Wetzel, De Lucia and Kühn (2021): Reactive transport model
   of kinetically controlled celestite to barite replacement, Advances
-  in Geosciences, 1, 1–9, https://doi.org/10.5194/adgeo-1-1-2021
+  in Geosciences, 56, 57-–65, 2021.
+  https://doi.org/10.5194/adgeo-56-57-20211
 
   
