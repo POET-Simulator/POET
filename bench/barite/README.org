@@ -27,10 +27,9 @@ mpirun -np 4 ./poet --interp  barite_interp_eval.R barite_results
 
 * Chemical system
 
-The benchmark depicts a porous system where pure water is initially at
-equilibrium with *celestite* (strontium sulfate; brute formula:
-SrSO_4).
-
+The benchmark depicts an isotherm porous system at *25 °C* where pure
+water is initially at equilibrium with *celestite* (strontium sulfate;
+brute formula: SrSO_4).
 A solution containing only dissolved Ba^{2+} and Cl^- diffuses into
 the system causing celestite dissolution. The increased concentration
 of dissolved sulfate SO_{4}^{2-} induces precipitation of *barite*
@@ -50,28 +49,41 @@ saturation ratio, i.e., the ratio of the ion activity product of the
 reacting species and the solubility constant.
 
 For barite, the reaction rate is computed as sum of two mechanisms,
-/acid/ and /neutral/:
+r_{/acid/} and r_{/neutral/}:
 
-    rate_{barite}  = S_{m} (acid + neutral) * (1 - SR_{barite})
+rate_{barite} = S_{barite} (r_{/acid/} + r_{/neutral/}) * (1 - SR_{barite})
 
-where
+where:
 
-    acid = 10^{-6.9} \exp(\frac {-30800 \cdot T'} R) * act(H^{+})^{0.22}
+r_{/acid/} = 10^{-6.9} e^{-30800 / R} \cdot act(H^{+})^{0.22}
 
-and
+r_{/neutral/} = 10^{-7.9} e^{-30800 / R}
 
-    neutral = 10^{-7.9} \exp( \frac {-30800 * T'} R)
+R (8.314462 J K^{-1} mol^{-1}) is the gas constant.
 
-R is the gas constant (8.314462 J / K / mol) and T' (K^{-1}) accounts
-for temperature dependence of the kinetic coefficients which are
-experimentally determined at 25 °C or 298.15 K
+For celestite the kinetic law considers only the acidic term and
+reads:
 
-    T' = (1 / K) - (1 / 298.15)
-       
+rate_{celestite} = S_{celestite} 10^{-5.66} e^{-23800 / R} \cdot
+act(H^{+})^{0.109} \cdot (1 - SR_{celestite})
 
-The kinetic rate law as implemented in the =db_barite.dat= file
+The kinetic rate laws as implemented in the =db_barite.dat= file
 accepts one parameter which represents reactive surface area in m^{2}.
-For this benchmarks the surface areas are set to
+For the benchmarks the surface areas are set to
 
 - S_{barite}: 50 m^{2}
-- S_{celestite}: 10 m^{2}  
+- S_{celestite}: 10 m^{2}
+
+
+** Initial conditions
+
+The parametrization
+
+
+* References
+
+- Tranter, Wetzel, De Lucia and Kühn (2021): Reactive transport model
+  of kinetically controlled celestite to barite replacement, Adv.
+  Geosci., 1, 1–9 ,https://doi.org/10.5194/adgeo-1-1-2021
+
+  
