@@ -18,21 +18,21 @@ mpirun -np 4 ./poet barite.R barite_results
 
 * Chemical system
 
-The benchmark accounts for reaction kinetics for celestite dissolution
-and barite precipitation. The system is initially at equilibrium with
-celestite; following diffusion of $BaCl_2$ celestite dissolution
-occurs Dissolution of celestite and the successive release of
-$SO_4^{2-}$ into solution causes barite to precipitate:
+The benchmark depicts a porous system where pure water is initially at
+equilibrium with the *celestite* (strontium sulfate; brute formula:
+SrSO_4). A solution containing only dissolved Ba^{2+} and Cl^-
+diffuses into the system causing celestite dissolution. The resulting
+increased concentration of dissolved sulfate SO_4^{2-} induces
+precipitation of *barite* (barium sulfate; brute formula:
+BaSO_4^{2-}). The overall reaction can be written:
 
-#+begin_src tex
-$ \mathrm{Ba}^{2+}_{\mathrm{(aq)}} + \mathrm{SrSO}_{4, \mathrm{(s)}} \rightarrow \mathrm{BaSO}_{4,\mathrm{(s)}} + \mathrm{Sr}^{2+}_{\mathrm{(s)}} $
-#+end_src
+Ba^{2+} + SrSO_4 \rightarrow BaSO_4 + Sr^{2+}
 
-Reaction rates are calculated using a general kinetics rate law for
-both dissolution and precipitation based on transition state
-theory:
+Both celestite dissolution and barite precipitation are calculated
+using a general kinetics rate law based on transition state theory:
 
-$ \frac{\mathrm{d}m_{m}}{\mathrm{d}t} = -\mathrm{SA}_m k_{\mathrm{r},m} (1-\mathrm{SR}_{m})$
+\frac{\mathrm{d}m_{m}}{\mathrm{d}t} = -\mathrm{SA}_m k_{\mathrm{r},m}
+(1-\mathrm{SR}_{m})
 
 
 where $\mathrm{d}m\,(\mathrm{mol/s})$ is the rate of a mineral phase
