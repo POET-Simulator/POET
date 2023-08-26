@@ -29,61 +29,105 @@ mpirun -np 4 ./poet --interp  barite_interp_eval.R barite_results
 
 The benchmark depicts an isotherm porous system at *25 °C* where pure
 water is initially at equilibrium with *celestite* (strontium sulfate;
-brute formula: SrSO_4).
-A solution containing only dissolved Ba^{2+} and Cl^- diffuses into
-the system causing celestite dissolution. The increased concentration
-of dissolved sulfate SO_{4}^{2-} induces precipitation of *barite*
-(barium sulfate; brute formula: BaSO_{4}^{2-}). The overall reaction
-can be written:
+brute formula: SrSO_{4}). A solution containing only dissolved Ba^{2+}
+and Cl^- diffuses into the system causing celestite dissolution. The
+increased concentration of dissolved sulfate SO_{4}^{2-} induces
+precipitation of *barite* (barium sulfate; brute formula:
+BaSO_{4}^{2-}). The overall reaction can be written:
 
 Ba^{2+} + celestite \rightarrow barite + Sr^{2+}
 
 Both celestite dissolution and barite precipitation are calculated
 using a kinetics rate law based on transition state theory:
 
-rate = -S_{m} K (1-SR_{m})
+rate = -S_{m} k_{barite} (1-SR_{m})
 
 where the reaction rate has units mol/s, S_{m} (m^{2}) is the reactive
-surface area, K (mol/m^{2}/s) is the rate constant, and SR is the
-saturation ratio, i.e., the ratio of the ion activity product of the
-reacting species and the solubility constant.
+surface area, k (mol/m^{2}/s) is the kinetic coefficient, and SR is
+the saturation ratio, i.e., the ratio of the ion activity product of
+the reacting species and the solubility constant, calculated
+internally by PHREEQC from the speciated solution.
 
 For barite, the reaction rate is computed as sum of two mechanisms,
 r_{/acid/} and r_{/neutral/}:
 
-rate_{barite} = S_{barite} (r_{/acid/} + r_{/neutral/}) * (1 - SR_{barite})
+rate_{barite} = S_{barite} (k_{/acid/} + k_{/neutral/}) * (1 - SR_{barite})
 
 where:
 
-r_{/acid/} = 10^{-6.9} e^{-30800 / R} \cdot act(H^{+})^{0.22}
+k_{/acid/} = 10^{-6.9} e^{-30800 / R} \cdot act(H^{+})^{0.22}
 
-r_{/neutral/} = 10^{-7.9} e^{-30800 / R}
+k_{/neutral/} = 10^{-7.9} e^{-30800 / R}
 
 R (8.314462 J K^{-1} mol^{-1}) is the gas constant.
 
-For celestite the kinetic law considers only the acidic term and
+For celestite the kinetic law considers only the acidic mechanism and
 reads:
 
 rate_{celestite} = S_{celestite} 10^{-5.66} e^{-23800 / R} \cdot
 act(H^{+})^{0.109} \cdot (1 - SR_{celestite})
 
-The kinetic rate laws as implemented in the =db_barite.dat= file
-accepts one parameter which represents reactive surface area in m^{2}.
-For the benchmarks the surface areas are set to
+The kinetic rates as implemented in the =db_barite.dat= file accepts
+one parameter which represents reactive surface area in m^{2}. For the
+benchmarks the surface areas are set to
 
 - S_{barite}: 50 m^{2}
 - S_{celestite}: 10 m^{2}
 
+A starting seed for barite is given at 0.001 mol in each domain
+element.
 
-** Initial conditions
+* TODO Nucleation
 
-The parametrization
+Geochemical benchmark inspired by Tranter et al. (2021) without
+nucleation. 
 
+* POET simulations
+
+Currently these benchmarks are pure diffusion simulations. There are 7
+transported species: H, O, Charge, Ba, Cl, S(6), Sr.
+
+** =barite.R=
+
+- Grid discretization: square domain of 1 \cdot 1 m^{2} discretized in
+  20x20 cells
+- Boundary conditions: E, S and W sides of the domain are closed; the
+  N boundary has a *fixed concentration* (Dirichlet) of 0.1 molal
+  BaCl_{2}
+- Diffusion coefficients: isotropic homogeneous \alpha = 1E-06
+- Time steps & iterations: 20 iteration with \Delta t = 250 s
+- *DHT* parameters:
+| H      | 10 |
+| O      | 10 |
+| Charge |  3 |
+| Ba     |  5 |
+| Cl     |  5 |
+| S(6)   |  5 |
+| Sr     |  5 |
+
+
+
+** =barite_interp_eval.R=
+- Grid discretization: rectangular domain of 40 \cdot 20 m^{2}
+  discretized in 400 \cdot 200 cells
+- Boundary conditions: all boundaries are closed. The center of the
+  domain at indeces (200, 100) has fixed concentration of 0.1 molal of
+  BaCl_{2}
+- Diffusion coefficients: isotropic homogeneous \alpha = 1E-06
+- Time steps & iterations: 200 iterations with \Delta t = 250 s
+- *PHT* parameters:
+| H      | 10 |
+| O      | 10 |
+| Charge |  3 |
+| Ba     |  5 |
+| Cl     |  5 |
+| S(6)   |  5 |
+| Sr     |  5 |
 
 * References
 
 - Tranter, Wetzel, De Lucia and Kühn (2021): Reactive transport model
-  of kinetically controlled celestite to barite replacement, Adv.
-  Geosci., 1, 1–9 ,https://doi.org/10.5194/adgeo-1-1-2021
+  of kinetically controlled celestite to barite replacement, Advances
+  in Geosciences, 1, 1–9, https://doi.org/10.5194/adgeo-1-1-2021
 
   
