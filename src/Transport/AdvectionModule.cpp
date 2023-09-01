@@ -107,8 +107,6 @@ void AdvectionModule::simulate(double dt) {
     flux[i] = flux_2d;
   }
 
-  MSG("Advection time step requested: " + std::to_string(dt));
-
   std::vector<double> max_fluxes(flux.size());
   for (std::size_t i = 0; i < max_fluxes.size(); i++) {
     std::array<double, 4> abs_flux;
@@ -117,6 +115,8 @@ void AdvectionModule::simulate(double dt) {
     }
     max_fluxes[i] = *std::max_element(abs_flux.begin(), abs_flux.end());
   }
+
+  MSG("Advection time step requested: " + std::to_string(dt));
 
   const auto time_vec = CFLTimeVec(dt, max_fluxes);
 
@@ -215,6 +215,24 @@ void AdvectionModule::initializeParams(RInsidePOET &R) {
   }
 
   this->t_field = Field(field_size, init_field, prop_names);
+
+  // FIXME: this should be done before each iteration
+  const auto flux_list =
+      Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$advection$const_flux"));
+  this->flux.resize(flux_list.size());
+  for (std::size_t i = 0; i < flux_list.size(); i++) {
+    const auto flux_2d = Rcpp::as<std::vector<double>>(flux_list[i]);
+    this->flux[i] = flux_2d;
+  }
+
+  this->max_fluxes.resize(flux.size());
+  for (std::size_t i = 0; i < max_fluxes.size(); i++) {
+    std::array<double, 4> abs_flux;
+    for (std::size_t j = 0; j < abs_flux.size(); j++) {
+      abs_flux[j] = std::abs(flux[i][j]);
+    }
+    this->max_fluxes[i] = *std::max_element(abs_flux.begin(), abs_flux.end());
+  }
 }
 
 } // namespace poet
