@@ -95,11 +95,6 @@ private:
   std::map<std::uint32_t, std::vector<double>> inactive_cells;
   std::vector<double> boundary_condition;
 
-  // FIXME: This will be removed in the future and is now only intended for
-  // speed purposes
-  std::vector<double> max_fluxes;
-  std::vector<std::vector<double>> flux;
-
   Field t_field;
 
   /**
