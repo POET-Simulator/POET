@@ -104,7 +104,6 @@ void AdvectionModule::simulate(double dt) {
 
   // HACK: constant flux for this moment imported from R runtime
 
-  // auto parse_start = std::chrono::steady_clock::now();
   // RInsidePOET &R = RInsidePOET::getInstance();
   // const auto flux_list =
   //     Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$advection$const_flux"));
@@ -167,8 +166,11 @@ void AdvectionModule::simulate(double dt) {
   }
 
   t_field = field_vec;
+  double end_t = MPI_Wtime();
 
-  this->transport_t += MPI_Wtime() - start_t;
+  MSG("Advection took " + std::to_string(end_t - start_t) + "s");
+
+  this->transport_t += end_t - start_t;
 }
 
 void AdvectionModule::initializeParams(RInsidePOET &R) {
