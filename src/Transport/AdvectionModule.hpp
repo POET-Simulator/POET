@@ -95,6 +95,9 @@ private:
   std::map<std::uint32_t, std::vector<double>> inactive_cells;
   std::vector<double> boundary_condition;
 
+  // FIXME: parse velocities in instantiation of class
+  std::vector<std::vector<double>> flux;
+
   Field t_field;
 
   /**

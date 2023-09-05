@@ -104,16 +104,17 @@ void AdvectionModule::simulate(double dt) {
 
   // HACK: constant flux for this moment imported from R runtime
 
-  RInsidePOET &R = RInsidePOET::getInstance();
-  const auto flux_list =
-      Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$advection$const_flux"));
-  std::vector<std::vector<double>> flux(flux_list.size());
+  // auto parse_start = std::chrono::steady_clock::now();
+  // RInsidePOET &R = RInsidePOET::getInstance();
+  // const auto flux_list =
+  //     Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$advection$const_flux"));
+  // std::vector<std::vector<double>> flux(flux_list.size());
+  // auto parse_end = std::chrono::steady_clock::now();
 
-#pragma omp parallel for schedule(dynamic)
-  for (std::size_t i = 0; i < flux_list.size(); i++) {
-    const auto flux_2d = Rcpp::as<std::vector<double>>(flux_list[i]);
-    flux[i] = flux_2d;
-  }
+  // MSG("Parsing took " +
+  //     std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                        parse_end - parse_start)
+  //                        .count()));
 
   MSG("Advection time step requested: " + std::to_string(dt));
 
@@ -226,6 +227,16 @@ void AdvectionModule::initializeParams(RInsidePOET &R) {
   }
 
   this->t_field = Field(field_size, init_field, prop_names);
+
+  // FIXME: parse velocities in instantiation of class
+  const auto rcpp_flux_list =
+      Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$advection$const_flux"));
+  this->flux.resize(rcpp_flux_list.size());
+
+  for (std::size_t i = 0; i < rcpp_flux_list.size(); i++) {
+    const auto flux_2d = Rcpp::as<std::vector<double>>(rcpp_flux_list[i]);
+    this->flux[i] = flux_2d;
+  }
 }
 
 } // namespace poet
