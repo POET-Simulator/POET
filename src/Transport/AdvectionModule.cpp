@@ -10,6 +10,12 @@
 
 #include <Rcpp.h>
 
+#ifdef _OPENMP
+#include <omp.h>
+#else
+#define omp_get_thread_num() 0
+#endif
+
 namespace poet {
 
 inline std::array<std::int32_t, 4> getIndices(std::int32_t index,
@@ -102,6 +108,8 @@ void AdvectionModule::simulate(double dt) {
   const auto flux_list =
       Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$advection$const_flux"));
   std::vector<std::vector<double>> flux(flux_list.size());
+
+#pragma omp parallel for schedule(dynamic)
   for (std::size_t i = 0; i < flux_list.size(); i++) {
     const auto flux_2d = Rcpp::as<std::vector<double>>(flux_list[i]);
     flux[i] = flux_2d;
@@ -110,6 +118,8 @@ void AdvectionModule::simulate(double dt) {
   MSG("Advection time step requested: " + std::to_string(dt));
 
   std::vector<double> max_fluxes(flux.size());
+
+#pragma omp parallel for schedule(dynamic)
   for (std::size_t i = 0; i < max_fluxes.size(); i++) {
     std::array<double, 4> abs_flux;
     for (std::size_t j = 0; j < abs_flux.size(); j++) {
@@ -133,6 +143,7 @@ void AdvectionModule::simulate(double dt) {
     }
   }
 
+#pragma omp parallel for schedule(dynamic)
   for (std::size_t species_i = 0; species_i < field_vec.size(); species_i++) {
     auto &species = field_vec[species_i];
     std::vector<double> spec_copy = species;
