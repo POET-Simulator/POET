@@ -31,15 +31,6 @@ enum handleType
   HANDLE_CO,
 };
 
-#define ENUM_DESC_BUF 512
-#define ENUM_DESC_NR 5
-
-enum
-{
-  OBJ_DKEY,
-  OBJ_AKEY
-};
-
 static inline void
 handle_share(DAOSKV *object, int type)
 {
@@ -129,8 +120,6 @@ DAOSKV *DAOSKV_create(MPI_Comm comm)
   object->stats->r_access = 0;
 #endif
 
-
-
   /** initialize the local DAOS stack */
   if (daos_init() != 0)
     return NULL;
@@ -139,7 +128,7 @@ DAOSKV *DAOSKV_create(MPI_Comm comm)
   if (object->rank == 0)
   {
     char *pool_name = getenv("DAOS_POOL");
-    if(pool_name == NULL)
+    if (pool_name == NULL)
       printf("Pool label invalid \n");
     if (daos_pool_connect(pool_name, NULL, DAOS_PC_RW, &object->poh,
                           NULL, NULL) != 0)
@@ -161,11 +150,11 @@ DAOSKV *DAOSKV_create(MPI_Comm comm)
     /** create container */
     if (getenv("DAOS_CONT") != NULL)
     {
-      object->cont_label= getenv("DAOS_CONT");
+      object->cont_label = getenv("DAOS_CONT");
     }
     else
     {
-      object->cont_label = "Poet_Pool2";
+      object->cont_label = "Poet_Container";
     }
 
     /** check & open container if it already exist */
@@ -207,7 +196,7 @@ int DAOSKV_free(DAOSKV *object)
 
   if (object->rank == 0)
   {
-    daos_cont_destroy(object->poh, "simple_obj", 0, NULL);
+    daos_cont_destroy(object->poh, object->cont_label, 0, NULL);
   }
   if (daos_pool_disconnect(object->poh, NULL) != 0)
     return DAOS_ERROR;
@@ -220,21 +209,29 @@ int DAOSKV_free(DAOSKV *object)
 
 int DAOSKV_write(DAOSKV *object, void *key, int key_size, void *send_data, int send_size)
 {
-	#ifdef DHT_STATISTICS
-		object->stats->w_access++;
-	#endif
-	
-   //Turn key into a string
-    char* keyString[(key_size*2)+1];
-    
-    keyToString(keyString,key,key_size);
-    
-  if (daos_kv_put(object->oh, DAOS_TX_NONE, 0, keyString, send_size, send_data, NULL) != 0)
+#ifdef DHT_STATISTICS
+  object->stats->w_access++;
+#endif
+
+  // Turn key into a string
+  char *keyString[(key_size * 2) + 1];
+
+  keyToString(keyString, key, key_size);
+
+  int rc;
+  rc =daos_kv_put(object->oh, DAOS_TX_NONE, 0, keyString, send_size, send_data, NULL);
+
+  // No space left in storage
+  if (rc == -DER_NOSPACE && object->rank == 0)
+  {
+    trim_Space(object, 10, send_size, key_size);
+  }
+  if (rc != 0)
     return DAOS_ERROR;
 
-  #ifdef DHT_STATISTICS
+#ifdef DHT_STATISTICS
   object->stats->writes_local[object->rank]++;
-  #endif
+#endif
 
   return DAOS_SUCCESS;
 }
@@ -242,44 +239,42 @@ int DAOSKV_write(DAOSKV *object, void *key, int key_size, void *send_data, int s
 int DAOSKV_read(DAOSKV *object, void *key, int key_size, void *recv_data, int recv_size)
 {
 
-  #ifdef DHT_STATISTICS
-    object->stats->r_access++;
-  #endif
+#ifdef DHT_STATISTICS
+  object->stats->r_access++;
+#endif
 
-   //Turn key into a string
-    char* keyString[(key_size*2)+1];
-    
-    keyToString(keyString,key,key_size);
-    
-    
-    daos_size_t size = recv_size;
-    int rc;
+  // Turn key into a string
+  char *keyString[(key_size * 2) + 1];
 
-	rc = daos_kv_get(object->oh, DAOS_TX_NONE , DAOS_COND_DKEY_FETCH, keyString, &size, recv_data, NULL);
+  keyToString(keyString, key, key_size);
 
+  daos_size_t size = recv_size;
+  int rc;
 
+  rc = daos_kv_get(object->oh, DAOS_TX_NONE, DAOS_COND_DKEY_FETCH, keyString, &size, recv_data, NULL);
 
-  if (rc == -DER_NONEXIST){
-	#ifdef DHT_STATISTICS
-      object->stats->read_misses += 1;
-    #endif
+  if (rc == -DER_NONEXIST)
+  {
+#ifdef DHT_STATISTICS
+    object->stats->read_misses += 1;
+#endif
     return DAOS_READ_MISS;
-	}
+  }
   else if (rc != 0)
-	return DAOS_ERROR;
-  #ifdef DHT_STATISTICS
-    object->stats->read_hits += 1;
-  #endif
+    return DAOS_ERROR;
+#ifdef DHT_STATISTICS
+  object->stats->read_hits += 1;
+#endif
   return DAOS_SUCCESS;
 }
 
 int DAOSKV_remove(DAOSKV *object, void *key, int key_size)
 {
-	
-	 //Turn key into a string
-    char* keyString[(key_size*2)+1];
-    
-    keyToString(keyString,key,key_size);
+
+  // Turn key into a string
+  char *keyString[(key_size * 2) + 1];
+
+  keyToString(keyString, key, key_size);
   int rc;
 
   if (daos_kv_remove(object->oh, DAOS_TX_NONE, 0, keyString, NULL) != 0)
@@ -288,28 +283,173 @@ int DAOSKV_remove(DAOSKV *object, void *key, int key_size)
   return DAOS_SUCCESS;
 }
 
-int keyToString(char* output, void* key, int key_size){
-	
-	int i;
-	int offset = 0;
-	for (i = 0; i < key_size; i++)
-	{
-		
-		sprintf((char*) output + offset, "%02X", ((char*) key)[i]);
-		offset += 2;
-	}
-		
-	
+int keyToString(char *output, void *key, int key_size)
+{
 
-	output[offset++] = '\0';
-	
-	return 0;
-	
-	
-	}
+  int i;
+  int offset = 0;
+  for (i = 0; i < key_size; i++)
+  {
+    sprintf((char *)output + offset, "%02X", ((char *)key)[i]);
+    offset += 2;
+  }
+  output[offset++] = '\0';
 
-int DAOSKV_print_statistics(DAOSKV *object){
-  #ifdef DHT_STATISTICS
+  return 0;
+}
+
+int enumerate_key(DAOSKV *object, int *total_nr, int key_size)
+{
+  int actual_key_size = (key_size * 2) + 1;
+  char *buf;
+  daos_key_desc_t kds[5];
+  daos_anchor_t anchor = {0};
+  int key_nr = 0;
+  d_sg_list_t sgl;
+  d_iov_t sg_iov;
+
+  buf = malloc(actual_key_size);
+  d_iov_set(&sg_iov, buf, actual_key_size);
+  sgl.sg_nr = 1;
+  sgl.sg_nr_out = 0;
+  sgl.sg_iovs = &sg_iov;
+
+  while (!daos_anchor_is_eof(&anchor))
+  {
+    uint32_t nr = 5;
+    int rc;
+
+    memset(buf, 0, actual_key_size);
+    rc = daos_kv_list(object->oh, DAOS_TX_NONE, &nr, kds, &sgl, &anchor,
+                      NULL);
+        //If there is no key, break the loop
+    if(buf[0] == '\0'){
+      break;
+    }
+    printf("Enumareted over dkey: %s\n", buf);
+
+    if (rc != 0)
+    {
+      printf("Error retrieving Key %d \n", rc);
+      return DAOS_ERROR;
+    }
+
+    if (nr == 0)
+      continue;
+    key_nr += nr;
+  }
+  *total_nr = key_nr;
+
+  return DAOS_SUCCESS;
+}
+
+int delete_n_entries(DAOSKV *object, int toDelete, int key_size)
+{
+
+  int actual_key_size = (key_size * 2) + 1;
+
+  daos_handle_t th = DAOS_TX_NONE;
+
+  char *buf;
+  daos_key_desc_t kds[5];
+  daos_anchor_t anchor = {0};
+  d_sg_list_t sgl;
+  d_iov_t sg_iov;
+
+  int rc;
+
+  buf = malloc(actual_key_size);
+  d_iov_set(&sg_iov, buf, actual_key_size);
+  sgl.sg_nr = 1;
+  sgl.sg_nr_out = 0;
+  sgl.sg_iovs = &sg_iov;
+  memset(buf, 0, key_size);
+
+  /* allocate transaction */
+  rc = daos_tx_open(object->coh, &th, 0, NULL);
+
+  int key_nr = 0;
+  while (!daos_anchor_is_eof(&anchor) && key_nr < toDelete)
+  {
+    uint32_t nr = 5;
+
+    rc = daos_kv_list(object->oh, DAOS_TX_NONE, &nr, kds, &sgl, &anchor,
+                      NULL);
+
+    //If there is no key, break the loop
+    if(buf[0] == '\0'){
+      break;
+    }
+
+    // Add delete of key to transaction th
+    printf("Delete dkey: %s\n", buf);
+
+    if (daos_kv_remove(object->oh, th, 0, buf, NULL) != 0)
+      printf("Delete n Key Error");
+
+    if (rc != 0)
+    {
+      printf("Error retrieving Key %d \n", rc);
+      return DAOS_ERROR;
+    }
+    if (nr == 0)
+      continue;
+    key_nr += nr;
+  }
+
+  // commit transaction, retry if failure
+  rc = daos_tx_commit(th, NULL);
+  if (rc)
+  {
+    printf("Commit error: %d\n", rc);
+    if (rc == -DER_TX_RESTART)
+    {
+      /* conflict with another transaction, try again */
+      rc = daos_tx_restart(th, NULL);
+    }
+  }
+
+  // free transaction resources
+  rc = daos_tx_close(th, NULL);
+  return DAOS_SUCCESS;
+}
+
+struct daos_space get_pool_size(DAOSKV *object)
+{
+  int rc;
+  daos_pool_info_t pinfo = {0};
+  struct daos_pool_space *ps = &pinfo.pi_space;
+
+  // query only the space, replace with DPI_ALL for all infos
+  pinfo.pi_bits = DPI_SPACE;
+  rc = daos_pool_query(object->poh, NULL, &pinfo, NULL, NULL);
+  // size of storage
+  // printf("Total Size:%d\n", ps->ps_space.s_total[DAOS_MEDIA_SCM]+ps->ps_space.s_total[DAOS_MEDIA_NVME]);
+  // printf("Free Size:%d\n", ps->ps_space.s_free[DAOS_MEDIA_SCM]+ ps->ps_space.s_free[DAOS_MEDIA_NVME]);
+
+  return ps->ps_space;
+}
+
+int trim_Space(DAOSKV *object, float deletePercentage, int dataSize, int keySize)
+{
+  // Get current usage of the storage space
+  struct daos_space space = get_pool_size(object);
+
+  long int total_size = space.s_total[DAOS_MEDIA_SCM] + space.s_total[DAOS_MEDIA_NVME];
+
+  // Estimate, total number of entries
+  int totalNumberOfEntries = total_size / (dataSize + keySize);
+  // Calculate how many keys to delete
+  int toDeleteEntries = totalNumberOfEntries * deletePercentage / 100;
+
+  delete_n_entries(object, toDeleteEntries, keySize);
+
+  return DAOS_SUCCESS;
+}
+
+int DAOSKV_print_statistics(DAOSKV *object)
+{
+#ifdef DHT_STATISTICS
   int *written_buckets;
   int *read_misses, sum_read_misses;
   int *read_hits, sum_read_hits;
@@ -324,7 +464,8 @@ int DAOSKV_print_statistics(DAOSKV *object){
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 
   // obtaining all values from all processes in the communicator
-  if (rank == 0) read_misses = (int *)malloc(object->comm_size * sizeof(int));
+  if (rank == 0)
+    read_misses = (int *)malloc(object->comm_size * sizeof(int));
   if (MPI_Gather(&object->stats->read_misses, 1, MPI_INT, read_misses, 1,
                  MPI_INT, 0, object->communicator) != 0)
     return DAOS_MPI_ERROR;
@@ -333,7 +474,8 @@ int DAOSKV_print_statistics(DAOSKV *object){
     return DAOS_MPI_ERROR;
   object->stats->read_misses = 0;
 
-  if (rank == 0) read_hits = (int *)malloc(object->comm_size * sizeof(int));
+  if (rank == 0)
+    read_hits = (int *)malloc(object->comm_size * sizeof(int));
   if (MPI_Gather(&object->stats->read_hits, 1, MPI_INT, read_hits, 1,
                  MPI_INT, 0, object->communicator) != 0)
     return DAOS_MPI_ERROR;
@@ -342,7 +484,8 @@ int DAOSKV_print_statistics(DAOSKV *object){
     return DAOS_MPI_ERROR;
   object->stats->read_hits = 0;
 
-  if (rank == 0) evictions = (int *)malloc(object->comm_size * sizeof(int));
+  if (rank == 0)
+    evictions = (int *)malloc(object->comm_size * sizeof(int));
   if (MPI_Gather(&object->stats->evictions, 1, MPI_INT, evictions, 1, MPI_INT, 0,
                  object->communicator) != 0)
     return DAOS_MPI_ERROR;
@@ -351,7 +494,8 @@ int DAOSKV_print_statistics(DAOSKV *object){
     return DAOS_MPI_ERROR;
   object->stats->evictions = 0;
 
-  if (rank == 0) w_access = (int *)malloc(object->comm_size * sizeof(int));
+  if (rank == 0)
+    w_access = (int *)malloc(object->comm_size * sizeof(int));
   if (MPI_Gather(&object->stats->w_access, 1, MPI_INT, w_access, 1, MPI_INT, 0,
                  object->communicator) != 0)
     return DAOS_MPI_ERROR;
@@ -360,7 +504,8 @@ int DAOSKV_print_statistics(DAOSKV *object){
     return DAOS_MPI_ERROR;
   object->stats->w_access = 0;
 
-  if (rank == 0) r_access = (int *)malloc(object->comm_size * sizeof(int));
+  if (rank == 0)
+    r_access = (int *)malloc(object->comm_size * sizeof(int));
   if (MPI_Gather(&object->stats->r_access, 1, MPI_INT, r_access, 1, MPI_INT, 0,
                  object->communicator) != 0)
     return DAOS_MPI_ERROR;
@@ -369,16 +514,19 @@ int DAOSKV_print_statistics(DAOSKV *object){
     return DAOS_MPI_ERROR;
   object->stats->r_access = 0;
 
-  if (rank == 0) written_buckets = (int *)calloc(object->comm_size, sizeof(int));
+  if (rank == 0)
+    written_buckets = (int *)calloc(object->comm_size, sizeof(int));
   if (MPI_Reduce(object->stats->writes_local, written_buckets, object->comm_size,
                  MPI_INT, MPI_SUM, 0, object->communicator) != 0)
     return DAOS_MPI_ERROR;
 
-  if (rank == 0) {  // only process with rank 0 will print out results as a
-                    // object
+  if (rank == 0)
+  { // only process with rank 0 will print out results as a
+    // object
     int sum_written_buckets = 0;
 
-    for (int i = 0; i < object->comm_size; i++) {
+    for (int i = 0; i < object->comm_size; i++)
+    {
       sum_written_buckets += written_buckets[i];
     }
 
@@ -391,18 +539,19 @@ int DAOSKV_print_statistics(DAOSKV *object){
     printf("\n");
     printf("%-35s||resets with every call of this function\n", " ");
     printf("%-11s|%-11s|%-11s||%-11s|%-11s|%-11s|%-11s|%-11s\n", "rank", "occupied",
-           "free", "w_access", "r_access", "read misses","read hits", "evictions");
+           "free", "w_access", "r_access", "read misses", "read hits", "evictions");
     printf("%s\n", pad);
-    for (int i = 0; i < object->comm_size; i++) {
+    for (int i = 0; i < object->comm_size; i++)
+    {
       printf("%-11d|%-11d|%-11d||%-11d|%-11d|%-11d|%-11d|%-11d\n", i,
              written_buckets[i], 0,
-             w_access[i], r_access[i], read_misses[i],read_hits[i], evictions[i]);
+             w_access[i], r_access[i], read_misses[i], read_hits[i], evictions[i]);
     }
     printf("%s\n", pad);
     printf("%-11s|%-11d|%-11d||%-11d|%-11d|%-11d|%-11d|%-11d\n", "sum",
            sum_written_buckets,
            0,
-           sum_w_access, sum_r_access, sum_read_misses,sum_read_hits, sum_evictions);
+           sum_w_access, sum_r_access, sum_read_misses, sum_read_hits, sum_evictions);
 
     printf("%s\n", pad);
     printf("%s %d\n",
@@ -420,5 +569,4 @@ int DAOSKV_print_statistics(DAOSKV *object){
   MPI_Barrier(object->communicator);
   return DAOS_SUCCESS;
 #endif
-
 }

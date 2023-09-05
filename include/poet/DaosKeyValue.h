@@ -95,6 +95,9 @@ extern "C"
   extern int DAOSKV_read(DAOSKV *object, void *key, int key_size, void *recv_data, int recv_size);
   extern int DAOSKV_remove(DAOSKV *object, void *key, int key_size);
   extern int DAOSKV_print_statistics(DAOSKV *object);
+  extern int enumerate_key(DAOSKV *object, int *total_nr, int key_size);
+  extern struct daos_space get_pool_size(DAOSKV *object);
+  extern int trim_Space(DAOSKV *object, float deletePercentage, int dataSize, int keySize);
 #ifdef __cplusplus
 }
 #endif
