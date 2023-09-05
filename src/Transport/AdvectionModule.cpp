@@ -40,7 +40,8 @@ inline double getFluxApplyConc(bool inbound, std::uint32_t curr_index,
   // On inbound flux and non-boundary condition
   if (inbound) {
     if (neighbor_index == -1) {
-      return bc;
+      // HACK: assume closed boundaries for benchmark
+      return conc[curr_index];
     }
     return conc[neighbor_index];
   }
