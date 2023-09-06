@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-08-21 12:08:54 mluebke"
+## Time-stamp: "Last modified 2023-09-06 10:58:16 mluebke"
 
 database <- normalizePath("../share/poet/bench/dolo/phreeqc_kin.dat")
 input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
@@ -8,8 +8,8 @@ input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
 ##                     Grid initialization                     ##
 #################################################################
 
-n <- 100
-m <- 100
+n <- 400
+m <- 200
 
 types <- c("scratch", "phreeqc", "rds")
 
@@ -197,8 +197,8 @@ chemistry <- list(
 #################################################################
 
 
-iterations <- 10
-dt <- 500
+iterations <- 1500
+dt <- 50
 
 setup <- list(
   grid = grid,
@@ -206,5 +206,6 @@ setup <- list(
   chemistry = chemistry,
   iterations = iterations,
   timesteps = rep(dt, iterations),
-  store_result = TRUE
+  store_result = TRUE,
+  out_save = c(1, seq(50, iterations, by=50))
 )
