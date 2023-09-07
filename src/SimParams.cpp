@@ -194,7 +194,7 @@ int SimParams::parseFromCmdl(char *argv[], RInsidePOET &R) {
       // 	 << simparams.dht_significant_digits);
       // MSG("DHT logarithm before rounding: "
       // 	 << (simparams.dht_log ? "ON" : "OFF"));
-      MSG("DHT size per process (Byte) = " +
+      MSG("DHT size per process (Megabyte) = " +
           std::to_string(chem_params.dht_size));
       MSG("DHT save snapshots is " + BOOL_PRINT(chem_params.dht_snaps));
       MSG("DHT load file is " + chem_params.dht_file);
