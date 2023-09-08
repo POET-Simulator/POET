@@ -1,4 +1,4 @@
-//  Time-stamp: "Last modified 2023-08-15 14:57:51 mluebke"
+//  Time-stamp: "Last modified 2023-09-08 14:43:02 mluebke"
 
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
@@ -89,7 +89,7 @@ public:
               const std::vector<std::int32_t> &key_indices,
               const std::vector<std::string> &output_names,
               const ChemistryParams::Chem_Hook_Functions &hooks,
-              uint32_t data_count);
+              uint32_t data_count, bool with_interp);
   /**
    * @brief Destroy the dht wrapper object
    *
@@ -240,7 +240,14 @@ private:
                         const std::vector<double> &new_results);
 
   std::vector<double>
-  inputAndRatesToOutput(const std::vector<double> &dht_data);
+  inputAndRatesToOutput(const std::vector<double> &dht_data,
+                        const std::vector<double> &input_values);
+
+  std::vector<double> outputToRates(const std::vector<double> &old_results,
+                                    const std::vector<double> &new_results);
+
+  std::vector<double> ratesToOutput(const std::vector<double> &dht_data,
+                                    const std::vector<double> &input_values);
 
   uint32_t dht_hits = 0;
   uint32_t dht_evictions = 0;
@@ -254,6 +261,7 @@ private:
   const std::vector<std::string> &output_names;
 
   const ChemistryParams::Chem_Hook_Functions &hooks;
+  const bool with_interp;
 
   DHT_ResultObject dht_results;
 

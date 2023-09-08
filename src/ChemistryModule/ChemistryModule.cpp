@@ -378,9 +378,9 @@ void poet::ChemistryModule::initializeDHT(
 
     const std::uint64_t dht_size = size_mb * MB_FACTOR;
 
-    this->dht =
-        new DHT_Wrapper(dht_comm, dht_size, map_copy, key_indices,
-                        this->prop_names, params.hooks, this->prop_count);
+    this->dht = new DHT_Wrapper(dht_comm, dht_size, map_copy, key_indices,
+                                this->prop_names, params.hooks,
+                                this->prop_count, params.use_interp);
     this->dht->setBaseTotals(base_totals.at(0), base_totals.at(1));
   }
 }
