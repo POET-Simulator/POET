@@ -1,0 +1,195 @@
+DATABASE
+	###########################
+SOLUTION_MASTER_SPECIES
+	H      H+     -1            H         1.008  # phreeqc/
+	H(0)   H2      0            H                # phreeqc/
+	H(1)   H+     -1     0.0                     # phreeqc/
+	E      e-      0     0.0                0.0  # phreeqc/
+	O      H2O     0            O          16.0  # phreeqc/
+	O(0)   O2      0            O                # phreeqc/
+	O(-2)  H2O     0     0.0                     # phreeqc/
+	Na     Na+     0            Na      22.9898  # phreeqc/
+	Ba     Ba+2    0            Ba       137.34  # phreeqc/
+	Sr     Sr+2    0            Sr        87.62  # phreeqc/
+	Cl     Cl-     0            Cl       35.453  # phreeqc/
+	S      SO4-2   0            SO4      32.064  # phreeqc/
+	S(6)   SO4-2   0            SO4              # phreeqc/
+	S(-2)  HS-     1            S                # phreeqc/
+SOLUTION_SPECIES
+	H+ = H+
+		-gamma 9 0
+		-dw 9.31e-09
+		# source: phreeqc
+	e- = e-
+		# source: phreeqc
+	H2O = H2O
+		# source: phreeqc
+	Na+ = Na+
+		-gamma 4.08 0.082
+		-dw 1.33e-09
+		-Vm 2.28 -4.38 -4.1 -0.586 0.09 4 0.3 52 -0.00333 0.566
+		# source: phreeqc
+	Ba+2 = Ba+2
+		-gamma 4 0.153
+		-dw 8.48e-10
+		-Vm 2.063 -10.06 1.9534 -2.36 0.4218 5 1.58 -12.03 -0.00835 1
+		# source: phreeqc
+	Sr+2 = Sr+2
+		-gamma 5.26 0.121
+		-dw 7.94e-10
+		-Vm -0.0157 -10.15 10.18 -2.36 0.86 5.26 0.859 -27 -0.0041 1.97
+		# source: phreeqc
+	Cl- = Cl-
+		-gamma 3.63 0.017
+		-dw 2.03e-09
+		-Vm 4.465 4.801 4.325 -2.847 1.748 0 -0.331 20.16 0 1
+		# source: phreeqc
+	SO4-2 = SO4-2
+		-gamma 5 -0.04
+		-dw 1.07e-09
+		-Vm 8 2.3 -46.04 6.245 3.82 0 0 0 0 1
+		# source: phreeqc
+	H2O = OH- + H+
+		-analytical_expression 293.29227 0.1360833 -10576.913 -123.73158 0 -6.996455e-05
+		-gamma 3.5 0
+		-dw 5.27e-09
+		-Vm -9.66 28.5 80 -22.9 1.89 0 1.09 0 0 1
+		# source: phreeqc
+	2 H2O = O2 + 4 H+ + 4 e-
+		-log_k -86.08
+		-delta_h 134.79 kcal
+		-dw 2.35e-09
+		-Vm 5.7889 6.3536 3.2528 -3.0417 -0.3943     
+		# source: phreeqc
+	2 H+ + 2 e- = H2
+		-log_k -3.15
+		-delta_h -1.759 kcal
+		-dw 5.13e-09
+		-Vm 6.52 0.78 0.12       
+		# source: phreeqc
+	SO4-2 + H+ = HSO4-
+		-log_k 1.988
+		-delta_h 3.85 kcal
+		-analytical_expression -56.889 0.006473 2307.9 19.8858  
+		-dw 1.33e-09
+		-Vm 8.2 9.259 2.1108 -3.1618 1.1748 0 -0.3 15 0 1
+		# source: phreeqc
+	HS- = S-2 + H+
+		-log_k -12.918
+		-delta_h 12.1 kcal
+		-gamma 5 0
+		-dw 7.31e-10
+		# source: phreeqc
+	SO4-2 + 9 H+ + 8 e- = HS- + 4 H2O
+		-log_k 33.65
+		-delta_h -60.140 kcal
+		-gamma 3.5 0
+		-dw 1.73e-09
+		-Vm 5.0119 4.9799 3.4765 -2.9849 1.441     
+		# source: phreeqc
+	HS- + H+ = H2S
+		-log_k 6.994
+		-delta_h -5.30 kcal
+		-analytical_expression -11.17 0.02386 3279   
+		-dw 2.1e-09
+		-Vm 7.81 2.96 -0.46       
+		# source: phreeqc
+	Na+ + OH- = NaOH
+		-log_k -10
+		# source: phreeqc
+	Na+ + SO4-2 = NaSO4-
+		-log_k 0.7
+		-delta_h 1.120 kcal
+		-gamma 5.4 0
+		-dw 1.33e-09
+		-Vm 1e-05 16.4 -0.0678 -1.05 4.14 0 6.86 0 0.0242 0.53
+		# source: phreeqc
+	Ba+2 + H2O = BaOH+ + H+
+		-log_k -13.47
+		-gamma 5 0
+		# source: phreeqc
+	Ba+2 + SO4-2 = BaSO4
+		-log_k 2.7
+		# source: phreeqc
+	Sr+2 + H2O = SrOH+ + H+
+		-log_k -13.29
+		-gamma 5 0
+		# source: phreeqc
+	Sr+2 + SO4-2 = SrSO4
+		-log_k 2.29
+		-delta_h 2.08 kcal
+		-Vm 6.791 -0.9666 6.13 -2.739 -0.001     
+		# source: phreeqc
+PHASES
+	Barite
+		BaSO4 = Ba+2 + SO4-2
+		-log_k -9.97
+		-delta_h 6.35 kcal
+		-analytical_expression -282.43 -0.08972 5822 113.08  
+		-Vm 52.9
+		# source: phreeqc
+		# comment: 
+	Celestite
+		SrSO4 = Sr+2 + SO4-2
+		-log_k -6.63
+		-delta_h -4.037 kcal
+		-analytical_expression -7.14 0.00611 75 0 0 -1.79e-05
+		-Vm 46.4
+		# source: phreeqc
+		# comment: 
+RATES
+	Celestite  # Palandri & Kharaka 2004<--------------------------------change me
+# PARM(1): reactive surface area
+# am: acid mechanism, nm: neutral mechanism, bm: base mechanism
+    -start
+        10 sr_i = SR("Celestite")  # saturation ratio, (-)<----------change me
+        20 moles = 0  # init target variable, (mol)
+        30 IF ((M <= 0) AND (sr_i < 1)) OR (sr_i = 1.0) THEN GOTO 310
+        40 sa = PARM(1)  # reactive surface area, (m2)
+
+       100 r = 8.314462  # gas constant, (J K-1 mol-1)
+       110 dTi = (1 / TK) - (1 / 298.15)  # (K-1)
+       120 ea_am = 23800  # activation energy am, (J mol-1)<-----------change me
+       130 ea_nm = 0  # activation energy nm, (J mol-1)<-----------change me
+       140 ea_bm = 0  # activation energy bm, (J mol-1)<-----------change me
+       150 log_k_am = -5.66  # reaction constant am<-------------------change me
+       rem log_k_nm = -99  # reaction constant nm<-------------------change me
+       rem log_k_bm = -99  # reaction constant bm<-------------------change me
+       180 n_am = 0.109  # H+ reaction order am<-----------------------change me
+       rem n_bm = 0  # H+ reaction order bm<-----------------------change me
+       200 am = (10 ^ log_k_am) * EXP(-ea_am * dTi / r) * ACT("H+") ^ n_am
+       rem nm = (10 ^ log_k_nm) * EXP(-ea_nm * dTi / r)
+       rem bm = (10 ^ log_k_bm) * EXP(-ea_bm * dTi / r) * ACT("H+") ^ n_bm
+
+       300 moles = sa * (am) * (1 - sr_i)
+       310 save moles * time
+    -end
+
+	Barite  # Palandri & Kharaka 2004<-----------------------------------change me
+# PARM(1): reactive surface area
+# am: acid mechanism, nm: neutral mechanism, bm: base mechanism
+    -start
+        10 sr_i = SR("Barite")  # saturation ratio, (-)<----------change me
+        20 moles = 0  # init target variable, (mol)
+        30 IF ((M <= 0) AND (sr_i < 1)) OR (sr_i = 1.0) THEN GOTO 310
+        40 sa = PARM(1)  # reactive surface area, (m2)
+
+       100 r = 8.314462  # gas constant, (J K-1 mol-1)
+       110 dTi = (1 / TK) - (1 / 298.15)  # (K-1)
+       120 ea_am = 30800  # activation energy am, (J mol-1)<---------change me
+       130 ea_nm = 30800  # activation energy nm, (J mol-1)<---------change me
+       rem ea_bm = 0  # activation energy bm, (J mol-1)<---------change me
+       150 log_k_am = -6.90  # reaction constant am<-----------------change me
+       160 log_k_nm = -7.90  # reaction constant nm<-----------------change me
+       rem log_k_bm = -99  # reaction constant bm<-------------------change me
+       180 n_am = 0.22  # H+ reaction order am<----------------------change me
+       rem n_bm = 0  # H+ reaction order bm<-----------------------change me
+       200 am = (10 ^ log_k_am) * EXP(-ea_am * dTi / r) * ACT("H+") ^ n_am
+       210 nm = (10 ^ log_k_nm) * EXP(-ea_nm * dTi / r)
+       rem bm = (10 ^ log_k_bm) * EXP(-ea_bm * dTi / r) * ACT("H+") ^ n_bm
+
+       300 moles = sa * (am + nm) * (1 - sr_i)
+       310 save moles * time
+    -end
+
+END

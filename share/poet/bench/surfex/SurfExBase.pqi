@@ -1,0 +1,56 @@
+##  Time-stamp: "Last modified 2023-02-27 14:31:11 delucia"
+KNOBS
+ -logfile            false
+ -iterations         10000
+ -convergence_tolerance  1E-12
+ -step_size          2
+ -pe_step_size       2
+SELECTED_OUTPUT
+ -reset false
+ -high_precision true
+ -solution true
+ -state true
+ -step true 
+ -pH true 
+ -pe true
+ -ionic_strength true 
+ -water true
+USER_PUNCH
+-head total_o total_h cb  C(-4) C(4) Ca Cl Fe(2) Fe(3) H(0) K Mg Na S(-2) S(2) S(4) S(6) Sr U(4) U(5) U(6) UO2(am,hyd) KdU
+-start
+5 w=TOT("water")
+10 PUNCH TOTMOLE("O"), TOTMOLE("H"), CHARGE_BALANCE, w*TOT("C(-4)"), w*TOT("C(4)"), w*TOT("Ca"), w*TOT("Cl"), w*TOT("Fe(2)"), w*TOT("Fe(3)"), w*TOT("H(0)"), w*TOT("K"), w*TOT("Mg"), w*TOT("Na"), w*TOT("S(-2)"), w*TOT("S(2)"), w*TOT("S(4)"), w*TOT("S(6)"), w*TOT("Sr"), w*TOT("U(4)"), w*TOT("U(5)"), w*TOT("U(6)"), EQUI("UO2(am,hyd)")
+20 PUNCH ((SURF("U, Ill")+SURF("U, Mll")+SURF("U, Kln")+EDL("U, Ill")+EDL("U, Mll")+EDL("U, Kln"))/((TOT("U")*1.01583)))/(0.002251896406*1000)
+-end
+SOLUTION 1
+temp         13
+units        mol/kgw
+pH           7.06355
+pe          -2.626517
+C(4)         0.001990694
+Ca           0.02172649
+Cl           0.3227673 charge
+Fe           0.0001434717
+K            0.001902357
+Mg           0.01739704
+Na           0.2762882
+S(6)         0.01652701
+Sr           0.0004520361
+U(4)         8.147792e-12
+U(6)         2.237946e-09
+-water       0.00133
+SURFACE 1
+-equil 1
+-sites_units density
+-donnan 4.9e-10
+  Kln_aOH  1.155    11.  5.0518
+  Kln_siOH 1.155
+  Ill_sOH  0.05    100.  5.5931
+  Ill_wOH  2.26
+  Mll_sOH  0.05    100.  1.0825
+  Mll_wOH  2.26
+EXCHANGE 1
+ -equil 1
+  Z     0.0012585
+  Y     0.0009418
+END
