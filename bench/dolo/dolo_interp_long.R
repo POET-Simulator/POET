@@ -165,8 +165,8 @@ check_sign_cal_dol_interp <- function(to_interp, data_set) {
 }
 
 check_neg_cal_dol <- function(result) {
-  neg_sign <- (result["Calcite"] <- 0) || (result["Dolomite"] < 0)
-  return(any(neg_sign))
+  neg_sign <- (result["Calcite"] < 0) || (result["Dolomite"] < 0)
+  return(neg_sign)
 }
 
 hooks <- list(
