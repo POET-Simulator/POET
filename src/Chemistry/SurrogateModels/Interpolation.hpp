@@ -9,20 +9,16 @@
 #include "LookupKey.hpp"
 #include "Rounding.hpp"
 
-#include <cassert>
-#include <iostream>
 #include <list>
 #include <memory>
 #include <mpi.h>
 #include <string>
 #include <utility>
 
-extern "C" {
-#include "DHT.h"
-}
+#include <DHT_ucx/DHT.h>
+#include <DHT_ucx/UCX_bcast_functions.h>
 
 #include <cstdint>
-#include <functional>
 #include <unordered_map>
 #include <vector>
 

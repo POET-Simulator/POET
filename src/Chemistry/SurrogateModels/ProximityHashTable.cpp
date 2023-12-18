@@ -6,17 +6,12 @@
 #include "LookupKey.hpp"
 #include "Rounding.hpp"
 
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <iostream>
-#include <memory>
-#include <unordered_set>
 #include <vector>
 
-extern "C" {
-#include "DHT.h"
-}
+#include <DHT_ucx/DHT.h>
+#include <DHT_ucx/UCX_bcast_functions.h>
 
 namespace poet {
 
@@ -38,16 +33,23 @@ ProximityHashTable::ProximityHashTable(uint32_t key_size, uint32_t data_size,
   uint32_t buckets_per_process =
       static_cast<std::uint32_t>(size_per_process / (data_size + key_size));
 
-  this->prox_ht = DHT_create(communicator, buckets_per_process, data_size,
-                             key_size, &poet::Murmur2_64A);
+  ucx_ep_args_mpi_t mpi_bcast_args = {.comm = communicator};
+  DHT_init_t dht_init_args = {.key_size = static_cast<int>(key_size),
+                              .data_size = static_cast<int>(data_size),
+                              .bucket_count = buckets_per_process,
+                              .hash_func = &poet::Murmur2_64A,
+                              .bcast_func = UCX_INIT_BSTRAP_MPI,
+                              .bcast_func_args = &mpi_bcast_args};
 
-  DHT_set_accumulate_callback(this->prox_ht, PHT_callback_function);
+  this->prox_ht = DHT_create(&dht_init_args);
+
+  // DHT_set_accumulate_callback(this->prox_ht, PHT_callback_function);
 }
 
 ProximityHashTable::~ProximityHashTable() {
   delete[] bucket_store;
   if (prox_ht) {
-    DHT_free(prox_ht, NULL, NULL);
+    DHT_free(prox_ht, NULL, NULL, NULL);
   }
 }
 
@@ -93,12 +95,12 @@ void ProximityHashTable::writeLocationToPHT(LookupKey key,
 
   int ret_val;
 
-  int status = DHT_write_accumulate(prox_ht, key.data(), sizeof(location),
-                                    &location, NULL, NULL, &ret_val);
+  // int status = DHT_write_accumulate(prox_ht, key.data(), sizeof(location),
+  //                                   &location, NULL, NULL, &ret_val);
 
-  if (status == DHT_WRITE_SUCCESS_WITH_EVICTION) {
-    this->dht_evictions++;
-  }
+  // if (status == DHT_WRITE_SUCCESS_WITH_EVICTION) {
+  //   this->dht_evictions++;
+  // }
 
   // if (ret_val == INTERP_CB_FULL) {
   //   localCache(key, {});
@@ -148,7 +150,7 @@ const ProximityHashTable::PHT_Result &ProximityHashTable::query(
 
   for (const auto &loc : locations) {
     double start_g = MPI_Wtime();
-    DHT_read_location(source_dht, loc.first, loc.second, dht_buffer.data());
+    // DHT_read_location(source_dht, loc.first, loc.second, dht_buffer.data());
     this->pht_gather_dht_t += MPI_Wtime() - start_g;
 
     auto *buffer = reinterpret_cast<double *>(dht_buffer.data());

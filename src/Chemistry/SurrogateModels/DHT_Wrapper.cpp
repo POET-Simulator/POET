@@ -21,6 +21,7 @@
 */
 
 #include "DHT_Wrapper.hpp"
+#include "DHT_ucx/UCX_bcast_functions.h"
 
 #include <algorithm>
 #include <cassert>
@@ -29,6 +30,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <mpi.h>
 #include <stdexcept>
 #include <vector>
 
@@ -54,8 +56,20 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
       sizeof(double);
   uint32_t buckets_per_process =
       static_cast<std::uint32_t>(dht_size / (data_size + key_size));
-  dht_object = DHT_create(dht_comm, buckets_per_process, data_size, key_size,
-                          &poet::Murmur2_64A);
+
+  const ucx_ep_args_mpi_t ucx_bcast_mpi_args = {.comm = dht_comm};
+  const DHT_init_t dht_init = {
+      .key_size = static_cast<int>(key_size),
+      .data_size = static_cast<int>(data_size),
+      .bucket_count = static_cast<unsigned int>(buckets_per_process),
+      .hash_func = &poet::Murmur2_64A,
+      .bcast_func = UCX_INIT_BSTRAP_MPI,
+      .bcast_func_args = &ucx_bcast_mpi_args};
+  dht_object = DHT_create(&dht_init);
+
+  if (dht_object == nullptr) {
+    throw std::runtime_error("DHT_create failed");
+  }
 
   dht_signif_vector = key_species.getValues();
 
@@ -81,7 +95,7 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
 
 DHT_Wrapper::~DHT_Wrapper() {
   // free DHT
-  DHT_free(dht_object, NULL, NULL);
+  DHT_free(dht_object, NULL, NULL, NULL);
 }
 auto DHT_Wrapper::checkDHT(WorkPackage &work_package)
     -> const DHT_ResultObject & {
@@ -232,14 +246,14 @@ DHT_Wrapper::ratesToOutput(const std::vector<double> &dht_data,
 // }
 
 int DHT_Wrapper::tableToFile(const char *filename) {
-  int res = DHT_to_file(dht_object, filename);
-  return res;
+  // int res = DHT_to_file(dht_object, filename);
+  // return res;
 }
 
 int DHT_Wrapper::fileToTable(const char *filename) {
-  int res = DHT_from_file(dht_object, filename);
-  if (res != DHT_SUCCESS)
-    return res;
+  // int res = DHT_from_file(dht_object, filename);
+  // if (res != DHT_SUCCESS)
+  //   return res;
 
 #ifdef DHT_STATISTICS
   DHT_print_statistics(dht_object);

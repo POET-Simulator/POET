@@ -5,7 +5,6 @@ add_library(poetlib
   Chemistry/MasterFunctions.cpp 
   Chemistry/WorkerFunctions.cpp 
   Chemistry/SurrogateModels/DHT_Wrapper.cpp 
-  Chemistry/SurrogateModels/DHT.c 
   Chemistry/SurrogateModels/HashFunctions.cpp 
   Chemistry/SurrogateModels/InterpolationModule.cpp 
   Chemistry/SurrogateModels/ProximityHashTable.cpp
@@ -20,6 +19,7 @@ target_link_libraries(poetlib PUBLIC
   RRuntime 
   PhreeqcRM 
   tug
+  DHT_UCX
 )
 
 target_compile_definitions(poetlib PUBLIC STRICT_R_HEADERS OMPI_SKIP_MPICXX)

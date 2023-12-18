@@ -39,9 +39,8 @@
 #include <utility>
 #include <vector>
 
-extern "C" {
-#include "DHT.h"
-}
+#include <DHT_ucx/DHT.h>
+#include <DHT_ucx/UCX_bcast_functions.h>
 
 #include <mpi.h>
 

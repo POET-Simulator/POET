@@ -30,6 +30,7 @@ set(TUG_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(ext/tug EXCLUDE_FROM_ALL)
 add_subdirectory(ext/phreeqcrm EXCLUDE_FROM_ALL)
+add_subdirectory(ext/DHT EXCLUDE_FROM_ALL)
 
 option(POET_ENABLE_TESTING "Build test suite for POET" OFF)
 

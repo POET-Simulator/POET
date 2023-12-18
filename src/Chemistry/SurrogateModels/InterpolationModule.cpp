@@ -3,29 +3,19 @@
 
 #include "../../DataStructures/DataStructures.hpp"
 #include "DHT_Wrapper.hpp"
-#include "HashFunctions.hpp"
 #include "LookupKey.hpp"
-#include "Rounding.hpp"
 
 #include <Rcpp.h>
 #include <Rinternals.h>
 
 #include <algorithm>
-#include <array>
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <iterator>
 #include <memory>
 #include <mpi.h>
 #include <string>
-#include <utility>
 #include <vector>
-
-extern "C" {
-#include "DHT.h"
-}
 
 namespace poet {
 
