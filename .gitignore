@@ -141,3 +141,5 @@ vignettes/*.pdf
 
 build/
 /.cache/
+
+.vscode
