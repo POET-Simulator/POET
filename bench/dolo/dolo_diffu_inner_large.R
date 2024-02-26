@@ -40,8 +40,8 @@ grid <- list(
 
 ## initial conditions
 init_diffu <- list(
-  "H" = 0.000211313883539788,
-  "O" = 0.00398302904424952,
+  "H" = 110.683,
+  "O" = 55.3413,
   "Charge" = -5.0822e-19,
   "C(4)" = 1.2279E-4,
   "Ca" = 1.2279E-4,
@@ -63,8 +63,8 @@ alpha_diffu <- c(
 ## list of boundary conditions/inner nodes
 vecinj_diffu <- list(
   list(
-    "H" = 0.0001540445,
-    "O" = 0.002148006,
+    "H" = 110.683,
+    "O" = 55.3413,
     "Charge" = 1.90431e-16,
     "C(4)" = 0,
     "Ca" = 0,
@@ -72,8 +72,8 @@ vecinj_diffu <- list(
     "Mg" = 0.001
   ),
   list(
-    "H" = 0.0001610193,
-    "O" = 0.002386934,
+    "H" = 110.683,
+    "O" = 55.3413,
     "Charge" = 1.90431e-16,
     "C(4)" = 0,
     "Ca" = 0.0,
