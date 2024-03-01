@@ -10,8 +10,8 @@ cat(paste(":: R This is a test 1\n"))
 ##                     Grid initialization                     ##
 #################################################################
 
-n <- 10
-m <- 10
+n <- 1000
+m <- 1000
 
 types <- c("scratch", "phreeqc", "rds")
 
@@ -39,7 +39,7 @@ init_cell <- list(H = 1.476571028625e-01,
 
 grid <- list(
   n_cells = c(n, m),
-  s_cells = c(1, 1),
+  s_cells = c(n/10, m/10),
   type = "scratch"
 )
 
@@ -127,7 +127,7 @@ chemistry <- list(
 #################################################################
 
 
-iterations <- 10
+iterations <- 100
 dt <- 200
 
 setup <- list(

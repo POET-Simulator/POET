@@ -28,7 +28,7 @@ init_cell <- list(
 
 grid <- list(
   n_cells = c(n, m),
-  s_cells = c(2, 1),
+  s_cells = c(20, 10),
   type = types[1]
 )
 
