@@ -7,7 +7,7 @@
 #include <Base/RInsidePOET.hpp>
 #include <DataStructures/DataStructures.hpp>
 
-#include "testDataStructures.hpp"
+#include <InputFiles.hpp>
 
 TEST_CASE("NamedVector") {
   RInsidePOET &R = RInsidePOET::getInstance();
