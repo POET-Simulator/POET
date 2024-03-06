@@ -21,7 +21,7 @@ target_link_libraries(poetlib PUBLIC
   tug
 )
 
-target_compile_definitions(poetlib PUBLIC STRICT_R_HEADERS)
+target_compile_definitions(poetlib PUBLIC STRICT_R_HEADERS OMPI_SKIP_MPICXX)
 
 mark_as_advanced(PHREEQCRM_BUILD_MPI PHREEQCRM_DISABLE_OPENMP)
 set(PHREEQCRM_DISABLE_OPENMP ON CACHE BOOL "" FORCE)
