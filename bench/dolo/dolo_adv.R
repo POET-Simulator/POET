@@ -91,7 +91,7 @@ get_index <- function(row, col) {
   return(index)
 }
 
-flux_val <- 0.05
+flux_val <- 0.1
 
 # Loop through each row and column to populate the flux_list
 for (row in 1:n) {
@@ -135,17 +135,17 @@ advection <- list(
 #################################################################
 
 
-## # Needed when using DHT
+## # optional when using DHT
 dht_species <- c(
-  "H" = 10,
-  "O" = 10,
+  "H" = 3,
+  "O" = 3,
   "Charge" = 3,
-  "C(4)" = 5,
-  "Ca" = 5,
-  "Cl" = 5,
+  "C(4)" = 6,
+  "Ca" = 6,
+  "Cl" = 3,
   "Mg" = 5,
-  "Calcite" = 5,
-  "Dolomite" = 5
+  "Calcite" = 4,
+  "Dolomite" = 4
 )
 
 check_sign_cal_dol_dht <- function(old, new) {
@@ -197,7 +197,7 @@ chemistry <- list(
 #################################################################
 
 
-iterations <- 1500
+iterations <- 500
 dt <- 50
 
 setup <- list(
