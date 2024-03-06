@@ -3,7 +3,8 @@ file(GLOB test_SRC
   "*.cpp" "*.c")
 
 add_executable(testPOET ${test_SRC})
-target_link_libraries(testPOET doctest poet_lib)
+target_link_libraries(testPOET doctest poetlib)
+target_include_directories(testPOET PRIVATE "${PROJECT_SOURCE_DIR}/src")
 
 get_filename_component(TEST_RInsideSourceFile "RInsidePOET_funcs.R" REALPATH)
 configure_file(testDataStructures.hpp.in testDataStructures.hpp)

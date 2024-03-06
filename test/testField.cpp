@@ -5,10 +5,11 @@
 #include <cstdint>
 #include <doctest/doctest.h>
 #include <iostream>
-#include <poet/DataStructures.hpp>
-#include <poet/RInsidePOET.hpp>
 #include <string>
 #include <vector>
+
+#include <Base/RInsidePOET.hpp>
+#include <DataStructures/DataStructures.hpp>
 
 #include "testDataStructures.hpp"
 
