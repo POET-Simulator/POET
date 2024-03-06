@@ -12,7 +12,7 @@ if(DOXYGEN_FOUND)
   set(DOXYGEN_PROJECT_NUMBER ${POET_VERSION})
 
   doxygen_add_docs(doxygen
-    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/README.md
     ${PROJECT_SOURCE_DIR}/docs/Input_Scripts.md
     ${PROJECT_SOURCE_DIR}/docs/Output.md

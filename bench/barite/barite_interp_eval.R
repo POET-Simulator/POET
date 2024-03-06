@@ -1,4 +1,5 @@
-## Time-stamp: "Last modified 2024-01-12 12:39:14 delucia"
+## Time-stamp: "Last modified 2024-01-12 11:35:11 delucia"
+
 database <- normalizePath("../share/poet/bench/barite/db_barite.dat")
 input_script <- normalizePath("../share/poet/bench/barite/barite.pqi")
 
@@ -7,8 +8,8 @@ input_script <- normalizePath("../share/poet/bench/barite/barite.pqi")
 ##                     Grid initialization                     ##
 #################################################################
 
-n <- 20
-m <- 20
+n <- 400
+m <- 200
 
 types <- c("scratch", "phreeqc", "rds")
 
@@ -74,18 +75,10 @@ alpha_diffu <- c(
   "Sr" = 1E-06
 )
 
-## vecinj_inner <- list(
-##   l1 = c(1,20,20),
-##   l2 = c(2,80,80),
-##   l3 = c(2,60,80)
-## )
-
 boundary <- list(
   "N" = c(1,1, rep(0, n-2)),
-##  "N" = rep(0, n),
   "E" = rep(0, n),
   "S" = rep(0, n),
-#  "W" = rep(0, n)
   "W" = c(1,1, rep(0, n-2))
 )
 
@@ -97,7 +90,6 @@ names(vecinj) <- names(init_diffu)
 diffusion <- list(
   init = as.data.frame(init_diffu, check.names = FALSE),
   vecinj = vecinj,
-#  vecinj_inner = vecinj_inner,
   vecinj_index = boundary,
   alpha = alpha_diffu
 )
@@ -106,7 +98,6 @@ diffusion <- list(
 ##                          Section 3                          ##
 ##                  Chemistry module (Phreeqc)                 ##
 #################################################################
-
 
 ## # Needed when using DHT
 dht_species <- c(
@@ -121,8 +112,6 @@ dht_species <- c(
   "Celestite" = 4
 )
 
-
-
 chemistry <- list(
   database = database,
   input_script = input_script,
@@ -133,10 +122,8 @@ chemistry <- list(
 ##                          Section 4                          ##
 ##              Putting all those things together              ##
 #################################################################
-
-
-iterations <- 4
-dt <- 100
+iterations <- 200
+dt <- 250
 
 setup <- list(
   grid = grid,

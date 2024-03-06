@@ -13,10 +13,6 @@ by POET.
 | `n_cells`      | Numeric Vector | Number of cells in each direction                                     |
 | `s_cells`      | Numeric Vector | Spatial resolution of grid in each direction                          |
 | `type`         | String         | Type of initialization, can be set to *scratch*, *phreeqc* or *rds*   |
-| `init_cell`    | Data Frame     | Containing all exactly one value per species to initialize the field. |
-| `props`        | String Vector  | Names of all species                                                  |
-| `database`     | String         | Path to Phreeqc database                                              |
-| `input_script` | String         | Path to Phreeqc initial script                                        |
 
 ## Diffusion parameters
 
@@ -70,10 +66,12 @@ vecinj_index <- list(
 
 ## Chemistry parameters
 
-| name           | type   | description                       |
-|----------------|--------|-----------------------------------|
-| `database`     | String | Path to the Phreeqc database      |
-| `input_script` | String | Path the the Phreeqc input script |
+| name           | type         | description                                                                      |
+|----------------|--------------|----------------------------------------------------------------------------------|
+| `database`     | String       | Path to the Phreeqc database                                                     |
+| `input_script` | String       | Path the the Phreeqc input script                                                |
+| `dht_species`  | Named Vector | Indicates significant digits to use for each species for DHT rounding.           |
+| `pht_species`  | Named Vector | Indicates significant digits to use for each species for Interpolation rounding. |
 
 ## Final setup
 
@@ -86,10 +84,3 @@ vecinj_index <- list(
 | `timesteps`    | Numeric Vector | $\Delta t$ to use for specific iteration                   |
 | `store_result` | Boolean        | Indicates if results should be stored                      |
 | `out_save`     | Numeric Vector | *optional:* At which iteration the states should be stored |
-
-### DHT setup
-
-| name            | type           | description                                                                     |
-|-----------------|----------------|---------------------------------------------------------------------------------|
-| `signif_vector` | Numeric Vector | Indicates significant digits to use for DHT rounding. Order of `props` vector.  |
-| `prop_type`     | String Vector  | Set type of species for rounding, can be left blank or set to *act* or *ignore* |

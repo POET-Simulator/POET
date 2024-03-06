@@ -1,5 +1,5 @@
 <!--
-    Time-stamp: "Last modified 2023-07-21 12:34:43 mluebke"
+    Time-stamp: "Last modified 2023-08-02 13:55:11 mluebke"
 -->
 
 # POET
@@ -69,6 +69,9 @@ following available options:
   DHT usage. Defaults to _OFF_.
 - **POET_ENABLE_TESTING**=_boolean_ - enables small set of unit tests (more to
   come). Defaults to _OFF_.
+- **POET_PHT_ADDITIONAL_INFO**=_boolean_ - enabling the count of accesses to one
+  PHT bucket. Use with caution, as things will get slowed down significantly.
+  Defaults to _OFF_.
   
 ### Example: Build from scratch
 
@@ -109,21 +112,34 @@ poet
 │   └── kin_r_library.R
 └── share
     └── poet
-        ├── bench
-        │   ├── dolo_diffu_inner_large.R
-        │   ├── dolo_diffu_inner.R
-        │   └── dolo_inner.pqi
-        └── examples
-            ├── dol.pqi
-            ├── phreeqc_kin.dat
-            ├── SimDol1D_diffu.R
-            └── SimDol2D_diffu.R
+        └── bench
+            ├── barite
+            │   ├── barite_interp_eval.R
+            │   ├── barite.pqi
+            │   ├── barite.R
+            │   └── db_barite.dat
+            ├── dolo
+            │   ├── dolo_diffu_inner_large.R
+            │   ├── dolo_diffu_inner.R
+            │   ├── dolo_inner.pqi
+            │   ├── dolo_interp_long.R
+            │   └── phreeqc_kin.dat
+            └── surfex
+                ├── ExBase.pqi
+                ├── ex.R
+                ├── SMILE_2021_11_01_TH.dat
+                ├── SurfExBase.pqi
+                └── surfex.R
 ```
 
 The R libraries will be loaded at runtime and the paths are hardcoded
 absolute paths inside `poet.cpp`. So, if you consider to move
 `bin/poet` either change paths of the R source files and recompile
 POET or also move `R_lib/*` relative to the binary.
+
+The benchmarks consist of input scripts, which are provided as .R files.
+Additionally, Phreeqc scripts and their corresponding databases are required,
+stored as .pqi and .dat files, respectively.
 
 ## Running
 
@@ -132,28 +148,25 @@ where:
 
 - **OPTIONS** - runtime parameters (explained below)
 - **SIMFILE** - simulation described as R script (e.g.
-  `<POET_INSTALL_DIR>/share/examples/SimDol2D_diffu.R`)
+  `<POET_INSTALL_DIR>/share/poet/bench/dolo/dolo_interp_long.R`)
 - **OUTPUT_DIRECTORY** - path, where all output of POET should be stored
 
 ### Runtime options
 
 The following parameters can be set:
 
-| Option                   | Value        | Description                                                                                                              |
-|--------------------------|--------------|--------------------------------------------------------------------------------------------------------------------------|
-| **--work-package-size=** | _1..n_       | size of work packages (defaults to _5_)                                                                                  |
-| **--ignore-result**      |              | disables store of simulation resuls                                                                                      |
-| **--dht**                |              | enabling DHT usage (defaults to _OFF_)                                                                                   |
-| **--dht-signif=**        | _1..n_       | set rounding to number of significant digits (defaults to _5_) (it is recommended to use `signif_vec` in R input script) |
-| **--dht-strategy=**      | _0-1_        | change DHT strategy. **NOT IMPLEMENTED YET** (Defaults to _0_)                                                           |
-| **--dht-size=**          | _1-n_        | size of DHT per process involved in megabyte (defaults to _1000 MByte_)                                                  |
-| **--dht-snaps=**         | _0-2_        | disable or enable storage of DHT snapshots                                                                               |
-| **--dht-file=**          | `<SNAPSHOT>` | initializes DHT with the given snapshot file                                                                             |
-
-#### Additions to `dht-signif`
-
-Only used if no vector is given in setup file. For individual values
-per column use R vector `signif_vector` in `SIMFILE`.
+| Option                      | Value        | Description                                                                                                              |
+|-----------------------------|--------------|--------------------------------------------------------------------------------------------------------------------------|
+| **--work-package-size=**    | _1..n_       | size of work packages (defaults to _5_)                                                                                  |
+| **--ignore-result**         |              | disables store of simulation resuls                                                                                      |
+| **--dht**                   |              | enabling DHT usage (defaults to _OFF_)                                                                                   |
+| **--dht-strategy=**         | _0-1_        | change DHT strategy. **NOT IMPLEMENTED YET** (Defaults to _0_)                                                           |
+| **--dht-size=**             | _1-n_        | size of DHT per process involved in megabyte (defaults to _1000 MByte_)                                                  |
+| **--dht-snaps=**            | _0-2_        | disable or enable storage of DHT snapshots                                                                               |
+| **--dht-file=**             | `<SNAPSHOT>` | initializes DHT with the given snapshot file                                                                             |
+| **--interp-size**           | _1-n_        | size of PHT (interpolation) per process in megabyte                                                                      |
+| **--interp-bucket-entries** | _1-n_        | number of entries to store at maximum in one PHT bucket                                                                  |
+| **--interp-min**            | _1-n_        | number of entries in PHT bucket needed to start interpolation                                                            |
 
 #### Additions to `dht-snaps`
 
@@ -168,13 +181,13 @@ Following values can be set:
 ### Example: Running from scratch
 
 We will continue the above example and start a simulation with
-`SimDol2D_diffu.R`. As transport a simple fixed-coefficient diffusion is used.
+`dolo_diffu_inner.R`. As transport a simple fixed-coefficient diffusion is used.
 It's a 2D, 100x100 grid, simulating 10 time steps. To start the simulation with
 4 processes `cd` into your previously installed POET-dir
 `<POET_INSTALL_DIR>/bin` and run:
 
 ```sh
-mpirun -n 4 ./poet ../share/poet/examples/SimDol2D_diffu.R output
+mpirun -n 4 ./poet ../share/poet/bench/dolo/dolo_diffu_inner.R/ output
 ```
 
 After a finished simulation all data generated by POET will be found
@@ -187,7 +200,7 @@ produced. This is done by appending the `--dht-snaps=<value>` option. The
 resulting call would look like this:
 
 ```sh
-mpirun -n 4 ./poet --dht --dht-snaps=2 ../share/poet/examples/SimDol2D_diffu.R output
+mpirun -n 4 ./poet --dht --dht-snaps=2 ../share/poet/bench/dolo/dolo_diffu_inner.R/ output
 ```
 
 ## About the usage of MPI_Wtime()

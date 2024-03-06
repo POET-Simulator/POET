@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-04-17 15:48:21 mluebke"
+## Time-stamp: "Last modified 2023-08-02 13:59:44 mluebke"
 
 database <- normalizePath("../share/poet/bench/surfex/SMILE_2021_11_01_TH.dat")
 input_script <- normalizePath("../share/poet/bench/surfex/SurfExBase.pqi")
@@ -10,8 +10,8 @@ cat(paste(":: R This is a test 1\n"))
 ##                     Grid initialization                     ##
 #################################################################
 
-n <- 10
-m <- 10
+n <- 1000
+m <- 1000
 
 types <- c("scratch", "phreeqc", "rds")
 
@@ -39,12 +39,8 @@ init_cell <- list(H = 1.476571028625e-01,
 
 grid <- list(
   n_cells = c(n, m),
-  s_cells = c(1, 1),
-  type = "scratch",
-  init_cell = as.data.frame(init_cell, check.names = FALSE),
-  props = names(init_cell),
-  database = database,
-  input_script = input_script
+  s_cells = c(n/10, m/10),
+  type = "scratch"
 )
 
 
@@ -131,7 +127,7 @@ chemistry <- list(
 #################################################################
 
 
-iterations <- 10
+iterations <- 100
 dt <- 200
 
 setup <- list(

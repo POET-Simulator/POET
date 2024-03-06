@@ -1,0 +1,162 @@
+#+TITLE: Description of =dolo= benchmark
+#+AUTHOR: MDL <delucia@gfz-potsdam.de>
+#+DATE: 2023-08-26
+#+STARTUP: inlineimages
+#+LATEX_CLASS_OPTIONS: [a4paper,9pt]
+#+LATEX_HEADER: \usepackage{fullpage}
+#+LATEX_HEADER: \usepackage{amsmath, systeme}
+#+LATEX_HEADER: \usepackage{graphicx}
+#+LATEX_HEADER: \usepackage{charter}
+#+OPTIONS: toc:nil
+
+* Quick start
+
+#+begin_src sh :language sh :frame single
+mpirun -np 4 ./poet dolo_diffu_inner.R dolo_diffu_inner_res
+mpirun -np 4 ./poet --dht --interp dolo_interp_long.R dolo_interp_long_res
+#+end_src
+
+* List of Files
+
+- =dolo_diffu_inner.R=: POET input script for a 100x100 simulation
+  grid
+- =dolo_interp_long.R=: POET input script for a 400x200 simulation
+  grid
+- =phreeqc_kin.dat=: PHREEQC database containing the kinetic expressions
+  for dolomite and celestite, stripped down from =phreeqc.dat=
+- =dol.pqi=: PHREEQC input script for the chemical system
+# - =dolo.R=: POET input script for a 20x20 simulation grid
+# - =dolo_diffu_inner_large.R=: POET input script for a 400x200
+#   simulation grid
+
+* Chemical system
+
+This model describes a simplified version of /dolomitization/ of
+calcite, itself a complex and not yet fully understood natural process
+which is observed naturally at higher temperatures (Möller and De
+Lucia, 2020). Variants of such model have been widely used in many
+instances especially for the purpose of benchmarking numerical codes
+(De Lucia et al., 2021 and references therein).
+
+We consider an isotherm porous system at *25 °C* in which pure water
+is initially at equilibrium with *calcite* (calcium carbonate; brute
+formula: CaCO_{3}). An MgCl_{2} solution enters the system causing
+calcite dissolution. The released excess concentration of dissolved
+calcium Ca^{2+} and carbonate (CO_{3}^{2-}) induces after a while
+supersaturation and hence precipitation of *dolomite*
+(calcium-magnesium carbonate; brute formula: CaMg(CO_{3})_{2}). The
+overall /dolomitization/ reaction can be written:
+
+Mg^{2+} + 2 \cdot calcite \rightarrow dolomite + 2 \cdot Ca^{2+}
+
+The precipitation of dolomite continues until enough Ca^{2+} is
+present in solution. Further injection of MgCl_{2} changes its
+saturation state causing its dissolution too. After enough time, the
+whole system has depleted all minerals and the injected MgCl_{2}
+solution fills up the domain.
+
+Both calcite dissolution and dolomite precipitation/dissolution follow
+a kinetics rate law based on transition state theory (Palandri and
+Karhaka, 2004; De Lucia et al., 2021).
+
+rate = -S_{m} k_{m} (1-SR_{m})
+
+where the reaction rate has units mol/s, S_{m} (m^{2}) is the reactive
+surface area, k_{m} (mol/m^{2}/s) is the kinetic coefficient, and SR
+is the saturation ratio, i.e., the ratio of the ion activity product
+of the reacting species and the solubility constant, calculated
+internally by PHREEQC from the speciated solution.
+
+For dolomite, the kinetic coefficient results from the sum of two
+mechanisms, r_{/acid/} and r_{/neutral/}:
+
+rate_{dolomite} = S_{dolomite} (k_{/acid/} + k_{/neutral/}) * (1 - SR_{dolomite})
+
+where:
+
+k_{/acid/} = 10^{-3.19} e^{-36100 / R} \cdot act(H^{+})^{0.5}
+
+k_{/neutral/} = 10^{-7.53} e^{-52200 / R}
+
+R (8.314462 J K^{-1} mol^{-1}) is the gas constant.
+
+Similarly, the kinetic law for calcite reads:
+
+k_{/acid/} = 10^{-0.3} e^{-14400 / R} \cdot act(H^{+})^{0.5}
+
+k_{/neutral/} = 10^{-5.81} e^{-23500 / R}
+
+The kinetic laws as implemented in the =phreeqc_kin.dat= file accepts
+one parameter which represents reactive surface area in m^{2}. For the
+benchmarks the surface areas are set to
+
+- S_{dolomite}: 0.005 m^{2}
+- S_{calcite}: 0.05 m^{2}
+
+The initial content of calcite in the domain is of 0.0002 mol per kg
+of water. A constant partial pressure of 10^{-1675} atm of O_{2(g)} is
+maintained at any time in the domain in order to fix the redox
+potential of the solution to an oxidizing state (pe around 9).
+
+Note that Cl is unreactive in this system and only effects the
+computation of the activities in solution.
+
+* POET simulations
+
+Several benchmarks based on the same chemical system are defined here
+with different grid sizes, resolution and boundary conditions. The
+transported elemental concentrations are 7: C(4), Ca, Cl, Mg and the
+implicit total H, total O and Charge as required by PHREEQC_RM.
+
+** =dolo_diffu_inner.R=
+
+- Grid discretization: square domain of 1 \cdot 1 m^{2} discretized in
+  100x100 cells
+- Boundary conditions: All sides of the domain are closed. *Fixed
+  concentration* of 0.001 molal of MgCl_{2} is defined in the domain
+  cell (20, 20) and of 0.002 molal MgCl_{2} at cells (60, 60) and
+  (80, 80)
+- Diffusion coefficients: isotropic homogeneous \alpha = 1E-06
+- Time steps & iterations: 10 iterations with \Delta t of 200 s
+- *DHT* parameters:
+  |  H |  O | Charge | C(4) | Ca | Cl | Mg | Calcite | Dolomite |
+  | 10 | 10 |      3 |    5 |  5 |  5 |  5 |       5 |        5 |
+- Hooks: the following hooks are defined:
+  1. =dht_fill=: 
+  2. =dht_fuzz=:
+  3. =interp_pre_func=:
+  4. =interp_post_func=:
+
+
+** =dolo_interp_long.R=
+
+- Grid discretization: rectangular domain of 5 \cdot 2.5 m^{2}
+  discretized in 400 \times 200 cells
+- Boundary conditions: *Fixed concentrations* equal to the initial
+  state are imposed at all four sides of the domain. *Fixed
+  concentration* of 0.001 molal of MgCl_{2} is defined in the domain
+  center at cell (100, 50)
+- Diffusion coefficients: isotropic homogeneous \alpha = 1E-06
+- Time steps & iterations: 20000 iterations with \Delta t of 200 s
+- *DHT* parameters:
+  |  H |  O | Charge | C(4) | Ca | Cl | Mg | Calcite | Dolomite |
+  | 10 | 10 |      3 |    5 |  5 |  5 |  5 |       5 |        5 |
+- Hooks: the following hooks are defined:
+  1. =dht_fill=: 
+  2. =dht_fuzz=:
+  3. =interp_pre_func=:
+  4. =interp_post_func=:
+
+     
+* References
+
+- De Lucia, Kühn, Lindemann, Lübke, Schnor: POET (v0.1): speedup of
+  many-core parallel reactive transport simulations with fast DHT
+  lookups, Geosci. Model Dev., 14, 7391–7409, 2021.
+  https://doi.org/10.5194/gmd-14-7391-2021
+- Möller, Marco De Lucia: The impact of Mg^{2+} ions on equilibration
+  of Mg-Ca carbonates in groundwater and brines, Geochemistry
+  80, 2020. https://doi.org/10.1016/j.chemer.2020.125611
+- Palandri, Kharaka: A Compilation of Rate Parameters of Water-Mineral
+  Interaction Kinetics for Application to Geochemical Modeling, Report
+  2004-1068, USGS, 2004.

@@ -1,0 +1,100 @@
+#+TITLE: Description of =surfex= benchmark
+#+AUTHOR: MDL <delucia@gfz-potsdam.de>
+#+DATE: 2023-08-26
+#+STARTUP: inlineimages
+#+LATEX_CLASS_OPTIONS: [a4paper,9pt]
+#+LATEX_HEADER: \usepackage{fullpage}
+#+LATEX_HEADER: \usepackage{amsmath, systeme}
+#+LATEX_HEADER: \usepackage{graphicx}
+#+LATEX_HEADER: \usepackage{charter}
+#+OPTIONS: toc:nil
+
+* Quick start
+
+#+begin_src sh :language sh :frame single
+mpirun -np 4 ./poet ex.R ex_res
+mpirun -np 4 ./poet surfex.R surfex_res
+#+end_src
+
+* List of Files
+- =ex.R=: POET input script for a 100x100 simulation grid, only
+  exchange
+- =ExBase.pqi=: PHREEQC input script for the =ex.R= model
+- =surfex.R=: POET input script for a 100x100 simulation grid
+  considering both cation exchange and surface complexation
+- =SurfExBase.pqi=: PHREEQC input script for the =surfex.R= model
+- =SMILE_2021_11_01_TH.dat=: PHREEQC database containing the
+  parametrized data for Surface and Exchange, based on the SMILE
+  Thermodynamic Database (Version 01-November-2021)
+
+* Chemical system
+
+This model describes migration of Uranium radionuclide in Opalinus
+clay subject to surface complexation and cation exchange on the
+surface of clay minerals. These two processes account for the binding
+of aqueous complexes to the surfaces of minerals, which may have a
+significant impact on safety of underground nuclear waste repository.
+Namely, they can act as retardation buffer for uranium complexes
+entering into a natural system. The system is kindly provided by Dr.
+T. Hennig and is inspired to the sandy facies BWS-A3 sample from the
+Mont Terri underground lab (Hennig and Kühn, 2021).
+
+This chemical system is highly redox-sensitive, and several elements
+are defined in significant amounts in different valence states. In
+total, 20 elemental concentrations and valences are transported:
+C(-4), C(4), Ca, Cl, Fe(2), Fe(3), K, Mg, Na, S(-2), S(2), S(4), S(6),
+Sr , U(4), U(5), U(6); plus the total H, total O and Charge implicitly
+required by PHREEQC_RM.
+
+** Exchange
+
+The SMILE database defines thermodynamical data for exchange of all
+major cations and uranyl-ions on Illite and Montmorillonite. In
+PHREEQC terms:
+- *Y* for Montmorillonite, with a total amount of 1.2585
+  milliequivalents and
+- *Z* for Illite, with a total amount of 0.9418 meq
+
+** Surface
+
+Here we consider a Donnan diffuse double layer of 0.49 nm. Six
+distinct sorption sites are defined:
+- Kln_aOH (aluminol site) and Kln_siOH (silanol) for Kaolinite
+- For Illite, strong and weak sites Ill_sOH and Ill_wOH respectively
+- For Montmorillonite, strong and weak sites Mll_sOH and Mll_wOH
+  respectively
+  
+Refer to the =SurfExBase.pqi= script for the actual numerical values
+of the parameters.
+
+* POET simulations
+
+** =ex.R=
+
+This benchmark only considers EXCHANGE, no mineral or SURFACE
+complexation is involved.
+
+- Grid discretization: square domain of 1 \cdot 1 m^{2} discretized in
+  100x100 cells
+- Boundary conditions: E, S and W sides of the domain are closed.
+  *Fixed concentrations* are fixed at the N boundary.
+- Diffusion coefficients: isotropic homogeneous \alpha = 1E-06
+- Time steps & iterations: 10 iterations with \Delta t of 200 s
+- *DHT* is not implemented as of yet for models including SURFACE and
+  EXCHANGE geochemical processes *TODO*
+- Hooks: no hooks defined *TODO*
+
+** =surfex.R=
+
+- Grid discretization: rectangular domain of 1 \cdot 1 m^{2}
+  discretized in 10 \times 10 cells
+- Boundary conditions: E, S and W sides of the domain are closed.
+  *Fixed concentrations* are fixed at the N boundary.
+- Diffusion coefficients: isotropic homogeneous \alpha = 1E-06
+- Time steps & iterations: 10 iterations with \Delta t of 200 s
+     
+* References
+
+- Hennig, T.; Kühn, M.Surrogate Model for Multi-Component Diffusion of
+  Uranium through Opalinus Clay on the Host Rock Scale. Appl. Sci.
+  2021, 11, 786. https://doi.org/10.3390/app11020786

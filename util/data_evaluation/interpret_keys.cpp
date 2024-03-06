@@ -35,3 +35,16 @@ std::vector<double> rcpp_key_convert(std::vector<double> input) {
 
   return output;
 }
+
+// [[Rcpp::export]]
+std::vector<std::uint64_t> rcpp_uint64_convert(std::vector<double> input) {
+  std::vector<std::uint64_t> output;
+  output.reserve(input.size());
+
+  for (double &value : input) {
+    std::uint64_t *as_int = reinterpret_cast<std::uint64_t *>(&value);
+    output.push_back(*as_int);
+  }
+
+  return output;
+}
