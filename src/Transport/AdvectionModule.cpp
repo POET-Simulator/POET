@@ -232,8 +232,7 @@ void AdvectionModule::initializeParams(RInsidePOET &R) {
   this->t_field = Field(field_size, init_field, prop_names);
 
   // FIXME: parse velocities in instantiation of class
-  const auto rcpp_flux_list =
-      Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$advection$const_flux"));
+  const Rcpp::List rcpp_flux_list = R.parseEval("mysetup$advection$const_flux");
   this->flux.resize(rcpp_flux_list.size());
 
   for (std::size_t i = 0; i < rcpp_flux_list.size(); i++) {
