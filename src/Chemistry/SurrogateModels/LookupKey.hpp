@@ -3,7 +3,8 @@
 #ifndef LOOKUPKEY_H_
 #define LOOKUPKEY_H_
 
-#include "poet/HashFunctions.hpp"
+#include "HashFunctions.hpp"
+
 #include <cstdint>
 #include <cstring>
 #include <vector>

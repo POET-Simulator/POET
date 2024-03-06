@@ -3,13 +3,12 @@
 #ifndef INTERPOLATION_H_
 #define INTERPOLATION_H_
 
-#include "DHT.h"
+#include "../../Base/SimParams.hpp"
+#include "../../DataStructures/DataStructures.hpp"
 #include "DHT_Wrapper.hpp"
-#include "DataStructures.hpp"
 #include "LookupKey.hpp"
-#include "poet/DHT_Wrapper.hpp"
-#include "poet/Rounding.hpp"
-#include "poet/SimParams.hpp"
+#include "Rounding.hpp"
+
 #include <cassert>
 #include <iostream>
 #include <list>
@@ -17,11 +16,11 @@
 #include <mpi.h>
 #include <string>
 #include <utility>
+
 extern "C" {
-#include "poet/DHT.h"
+#include "DHT.h"
 }
 
-#include "poet/LookupKey.hpp"
 #include <cstdint>
 #include <functional>
 #include <unordered_map>

@@ -20,14 +20,7 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "poet/DHT_Wrapper.hpp"
-#include "poet/HashFunctions.hpp"
-#include "poet/Interpolation.hpp"
-#include "poet/LookupKey.hpp"
-#include "poet/Rounding.hpp"
-#include "poet/enums.hpp"
-
-#include "poet/RInsidePOET.hpp"
+#include "DHT_Wrapper.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -150,10 +143,9 @@ void DHT_Wrapper::fillDHT(const WorkPackage &work_package) {
       uint32_t proc, index;
       auto &key = dht_results.keys[i];
       const auto data =
-          (with_interp
-               ? outputToInputAndRates(work_package.input[i],
-                                       work_package.output[i])
-               : work_package.output[i]);
+          (with_interp ? outputToInputAndRates(work_package.input[i],
+                                               work_package.output[i])
+                       : work_package.output[i]);
       // void *data = (void *)&(work_package[i * this->data_count]);
       // fuzz data (round, logarithm etc.)
 

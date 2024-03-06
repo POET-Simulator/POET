@@ -1,10 +1,11 @@
 #include <Rcpp.h>
 #include <cstddef>
 #include <doctest/doctest.h>
-#include <poet/DataStructures.hpp>
-#include <poet/RInsidePOET.hpp>
 #include <utility>
 #include <vector>
+
+#include <Base/RInsidePOET.hpp>
+#include <DataStructures/DataStructures.hpp>
 
 #include "testDataStructures.hpp"
 

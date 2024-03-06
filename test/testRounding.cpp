@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include "poet/Rounding.hpp"
+#include <Chemistry/SurrogateModels/Rounding.hpp>
 
 TEST_CASE("Rounding") {
   constexpr int signif = 3;

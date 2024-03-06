@@ -18,7 +18,9 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "poet/SimParams.hpp"
+#include "Grid.hpp"
+#include "SimParams.hpp"
+
 #include <RInside.h>
 #include <Rcpp.h>
 #include <algorithm>
@@ -26,7 +28,6 @@
 #include <cstdint>
 #include <new>
 #include <numeric>
-#include <poet/Grid.hpp>
 #include <stdexcept>
 #include <string>
 #include <vector>

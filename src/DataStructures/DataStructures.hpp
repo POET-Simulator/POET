@@ -1,7 +1,7 @@
 #ifndef DATASTRUCTURES_H_
 #define DATASTRUCTURES_H_
 
-#include "enums.hpp"
+#include "../Chemistry/enums.hpp"
 
 #include <Rcpp.h>
 
@@ -13,6 +13,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 namespace poet {
 
 struct WorkPackage {
