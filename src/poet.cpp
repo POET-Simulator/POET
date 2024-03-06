@@ -23,6 +23,7 @@
 #include "Base/RInsidePOET.hpp"
 #include "Base/SimParams.hpp"
 #include "Chemistry/ChemistryModule.hpp"
+#include "Transport/AdvectionModule.hpp"
 #include "Transport/DiffusionModule.hpp"
 
 #include <poet.hpp>

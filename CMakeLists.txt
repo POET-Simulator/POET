@@ -19,7 +19,7 @@ get_poet_version()
 # set(GCC_CXX_FLAGS "-D STRICT_R_HEADERS") add_definitions(${GCC_CXX_FLAGS})
 
 find_package(MPI REQUIRED)
-
+find_package(OpenMP)
 find_package(RRuntime REQUIRED)
 
 add_subdirectory(src)

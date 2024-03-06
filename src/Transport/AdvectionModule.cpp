@@ -1,5 +1,7 @@
 #include "AdvectionModule.hpp"
 
+#include "../Base/Macros.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>

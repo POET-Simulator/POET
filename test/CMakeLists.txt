@@ -17,5 +17,5 @@ add_custom_target(check
 )
 
 add_executable(advection advection/testAdvection.cpp)
-target_include_directories(advection PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-target_link_libraries(advection poet_lib)
+target_include_directories(advection PRIVATE "${CMAKE_CURRENT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(advection poetlib)

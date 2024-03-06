@@ -39,6 +39,10 @@ if (POET_PHT_ADDITIONAL_INFO)
   target_compile_definitions(poetlib PRIVATE POET_PHT_ADD)
 endif()
 
+if (OpenMP_FOUND)
+  target_link_libraries(poetlib PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
 file(READ "${PROJECT_SOURCE_DIR}/R_lib/kin_r_library.R" R_KIN_LIB )
 
 configure_file(poet.hpp.in poet.hpp @ONLY)
