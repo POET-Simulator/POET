@@ -8,8 +8,8 @@ input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
 ##                     Grid initialization                     ##
 #################################################################
 
-n <- 400
-m <- 200
+n <- 3000
+m <- 1500
 
 types <- c("scratch", "phreeqc", "rds")
 
@@ -91,7 +91,7 @@ get_index <- function(row, col) {
   return(index)
 }
 
-flux_val <- 0.1
+flux_val <- 0.05
 
 # Loop through each row and column to populate the flux_list
 for (row in 1:n) {
