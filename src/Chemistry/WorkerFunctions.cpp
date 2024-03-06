@@ -1,5 +1,3 @@
-//  Time-stamp: "Last modified 2023-08-16 14:50:04 mluebke"
-
 #include "ChemistryModule.hpp"
 #include "SurrogateModels/DHT_Wrapper.hpp"
 #include "SurrogateModels/Interpolation.hpp"

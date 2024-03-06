@@ -1,4 +1,3 @@
-//  Time-stamp: "Last modified 2023-08-15 14:36:28 mluebke"
 
 #ifndef CHEMISTRYMODULE_H_
 #define CHEMISTRYMODULE_H_
@@ -249,7 +248,6 @@ protected:
     CHEM_INIT_SPECIES,
     CHEM_DHT_ENABLE,
     CHEM_DHT_SIGNIF_VEC,
-    CHEM_DHT_PROP_TYPE_VEC,
     CHEM_DHT_SNAPS,
     CHEM_DHT_READ_FILE,
     CHEM_IP_ENABLE,

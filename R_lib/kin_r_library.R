@@ -282,9 +282,19 @@ StoreSetup <- function(setup) {
         to_store$DHT <- FALSE
     }
 
-    to_store$Cmdline <- commandArgs(trailingOnly=FALSE)
-    saveRDS(to_store, file = paste0(fileout, "/setup.rds"))
-    msgm("initialization stored in ", paste0(fileout, "/setup.rds"))
+  if (dht_enabled) {
+    to_store$DHT <- list(
+      enabled   = dht_enabled,
+      log       = dht_log
+      #signif    = dht_final_signif,
+      #proptype  = dht_final_proptype
+    )
+  } else {
+    to_store$DHT <- FALSE
+  }
+
+  saveRDS(to_store, file = paste0(fileout, "/setup.rds"))
+  msgm("initialization stored in ", paste0(fileout, "/setup.rds"))
 }
 
 GetWorkPackageSizesVector <- function(n_packages, package_size, len) {
