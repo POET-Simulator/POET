@@ -23,7 +23,6 @@ find_package(MPI REQUIRED)
 find_package(RRuntime REQUIRED)
 
 add_subdirectory(src)
-add_subdirectory(R_lib)
 add_subdirectory(bench)
 
 # as tug will also pull in doctest as a dependency
