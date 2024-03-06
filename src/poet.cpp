@@ -302,8 +302,7 @@ int main(int argc, char *argv[]) {
 
   /*Loading Dependencies*/
   // TODO: kann raus
-  std::string r_load_dependencies = "source('../R_lib/kin_r_library.R');";
-  R.parseEvalQ(r_load_dependencies);
+  R.parseEvalQ(kin_r_library);
 
   SimParams params(world_rank, world_size);
   int pret = params.parseFromCmdl(argv, R);

@@ -38,7 +38,9 @@ if (POET_PHT_ADDITIONAL_INFO)
   target_compile_definitions(poetlib PRIVATE POET_PHT_ADD)
 endif()
 
-configure_file(poet.hpp.in poet.hpp)
+file(READ "${PROJECT_SOURCE_DIR}/R_lib/kin_r_library.R" R_KIN_LIB )
+
+configure_file(poet.hpp.in poet.hpp @ONLY)
 
 add_executable(poet poet.cpp)
 target_link_libraries(poet PRIVATE poetlib MPI::MPI_C RRuntime)
