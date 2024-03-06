@@ -1,5 +1,6 @@
-#include "PhreeqcRM.h"
-#include "poet/ChemistryModule.hpp"
+#include "ChemistryModule.hpp"
+
+#include <PhreeqcRM.h>
 
 #include <algorithm>
 #include <cstddef>

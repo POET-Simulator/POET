@@ -1,4 +1,5 @@
-#include "poet/DataStructures.hpp"
+#include "DataStructures.hpp"
+
 #include <Rcpp.h>
 #include <Rinternals.h>
 #include <cstddef>

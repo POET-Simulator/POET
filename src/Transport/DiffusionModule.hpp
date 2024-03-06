@@ -21,16 +21,17 @@
 #ifndef DIFFUSION_MODULE_H
 #define DIFFUSION_MODULE_H
 
-#include "DataStructures.hpp"
-#include "SimParams.hpp"
-#include "poet/SimParams.hpp"
+#include "../Base/Grid.hpp"
+#include "../Base/SimParams.hpp"
+#include "../DataStructures/DataStructures.hpp"
+
+#include <tug/BoundaryCondition.hpp>
+#include <tug/Diffusion.hpp>
+
 #include <array>
 #include <cmath>
 #include <cstdint>
-#include <poet/Grid.hpp>
 #include <string>
-#include <tug/BoundaryCondition.hpp>
-#include <tug/Diffusion.hpp>
 #include <vector>
 
 namespace poet {

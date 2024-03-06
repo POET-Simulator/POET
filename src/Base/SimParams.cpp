@@ -20,11 +20,13 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "poet/enums.hpp"
+#include "SimParams.hpp"
+
+#include "../Chemistry/enums.hpp"
+
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
-#include <poet/SimParams.hpp>
 
 #include <RInside.h>
 #include <Rcpp.h>

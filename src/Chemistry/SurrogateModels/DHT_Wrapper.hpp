@@ -23,14 +23,14 @@
 #ifndef DHT_WRAPPER_H
 #define DHT_WRAPPER_H
 
-#include "DataStructures.hpp"
+#include "../../Base/SimParams.hpp"
+#include "../../DataStructures/DataStructures.hpp"
+#include "../../RInsidePOET.hpp"
+#include "../enums.hpp"
+#include "HashFunctions.hpp"
 #include "LookupKey.hpp"
-#include "RInsidePOET.hpp"
-#include "SimParams.hpp"
-#include "enums.hpp"
-#include "poet/HashFunctions.hpp"
-#include "poet/LookupKey.hpp"
-#include "poet/Rounding.hpp"
+#include "Rounding.hpp"
+
 #include <array>
 #include <cstdint>
 #include <limits>

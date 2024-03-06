@@ -1,7 +1,9 @@
-#include "poet/ChemistryModule.hpp"
-#include "PhreeqcRM.h"
-#include "poet/DHT_Wrapper.hpp"
-#include "poet/Interpolation.hpp"
+#include "ChemistryModule.hpp"
+
+#include "SurrogateModels/DHT_Wrapper.hpp"
+#include "SurrogateModels/Interpolation.hpp"
+
+#include <PhreeqcRM.h>
 
 #include <algorithm>
 #include <cassert>

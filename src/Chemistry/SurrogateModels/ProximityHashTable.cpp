@@ -1,10 +1,11 @@
 //  Time-stamp: "Last modified 2023-08-15 14:50:59 mluebke"
+#include "Interpolation.hpp"
 
-#include "poet/DHT_Wrapper.hpp"
-#include "poet/HashFunctions.hpp"
-#include "poet/Interpolation.hpp"
-#include "poet/LookupKey.hpp"
-#include "poet/Rounding.hpp"
+#include "DHT_Wrapper.hpp"
+#include "HashFunctions.hpp"
+#include "LookupKey.hpp"
+#include "Rounding.hpp"
+
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -12,8 +13,9 @@
 #include <memory>
 #include <unordered_set>
 #include <vector>
+
 extern "C" {
-#include "poet/DHT.h"
+#include "DHT.h"
 }
 
 namespace poet {

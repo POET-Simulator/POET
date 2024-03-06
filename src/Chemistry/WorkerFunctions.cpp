@@ -1,8 +1,8 @@
 //  Time-stamp: "Last modified 2023-08-16 14:50:04 mluebke"
 
-#include "poet/ChemistryModule.hpp"
-#include "poet/DHT_Wrapper.hpp"
-#include "poet/Interpolation.hpp"
+#include "ChemistryModule.hpp"
+#include "SurrogateModels/DHT_Wrapper.hpp"
+#include "SurrogateModels/Interpolation.hpp"
 
 #include <IrmResult.h>
 #include <algorithm>

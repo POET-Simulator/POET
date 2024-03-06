@@ -18,15 +18,15 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include "DiffusionModule.hpp"
+#include "../Macros.hpp"
+
+#include <tug/BoundaryCondition.hpp>
+#include <tug/Diffusion.hpp>
+
 #include <Rcpp.h>
 #include <algorithm>
 #include <cstdint>
-#include <poet/DiffusionModule.hpp>
-#include <poet/Grid.hpp>
-#include <poet/Macros.hpp>
-#include <poet/SimParams.hpp>
-#include <tug/BoundaryCondition.hpp>
-#include <tug/Diffusion.hpp>
 
 #include <array>
 #include <cassert>
@@ -177,11 +177,11 @@ void DiffusionModule::simulate(double dt) {
 
   t_field = field_2d;
 
-
   sim_a_transport = MPI_Wtime();
 
   transport_t += sim_a_transport - sim_b_transport;
-  std::cout << " done in "<< sim_a_transport - sim_b_transport << "sec" << std::endl;
+  std::cout << " done in " << sim_a_transport - sim_b_transport << "sec"
+            << std::endl;
 }
 
 void DiffusionModule::end() {

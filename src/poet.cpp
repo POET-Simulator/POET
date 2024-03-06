@@ -18,15 +18,18 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include "Base/Grid.hpp"
+#include "Base/SimParams.hpp"
+#include "Chemistry/ChemistryModule.hpp"
+#include "Macros.hpp"
+#include "RInsidePOET.hpp"
+#include "Transport/DiffusionModule.hpp"
+
+#include <poet.h>
+
 #include <Rcpp.h>
 #include <cstdint>
 #include <cstdlib>
-#include <poet/ChemistryModule.hpp>
-#include <poet/DiffusionModule.hpp>
-#include <poet/Grid.hpp>
-#include <poet/Macros.hpp>
-#include <poet/RInsidePOET.hpp>
-#include <poet/SimParams.hpp>
 
 #include <cstring>
 #include <iostream>
@@ -34,7 +37,6 @@
 #include <vector>
 
 #include <mpi.h>
-#include <poet.h>
 
 using namespace std;
 using namespace poet;

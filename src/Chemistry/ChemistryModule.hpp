@@ -3,12 +3,13 @@
 #ifndef CHEMISTRYMODULE_H_
 #define CHEMISTRYMODULE_H_
 
-#include "DHT_Wrapper.hpp"
-#include "DataStructures.hpp"
-#include "Interpolation.hpp"
-#include "IrmResult.h"
-#include "PhreeqcRM.h"
-#include "SimParams.hpp"
+#include "../Base/SimParams.hpp"
+#include "../DataStructures/DataStructures.hpp"
+#include "SurrogateModels/DHT_Wrapper.hpp"
+#include "SurrogateModels/Interpolation.hpp"
+
+#include <IrmResult.h>
+#include <PhreeqcRM.h>
 
 #include <array>
 #include <cstddef>

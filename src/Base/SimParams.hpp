@@ -21,6 +21,12 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include "../DataStructures/DataStructures.hpp"
+#include "../Macros.hpp"
+#include "../RInsidePOET.hpp"
+
+#include "argh.hpp" // Argument handler https://github.com/adishavit/argh
+
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -28,10 +34,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "DataStructures.hpp"
-#include "Macros.hpp"
-#include "RInsidePOET.hpp"
-#include "argh.hpp" // Argument handler https://github.com/adishavit/argh
 #include <RInside.h>
 #include <Rcpp.h>
 // BSD-licenced

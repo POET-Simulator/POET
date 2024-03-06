@@ -21,7 +21,8 @@
 #ifndef GRID_H
 #define GRID_H
 
-#include "poet/SimParams.hpp"
+#include "SimParams.hpp"
+
 #include <RInside.h>
 #include <Rcpp.h>
 #include <array>

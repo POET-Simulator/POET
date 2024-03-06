@@ -24,7 +24,7 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "poet/HashFunctions.hpp"
+#include "HashFunctions.hpp"
 
 #if defined(_MSC_VER)
 
