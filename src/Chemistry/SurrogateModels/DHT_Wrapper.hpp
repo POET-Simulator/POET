@@ -23,9 +23,9 @@
 #ifndef DHT_WRAPPER_H
 #define DHT_WRAPPER_H
 
+#include "../../Base/RInsidePOET.hpp"
 #include "../../Base/SimParams.hpp"
 #include "../../DataStructures/DataStructures.hpp"
-#include "../../RInsidePOET.hpp"
 #include "../enums.hpp"
 #include "HashFunctions.hpp"
 #include "LookupKey.hpp"

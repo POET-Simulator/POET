@@ -19,7 +19,7 @@
 */
 
 #include "DiffusionModule.hpp"
-#include "../Macros.hpp"
+#include "../Base/Macros.hpp"
 
 #include <tug/BoundaryCondition.hpp>
 #include <tug/Diffusion.hpp>

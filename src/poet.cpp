@@ -19,13 +19,13 @@
 */
 
 #include "Base/Grid.hpp"
+#include "Base/Macros.hpp"
+#include "Base/RInsidePOET.hpp"
 #include "Base/SimParams.hpp"
 #include "Chemistry/ChemistryModule.hpp"
-#include "Macros.hpp"
-#include "RInsidePOET.hpp"
 #include "Transport/DiffusionModule.hpp"
 
-#include <poet.h>
+#include <poet.hpp>
 
 #include <Rcpp.h>
 #include <cstdint>

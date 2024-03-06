@@ -22,8 +22,8 @@
 #define PARSER_H
 
 #include "../DataStructures/DataStructures.hpp"
-#include "../Macros.hpp"
-#include "../RInsidePOET.hpp"
+#include "Macros.hpp"
+#include "RInsidePOET.hpp"
 
 #include "argh.hpp" // Argument handler https://github.com/adishavit/argh
 
