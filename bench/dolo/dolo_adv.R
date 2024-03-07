@@ -206,5 +206,6 @@ setup <- list(
   chemistry = chemistry,
   iterations = iterations,
   timesteps = rep(dt, iterations),
-  store_result <- TRUE
+  store_result = TRUE,
+  out_save = c(1, iterations)
 )
