@@ -8,8 +8,8 @@ input_script <- normalizePath("../share/poet/bench/dolo/dolo_inner.pqi")
 ##                     Grid initialization                     ##
 #################################################################
 
-n <- 3000
-m <- 1500
+n <- 1500
+m <- 500
 
 types <- c("scratch", "phreeqc", "rds")
 
@@ -91,7 +91,7 @@ get_index <- function(row, col) {
   return(index)
 }
 
-flux_val <- 0.1
+flux_val <- 0.4
 
 # Loop through each row and column to populate the flux_list
 for (row in 1:n) {
@@ -197,8 +197,8 @@ chemistry <- list(
 #################################################################
 
 
-iterations <- 500
-dt <- 50
+iterations <- 1000
+dt <- 100
 
 setup <- list(
   grid = grid,
@@ -206,6 +206,5 @@ setup <- list(
   chemistry = chemistry,
   iterations = iterations,
   timesteps = rep(dt, iterations),
-  store_result = TRUE,
-  out_save = c(1, seq(50, iterations, by=50))
+  store_result <- TRUE
 )
