@@ -104,9 +104,9 @@ pages:
   stage: release
   before_script:
     - apt-get update && apt-get install -y doxygen graphviz
-    - mkdir {build,public}
+    - mkdir {build_pages,public}
   script:
-    - pushd build
+    - pushd build_pages
     - cmake .. && make doxygen
     - popd && mv build/docs/html/* public/
   artifacts:
