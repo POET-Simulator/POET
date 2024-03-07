@@ -108,7 +108,7 @@ pages:
   script:
     - pushd build_pages
     - cmake .. && make doxygen
-    - popd && mv build/docs/html/* public/
+    - popd && mv build_pages/docs/html/* public/
   artifacts:
     paths:
       - public
