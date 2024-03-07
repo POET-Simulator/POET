@@ -8,3 +8,6 @@
 [submodule "ext/doctest"]
 	path = ext/doctest
 	url = https://github.com/doctest/doctest.git
+[submodule "ext/DHT"]
+	path = ext/DHT
+	url = git@gitup.uni-potsdam.de:mluebke/dht_ucx.git
