@@ -31,6 +31,7 @@ namespace poet {
 constexpr uint32_t HASH_SEED = 80 + 79 + 69 + 84;
 
 uint64_t Murmur2_64A(int len, const void *key);
+uint64_t md5_sum(int len, const void *key);
 
 } // namespace poet
 

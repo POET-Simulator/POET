@@ -21,6 +21,7 @@ get_poet_version()
 find_package(MPI REQUIRED)
 find_package(OpenMP)
 find_package(RRuntime REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 add_subdirectory(src)
 add_subdirectory(bench)

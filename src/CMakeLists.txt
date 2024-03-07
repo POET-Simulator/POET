@@ -20,6 +20,7 @@ target_link_libraries(poetlib PUBLIC
   PhreeqcRM 
   tug
   DHT_UCX
+  OpenSSL::Crypto
 )
 
 target_compile_definitions(poetlib PUBLIC STRICT_R_HEADERS OMPI_SKIP_MPICXX)

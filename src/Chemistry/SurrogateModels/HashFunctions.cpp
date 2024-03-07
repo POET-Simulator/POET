@@ -25,6 +25,9 @@
 */
 
 #include "HashFunctions.hpp"
+#include <cstdint>
+
+#include <openssl/md5.h>
 
 #if defined(_MSC_VER)
 
@@ -92,4 +95,22 @@ uint64_t poet::Murmur2_64A(int len, const void *key) {
   h ^= h >> r;
 
   return h;
+}
+
+uint64_t poet::md5_sum(int len, const void *key) {
+  MD5_CTX ctx;
+  unsigned char sum[MD5_DIGEST_LENGTH];
+  uint64_t retval;
+  uint64_t *v1;
+  uint64_t *v2;
+
+  MD5_Init(&ctx);
+  MD5_Update(&ctx, key, len);
+  MD5_Final(sum, &ctx);
+
+  v1 = (uint64_t *)&sum[0];
+  v2 = (uint64_t *)&sum[8];
+  retval = *v1 ^ *v2;
+
+  return retval;
 }

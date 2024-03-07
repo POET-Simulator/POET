@@ -22,6 +22,7 @@
 
 #include "DHT_Wrapper.hpp"
 #include "DHT_ucx/UCX_bcast_functions.h"
+#include "HashFunctions.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -62,7 +63,7 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
       .key_size = static_cast<int>(key_size),
       .data_size = static_cast<int>(data_size),
       .bucket_count = static_cast<unsigned int>(buckets_per_process),
-      .hash_func = &poet::Murmur2_64A,
+      .hash_func = &poet::md5_sum,
       .bcast_func = UCX_INIT_BSTRAP_MPI,
       .bcast_func_args = &ucx_bcast_mpi_args};
   dht_object = DHT_create(&dht_init);
