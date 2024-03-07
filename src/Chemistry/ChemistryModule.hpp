@@ -6,7 +6,7 @@
 #include "../Base/SimParams.hpp"
 #include "../DataStructures/DataStructures.hpp"
 #include "SurrogateModels/DHT_Wrapper.hpp"
-#include "SurrogateModels/Interpolation.hpp"
+// #include "SurrogateModels/Interpolation.hpp"
 
 #include <IrmResult.h>
 #include <PhreeqcRM.h>
@@ -354,7 +354,7 @@ protected:
   poet::DHT_Wrapper *dht = nullptr;
 
   bool interp_enabled{false};
-  std::unique_ptr<poet::InterpolationModule> interp;
+  // std::unique_ptr<poet::InterpolationModule> interp;
 
   static constexpr uint32_t BUFFER_OFFSET = 5;
 

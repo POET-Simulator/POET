@@ -1,7 +1,7 @@
 #include "ChemistryModule.hpp"
 
 #include "SurrogateModels/DHT_Wrapper.hpp"
-#include "SurrogateModels/Interpolation.hpp"
+// #include "SurrogateModels/Interpolation.hpp"
 
 #include <PhreeqcRM.h>
 
@@ -338,12 +338,12 @@ void poet::ChemistryModule::initializeField(const Field &trans_field) {
 
     this->dht_enabled = this->params.use_dht;
 
-    if (this->params.use_interp) {
-      initializeInterp(this->params.pht_max_entries, this->params.pht_size,
-                       this->params.interp_min_entries,
-                       this->params.pht_signifs);
-      this->interp_enabled = this->params.use_interp;
-    }
+    // if (this->params.use_interp) {
+    //   initializeInterp(this->params.pht_max_entries, this->params.pht_size,
+    //                    this->params.interp_min_entries,
+    //                    this->params.pht_signifs);
+    //   this->interp_enabled = this->params.use_interp;
+    // }
   }
 }
 
@@ -453,47 +453,47 @@ void poet::ChemistryModule::setDHTReadFile(const std::string &input_file) {
   }
 }
 
-void poet::ChemistryModule::initializeInterp(
-    std::uint32_t bucket_size, std::uint32_t size_mb, std::uint32_t min_entries,
-    const NamedVector<std::uint32_t> &key_species) {
+// void poet::ChemistryModule::initializeInterp(
+//     std::uint32_t bucket_size, std::uint32_t size_mb, std::uint32_t
+//     min_entries, const NamedVector<std::uint32_t> &key_species) {
 
-  if (!this->is_master) {
+//   if (!this->is_master) {
 
-    constexpr uint32_t MB_FACTOR = 1E6;
+//     constexpr uint32_t MB_FACTOR = 1E6;
 
-    assert(this->dht);
+//     assert(this->dht);
 
-    this->interp_enabled = true;
+//     this->interp_enabled = true;
 
-    auto map_copy = key_species;
+//     auto map_copy = key_species;
 
-    if (key_species.empty()) {
-      map_copy = this->dht->getKeySpecies();
-      for (std::size_t i = 0; i < map_copy.size(); i++) {
-        const std::uint32_t signif =
-            map_copy[i] - (map_copy[i] > InterpolationModule::COARSE_DIFF
-                               ? InterpolationModule::COARSE_DIFF
-                               : 0);
-        map_copy[i] = signif;
-      }
-    }
+//     if (key_species.empty()) {
+//       map_copy = this->dht->getKeySpecies();
+//       for (std::size_t i = 0; i < map_copy.size(); i++) {
+//         const std::uint32_t signif =
+//             map_copy[i] - (map_copy[i] > InterpolationModule::COARSE_DIFF
+//                                ? InterpolationModule::COARSE_DIFF
+//                                : 0);
+//         map_copy[i] = signif;
+//       }
+//     }
 
-    auto key_indices =
-        parseDHTSpeciesVec(map_copy, dht->getKeySpecies().getNames());
+//     auto key_indices =
+//         parseDHTSpeciesVec(map_copy, dht->getKeySpecies().getNames());
 
-    if (this->interp) {
-      this->interp.reset();
-    }
+//     if (this->interp) {
+//       this->interp.reset();
+//     }
 
-    const uint64_t pht_size = size_mb * MB_FACTOR;
+//     const uint64_t pht_size = size_mb * MB_FACTOR;
 
-    interp = std::make_unique<poet::InterpolationModule>(
-        bucket_size, pht_size, min_entries, *(this->dht), map_copy, key_indices,
-        this->prop_names, this->params.hooks);
+//     interp = std::make_unique<poet::InterpolationModule>(
+//         bucket_size, pht_size, min_entries, *(this->dht), map_copy,
+//         key_indices, this->prop_names, this->params.hooks);
 
-    interp->setInterpolationFunction(inverseDistanceWeighting);
-  }
-}
+//     interp->setInterpolationFunction(inverseDistanceWeighting);
+//   }
+// }
 
 std::vector<double>
 poet::ChemistryModule::shuffleField(const std::vector<double> &in_field,

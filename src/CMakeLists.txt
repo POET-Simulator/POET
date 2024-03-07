@@ -6,8 +6,8 @@ add_library(poetlib
   Chemistry/WorkerFunctions.cpp 
   Chemistry/SurrogateModels/DHT_Wrapper.cpp 
   Chemistry/SurrogateModels/HashFunctions.cpp 
-  Chemistry/SurrogateModels/InterpolationModule.cpp 
-  Chemistry/SurrogateModels/ProximityHashTable.cpp
+#  Chemistry/SurrogateModels/InterpolationModule.cpp 
+#  Chemistry/SurrogateModels/ProximityHashTable.cpp
   DataStructures/Field.cpp
   Transport/DiffusionModule.cpp
   Transport/AdvectionModule.cpp
@@ -19,9 +19,17 @@ target_link_libraries(poetlib PUBLIC
   RRuntime 
   PhreeqcRM 
   tug
-  DHT_UCX
   OpenSSL::Crypto
 )
+
+option(POET_USE_DHT_MPI "Use MPI for DHT" OFF)
+
+if (NOT POET_USE_DHT_MPI)
+  target_compile_definitions(poetlib PUBLIC POET_DHT_UCX)
+  target_link_libraries(poetlib PUBLIC DHT_UCX)
+else()
+  target_link_libraries(poetlib PUBLIC DHT_MPI)
+endif()
 
 target_compile_definitions(poetlib PUBLIC STRICT_R_HEADERS OMPI_SKIP_MPICXX)
 

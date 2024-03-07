@@ -21,7 +21,6 @@
 */
 
 #include "DHT_Wrapper.hpp"
-#include "DHT_ucx/UCX_bcast_functions.h"
 #include "HashFunctions.hpp"
 
 #include <algorithm>
@@ -30,7 +29,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
 #include <mpi.h>
 #include <stdexcept>
 #include <vector>
@@ -52,12 +50,14 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
   // initialize DHT object
   // key size = count of key elements + timestep
   uint32_t key_size = (key_count + 1) * sizeof(Lookup_Keyelement);
-  uint32_t data_size =
-      (data_count + (with_interp ? input_key_elements.size() : 0)) *
-      sizeof(double);
+  // uint32_t data_size =
+  //     (data_count + (with_interp ? input_key_elements.size() : 0)) *
+  //     sizeof(double);
+  uint32_t data_size = data_count * sizeof(double);
   uint32_t buckets_per_process =
       static_cast<std::uint32_t>(dht_size / (data_size + key_size));
 
+#ifdef POET_DHT_UCX
   const ucx_ep_args_mpi_t ucx_bcast_mpi_args = {.comm = dht_comm};
   const DHT_init_t dht_init = {
       .key_size = static_cast<int>(key_size),
@@ -67,6 +67,10 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
       .bcast_func = UCX_INIT_BSTRAP_MPI,
       .bcast_func_args = &ucx_bcast_mpi_args};
   dht_object = DHT_create(&dht_init);
+#else
+  dht_object = DHT_create(dht_comm, buckets_per_process, data_size, key_size,
+                          poet::md5_sum);
+#endif
 
   if (dht_object == nullptr) {
     throw std::runtime_error("DHT_create failed");
@@ -96,7 +100,11 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
 
 DHT_Wrapper::~DHT_Wrapper() {
   // free DHT
+#ifdef POET_DHT_UCX
   DHT_free(dht_object, NULL, NULL, NULL);
+#else
+  DHT_free(dht_object, NULL, NULL);
+#endif
 }
 auto DHT_Wrapper::checkDHT(WorkPackage &work_package)
     -> const DHT_ResultObject & {

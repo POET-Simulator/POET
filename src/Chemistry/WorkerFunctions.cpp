@@ -2,7 +2,7 @@
 
 #include "ChemistryModule.hpp"
 #include "SurrogateModels/DHT_Wrapper.hpp"
-#include "SurrogateModels/Interpolation.hpp"
+// #include "SurrogateModels/Interpolation.hpp"
 
 #include <IrmResult.h>
 #include <algorithm>
@@ -173,9 +173,9 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
     timings.dht_get += dht_get_end - dht_get_start;
   }
 
-  if (interp_enabled) {
-    interp->tryInterpolation(s_curr_wp);
-  }
+  // if (interp_enabled) {
+  //   interp->tryInterpolation(s_curr_wp);
+  // }
 
   phreeqc_time_start = MPI_Wtime();
 
@@ -201,9 +201,9 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
     dht->fillDHT(s_curr_wp);
     dht_fill_end = MPI_Wtime();
 
-    if (interp_enabled) {
-      interp->writePairs();
-    }
+    // if (interp_enabled) {
+    //   interp->writePairs();
+    // }
     timings.dht_fill += dht_fill_end - dht_fill_start;
   }
 
@@ -227,17 +227,17 @@ void poet::ChemistryModule::WorkerPostIter(MPI_Status &prope_status,
     }
   }
 
-  if (this->interp_enabled) {
-    std::stringstream out;
-    interp_calls.push_back(interp->getInterpolationCount());
-    interp->resetCounter();
-    interp->writePHTStats();
-    if (this->dht_snaps_type == DHT_SNAPS_ITEREND) {
-      out << this->dht_file_out_dir << "/iter_" << std::setfill('0')
-          << std::setw(this->file_pad) << iteration << ".pht";
-      interp->dumpPHTState(out.str());
-    }
-  }
+  // if (this->interp_enabled) {
+  //   std::stringstream out;
+  //   interp_calls.push_back(interp->getInterpolationCount());
+  //   interp->resetCounter();
+  //   interp->writePHTStats();
+  //   if (this->dht_snaps_type == DHT_SNAPS_ITEREND) {
+  //     out << this->dht_file_out_dir << "/iter_" << std::setfill('0')
+  //         << std::setw(this->file_pad) << iteration << ".pht";
+  //     interp->dumpPHTState(out.str());
+  //   }
+  // }
 
   RInsidePOET::getInstance().parseEvalQ("gc()");
 }
@@ -246,12 +246,12 @@ void poet::ChemistryModule::WorkerPostSim(uint32_t iteration) {
   if (this->dht_enabled && this->dht_snaps_type >= DHT_SNAPS_ITEREND) {
     WorkerWriteDHTDump(iteration);
   }
-  if (this->interp_enabled && this->dht_snaps_type >= DHT_SNAPS_ITEREND) {
-    std::stringstream out;
-    out << this->dht_file_out_dir << "/iter_" << std::setfill('0')
-        << std::setw(this->file_pad) << iteration << ".pht";
-    interp->dumpPHTState(out.str());
-  }
+  // if (this->interp_enabled && this->dht_snaps_type >= DHT_SNAPS_ITEREND) {
+  //   std::stringstream out;
+  //   out << this->dht_file_out_dir << "/iter_" << std::setfill('0')
+  //       << std::setw(this->file_pad) << iteration << ".pht";
+  //   interp->dumpPHTState(out.str());
+  // }
 }
 
 void poet::ChemistryModule::WorkerWriteDHTDump(uint32_t iteration) {
@@ -348,26 +348,26 @@ void poet::ChemistryModule::WorkerPerfToMaster(int type,
                this->group_comm);
     break;
   }
-  case WORKER_IP_WRITE: {
-    double val = interp->getPHTWriteTime();
-    MPI_Gather(&val, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0, this->group_comm);
-    break;
-  }
-  case WORKER_IP_READ: {
-    double val = interp->getPHTReadTime();
-    MPI_Gather(&val, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0, this->group_comm);
-    break;
-  }
-  case WORKER_IP_GATHER: {
-    double val = interp->getDHTGatherTime();
-    MPI_Gather(&val, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0, this->group_comm);
-    break;
-  }
-  case WORKER_IP_FC: {
-    double val = interp->getInterpolationTime();
-    MPI_Gather(&val, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0, this->group_comm);
-    break;
-  }
+  // case WORKER_IP_WRITE: {
+  //   double val = interp->getPHTWriteTime();
+  //   MPI_Gather(&val, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0,
+  //   this->group_comm); break;
+  // }
+  // case WORKER_IP_READ: {
+  //   double val = interp->getPHTReadTime();
+  //   MPI_Gather(&val, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0,
+  //   this->group_comm); break;
+  // }
+  // case WORKER_IP_GATHER: {
+  //   double val = interp->getDHTGatherTime();
+  //   MPI_Gather(&val, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0,
+  //   this->group_comm); break;
+  // }
+  // case WORKER_IP_FC: {
+  //   double val = interp->getInterpolationTime();
+  //   MPI_Gather(&val, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0,
+  //   this->group_comm); break;
+  // }
   default: {
     throw std::runtime_error("Unknown perf type in master's message.");
   }
@@ -406,11 +406,11 @@ void poet::ChemistryModule::WorkerMetricsToMaster(int type) {
     reduce_and_send(interp_calls, WORKER_IP_CALLS);
     return;
   }
-  case WORKER_PHT_CACHE_HITS: {
-    std::vector<std::uint32_t> input = this->interp->getPHTLocalCacheHits();
-    reduce_and_send(input, WORKER_PHT_CACHE_HITS);
-    return;
-  }
+  // case WORKER_PHT_CACHE_HITS: {
+  //   std::vector<std::uint32_t> input = this->interp->getPHTLocalCacheHits();
+  //   reduce_and_send(input, WORKER_PHT_CACHE_HITS);
+  //   return;
+  // }
   default: {
     throw std::runtime_error("Unknown perf type in master's message.");
   }
