@@ -2,6 +2,7 @@
 
 #include "../Base/Macros.hpp"
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -88,12 +89,9 @@ AdvectionModule::CFLTimeVec(double req_dt,
   }
 
   if (max_dt < req_dt) {
-    std::uint32_t min_floor = static_cast<std::uint32_t>(req_dt / max_dt);
-    std::vector<double> time_vec(min_floor, max_dt);
-
-    double diff = req_dt - (max_dt * min_floor);
-    time_vec.push_back(req_dt);
-    return time_vec;
+    const std::uint32_t steps = std::ceil(req_dt / max_dt);
+    const double step_dt = req_dt / steps;
+    return std::vector<double>(steps, step_dt);
   }
 
   return std::vector<double>(1, req_dt);
