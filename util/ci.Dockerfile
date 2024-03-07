@@ -2,8 +2,7 @@ FROM debian
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get install -y \
-        cmake-curses-gui \
-        clangd \
+        cmake \
         git \
         libeigen3-dev \
         libopenmpi-dev \
