@@ -41,3 +41,5 @@ endif()
 option(BUILD_DOC "Build documentation with doxygen" OFF)
 
 add_subdirectory(docs)
+
+add_subdirectory(apps)
