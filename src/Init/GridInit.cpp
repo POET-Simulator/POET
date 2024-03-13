@@ -43,7 +43,7 @@ static inline Rcpp::List matToGrid(RInside &R, const Rcpp::NumericMatrix &mat,
 }
 
 static inline std::map<int, std::string>
-replaceRawSolutionsIDs(std::map<int, std::string> raws) {
+replaceRawKeywordIDs(std::map<int, std::string> raws) {
   for (auto &raw : raws) {
     std::string &s = raw.second;
     // find at beginning of line '*_RAW' followed by a number and change this
@@ -105,7 +105,7 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
   this->phreeqc_mat = pqcScriptToGrid(phreeqc, R);
   this->initial_grid = matToGrid(R, this->phreeqc_mat, grid_def);
 
-  this->pqc_raw_dumps = replaceRawSolutionsIDs(phreeqc.raw_dumps());
+  this->pqc_raw_dumps = replaceRawKeywordIDs(phreeqc.raw_dumps());
 
   R["pqc_mat"] = this->phreeqc_mat;
   R["grid_def"] = initial_grid;
