@@ -3,12 +3,12 @@
 #include <IPhreeqcPOET.hpp>
 #include <Rcpp/Function.h>
 #include <Rcpp/vector/instantiation.h>
+#include <map>
+#include <regex>
+#include <string>
 
 namespace poet {
-static Rcpp::NumericMatrix
-pqcScriptToGrid(RInside &R, const std::string &script, const std::string &db,
-                std::map<int, std::string> &raw_dumps) {
-  IPhreeqcPOET phreeqc(db, script);
+static Rcpp::NumericMatrix pqcScriptToGrid(IPhreeqcPOET &phreeqc, RInside &R) {
 
   const auto solution_ids = phreeqc.getSolutionIds();
   auto col_names = phreeqc.getInitNames();
@@ -32,22 +32,27 @@ pqcScriptToGrid(RInside &R, const std::string &script, const std::string &db,
 
   Rcpp::colnames(mat) = Rcpp::wrap(col_names);
 
-  raw_dumps = phreeqc.raw_dumps();
-
   return mat;
 }
 
 static inline Rcpp::List matToGrid(RInside &R, const Rcpp::NumericMatrix &mat,
                                    const Rcpp::NumericMatrix &grid) {
-  //   Rcpp::List res;
-  //   res["init_mat"] = mat;
-  //   res["grid_mat"] = grid;
-
   Rcpp::Function pqc_to_grid("pqc_to_grid");
 
-  //   R.parseEvalQ("res_df <- pqc_to_grid(init_mat, grid_mat)");
-
   return pqc_to_grid(mat, grid);
+}
+
+static inline std::map<int, std::string>
+replaceRawSolutionsIDs(std::map<int, std::string> raws) {
+  for (auto &raw : raws) {
+    std::string &s = raw.second;
+    // find at beginning of line '*_RAW' followed by a number and change this
+    // number to 1
+    std::regex re(R"((RAW\s+)(\d+))");
+    s = std::regex_replace(s, re, "RAW 1");
+  }
+
+  return raws;
 }
 
 void InitialList::initGrid(const Rcpp::List &grid_input) {
@@ -95,9 +100,12 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
     throw std::runtime_error("Grid size must be positive.");
   }
 
-  this->phreeqc_mat =
-      pqcScriptToGrid(R, script_rp, database_rp, this->pqc_raw_dumps);
+  IPhreeqcPOET phreeqc(database_rp, script_rp);
+
+  this->phreeqc_mat = pqcScriptToGrid(phreeqc, R);
   this->initial_grid = matToGrid(R, this->phreeqc_mat, grid_def);
+
+  this->pqc_raw_dumps = replaceRawSolutionsIDs(phreeqc.raw_dumps());
 
   R["pqc_mat"] = this->phreeqc_mat;
   R["grid_def"] = initial_grid;
