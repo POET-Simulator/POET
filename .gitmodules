@@ -2,9 +2,12 @@
 	path = ext/tug
 	url = ../tug.git
 
-[submodule "ext/phreeqcrm"]
-	path = ext/phreeqcrm
-	url = ../phreeqcrm-gfz.git
 [submodule "ext/doctest"]
 	path = ext/doctest
 	url = https://github.com/doctest/doctest.git
+[submodule "ext/phreeqc"]
+	path = ext/phreeqc
+	url = git@git.gfz-potsdam.de:naaice/phreeqcpoet.git
+[submodule "ext/iphreeqc"]
+	path = ext/iphreeqc
+	url = git@git.gfz-potsdam.de:naaice/iphreeqc.git

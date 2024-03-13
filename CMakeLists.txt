@@ -22,6 +22,9 @@ find_package(MPI REQUIRED)
 
 find_package(RRuntime REQUIRED)
 
+add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+add_link_options(-fsanitize=address)
+
 add_subdirectory(src)
 add_subdirectory(bench)
 
@@ -29,7 +32,7 @@ add_subdirectory(bench)
 set(TUG_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(ext/tug EXCLUDE_FROM_ALL)
-add_subdirectory(ext/phreeqcrm EXCLUDE_FROM_ALL)
+add_subdirectory(ext/iphreeqc EXCLUDE_FROM_ALL)
 
 option(POET_ENABLE_TESTING "Build test suite for POET" OFF)
 
@@ -41,5 +44,3 @@ endif()
 option(BUILD_DOC "Build documentation with doxygen" OFF)
 
 add_subdirectory(docs)
-
-add_subdirectory(apps)

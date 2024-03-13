@@ -1,3 +1,20 @@
+add_library(poetinitlib
+  Init/InitialList.cpp
+  Init/GridInit.cpp  
+)
+
+target_link_libraries(poetinitlib PUBLIC
+  RRuntime 
+  IPhreeqcPOET
+  tug
+)
+
+target_include_directories(poetinitlib PUBLIC
+  "${CMAKE_CURRENT_SOURCE_DIR}/Init"
+)
+
+target_compile_definitions(poetinitlib PUBLIC STRICT_R_HEADERS)
+
 add_library(poetlib
   Base/Grid.cpp
   Base/SimParams.cpp
@@ -17,8 +34,9 @@ target_link_libraries(poetlib PUBLIC
   MPI::MPI_C 
   ${MATH_LIBRARY} 
   RRuntime 
-  PhreeqcRM 
+  PhreeqcRM
   tug
+  poetinitlib
 )
 
 target_compile_definitions(poetlib PUBLIC STRICT_R_HEADERS OMPI_SKIP_MPICXX)
@@ -39,11 +57,17 @@ if (POET_PHT_ADDITIONAL_INFO)
 endif()
 
 file(READ "${PROJECT_SOURCE_DIR}/R_lib/kin_r_library.R" R_KIN_LIB )
+file(READ "${PROJECT_SOURCE_DIR}/R_lib/init_r_lib.R" R_INIT_LIB)
 
 configure_file(poet.hpp.in poet.hpp @ONLY)
 
-add_executable(poet poet.cpp)
-target_link_libraries(poet PRIVATE poetlib MPI::MPI_C RRuntime)
-target_include_directories(poet PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+# add_executable(poet poet.cpp)
+# target_link_libraries(poet PRIVATE poetlib MPI::MPI_C RRuntime)
+# target_include_directories(poet PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+
+add_executable(poet_init initializer.cpp)
+target_link_libraries(poet_init PRIVATE poetinitlib RRuntime)
+target_include_directories(poet_init PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 install(TARGETS poet DESTINATION bin)
+

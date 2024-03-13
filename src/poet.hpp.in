@@ -7,4 +7,6 @@ static const char *poet_version = "@POET_VERSION@";
 // using the Raw string literal to avoid escaping the quotes
 static inline std::string kin_r_library = R"(@R_KIN_LIB@)";
 
+static inline std::string init_r_library = R"(@R_INIT_LIB@)";
+
 #endif // POET_H
