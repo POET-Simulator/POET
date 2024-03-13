@@ -3,9 +3,12 @@
 #include <IPhreeqcPOET.hpp>
 #include <Rcpp/Function.h>
 #include <Rcpp/vector/instantiation.h>
+#include <algorithm>
+#include <cstdint>
 #include <map>
 #include <regex>
 #include <string>
+#include <vector>
 
 namespace poet {
 static Rcpp::NumericMatrix pqcScriptToGrid(IPhreeqcPOET &phreeqc, RInside &R) {
@@ -53,6 +56,21 @@ replaceRawKeywordIDs(std::map<int, std::string> raws) {
   }
 
   return raws;
+}
+
+static inline IPhreeqcPOET::ModulesArray
+modifyModuleSizes(IPhreeqcPOET::ModulesArray sizes,
+                  const Rcpp::NumericMatrix &phreeqc_mat,
+                  const Rcpp::List &initial_grid) {
+  std::vector<std::uint32_t> sizes_vec(sizes.begin(), sizes.end());
+
+  Rcpp::Function modify_sizes("modify_module_sizes");
+  sizes_vec = Rcpp::as<std::vector<std::uint32_t>>(
+      modify_sizes(sizes_vec, phreeqc_mat, initial_grid));
+
+  std::copy(sizes_vec.begin(), sizes_vec.end(), sizes.begin());
+
+  return sizes;
 }
 
 void InitialList::initGrid(const Rcpp::List &grid_input) {
@@ -104,6 +122,14 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
 
   this->phreeqc_mat = pqcScriptToGrid(phreeqc, R);
   this->initial_grid = matToGrid(R, this->phreeqc_mat, grid_def);
+
+  this->module_sizes = modifyModuleSizes(phreeqc.getModuleSizes(),
+                                         this->phreeqc_mat, this->initial_grid);
+
+  // print module sizes
+  for (std::size_t i = 0; i < this->module_sizes.size(); i++) {
+    std::cout << this->module_sizes[i] << std::endl;
+  }
 
   this->pqc_raw_dumps = replaceRawKeywordIDs(phreeqc.raw_dumps());
 

@@ -34,4 +34,48 @@ pqc_to_grid <- function(pqc_in, grid) {
 pqc_init <- pqc_to_grid(input, grid_def)
 test <- pqc_init
 
+modify_module_sizes <- function(mod_sizes, pqc_mat, init_grid) {
+    # Find all unique IDs in init_grid
+    unique_ids <- unique(as.vector(init_grid$id))
+
+    # remove rows from pqc_mat that are not in init_grid
+    pqc_mat <- as.data.frame(pqc_mat)
+    pqc_mat <- pqc_mat[pqc_mat$id %in% unique_ids, ]
+
+    # Find the column indices where all rows are NA
+    na_cols <- which(colSums(is.na(pqc_mat)) == nrow(pqc_mat))
+
+    # Build cumsum over mod_sizes
+    cum_mod_sizes <- cumsum(mod_sizes)
+
+    # Find the indices where the value of na_cols is equal to the value of cum_mod_sizes
+    idx <- which(cum_mod_sizes %in% na_cols)
+
+    # Set the value of mod_sizes to 0 at the indices found in the previous step
+    mod_sizes[idx] <- 0
+
+    return(mod_sizes)
+}
+
+# mod_sizes <- c(7, 0, 4, 2, 0)
+
+# unique_ids <- unique(as.vector(pqc_init$id))
+
+# tmp <- as.data.frame(input)
+# pqc_test <- tmp[tmp$id %in% unique_ids, ]
+# na_cols <- which(colSums(is.na(pqc_test)) == nrow(pqc_test))
+# cum_mod_sizes <- cumsum(mod_sizes)
+
+# # Get the indices of the columns of cum_mod_sizes where the value of the column is equal to the value of na_cols
+# idx <- which(cum_mod_sizes %in% na_cols)
+# mod_sizes[idx] <- 0
+
+# idx <- which(na_cols == cum_mod_sizes)
+
+
+
+# idx <- which(na_cols[1] >= cum_mod_sizes)
+
+# mod_sizes <- modify_module_sizes(mod_sizes, pqc_init, pqc_init)
+
 # remove column with all NA

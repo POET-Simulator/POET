@@ -1,11 +1,11 @@
 #pragma once
 
-#include "../DataStructures/Field.hpp"
-
 #include <RInside.h>
 #include <Rcpp.h>
 #include <Rcpp/vector/instantiation.h>
 #include <cstdint>
+
+#include <IPhreeqcPOET.hpp>
 
 namespace poet {
 
@@ -40,5 +40,8 @@ private:
 
   // Initialized by grid, modified by chemistry
   std::map<int, std::string> pqc_raw_dumps;
+
+  // Chemistry members
+  IPhreeqcPOET::ModulesArray module_sizes;
 };
 } // namespace poet
