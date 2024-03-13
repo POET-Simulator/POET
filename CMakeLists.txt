@@ -22,8 +22,8 @@ find_package(MPI REQUIRED)
 
 find_package(RRuntime REQUIRED)
 
-add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
-add_link_options(-fsanitize=address)
+# add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+# add_link_options(-fsanitize=address)
 
 add_subdirectory(src)
 add_subdirectory(bench)

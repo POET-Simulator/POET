@@ -1,0 +1,79 @@
+## Initial: everywhere equilibrium with Celestite NB: The aqueous
+## solution *resulting* from this calculation is to be used as initial
+## state everywhere in the domain
+SOLUTION 1
+units	mol/kgw
+water	1
+temperature	25
+pH	7
+pe	4
+S(6)	1e-12
+Sr	1e-12
+Ba      1e-12
+Cl      1e-12
+PURE 1
+Celestite 0.0 1
+
+SAVE SOLUTION 2 # <- phreeqc keyword to store and later reuse these results
+END
+
+RUN_CELLS 
+   -cells 1
+
+COPY solution 1 2-3
+
+## Here a 5x2 domain:
+
+       |---+---+---+---+---|
+    -> | 2 | 2 | 2 | 2 | 2 |
+     4 |---+---+---+---+---|
+    -> | 3 | 3 | 3 | 3 | 3 |
+       |---+---+---+---+---|
+
+## East boundary: "injection" of solution 4. North, W, S boundaries: closed
+
+## Here the two distinct zones: nr 2 with kinetics Celestite (initial
+## amount is 0, is then allowed to precipitate) and nr 3 with kinetic
+## Celestite and Barite (both initially > 0) where the actual
+## replacement takes place
+
+#USE SOLUTION 2  <- PHREEQC keyword to reuse the results from previous calculation
+KINETICS 2
+Celestite
+-m  0    # Allowed to precipitate
+-parms 10.0
+-tol 1e-9
+
+END
+
+#USE SOLUTION 2  <- PHREEQC keyword to reuse the results from previous calculation
+KINETICS 3
+Barite
+-m 0.001
+-parms 50. 
+-tol 1e-9
+Celestite
+-m 1
+-parms 10.0 
+-tol 1e-9
+END
+
+## A BaCl2 solution (nr 4) is "injected" from the left boundary:
+SOLUTION 4
+pH 7
+water 1
+temp 25
+Ba  0.1
+Cl  0.2
+END
+## NB: again, the *result* of the SOLUTION 4 script defines the
+## concentration of all elements (+charge, tot H, tot O)
+
+## Ideally, in the initial state SOLUTION 1 we should not have to
+## define the 4 elemental concentrations (S(6), Sr, Ba and Cl) but
+## obtain them having run once the scripts with the aqueous solution
+## resulting from SOLUTION 1 once with KINETICS 2 and once with
+## KINETICS 3.
+
+RUN_CELLS
+ -cells 2-4

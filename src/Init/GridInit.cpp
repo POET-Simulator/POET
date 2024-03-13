@@ -99,10 +99,10 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
       pqcScriptToGrid(R, script_rp, database_rp, this->pqc_raw_dumps);
   this->initial_grid = matToGrid(R, this->phreeqc_mat, grid_def);
 
-  // R["pqc_mat"] = this->phreeqc_mat;
-  // R["grid_def"] = initial_grid;
+  R["pqc_mat"] = this->phreeqc_mat;
+  R["grid_def"] = initial_grid;
 
-  // R.parseEval("print(pqc_mat)");
-  // R.parseEval("print(grid_def)");
+  R.parseEval("print(pqc_mat)");
+  R.parseEval("print(grid_def)");
 }
 } // namespace poet
