@@ -17,7 +17,7 @@ pqc_to_grid <- function(pqc_in, grid) {
     # Iterate over each ID in the vector
     for (id_mat in id_vector) {
         # Find the matching row in the data.table
-        matching_dt <- dt[id == id_mat]
+        matching_dt <- dt[dt$id == id_mat]
 
         # Append the matching data.table row to the result data.table
         result_dt <- rbind(result_dt, matching_dt)
@@ -36,14 +36,15 @@ test <- pqc_init
 
 modify_module_sizes <- function(mod_sizes, pqc_mat, init_grid) {
     # Find all unique IDs in init_grid
-    unique_ids <- unique(as.vector(init_grid$id))
+    unique_ids <- unique(init_grid$id)
 
     # remove rows from pqc_mat that are not in init_grid
     pqc_mat <- as.data.frame(pqc_mat)
     pqc_mat <- pqc_mat[pqc_mat$id %in% unique_ids, ]
 
-    # Find the column indices where all rows are NA
-    na_cols <- which(colSums(is.na(pqc_mat)) == nrow(pqc_mat))
+    # Find the column indices where all rows are NaN
+    na_cols <- which(sapply(pqc_mat, function(x) all(is.na(x))))
+    # na_cols <- which(colSums(is.nan(pqc_mat)) == nrow(pqc_mat))
 
     # Build cumsum over mod_sizes
     cum_mod_sizes <- cumsum(mod_sizes)

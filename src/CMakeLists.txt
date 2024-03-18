@@ -1,6 +1,7 @@
 add_library(poetinitlib
   Init/InitialList.cpp
   Init/GridInit.cpp  
+  Init/DiffusionInit.cpp
 )
 
 target_link_libraries(poetinitlib PUBLIC

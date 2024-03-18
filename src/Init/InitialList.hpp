@@ -6,8 +6,12 @@
 #include <cstdint>
 
 #include <IPhreeqcPOET.hpp>
+#include <utility>
+#include <vector>
 
 namespace poet {
+
+using TugType = double;
 
 class InitialList {
 public:
@@ -43,5 +47,12 @@ private:
 
   // Chemistry members
   IPhreeqcPOET::ModulesArray module_sizes;
+
+  // Diffusion members
+  void initDiffusion(const Rcpp::List &diffusion_input);
+  Rcpp::List boundaries;
+
+  Rcpp::List alpha_x;
+  Rcpp::List alpha_y;
 };
 } // namespace poet
