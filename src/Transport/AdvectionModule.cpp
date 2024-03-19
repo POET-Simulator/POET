@@ -3,6 +3,7 @@
 #include "../Base/Macros.hpp"
 
 #include <cmath>
+#include <csignal>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -43,8 +44,8 @@ inline double getFluxApplyConc(bool inbound, std::uint32_t curr_index,
   // On inbound flux and non-boundary condition
   if (inbound) {
     if (neighbor_index == -1) {
-      // HACK: assume closed boundaries for benchmark
-      return conc[curr_index];
+      // Return boundary condition value
+      return bc;
     }
     return conc[neighbor_index];
   }
@@ -77,24 +78,25 @@ AdvectionModule::CFLTimeVec(double req_dt,
                             const std::vector<double> &max_fluxes) {
   const auto field_size = this->n_cells[0] * this->n_cells[1];
 
-  double max_dt = std::numeric_limits<double>::max();
+  double cfl = std::numeric_limits<double>::max();
 
   for (std::size_t i = 0; i < field_size; i++) {
     const double dt =
         (cell_volume * density[i] * water_saturation[i] * porosity[i]) /
         max_fluxes[i];
-    if (dt < max_dt) {
-      max_dt = dt;
+    if (dt < cfl) {
+      cfl = dt;
     }
   }
 
-  if (max_dt < req_dt) {
-    const std::uint32_t steps = std::ceil(req_dt / max_dt);
-    const double step_dt = req_dt / steps;
-    return std::vector<double>(steps, step_dt);
+  if (cfl < req_dt) {
+    const std::uint32_t niter = std::floor(req_dt / cfl);
+    std::vector<double> time_vec(niter + 1, cfl);
+    time_vec[niter] = req_dt - (cfl * niter);
+    return time_vec;
   }
 
-  return std::vector<double>(1, req_dt);
+  return {req_dt};
 }
 
 void AdvectionModule::simulate(double dt) {
@@ -120,13 +122,13 @@ void AdvectionModule::simulate(double dt) {
 
   std::vector<double> max_fluxes(flux.size());
 
-#pragma omp parallel for schedule(dynamic)
+  // #pragma omp parallel for schedule(dynamic)
   for (std::size_t i = 0; i < max_fluxes.size(); i++) {
-    std::array<double, 4> abs_flux;
-    for (std::size_t j = 0; j < abs_flux.size(); j++) {
-      abs_flux[j] = std::abs(flux[i][j]);
+    double cumflux = .0;
+    for (std::size_t j = 0; j < flux[i].size(); j++) {
+      cumflux += std::abs(flux[i][j]);
     }
-    max_fluxes[i] = *std::max_element(abs_flux.begin(), abs_flux.end());
+    max_fluxes[i] = cumflux;
   }
 
   const auto time_vec = CFLTimeVec(dt, max_fluxes);
@@ -144,7 +146,7 @@ void AdvectionModule::simulate(double dt) {
     }
   }
 
-#pragma omp parallel for schedule(dynamic)
+  // #pragma omp parallel for schedule(dynamic)
   for (std::size_t species_i = 0; species_i < field_vec.size(); species_i++) {
     auto &species = field_vec[species_i];
     std::vector<double> spec_copy = species;
@@ -152,7 +154,6 @@ void AdvectionModule::simulate(double dt) {
       for (std::size_t cell_i = 0; cell_i < n * m; cell_i++) {
 
         // if inactive cell -> skip
-        const auto inactive_cell_it = this->inactive_cells.find(cell_i);
         if (this->inactive_cells.find(cell_i) != this->inactive_cells.end()) {
           continue;
         }
@@ -161,6 +162,11 @@ void AdvectionModule::simulate(double dt) {
             cell_i, this->boundary_condition[species_i], species, flux[cell_i]);
         spec_copy[cell_i] +=
             (curr_dt * delta_conc) / (porosity[cell_i] * cell_volume);
+
+        // if (species_i == 0 &&
+        //     (spec_copy[cell_i] < 110.124 || spec_copy[cell_i] > 110.683)) {
+        //   raise(SIGABRT);
+        // }
       }
       species = spec_copy;
     }
