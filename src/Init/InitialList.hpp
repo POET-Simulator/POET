@@ -93,6 +93,8 @@ private:
   }
 
   void initDiffusion(const Rcpp::List &diffusion_input);
+  Rcpp::List resolveBoundaries(const Rcpp::List &boundaries_list);
+
   Rcpp::List boundaries;
 
   Rcpp::List alpha_x;

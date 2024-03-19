@@ -28,3 +28,14 @@ pqc_to_grid <- function(pqc_in, grid) {
 
     return(res_df)
 }
+
+resolvePqcBound <- function(pqc_mat, transport_spec, id) {
+    df <- as.data.frame(pqc_mat, check.names = FALSE)
+    value <- df[df$ID == id, transport_spec]
+
+    if (is.nan(value)) {
+        value <- 0
+    }
+
+    return(value)
+}
