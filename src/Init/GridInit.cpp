@@ -6,6 +6,7 @@
 #include <Rcpp/vector/instantiation.h>
 #include <map>
 #include <regex>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -73,24 +74,49 @@ getModuleSizes(IPhreeqcPOET &phreeqc, const Rcpp::List &initial_grid) {
   return phreeqc.getModuleSizes(row_ids);
 }
 
-void InitialList::initGrid(const Rcpp::List &grid_input) {
-  // parse input values
-  const std::string script = Rcpp::as<std::string>(
-      grid_input[getGridMemberString(GridMembers::PQC_SCRIPT_FILE)]);
-  const std::string database = Rcpp::as<std::string>(
-      grid_input[getGridMemberString(GridMembers::PQC_DB_FILE)]);
+static std::string readFile(const std::string &path) {
+  std::string string_rpath(PATH_MAX, '\0');
 
-  std::string script_rp(PATH_MAX, '\0');
-  std::string database_rp(PATH_MAX, '\0');
-
-  if (realpath(script.c_str(), script_rp.data()) == nullptr) {
-    throw std::runtime_error("Failed to resolve the path of the Phreeqc input" +
-                             script);
+  if (realpath(path.c_str(), string_rpath.data()) == nullptr) {
+    throw std::runtime_error("Failed to resolve the realpath to file " + path);
   }
 
-  if (realpath(database.c_str(), database_rp.data()) == nullptr) {
-    throw std::runtime_error("Failed to resolve the path of the database" +
-                             database);
+  std::ifstream file(string_rpath);
+
+  if (!file.is_open()) {
+    throw std::runtime_error("Failed to open file: " + path);
+  }
+
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+
+  return buffer.str();
+}
+
+void InitialList::initGrid(const Rcpp::List &grid_input) {
+  // parse input values
+
+  std::string script;
+  std::string database;
+
+  if (grid_input.containsElementNamed(
+          getGridMemberString(GridMembers::PQC_SCRIPT_FILE))) {
+
+    script = readFile(Rcpp::as<std::string>(
+        grid_input[getGridMemberString(GridMembers::PQC_SCRIPT_FILE)]));
+  } else {
+    script = Rcpp::as<std::string>(
+        grid_input[getGridMemberString(GridMembers::PQC_SCRIPT_STRING)]);
+  }
+
+  if (grid_input.containsElementNamed(
+          getGridMemberString(GridMembers::PQC_DB_FILE))) {
+
+    database = readFile(Rcpp::as<std::string>(
+        grid_input[getGridMemberString(GridMembers::PQC_DB_FILE)]));
+  } else {
+    database = Rcpp::as<std::string>(
+        grid_input[getGridMemberString(GridMembers::PQC_DB_STRING)]);
   }
 
   Rcpp::NumericMatrix grid_def =
@@ -122,7 +148,7 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
     throw std::runtime_error("Grid size must be positive.");
   }
 
-  IPhreeqcPOET phreeqc(database_rp, script_rp);
+  IPhreeqcPOET phreeqc(database, script);
 
   this->phreeqc_mat = pqcScriptToGrid(phreeqc, R);
   this->initial_grid = matToGrid(R, this->phreeqc_mat, grid_def);
