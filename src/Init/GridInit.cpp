@@ -1,6 +1,7 @@
 #include "InitialList.hpp"
 
 #include <IPhreeqcPOET.hpp>
+#include <RInside.h>
 #include <Rcpp/Function.h>
 #include <Rcpp/vector/instantiation.h>
 #include <algorithm>
@@ -12,28 +13,25 @@
 
 namespace poet {
 static Rcpp::NumericMatrix pqcScriptToGrid(IPhreeqcPOET &phreeqc, RInside &R) {
-
-  const auto solution_ids = phreeqc.getSolutionIds();
-  auto col_names = phreeqc.getInitNames();
-  const auto concentrations = phreeqc.getInitValues();
+  IPhreeqcPOET::PhreeqcMat phreeqc_mat = phreeqc.getPhreeqcMat();
 
   // add "id" to the front of the column names
 
-  const std::size_t ncols = col_names.size();
-  const std::size_t nrows = solution_ids.size();
+  const std::size_t ncols = phreeqc_mat.names.size();
+  const std::size_t nrows = phreeqc_mat.values.size();
 
-  col_names.insert(col_names.begin(), "id");
+  phreeqc_mat.names.insert(phreeqc_mat.names.begin(), "ID");
 
   Rcpp::NumericMatrix mat(nrows, ncols + 1);
 
   for (std::size_t i = 0; i < nrows; i++) {
-    mat(i, 0) = solution_ids[i];
+    mat(i, 0) = phreeqc_mat.ids[i];
     for (std::size_t j = 0; j < ncols; ++j) {
-      mat(i, j + 1) = concentrations[i][j];
+      mat(i, j + 1) = phreeqc_mat.values[i][j];
     }
   }
 
-  Rcpp::colnames(mat) = Rcpp::wrap(col_names);
+  Rcpp::colnames(mat) = Rcpp::wrap(phreeqc_mat.names);
 
   return mat;
 }
@@ -59,18 +57,22 @@ replaceRawKeywordIDs(std::map<int, std::string> raws) {
 }
 
 static inline IPhreeqcPOET::ModulesArray
-modifyModuleSizes(IPhreeqcPOET::ModulesArray sizes,
-                  const Rcpp::NumericMatrix &phreeqc_mat,
-                  const Rcpp::List &initial_grid) {
-  std::vector<std::uint32_t> sizes_vec(sizes.begin(), sizes.end());
+getModuleSizes(IPhreeqcPOET &phreeqc, const Rcpp::List &initial_grid) {
+  IPhreeqcPOET::ModulesArray mod_array;
+  Rcpp::Function unique("unique");
 
-  Rcpp::Function modify_sizes("modify_module_sizes");
-  sizes_vec = Rcpp::as<std::vector<std::uint32_t>>(
-      modify_sizes(sizes_vec, phreeqc_mat, initial_grid));
+  std::vector<int> row_ids =
+      Rcpp::as<std::vector<int>>(unique(initial_grid["ID"]));
 
-  std::copy(sizes_vec.begin(), sizes_vec.end(), sizes.begin());
+  // std::vector<std::uint32_t> sizes_vec(sizes.begin(), sizes.end());
 
-  return sizes;
+  // Rcpp::Function modify_sizes("modify_module_sizes");
+  // sizes_vec = Rcpp::as<std::vector<std::uint32_t>>(
+  //     modify_sizes(sizes_vec, phreeqc_mat, initial_grid));
+
+  // std::copy(sizes_vec.begin(), sizes_vec.end(), sizes.begin());
+
+  return phreeqc.getModuleSizes(row_ids);
 }
 
 void InitialList::initGrid(const Rcpp::List &grid_input) {
@@ -123,8 +125,7 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
   this->phreeqc_mat = pqcScriptToGrid(phreeqc, R);
   this->initial_grid = matToGrid(R, this->phreeqc_mat, grid_def);
 
-  this->module_sizes = modifyModuleSizes(phreeqc.getModuleSizes(),
-                                         this->phreeqc_mat, this->initial_grid);
+  this->module_sizes = getModuleSizes(phreeqc, this->initial_grid);
 
   // print module sizes
   for (std::size_t i = 0; i < this->module_sizes.size(); i++) {
