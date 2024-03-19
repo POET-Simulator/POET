@@ -35,6 +35,7 @@
 #include <cstring>
 #include <iostream>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 #include <mpi.h>
@@ -228,6 +229,8 @@ inline double RunMasterLoop(SimParams &params, RInsidePOET &R,
     R.parseEvalQ("profiling$dht_hits <- dht_hits");
     R["dht_evictions"] = Rcpp::wrap(chem.GetWorkerDHTEvictions());
     R.parseEvalQ("profiling$dht_evictions <- dht_evictions");
+    R["dht_corrupt_buckets"] = Rcpp::wrap(chem.GetWorkerDHTCorruptBuckets());
+    R.parseEvalQ("profiling$dht_corrupt_buckets <- dht_corrupt_buckets");
     R["dht_get_time"] = Rcpp::wrap(chem.GetWorkerDHTGetTimings());
     R.parseEvalQ("profiling$dht_get_time <- dht_get_time");
     R["dht_fill_time"] = Rcpp::wrap(chem.GetWorkerDHTFillTimings());

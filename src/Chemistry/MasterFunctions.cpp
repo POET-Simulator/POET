@@ -97,6 +97,25 @@ std::vector<uint32_t> poet::ChemistryModule::GetWorkerDHTEvictions() const {
   return ret;
 }
 
+std::vector<uint32_t>
+poet::ChemistryModule::GetWorkerDHTCorruptBuckets() const {
+  int type = CHEM_PERF;
+  MPI_Bcast(&type, 1, MPI_INT, 0, this->group_comm);
+  type = WORKER_DHT_CORRUPT;
+  MPI_Bcast(&type, 1, MPI_INT, 0, this->group_comm);
+
+  MPI_Status probe;
+  MPI_Probe(MPI_ANY_SOURCE, WORKER_DHT_CORRUPT, this->group_comm, &probe);
+  int count;
+  MPI_Get_count(&probe, MPI_UINT32_T, &count);
+
+  std::vector<uint32_t> ret(count);
+  MPI_Recv(ret.data(), count, MPI_UINT32_T, probe.MPI_SOURCE,
+           WORKER_DHT_CORRUPT, this->group_comm, NULL);
+
+  return ret;
+}
+
 std::vector<double>
 poet::ChemistryModule::GetWorkerInterpolationWriteTimings() const {
   int type = CHEM_PERF;

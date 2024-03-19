@@ -208,6 +208,8 @@ public:
    */
   std::vector<uint32_t> GetWorkerDHTEvictions() const;
 
+  std::vector<uint32_t> GetWorkerDHTCorruptBuckets() const;
+
   /**
    * **Master only** Returns the current state of the chemical field.
    *
@@ -273,6 +275,7 @@ protected:
     WORKER_IP_FC,
     WORKER_DHT_HITS,
     WORKER_DHT_EVICTIONS,
+    WORKER_DHT_CORRUPT,
     WORKER_PHT_CACHE_HITS,
     WORKER_IP_CALLS
   };
@@ -280,6 +283,7 @@ protected:
   std::vector<uint32_t> interp_calls;
   std::vector<uint32_t> dht_hits;
   std::vector<uint32_t> dht_evictions;
+  std::vector<uint32_t> corrupt_buckets;
 
   struct worker_s {
     double phreeqc_t = 0.;

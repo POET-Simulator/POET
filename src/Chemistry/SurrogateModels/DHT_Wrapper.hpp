@@ -190,9 +190,12 @@ public:
    */
   auto getEvictions() { return this->dht_evictions; };
 
+  auto getCorruptBuckets() { return this->corrupt_buckets; }
+
   void resetCounter() {
     this->dht_hits = 0;
     this->dht_evictions = 0;
+    this->corrupt_buckets = 0;
   }
 
   void SetSignifVector(std::vector<uint32_t> signif_vec);
@@ -254,6 +257,7 @@ private:
 
   uint32_t dht_hits = 0;
   uint32_t dht_evictions = 0;
+  uint32_t corrupt_buckets = 0;
 
   NamedVector<std::uint32_t> key_species;
 

@@ -21,6 +21,7 @@
 */
 
 #include "DHT_Wrapper.hpp"
+#include "DHT_ucx/DHT.h"
 #include "HashFunctions.hpp"
 
 #include <algorithm>
@@ -134,6 +135,11 @@ auto DHT_Wrapper::checkDHT(WorkPackage &work_package)
       break;
     case DHT_READ_MISS:
       break;
+#if POET_DHT_UCX
+    case DHT_READ_CORRUPT:
+      this->corrupt_buckets++;
+      break;
+#endif
     }
   }
 

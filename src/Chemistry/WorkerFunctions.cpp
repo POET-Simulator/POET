@@ -220,11 +220,13 @@ void poet::ChemistryModule::WorkerPostIter(MPI_Status &prope_status,
   if (this->dht_enabled) {
     dht_hits.push_back(dht->getHits());
     dht_evictions.push_back(dht->getEvictions());
+    corrupt_buckets.push_back(dht->getCorruptBuckets());
     dht->resetCounter();
 
     if (this->dht_snaps_type == DHT_SNAPS_ITEREND) {
       WorkerWriteDHTDump(iteration);
     }
+    dht->printStatistics();
   }
 
   // if (this->interp_enabled) {
@@ -400,6 +402,10 @@ void poet::ChemistryModule::WorkerMetricsToMaster(int type) {
   }
   case WORKER_DHT_EVICTIONS: {
     reduce_and_send(dht_evictions, WORKER_DHT_EVICTIONS);
+    break;
+  }
+  case WORKER_DHT_CORRUPT: {
+    reduce_and_send(corrupt_buckets, WORKER_DHT_CORRUPT);
     break;
   }
   case WORKER_IP_CALLS: {
