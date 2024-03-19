@@ -4,8 +4,6 @@
 #include <RInside.h>
 #include <Rcpp/Function.h>
 #include <Rcpp/vector/instantiation.h>
-#include <algorithm>
-#include <cstdint>
 #include <map>
 #include <regex>
 #include <string>
@@ -77,8 +75,10 @@ getModuleSizes(IPhreeqcPOET &phreeqc, const Rcpp::List &initial_grid) {
 
 void InitialList::initGrid(const Rcpp::List &grid_input) {
   // parse input values
-  const std::string script = Rcpp::as<std::string>(grid_input["pqc_in"]);
-  const std::string database = Rcpp::as<std::string>(grid_input["pqc_db"]);
+  const std::string script = Rcpp::as<std::string>(
+      grid_input[getGridMemberString(GridMembers::PQC_SCRIPT_FILE)]);
+  const std::string database = Rcpp::as<std::string>(
+      grid_input[getGridMemberString(GridMembers::PQC_DB_FILE)]);
 
   std::string script_rp(PATH_MAX, '\0');
   std::string database_rp(PATH_MAX, '\0');
@@ -93,8 +93,10 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
                              database);
   }
 
-  Rcpp::NumericMatrix grid_def = grid_input["grid_def"];
-  Rcpp::NumericVector grid_size = grid_input["grid_size"];
+  Rcpp::NumericMatrix grid_def =
+      grid_input[getGridMemberString(GridMembers::GRID_DEF)];
+  Rcpp::NumericVector grid_size =
+      grid_input[getGridMemberString(GridMembers::GRID_SIZE)];
   // Rcpp::NumericVector constant_cells = grid["constant_cells"].;
 
   this->n_rows = grid_def.nrow();
