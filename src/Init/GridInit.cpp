@@ -100,29 +100,31 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
   std::string database;
 
   if (grid_input.containsElementNamed(
-          getGridMemberString(GridMembers::PQC_SCRIPT_FILE))) {
+          GRID_MEMBER_STR(GridMembers::PQC_SCRIPT_FILE))) {
 
     script = readFile(Rcpp::as<std::string>(
-        grid_input[getGridMemberString(GridMembers::PQC_SCRIPT_FILE)]));
+        grid_input[GRID_MEMBER_STR(GridMembers::PQC_SCRIPT_FILE)]));
   } else {
     script = Rcpp::as<std::string>(
-        grid_input[getGridMemberString(GridMembers::PQC_SCRIPT_STRING)]);
+        grid_input[GRID_MEMBER_STR(GridMembers::PQC_SCRIPT_STRING)]);
   }
 
   if (grid_input.containsElementNamed(
-          getGridMemberString(GridMembers::PQC_DB_FILE))) {
+          GRID_MEMBER_STR(GridMembers::PQC_DB_FILE))) {
 
     database = readFile(Rcpp::as<std::string>(
-        grid_input[getGridMemberString(GridMembers::PQC_DB_FILE)]));
+        grid_input[GRID_MEMBER_STR(GridMembers::PQC_DB_FILE)]));
   } else {
     database = Rcpp::as<std::string>(
-        grid_input[getGridMemberString(GridMembers::PQC_DB_STRING)]);
+        grid_input[GRID_MEMBER_STR(GridMembers::PQC_DB_STRING)]);
   }
 
+  this->database = database;
+
   Rcpp::NumericMatrix grid_def =
-      grid_input[getGridMemberString(GridMembers::GRID_DEF)];
+      grid_input[GRID_MEMBER_STR(GridMembers::GRID_DEF)];
   Rcpp::NumericVector grid_size =
-      grid_input[getGridMemberString(GridMembers::GRID_SIZE)];
+      grid_input[GRID_MEMBER_STR(GridMembers::GRID_SIZE)];
   // Rcpp::NumericVector constant_cells = grid["constant_cells"].;
 
   this->n_rows = grid_def.nrow();
@@ -154,6 +156,13 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
   this->initial_grid = matToGrid(R, this->phreeqc_mat, grid_def);
 
   this->module_sizes = getModuleSizes(phreeqc, this->initial_grid);
+
+  std::vector<std::string> colnames =
+      Rcpp::as<std::vector<std::string>>(this->initial_grid.names());
+
+  this->to_transport = this->pqc_sol_order = std::vector<std::string>(
+      colnames.begin() + 1,
+      colnames.begin() + 1 + this->module_sizes[POET_SOL]);
 
   // print module sizes
   for (std::size_t i = 0; i < this->module_sizes.size(); i++) {

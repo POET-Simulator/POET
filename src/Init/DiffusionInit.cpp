@@ -146,9 +146,12 @@ static Rcpp::List parseAlphas2D(const SEXP &input,
   return out_list;
 }
 void InitialList::initDiffusion(const Rcpp::List &diffusion_input) {
-  const Rcpp::List &boundaries = diffusion_input["boundaries"];
-  const SEXP &alpha_x = diffusion_input["alpha_x"];
-  const SEXP &alpha_y = diffusion_input["alpha_y"];
+  const Rcpp::List &boundaries =
+      diffusion_input[DIFFU_MEMBER_STR(DiffusionMembers::BOUNDARIES)];
+  const Rcpp::NumericVector &alpha_x =
+      diffusion_input[DIFFU_MEMBER_STR(DiffusionMembers::ALPHA_X)];
+  const Rcpp::NumericVector &alpha_y =
+      diffusion_input[DIFFU_MEMBER_STR(DiffusionMembers::ALPHA_Y)];
 
   std::vector<std::string> colnames =
       Rcpp::as<std::vector<std::string>>(this->initial_grid.names());

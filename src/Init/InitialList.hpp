@@ -51,7 +51,7 @@ private:
                            "pqc_db_file",    "grid_def",    "grid_size",
                            "constant_cells", "porosity"};
 
-  constexpr const char *getGridMemberString(GridMembers member) const {
+  constexpr const char *GRID_MEMBER_STR(GridMembers member) const {
     return GridMembersString[static_cast<std::size_t>(member)];
   }
 
@@ -71,20 +71,44 @@ private:
   // No export
   Rcpp::NumericMatrix phreeqc_mat;
 
-  // Initialized by grid, modified by chemistry
+  // Initialized by grid
   std::map<int, std::string> pqc_raw_dumps;
 
   // Chemistry members
   IPhreeqcPOET::ModulesArray module_sizes;
 
   // Diffusion members
-
   static constexpr const char *diffusion_key = "Diffusion";
+
+  enum class DiffusionMembers { BOUNDARIES, ALPHA_X, ALPHA_Y, ENUM_SIZE };
+
+  static constexpr std::size_t size_DiffusionMembers =
+      static_cast<std::size_t>(InitialList::DiffusionMembers::ENUM_SIZE);
+
+  static constexpr std::array<const char *, size_DiffusionMembers>
+      DiffusionMembersString = {"boundaries", "alpha_x", "alpha_y"};
+
+  constexpr const char *DIFFU_MEMBER_STR(DiffusionMembers member) const {
+    return DiffusionMembersString[static_cast<std::size_t>(member)];
+  }
 
   void initDiffusion(const Rcpp::List &diffusion_input);
   Rcpp::List boundaries;
 
   Rcpp::List alpha_x;
   Rcpp::List alpha_y;
+
+  std::vector<std::string> to_transport;
+
+  // Chemistry Members
+  static constexpr const char *chemistry_key = "Chemistry";
+
+  void initChemistry();
+
+  std::string database;
+  std::vector<std::string> pqc_scripts;
+  std::vector<int> pqc_ids;
+
+  std::vector<std::string> pqc_sol_order;
 };
 } // namespace poet
