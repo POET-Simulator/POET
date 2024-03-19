@@ -160,7 +160,7 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
   std::vector<std::string> colnames =
       Rcpp::as<std::vector<std::string>>(this->initial_grid.names());
 
-  this->to_transport = this->pqc_sol_order = std::vector<std::string>(
+  this->transport_names = this->pqc_sol_order = std::vector<std::string>(
       colnames.begin() + 1,
       colnames.begin() + 1 + this->module_sizes[POET_SOL]);
 
@@ -171,10 +171,10 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
 
   this->pqc_raw_dumps = replaceRawKeywordIDs(phreeqc.raw_dumps());
 
-  R["pqc_mat"] = this->phreeqc_mat;
-  R["grid_def"] = initial_grid;
+  // R["pqc_mat"] = this->phreeqc_mat;
+  // R["grid_def"] = initial_grid;
 
-  R.parseEval("print(pqc_mat)");
-  R.parseEval("print(grid_def)");
+  // R.parseEval("print(pqc_mat)");
+  // R.parseEval("print(grid_def)");
 }
 } // namespace poet

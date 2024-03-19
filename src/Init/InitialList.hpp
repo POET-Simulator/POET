@@ -98,7 +98,7 @@ private:
   Rcpp::List alpha_x;
   Rcpp::List alpha_y;
 
-  std::vector<std::string> to_transport;
+  std::vector<std::string> transport_names;
 
   // Chemistry Members
   static constexpr const char *chemistry_key = "Chemistry";
