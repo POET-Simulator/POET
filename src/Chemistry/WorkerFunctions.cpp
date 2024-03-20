@@ -17,6 +17,20 @@
 #include <vector>
 
 namespace poet {
+
+struct WorkPackage {
+  std::size_t size;
+  std::vector<std::vector<double>> input;
+  std::vector<std::vector<double>> output;
+  std::vector<std::uint8_t> mapping;
+
+  WorkPackage(size_t _size) : size(_size) {
+    input.resize(size);
+    output.resize(size);
+    mapping.resize(size, CHEM_PQC);
+  }
+};
+
 inline std::string get_string(int root, MPI_Comm communicator) {
   int count;
   MPI_Bcast(&count, 1, MPI_INT, root, communicator);

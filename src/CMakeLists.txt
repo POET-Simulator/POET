@@ -1,3 +1,5 @@
+add_subdirectory(DataStructures)
+
 add_library(poetinitlib
   Init/InitialList.cpp
   Init/GridInit.cpp  
@@ -5,6 +7,7 @@ add_library(poetinitlib
 )
 
 target_link_libraries(poetinitlib PUBLIC
+  DataStructures
   RRuntime 
   IPhreeqcPOET
   tug
@@ -27,11 +30,11 @@ add_library(poetlib
   Chemistry/SurrogateModels/HashFunctions.cpp 
   Chemistry/SurrogateModels/InterpolationModule.cpp 
   Chemistry/SurrogateModels/ProximityHashTable.cpp
-  DataStructures/Field.cpp
   Transport/DiffusionModule.cpp
 )
 
 target_link_libraries(poetlib PUBLIC
+  DataStructures
   MPI::MPI_C 
   ${MATH_LIBRARY} 
   RRuntime 
