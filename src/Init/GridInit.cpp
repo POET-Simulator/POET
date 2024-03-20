@@ -4,6 +4,7 @@
 #include <RInside.h>
 #include <Rcpp/Function.h>
 #include <Rcpp/vector/instantiation.h>
+#include <cstdint>
 #include <map>
 #include <regex>
 #include <sstream>
@@ -11,6 +12,7 @@
 #include <vector>
 
 namespace poet {
+
 static Rcpp::NumericMatrix pqcScriptToGrid(IPhreeqcPOET &phreeqc, RInside &R) {
   IPhreeqcPOET::PhreeqcMat phreeqc_mat = phreeqc.getPhreeqcMat();
 
@@ -55,13 +57,13 @@ replaceRawKeywordIDs(std::map<int, std::string> raws) {
   return raws;
 }
 
-static inline IPhreeqcPOET::ModulesArray
-getModuleSizes(IPhreeqcPOET &phreeqc, const Rcpp::List &initial_grid) {
+static inline uint32_t getSolutionCount(IPhreeqcPOET &phreeqc,
+                                        const Rcpp::List &initial_grid) {
   IPhreeqcPOET::ModulesArray mod_array;
-  Rcpp::Function unique("unique");
+  Rcpp::Function unique_R("unique");
 
   std::vector<int> row_ids =
-      Rcpp::as<std::vector<int>>(unique(initial_grid["ID"]));
+      Rcpp::as<std::vector<int>>(unique_R(initial_grid["ID"]));
 
   // std::vector<std::uint32_t> sizes_vec(sizes.begin(), sizes.end());
 
@@ -71,7 +73,7 @@ getModuleSizes(IPhreeqcPOET &phreeqc, const Rcpp::List &initial_grid) {
 
   // std::copy(sizes_vec.begin(), sizes_vec.end(), sizes.begin());
 
-  return phreeqc.getModuleSizes(row_ids);
+  return phreeqc.getModuleSizes(row_ids)[POET_SOL];
 }
 
 static std::string readFile(const std::string &path) {
@@ -95,6 +97,7 @@ static std::string readFile(const std::string &path) {
 
 void InitialList::initGrid(const Rcpp::List &grid_input) {
   // parse input values
+  Rcpp::Function unique_R("unique");
 
   std::string script;
   std::string database;
@@ -155,26 +158,45 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
   this->phreeqc_mat = pqcScriptToGrid(phreeqc, R);
   this->initial_grid = matToGrid(R, this->phreeqc_mat, grid_def);
 
-  this->module_sizes = getModuleSizes(phreeqc, this->initial_grid);
+  const uint32_t solution_count = getSolutionCount(phreeqc, this->initial_grid);
 
   std::vector<std::string> colnames =
       Rcpp::as<std::vector<std::string>>(this->initial_grid.names());
 
   this->transport_names = this->pqc_sol_order = std::vector<std::string>(
       colnames.begin() + 1,
-      colnames.begin() + 1 + this->module_sizes[POET_SOL]);
+      colnames.begin() + 1 + solution_count); // skip ID
 
-  // print module sizes
-  for (std::size_t i = 0; i < this->module_sizes.size(); i++) {
-    std::cout << this->module_sizes[i] << std::endl;
+  std::map<int, std::string> pqc_raw_dumps;
+
+  pqc_raw_dumps = replaceRawKeywordIDs(phreeqc.raw_dumps());
+
+  this->pqc_ids =
+      Rcpp::as<std::vector<int>>(unique_R(this->initial_grid["ID"]));
+
+  for (const auto &id : this->pqc_ids) {
+    this->pqc_scripts.push_back(pqc_raw_dumps[id]);
   }
-
-  this->pqc_raw_dumps = replaceRawKeywordIDs(phreeqc.raw_dumps());
-
-  // R["pqc_mat"] = this->phreeqc_mat;
-  // R["grid_def"] = initial_grid;
-
-  // R.parseEval("print(pqc_mat)");
-  // R.parseEval("print(grid_def)");
 }
+
+InitialList::DiffusionInit InitialList::getDiffusionInit() const {
+  DiffusionInit diff_init;
+
+  diff_init.n_cols = this->n_cols;
+  diff_init.n_rows = this->n_rows;
+
+  diff_init.s_cols = this->s_cols;
+  diff_init.s_rows = this->s_rows;
+
+  diff_init.constant_cells = this->constant_cells;
+  diff_init.transport_names = this->transport_names;
+
+  diff_init.initial_grid = Field(this->initial_grid);
+  diff_init.boundaries = Field(this->boundaries);
+  diff_init.alpha_x = Field(this->alpha_x);
+  diff_init.alpha_y = Field(this->alpha_y);
+
+  return diff_init;
+}
+
 } // namespace poet

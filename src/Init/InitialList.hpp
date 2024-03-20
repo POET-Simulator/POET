@@ -8,9 +8,10 @@
 #include <cstdint>
 
 #include <IPhreeqcPOET.hpp>
-#include <map>
-#include <utility>
+#include <string>
 #include <vector>
+
+#include <DataStructures/Field.hpp>
 
 namespace poet {
 
@@ -22,11 +23,28 @@ public:
 
   void initializeFromList(const Rcpp::List &setup);
 
-  void importList(const std::string &file_name);
-  Rcpp::List exportList(const std::string &file_name);
+  void importList(const Rcpp::List &setup);
+  Rcpp::List exportList();
 
 private:
   RInside &R;
+
+  enum class ExportList {
+    GRID_DIM,
+    GRID_SPECS,
+    GRID_SPATIAL,
+    GRID_CONSTANT,
+    GRID_POROSITY,
+    DIFFU_TRANSPORT,
+    DIFFU_BOUNDARIES,
+    DIFFU_ALPHA_X,
+    DIFFU_ALPHA_Y,
+    CHEM_DATABASE,
+    CHEM_PQC_SCRIPTS,
+    CHEM_PQC_IDS,
+    CHEM_PQC_SOL_ORDER,
+    ENUM_SIZE
+  };
 
   // Grid members
   static constexpr const char *grid_key = "Grid";
@@ -65,18 +83,34 @@ private:
   double s_rows;
 
   std::vector<std::uint32_t> constant_cells;
+  std::vector<double> porosity;
 
   Rcpp::List initial_grid;
 
   // No export
   Rcpp::NumericMatrix phreeqc_mat;
 
-  // Initialized by grid
-  std::map<int, std::string> pqc_raw_dumps;
+public:
+  struct DiffusionInit {
+    std::uint32_t n_cols;
+    std::uint32_t n_rows;
 
-  // Chemistry members
-  IPhreeqcPOET::ModulesArray module_sizes;
+    double s_cols;
+    double s_rows;
 
+    std::vector<std::uint32_t> constant_cells;
+
+    std::vector<std::string> transport_names;
+
+    Field initial_grid;
+    Field boundaries;
+    Field alpha_x;
+    Field alpha_y;
+  };
+
+  DiffusionInit getDiffusionInit() const;
+
+private:
   // Diffusion members
   static constexpr const char *diffusion_key = "Diffusion";
 
@@ -112,5 +146,17 @@ private:
   std::vector<int> pqc_ids;
 
   std::vector<std::string> pqc_sol_order;
+
+public:
+  struct ChemistryInit {
+    Field initial_grid;
+
+    std::string database;
+    std::vector<std::string> pqc_scripts;
+    std::vector<int> pqc_ids;
+    std::vector<std::string> pqc_sol_order;
+  };
+
+  ChemistryInit getChemistryInit() const;
 };
 } // namespace poet

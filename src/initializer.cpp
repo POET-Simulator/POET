@@ -30,6 +30,10 @@ int main(int argc, char **argv) {
 
   init.initializeFromList(setup);
 
+  Rcpp::Function save("saveRDS");
+
+  save(init.exportList(), "init.rds");
+
   //   parseGrid(R, grid, results);
   return EXIT_SUCCESS;
 }
