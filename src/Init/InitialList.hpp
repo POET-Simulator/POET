@@ -93,6 +93,7 @@ private:
 
 public:
   struct DiffusionInit {
+    uint8_t dim;
     std::uint32_t n_cols;
     std::uint32_t n_rows;
 
@@ -151,6 +152,8 @@ private:
 public:
   struct ChemistryInit {
     Field initial_grid;
+
+    uint32_t total_grid_cells;
 
     std::string database;
     std::vector<std::string> pqc_scripts;

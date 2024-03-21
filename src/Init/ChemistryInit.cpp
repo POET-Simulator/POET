@@ -6,6 +6,8 @@ InitialList::ChemistryInit InitialList::getChemistryInit() const {
 
   chem_init.initial_grid = Field(initial_grid);
 
+  chem_init.total_grid_cells = this->n_cols * this->n_rows;
+
   chem_init.database = database;
   chem_init.pqc_scripts = pqc_scripts;
   chem_init.pqc_ids = pqc_ids;

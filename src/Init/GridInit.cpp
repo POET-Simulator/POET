@@ -179,24 +179,4 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
   }
 }
 
-InitialList::DiffusionInit InitialList::getDiffusionInit() const {
-  DiffusionInit diff_init;
-
-  diff_init.n_cols = this->n_cols;
-  diff_init.n_rows = this->n_rows;
-
-  diff_init.s_cols = this->s_cols;
-  diff_init.s_rows = this->s_rows;
-
-  diff_init.constant_cells = this->constant_cells;
-  diff_init.transport_names = this->transport_names;
-
-  diff_init.initial_grid = Field(this->initial_grid);
-  diff_init.boundaries = Field(this->boundaries);
-  diff_init.alpha_x = Field(this->alpha_x);
-  diff_init.alpha_y = Field(this->alpha_y);
-
-  return diff_init;
-}
-
 } // namespace poet
