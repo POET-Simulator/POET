@@ -31,6 +31,9 @@ void InitialList::importList(const Rcpp::List &setup) {
   this->porosity = Rcpp::as<std::vector<double>>(
       setup[static_cast<int>(ExportList::GRID_POROSITY)]);
 
+  this->initial_grid =
+      Rcpp::List(setup[static_cast<int>(ExportList::GRID_INITIAL)]);
+
   this->transport_names = Rcpp::as<std::vector<std::string>>(
       setup[static_cast<int>(ExportList::DIFFU_TRANSPORT)]);
   this->boundaries =
@@ -61,6 +64,7 @@ Rcpp::List InitialList::exportList() {
   out[static_cast<int>(ExportList::GRID_CONSTANT)] =
       Rcpp::wrap(this->constant_cells);
   out[static_cast<int>(ExportList::GRID_POROSITY)] = Rcpp::wrap(this->porosity);
+  out[static_cast<int>(ExportList::GRID_INITIAL)] = this->initial_grid;
 
   out[static_cast<int>(ExportList::DIFFU_TRANSPORT)] =
       Rcpp::wrap(this->transport_names);
