@@ -1,10 +1,11 @@
-//  Time-stamp: "Last modified 2023-08-15 12:12:36 delucia"
-
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
 **
-** Copyright (C) 2018-2023 Marco De Lucia, Max Luebke (GFZ Potsdam)
+** Copyright (C) 2018-2022 Marco De Lucia, Max Luebke (GFZ Potsdam)
+**
+** Copyright (C) 2018-2022 Marco De Lucia (GFZ Potsdam), Max Luebke (University
+** of Potsdam)
 **
 ** POET is free software; you can redistribute it and/or modify it under the
 ** terms of the GNU General Public License as published by the Free Software
@@ -22,104 +23,33 @@
 
 #include "SimParams.hpp"
 
-#include "../Chemistry/enums.hpp"
+#include "Base/Macros.hpp"
 
-#include <algorithm>
-#include <cassert>
 #include <cstdint>
 
-#include <RInside.h>
-#include <Rcpp.h>
-#include <algorithm>
-#include <cassert>
 #include <cstdint>
-#include <iostream>
 #include <string>
-#include <string_view>
 #include <vector>
 
+#include "Base/RInsidePOET.hpp"
+#include "argh.hpp" // Argument handler https://github.com/adishavit/argh
+
 using namespace poet;
-using namespace std;
-using namespace Rcpp;
 
-poet::GridParams::s_GridParams(RInside &R) {
-  auto tmp_n_cells =
-      Rcpp::as<std::vector<uint32_t>>(R.parseEval("mysetup$grid$n_cells"));
-  assert(tmp_n_cells.size() < 3);
+RuntimeParameters::RuntimeParameters(RInsidePOET &R, char *argv[],
+                                     int world_rank_)
+    : world_rank(world_rank_) {
 
-  this->dim = tmp_n_cells.size();
-
-  std::copy(tmp_n_cells.begin(), tmp_n_cells.end(), this->n_cells.begin());
-
-  auto tmp_s_cells =
-      Rcpp::as<std::vector<double>>(R.parseEval("mysetup$grid$s_cells"));
-
-  assert(tmp_s_cells.size() == this->dim);
-
-  std::copy(tmp_s_cells.begin(), tmp_s_cells.end(), this->s_cells.begin());
-
-  this->total_n =
-      (dim == 1 ? this->n_cells[0] : this->n_cells[0] * this->n_cells[1]);
-
-  this->type = Rcpp::as<std::string>(R.parseEval("mysetup$grid$type"));
-}
-
-poet::DiffusionParams::s_DiffusionParams(RInside &R) {
-  this->initial_t =
-      Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$diffusion$init"));
-  this->alpha =
-      Rcpp::as<Rcpp::NumericVector>(R.parseEval("mysetup$diffusion$alpha"));
-  if (Rcpp::as<bool>(
-          R.parseEval("'vecinj_inner' %in% names(mysetup$diffusion)"))) {
-    this->vecinj_inner =
-        Rcpp::as<Rcpp::List>(R.parseEval("mysetup$diffusion$vecinj_inner"));
-  }
-  this->vecinj =
-      Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$diffusion$vecinj"));
-  this->vecinj_index =
-      Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$diffusion$vecinj_index"));
-}
-
-void poet::ChemistryParams::initFromR(RInsidePOET &R) {
-  this->database_path =
-      Rcpp::as<std::string>(R.parseEval("mysetup$chemistry$database"));
-  this->input_script =
-      Rcpp::as<std::string>(R.parseEval("mysetup$chemistry$input_script"));
-
-  if (R.checkIfExists("dht_species", "mysetup$chemistry")) {
-    this->dht_signifs = Rcpp::as<NamedVector<std::uint32_t>>(
-        R.parseEval(("mysetup$chemistry$dht_species")));
-  }
-
-  if (R.checkIfExists("pht_species", "mysetup$chemistry")) {
-    this->pht_signifs = Rcpp::as<NamedVector<std::uint32_t>>(
-        R.parseEval(("mysetup$chemistry$pht_species")));
-  }
-  this->hooks.dht_fill =
-      RHookFunction<bool>(R, "mysetup$chemistry$hooks$dht_fill");
-  this->hooks.dht_fuzz =
-      RHookFunction<std::vector<double>>(R, "mysetup$chemistry$hooks$dht_fuzz");
-  this->hooks.interp_pre = RHookFunction<std::vector<std::size_t>>(
-      R, "mysetup$chemistry$hooks$interp_pre_func");
-  this->hooks.interp_post =
-      RHookFunction<bool>(R, "mysetup$chemistry$hooks$interp_post_func");
-}
-
-SimParams::SimParams(int world_rank_, int world_size_) {
-  this->simparams.world_rank = world_rank_;
-  this->simparams.world_size = world_size_;
-}
-
-int SimParams::parseFromCmdl(char *argv[], RInsidePOET &R) {
   // initialize argh object
   argh::parser cmdl(argv);
 
   // if user asked for help
   if (cmdl[{"help", "h"}]) {
-    if (simparams.world_rank == 0) {
+    if (this->world_rank == 0) {
       MSG("Todo");
       MSG("See README.md for further information.");
     }
+
     return poet::PARSER_HELP;
   }
   // if positional arguments are missing
@@ -242,11 +172,74 @@ int SimParams::parseFromCmdl(char *argv[], RInsidePOET &R) {
   this->chem_params.initFromR(R);
 
   return poet::PARSER_OK;
+};
+
+// poet::GridParams::s_GridParams(RInside &R) {
+//   auto tmp_n_cells =
+//       Rcpp::as<std::vector<uint32_t>>(R.parseEval("mysetup$grid$n_cells"));
+//   assert(tmp_n_cells.size() < 3);
+
+//   this->dim = tmp_n_cells.size();
+
+//   std::copy(tmp_n_cells.begin(), tmp_n_cells.end(), this->n_cells.begin());
+
+//   auto tmp_s_cells =
+//       Rcpp::as<std::vector<double>>(R.parseEval("mysetup$grid$s_cells"));
+
+//   assert(tmp_s_cells.size() == this->dim);
+
+//   std::copy(tmp_s_cells.begin(), tmp_s_cells.end(), this->s_cells.begin());
+
+//   this->total_n =
+//       (dim == 1 ? this->n_cells[0] : this->n_cells[0] * this->n_cells[1]);
+
+//   this->type = Rcpp::as<std::string>(R.parseEval("mysetup$grid$type"));
+// }
+
+// poet::DiffusionParams::s_DiffusionParams(RInside &R) {
+//   this->initial_t =
+//       Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$diffusion$init"));
+//   this->alpha =
+//       Rcpp::as<Rcpp::NumericVector>(R.parseEval("mysetup$diffusion$alpha"));
+//   if (Rcpp::as<bool>(
+//           R.parseEval("'vecinj_inner' %in% names(mysetup$diffusion)"))) {
+//     this->vecinj_inner =
+//         Rcpp::as<Rcpp::List>(R.parseEval("mysetup$diffusion$vecinj_inner"));
+//   }
+//   this->vecinj =
+//       Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$diffusion$vecinj"));
+//   this->vecinj_index =
+//       Rcpp::as<Rcpp::DataFrame>(R.parseEval("mysetup$diffusion$vecinj_index"));
+// }
+
+void poet::ChemistryParams::initFromR(RInsidePOET &R) {
+  // this->database_path =
+  //     Rcpp::as<std::string>(R.parseEval("mysetup$chemistry$database"));
+  // this->input_script =
+  //     Rcpp::as<std::string>(R.parseEval("mysetup$chemistry$input_script"));
+
+  if (R.checkIfExists("dht_species", "mysetup$chemistry")) {
+    this->dht_signifs = Rcpp::as<NamedVector<std::uint32_t>>(
+        R.parseEval(("mysetup$chemistry$dht_species")));
+  }
+
+  if (R.checkIfExists("pht_species", "mysetup$chemistry")) {
+    this->pht_signifs = Rcpp::as<NamedVector<std::uint32_t>>(
+        R.parseEval(("mysetup$chemistry$pht_species")));
+  }
+  this->hooks.dht_fill =
+      RHookFunction<bool>(R, "mysetup$chemistry$hooks$dht_fill");
+  this->hooks.dht_fuzz =
+      RHookFunction<std::vector<double>>(R, "mysetup$chemistry$hooks$dht_fuzz");
+  this->hooks.interp_pre = RHookFunction<std::vector<std::size_t>>(
+      R, "mysetup$chemistry$hooks$interp_pre_func");
+  this->hooks.interp_post =
+      RHookFunction<bool>(R, "mysetup$chemistry$hooks$interp_post_func");
 }
 
-void SimParams::initVectorParams(RInside &R) {}
+void RuntimeParameters::initVectorParams(RInside &R) {}
 
-std::list<std::string> SimParams::validateOptions(argh::parser cmdl) {
+std::list<std::string> RuntimeParameters::validateOptions(argh::parser cmdl) {
   /* store all unknown parameters here */
   std::list<std::string> retList;
 

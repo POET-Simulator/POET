@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tug/Boundary.hpp>
+
 #include <RInside.h>
 #include <Rcpp.h>
 #include <Rcpp/vector/instantiation.h>
@@ -8,7 +10,9 @@
 #include <cstdint>
 
 #include <IPhreeqcPOET.hpp>
+#include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <DataStructures/Field.hpp>
@@ -25,6 +29,8 @@ public:
 
   void importList(const Rcpp::List &setup);
   Rcpp::List exportList();
+
+  Field getInitialGrid() const { return Field(this->initial_grid); }
 
 private:
   RInside &R;
@@ -93,6 +99,9 @@ private:
 
 public:
   struct DiffusionInit {
+    using BoundaryMap =
+        std::map<std::string, std::vector<tug::BoundaryElement<TugType>>>;
+
     uint8_t dim;
     std::uint32_t n_cols;
     std::uint32_t n_rows;
@@ -104,8 +113,8 @@ public:
 
     std::vector<std::string> transport_names;
 
-    Field initial_grid;
-    Field boundaries;
+    BoundaryMap boundaries;
+
     Field alpha_x;
     Field alpha_y;
   };

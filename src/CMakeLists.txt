@@ -1,14 +1,13 @@
-add_library(POETLib OBJECT)
+add_library(POETLib)
 
-target_sources(
-  POETLib 
+target_sources(POETLib 
   PRIVATE
   Init/InitialList.cpp 
   Init/GridInit.cpp 
   Init/DiffusionInit.cpp
   Init/ChemistryInit.cpp
-  PRIVATE 
   DataStructures/Field.cpp
+  Transport/DiffusionModule.cpp
 )
 
 target_include_directories(POETLib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -16,7 +15,7 @@ target_link_libraries(
   POETLib 
   PUBLIC RRuntime
   PUBLIC IPhreeqcPOET
-  PRIVATE tug
+  PUBLIC tug
 )
 
 # add_library(poetlib
@@ -43,7 +42,7 @@ target_link_libraries(
 #   tug
 # )
 
-# target_compile_definitions(poetlib PUBLIC STRICT_R_HEADERS OMPI_SKIP_MPICXX)
+target_compile_definitions(POETLib PUBLIC STRICT_R_HEADERS OMPI_SKIP_MPICXX)
 
 # mark_as_advanced(PHREEQCRM_BUILD_MPI PHREEQCRM_DISABLE_OPENMP)
 # set(PHREEQCRM_DISABLE_OPENMP ON CACHE BOOL "" FORCE)
@@ -65,9 +64,9 @@ file(READ "${PROJECT_SOURCE_DIR}/R_lib/init_r_lib.R" R_INIT_LIB)
 
 configure_file(poet.hpp.in poet.hpp @ONLY)
 
-# add_executable(poet poet.cpp)
-# target_link_libraries(poet PRIVATE poetlib MPI::MPI_C RRuntime)
-# target_include_directories(poet PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+add_executable(poet poet.cpp)
+target_link_libraries(poet PRIVATE POETLib MPI::MPI_C RRuntime)
+target_include_directories(poet PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_executable(poet_init initializer.cpp)
 target_link_libraries(poet_init PRIVATE POETLib RRuntime)

@@ -28,7 +28,7 @@ master_init <- function(setup) {
 
     ## Setup the directory where we will store the results
     verb <- FALSE
-    if (local_rank == 0) {
+    # if (local_rank == 0) {
         verb <- TRUE ## verbosity loading MUFITS results
         if (!dir.exists(fileout)) {
             dir.create(fileout)
@@ -41,25 +41,26 @@ master_init <- function(setup) {
         } else {
             msgm("store_result is ", store_result)
         }
-    } else {
-        
-    }
+    # } else {
+
+    # }
 
     setup$iter <- 1
-    setup$maxiter <- setup$iterations
     setup$timesteps <- setup$timesteps
+    setup$maxiter <- length(setup$timesteps)
+    setup$iterations <- setup$maxiter
     setup$simulation_time <- 0
 
     if (is.null(setup[["store_result"]])) {
         setup$store_result <- TRUE
     }
-    
+
     if (setup$store_result) {
         if (is.null(setup[["out_save"]])) {
             setup$out_save <- seq(1, setup$iterations)
         }
     }
-    
+
     return(setup)
 }
 
@@ -67,31 +68,33 @@ master_init <- function(setup) {
 ## calculated time step if store_result is TRUE and increments the
 ## iteration counter
 master_iteration_end <- function(setup) {
-    iter <- setup$iter
+    # iter <- setup$iter
+    # print(iter)
     ## max digits for iterations
-    dgts <-  as.integer(ceiling(log10(setup$iterations + 1)))
-    ## string format to use in sprintf 
+    iter <- 1
+    dgts <- as.integer(ceiling(log10(1)))
+    ## string format to use in sprintf
     fmt <- paste0("%0", dgts, "d")
-    
+
     ## Write on disk state_T and state_C after every iteration
     ## comprised in setup$out_save
-    if (setup$store_result) {
-        if (iter %in% setup$out_save) {
-            nameout <- paste0(fileout, "/iter_", sprintf(fmt=fmt, iter), ".rds")
-            info <- list(
-                tr_req_dt = as.integer(setup$req_dt)
-                ## tr_allow_dt = setup$allowed_dt,
-                ## tr_inniter = as.integer(setup$inniter)
-            )
-            saveRDS(list(
-                T = setup$state_T, C = setup$state_C,
-                simtime = as.integer(setup$simtime),
-                tr_info = info
-            ), file = nameout)
-            msgm("results stored in <", nameout, ">")
-        }
-    }
-    msgm("done iteration", iter, "/", setup$maxiter)
+    # if (setup$store_result) {
+    #     if (iter %in% setup$out_save) {
+    nameout <- paste0(fileout, "/iter_", sprintf(fmt = fmt, iter), ".rds")
+    info <- list(
+        tr_req_dt = as.integer(1)
+        ## tr_allow_dt = setup$allowed_dt,
+        ## tr_inniter = as.integer(setup$inniter)
+    )
+    saveRDS(list(
+        T = setup$state_T, C = setup$state_C,
+        simtime = as.integer(0),
+        tr_info = info
+    ), file = nameout)
+    msgm("results stored in <", nameout, ">")
+    #     }
+    # }
+    msgm("done iteration", iter, "/", 1)
     setup$iter <- setup$iter + 1
     return(setup)
 }
@@ -104,41 +107,41 @@ slave_chemistry <- function(setup, data) {
     immobile <- setup$immobile
     kin <- setup$kin
     ann <- setup$ann
-    
+
     iter <- setup$iter
     timesteps <- setup$timesteps
     dt <- timesteps[iter]
-    
+
     state_T <- data ## not the global field, but the work-package
-    
+
     ## treat special H+/pH, e-/pe cases
     state_T <- RedModRphree::Act2pH(state_T)
-    
+
     ## reduction of the problem
     if (setup$reduce) {
         reduced <- ReduceStateOmit(state_T, omit = setup$ann)
     } else {
         reduced <- state_T
     }
-    
+
     ## form the PHREEQC input script for the current work package
     inplist <- SplitMultiKin(
         data = reduced, procs = 1, base = base, first = first,
         ann = ann, prop = prop, minerals = immobile, kin = kin, dt = dt
     )
-    
+
     ## if (local_rank==1 & iter==1)
     ##         RPhreeWriteInp("FirstInp", inplist)
-    
+
     tmpC <- RunPQC(inplist, procs = 1, second = TRUE)
-    
+
     ## recompose after the reduction
     if (setup$reduce) {
         state_C <- RecomposeState(tmpC, reduced)
     } else {
         state_C <- tmpC
     }
-    
+
     ## the next line is needed since we don't need all columns of
     ## PHREEQC output
     return(state_C[, prop])
@@ -147,40 +150,40 @@ slave_chemistry <- function(setup, data) {
 ## This function, called by master
 master_chemistry <- function(setup, data) {
     state_T <- setup$state_T
-    
+
     msgm(" chemistry iteration", setup$iter)
-    
+
     ## treat special H+/pH, e-/pe cases
     state_T <- RedModRphree::Act2pH(state_T)
-    
+
     ## reduction of the problem
     if (setup$reduce) {
         reduced <- ReduceStateOmit(state_T, omit = setup$ann)
     } else {
         reduced <- state_T
     }
-    
+
     ## inject data from workers
     res_C <- data
-    
+
     rownames(res_C) <- NULL
-    
+
     ## print(res_C)
-    
+
     if (nrow(res_C) > nrow(reduced)) {
         res_C <- res_C[seq(2, nrow(res_C), by = 2), ]
     }
-    
+
     ## recompose after the reduction
     if (setup$reduce) {
         state_C <- RecomposeState(res_C, reduced)
     } else {
         state_C <- res_C
     }
-    
+
     setup$state_C <- state_C
     setup$reduced <- reduced
-    
+
     return(setup)
 }
 
@@ -188,7 +191,7 @@ master_chemistry <- function(setup, data) {
 ## Adapted version for "reduction"
 ReduceStateOmit <- function(data, omit = NULL, sign = 6) {
     require(mgcv)
-    
+
     rem <- colnames(data)
     if (is.list(omit)) {
         indomi <- match(names(omit), colnames(data))
@@ -196,13 +199,13 @@ ReduceStateOmit <- function(data, omit = NULL, sign = 6) {
     } else {
         datao <- data
     }
-    
+
     datao <- signif(datao, sign)
     red <- mgcv::uniquecombs(datao)
     inds <- attr(red, "index")
     now <- ncol(red)
-    
-    
+
+
     ## reattach the omitted column(s)
     ## FIXME: control if more than one ann is present
     if (is.list(omit)) {
@@ -224,11 +227,11 @@ ReduceStateOmit <- function(data, omit = NULL, sign = 6) {
 ## Attach the name of the calling function to the message displayed on
 ## R's stdout
 msgm <- function(...) {
-    if (local_rank == 0) {
-        fname <- as.list(sys.call(-1))[[1]]
-        prefix <- paste0("R: ", fname, " ::")
-        cat(paste(prefix, ..., "\n"))
-    }
+    # if (local_rank == 0) {
+    fname <- as.list(sys.call(-1))[[1]]
+    prefix <- paste0("R: ", fname, " ::")
+    cat(paste(prefix, ..., "\n"))
+    # }
     invisible()
 }
 
@@ -236,18 +239,17 @@ msgm <- function(...) {
 ## Function called by master R process to store on disk all relevant
 ## parameters for the simulation
 StoreSetup <- function(setup) {
-
     to_store <- vector(mode = "list", length = 4)
     ## names(to_store) <- c("Sim", "Flow", "Transport", "Chemistry", "DHT")
     names(to_store) <- c("Sim", "Transport", "DHT", "Cmdline")
-    
+
     ## read the setup R file, which is sourced in kin.cpp
     tmpbuff <- file(filesim, "r")
     setupfile <- readLines(tmpbuff)
     close.connection(tmpbuff)
-    
+
     to_store$Sim <- setupfile
-    
+
     ## to_store$Flow <- list(
     ##     snapshots  = setup$snapshots,
     ##     gridfile   = setup$gridfile,
@@ -282,22 +284,22 @@ StoreSetup <- function(setup) {
         to_store$DHT <- FALSE
     }
 
-  if (dht_enabled) {
-    to_store$DHT <- list(
-      enabled   = dht_enabled,
-      log       = dht_log
-      #signif    = dht_final_signif,
-      #proptype  = dht_final_proptype
-    )
-  } else {
-    to_store$DHT <- FALSE
-  }
+    if (dht_enabled) {
+        to_store$DHT <- list(
+            enabled   = dht_enabled,
+            log       = dht_log
+            # signif    = dht_final_signif,
+            # proptype  = dht_final_proptype
+        )
+    } else {
+        to_store$DHT <- FALSE
+    }
 
-  saveRDS(to_store, file = paste0(fileout, "/setup.rds"))
-  msgm("initialization stored in ", paste0(fileout, "/setup.rds"))
+    saveRDS(to_store, file = paste0(fileout, "/setup.rds"))
+    msgm("initialization stored in ", paste0(fileout, "/setup.rds"))
 }
 
 GetWorkPackageSizesVector <- function(n_packages, package_size, len) {
-    ids <- rep(1:n_packages, times=package_size, each = 1)[1:len]
+    ids <- rep(1:n_packages, times = package_size, each = 1)[1:len]
     return(as.integer(table(ids)))
 }

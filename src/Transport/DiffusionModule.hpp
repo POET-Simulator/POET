@@ -21,20 +21,13 @@
 #ifndef DIFFUSION_MODULE_H
 #define DIFFUSION_MODULE_H
 
-#include "../Base/Grid.hpp"
-#include "../Base/SimParams.hpp"
-#include "../DataStructures/DataStructures.hpp"
+#include "DataStructures/Field.hpp"
+#include "Init/InitialList.hpp"
 
-#include <tug/BoundaryCondition.hpp>
-#include <tug/Diffusion.hpp>
-
-#include <array>
-#include <cmath>
-#include <cstdint>
-#include <string>
-#include <vector>
+#include <sys/types.h>
 
 namespace poet {
+
 /**
  * @brief Class describing transport simulation
  *
@@ -53,8 +46,8 @@ public:
    *
    * @param R RRuntime object
    */
-  DiffusionModule(const poet::DiffusionParams &diffu_args,
-                  const poet::GridParams &grid_params);
+  DiffusionModule(const InitialList::DiffusionInit &init_list, Field field)
+      : param_list(init_list), transport_field(field){};
 
   /**
    * @brief Run simulation for one iteration
@@ -63,14 +56,6 @@ public:
    *
    */
   void simulate(double dt);
-
-  /**
-   * @brief End simulation
-   *
-   * All measured timings are distributed to the R runtime
-   *
-   */
-  void end();
 
   /**
    * @brief Get the transport time
@@ -84,33 +69,17 @@ public:
    *
    * \return Reference to the diffusion field.
    */
-  Field &getField() { return this->t_field; }
+  Field &getField() { return this->transport_field; }
 
 private:
   /**
    * @brief Instance of RRuntime
    *
    */
-  // RRuntime &R;
 
-  enum { DIM_1D = 1, DIM_2D };
+  InitialList::DiffusionInit param_list;
 
-  void initialize(const poet::DiffusionParams &args,
-                  std::uint32_t n_grid_cells);
-
-  uint8_t dim;
-
-  uint32_t prop_count;
-
-  tug::diffusion::TugInput diff_input;
-  std::vector<double> alpha;
-  std::vector<uint32_t> index_constant_cells;
-  std::vector<std::string> prop_names;
-
-  std::vector<tug::bc::BoundaryCondition> bc_vec;
-  Field t_field;
-
-  uint32_t n_cells_per_prop;
+  Field transport_field;
 
   /**
    * @brief time spent for transport

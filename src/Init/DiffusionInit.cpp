@@ -5,6 +5,7 @@
 #include <map>
 #include <set>
 
+#include "DataStructures/Field.hpp"
 #include "InitialList.hpp"
 
 #include <Rcpp/proxy/ProtectedProxy.h>
@@ -14,6 +15,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace poet {
@@ -175,6 +177,42 @@ void InitialList::initDiffusion(const Rcpp::List &diffusion_input) {
   // R.parseEval("print(alpha_y)");
 }
 
+InitialList::DiffusionInit::BoundaryMap
+RcppListToBoundaryMap(const std::vector<std::string> &trans_names,
+                      const Rcpp::List &bound_list, uint32_t n_cols,
+                      uint32_t n_rows) {
+  InitialList::DiffusionInit::BoundaryMap map;
+
+  for (const auto &name : trans_names) {
+    const Rcpp::List &conc_list = bound_list[name];
+
+    tug::Boundary<TugType> bc(n_rows, n_cols);
+
+    for (const auto &[tug_index, r_init_name] : tug_side_mapping) {
+      const Rcpp::List &side_list = conc_list[tug_index];
+
+      const Rcpp::NumericVector &type = side_list["type"];
+      const Rcpp::NumericVector &value = side_list["value"];
+
+      if (type.size() != value.size()) {
+        throw std::runtime_error(
+            "Boundary type and value are not the same length");
+      }
+
+      for (std::size_t i = 0; i < type.size(); i++) {
+        if (type[i] == tug::BC_TYPE_CONSTANT) {
+          bc.setBoundaryElementConstant(static_cast<tug::BC_SIDE>(tug_index), i,
+                                        value[i]);
+        }
+      }
+    }
+
+    map[name] = bc.serialize();
+  }
+
+  return map;
+}
+
 InitialList::DiffusionInit InitialList::getDiffusionInit() const {
   DiffusionInit diff_init;
 
@@ -189,8 +227,8 @@ InitialList::DiffusionInit InitialList::getDiffusionInit() const {
   diff_init.constant_cells = this->constant_cells;
   diff_init.transport_names = this->transport_names;
 
-  diff_init.initial_grid = Field(this->initial_grid);
-  diff_init.boundaries = Field(this->boundaries);
+  diff_init.boundaries = RcppListToBoundaryMap(
+      this->transport_names, this->boundaries, this->n_cols, this->n_rows);
   diff_init.alpha_x = Field(this->alpha_x);
   diff_init.alpha_y = Field(this->alpha_y);
 

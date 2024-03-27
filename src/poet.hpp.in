@@ -1,12 +1,79 @@
-#ifndef POET_H
-#define POET_H
+/*
+** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
+** Potsdam)
+**
+** Copyright (C) 2018-2023 Marco De Lucia, Max Luebke (GFZ Potsdam)
+**
+** Copyright (C) 2023-2024 Max Luebke (University of Potsdam)
+**
+** POET is free software; you can redistribute it and/or modify it under the
+** terms of the GNU General Public License as published by the Free Software
+** Foundation; either version 2 of the License, or (at your option) any later
+** version.
+**
+** POET is distributed in the hope that it will be useful, but WITHOUT ANY
+** WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+** A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+**
+** You should have received a copy of the GNU General Public License along with
+** this program; if not, write to the Free Software Foundation, Inc., 51
+** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+*/
 
+#pragma once
+
+#include <set>
 #include <string>
+#include <vector>
+
+#include <Rcpp.h>
+
 static const char *poet_version = "@POET_VERSION@";
 
 // using the Raw string literal to avoid escaping the quotes
-static inline std::string kin_r_library = R"(@R_KIN_LIB@)";
+static const inline std::string kin_r_library = R"(@R_KIN_LIB@)";
 
-static inline std::string init_r_library = R"(@R_INIT_LIB@)";
+static const inline std::string init_r_library = R"(@R_INIT_LIB@)";
 
-#endif // POET_H
+static const inline std::string r_runtime_parameters = "mysetup";
+
+const std::set<std::string> flaglist{"ignore-result", "dht", "P", "progress",
+                                     "interp"};
+const std::set<std::string> paramlist{
+    "work-package-size", "dht-strategy", "dht-size",   "dht-snaps",
+    "dht-file",          "interp-size",  "interp-min", "interp-bucket-entries"};
+
+struct RuntimeParameters {
+  std::vector<double> timesteps;
+
+  bool print_progressbar;
+
+  Rcpp::List init_params;
+
+  struct ChemistryParams {
+    // std::string database_path;
+    // std::string input_script;
+
+    //   bool use_dht;
+    //   std::uint64_t dht_size;
+    //   int dht_snaps;
+    //   std::string dht_file;
+    //   std::string dht_outdir;
+    //   NamedVector<std::uint32_t> dht_signifs;
+
+    //   bool use_interp;
+    //   std::uint64_t pht_size;
+    //   std::uint32_t pht_max_entries;
+    //   std::uint32_t interp_min_entries;
+    //   NamedVector<std::uint32_t> pht_signifs;
+
+    //   struct Chem_Hook_Functions {
+    //     RHookFunction<bool> dht_fill;
+    //     RHookFunction<std::vector<double>> dht_fuzz;
+    //     RHookFunction<std::vector<std::size_t>> interp_pre;
+    //     RHookFunction<bool> interp_post;
+    //   } hooks;
+
+    //   void initFromR(RInsidePOET &R);
+  };
+};

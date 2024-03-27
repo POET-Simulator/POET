@@ -38,10 +38,10 @@ void InitialList::importList(const Rcpp::List &setup) {
       setup[static_cast<int>(ExportList::DIFFU_TRANSPORT)]);
   this->boundaries =
       Rcpp::List(setup[static_cast<int>(ExportList::DIFFU_BOUNDARIES)]);
-  this->alpha_x = Rcpp::as<std::vector<double>>(
-      setup[static_cast<int>(ExportList::DIFFU_ALPHA_X)]);
-  this->alpha_y = Rcpp::as<std::vector<double>>(
-      setup[static_cast<int>(ExportList::DIFFU_ALPHA_Y)]);
+  this->alpha_x =
+      Rcpp::List(setup[static_cast<int>(ExportList::DIFFU_ALPHA_X)]);
+  this->alpha_y =
+      Rcpp::List(setup[static_cast<int>(ExportList::DIFFU_ALPHA_Y)]);
 
   this->database =
       Rcpp::as<std::string>(setup[static_cast<int>(ExportList::CHEM_DATABASE)]);
