@@ -29,7 +29,6 @@
 
 #include <cstdint>
 #include <string>
-#include <vector>
 
 #include "Base/RInsidePOET.hpp"
 #include "argh.hpp" // Argument handler https://github.com/adishavit/argh

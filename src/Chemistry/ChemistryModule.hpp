@@ -2,16 +2,17 @@
 #ifndef CHEMISTRYMODULE_H_
 #define CHEMISTRYMODULE_H_
 
-#include "../Base/SimParams.hpp"
-#include "../DataStructures/DataStructures.hpp"
+#include "DataStructures/Field.hpp"
+#include "DataStructures/NamedVector.hpp"
+
+#include "ChemistryDefs.hpp"
+
+#include "Init/InitialList.hpp"
 #include "SurrogateModels/DHT_Wrapper.hpp"
 #include "SurrogateModels/Interpolation.hpp"
 
-#include <IrmResult.h>
-#include <PhreeqcRM.h>
-
+#include "IPhreeqcPOET.hpp"
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -24,7 +25,7 @@ namespace poet {
  * \brief Wrapper around PhreeqcRM to provide POET specific parallelization with
  * easy access.
  */
-class ChemistryModule : public PhreeqcRM {
+class ChemistryModule {
 public:
   /**
    * Creates a new instance of Chemistry module with given grid cell count, work
@@ -41,44 +42,39 @@ public:
    * \param wp_size Count of grid cells to fill each work package at maximum.
    * \param communicator MPI communicator to distribute work in.
    */
-  ChemistryModule(uint32_t nxyz, uint32_t wp_size, std::uint32_t maxiter,
-                  const ChemistryParams &chem_param, MPI_Comm communicator);
+  ChemistryModule(uint32_t wp_size,
+                  const InitialList::ChemistryInit &chem_params,
+                  MPI_Comm communicator);
 
   /**
    * Deconstructor, which frees DHT data structure if used.
    */
   ~ChemistryModule();
 
-  /**
-   * Parses the input script and extract information needed during runtime.
-   *
-   * **Only run by master**.
-   *
-   * Database must be loaded beforehand.
-   *
-   * \param input_script_path Path to input script to parse.
-   */
-  void RunInitFile(const std::string &input_script_path);
-
+  void masterSetField(Field field);
   /**
    * Run the chemical simulation with parameters set.
    */
-  void RunCells();
+  void simulate(double dt);
 
   /**
    * Returns the chemical field.
    */
-  auto GetField() const { return this->chem_field; }
+  auto &GetField() { return this->chem_field; }
   /**
    * Returns all known species names, including not only aqueous species, but
    * also equilibrium, exchange, surface and kinetic reactants.
    */
-  auto GetPropNames() const { return this->prop_names; }
+  // auto GetPropNames() const { return this->prop_names; }
 
   /**
    * Return the accumulated runtime in seconds for chemical simulation.
    */
   auto GetChemistryTime() const { return this->chem_t; }
+
+  void setFilePadding(std::uint32_t maxiter) {
+    this->file_pad = std::ceil(std::log10(maxiter + 1));
+  }
 
   /**
    * Create a new worker instance inside given MPI communicator.
@@ -117,17 +113,6 @@ public:
     DHT_SNAPS_SIMEND,       //!< only output of snapshot after simulation
     DHT_SNAPS_ITEREND       //!< output snapshots after each iteration
   };
-
-  /**
-   * **This function has to be run!**
-   *
-   * Merge initial values from existing module with the chemistry module and set
-   * according internal variables.
-   *
-   * \param other Field to merge chemistry with. Most likely it is something
-   * like the diffusion field.
-   */
-  void initializeField(const Field &other);
 
   /**
    * **Only called by workers!** Start the worker listening loop.
@@ -243,9 +228,7 @@ protected:
                         const NamedVector<std::uint32_t> &key_species);
 
   enum {
-    CHEM_INIT,
-    CHEM_WP_SIZE,
-    CHEM_INIT_SPECIES,
+    CHEM_FIELD_INIT,
     CHEM_DHT_ENABLE,
     CHEM_DHT_SIGNIF_VEC,
     CHEM_DHT_SNAPS,
@@ -294,7 +277,7 @@ protected:
   using worker_list_t = std::vector<struct worker_info_s>;
   using workpointer_t = std::vector<double>::iterator;
 
-  void MasterRunParallel();
+  void MasterRunParallel(double dt);
   void MasterRunSequential();
 
   void MasterSendPkgs(worker_list_t &w_list, workpointer_t &work_pointer,
@@ -320,8 +303,8 @@ protected:
   void WorkerPerfToMaster(int type, const struct worker_s &timings);
   void WorkerMetricsToMaster(int type);
 
-  IRM_RESULT WorkerRunWorkPackage(WorkPackage &work_package, double dSimTime,
-                                  double dTimestep);
+  void WorkerRunWorkPackage(WorkPackage &work_package, double dSimTime,
+                            double dTimestep);
 
   std::vector<uint32_t> CalculateWPSizesVector(uint32_t n_cells,
                                                uint32_t wp_size) const;
@@ -372,21 +355,18 @@ protected:
 
   bool print_progessbar{false};
 
-  std::uint32_t file_pad;
+  std::uint32_t file_pad{1};
 
   double chem_t{0.};
 
   uint32_t n_cells = 0;
   uint32_t prop_count = 0;
-  std::vector<std::string> prop_names;
 
   Field chem_field;
 
-  static constexpr int MODULE_COUNT = 5;
+  const InitialList::ChemistryInit &params;
 
-  const ChemistryParams &params;
-
-  std::array<std::uint32_t, MODULE_COUNT> speciesPerModule{};
+  std::map<int, std::unique_ptr<IPhreeqcPOET>> phreeqc_instances;
 };
 } // namespace poet
 

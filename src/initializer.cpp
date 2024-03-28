@@ -18,7 +18,9 @@ int main(int argc, char **argv) {
   R.parseEvalQ(init_r_library);
 
   const std::string script = argv[1];
-  R.parseEvalQ("source('" + script + "')");
+  Rcpp::Function source_R("source");
+
+  source_R(script);
 
   Rcpp::List setup = R["setup"];
 

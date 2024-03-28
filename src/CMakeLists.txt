@@ -8,6 +8,14 @@ target_sources(POETLib
   Init/ChemistryInit.cpp
   DataStructures/Field.cpp
   Transport/DiffusionModule.cpp
+  Chemistry/ChemistryModule.cpp
+  Chemistry/MasterFunctions.cpp
+  Chemistry/WorkerFunctions.cpp
+  Chemistry/SurrogateModels/DHT_Wrapper.cpp
+  Chemistry/SurrogateModels/DHT.c
+  Chemistry/SurrogateModels/HashFunctions.cpp
+  Chemistry/SurrogateModels/InterpolationModule.cpp
+  Chemistry/SurrogateModels/ProximityHashTable.cpp
 )
 
 target_include_directories(POETLib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -16,6 +24,7 @@ target_link_libraries(
   PUBLIC RRuntime
   PUBLIC IPhreeqcPOET
   PUBLIC tug
+  PUBLIC MPI::MPI_C
 )
 
 # add_library(poetlib

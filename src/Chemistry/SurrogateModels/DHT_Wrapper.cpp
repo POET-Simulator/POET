@@ -22,13 +22,14 @@
 
 #include "DHT_Wrapper.hpp"
 
+#include "Rounding.hpp"
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
 #include <stdexcept>
 #include <vector>
 

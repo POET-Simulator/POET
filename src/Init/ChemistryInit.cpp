@@ -4,8 +4,6 @@ namespace poet {
 InitialList::ChemistryInit InitialList::getChemistryInit() const {
   ChemistryInit chem_init;
 
-  chem_init.initial_grid = Field(initial_grid);
-
   chem_init.total_grid_cells = this->n_cols * this->n_rows;
 
   chem_init.database = database;

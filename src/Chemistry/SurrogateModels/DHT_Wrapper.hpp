@@ -23,19 +23,18 @@
 #ifndef DHT_WRAPPER_H
 #define DHT_WRAPPER_H
 
-#include "../../Base/RInsidePOET.hpp"
+#include "Base/RInsidePOET.hpp"
+#include "DataStructures/NamedVector.hpp"
+
 #include "../../Base/SimParams.hpp"
-#include "../../DataStructures/DataStructures.hpp"
-#include "../enums.hpp"
-#include "HashFunctions.hpp"
+#include "Chemistry/ChemistryDefs.hpp"
+
 #include "LookupKey.hpp"
-#include "Rounding.hpp"
 
 #include <array>
 #include <cstdint>
 #include <limits>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 

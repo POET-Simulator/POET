@@ -1,8 +1,8 @@
 //  Time-stamp: "Last modified 2023-08-16 17:02:31 mluebke"
 #include "Interpolation.hpp"
 
-#include "../../DataStructures/DataStructures.hpp"
 #include "DHT_Wrapper.hpp"
+#include "DataStructures/NamedVector.hpp"
 #include "HashFunctions.hpp"
 #include "LookupKey.hpp"
 #include "Rounding.hpp"

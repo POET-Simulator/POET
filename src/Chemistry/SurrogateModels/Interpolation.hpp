@@ -3,14 +3,12 @@
 #ifndef INTERPOLATION_H_
 #define INTERPOLATION_H_
 
-#include "../../Base/SimParams.hpp"
-#include "../../DataStructures/DataStructures.hpp"
+#include "DataStructures/NamedVector.hpp"
+
 #include "DHT_Wrapper.hpp"
 #include "LookupKey.hpp"
 #include "Rounding.hpp"
 
-#include <cassert>
-#include <iostream>
 #include <list>
 #include <memory>
 #include <mpi.h>
@@ -22,7 +20,6 @@ extern "C" {
 }
 
 #include <cstdint>
-#include <functional>
 #include <unordered_map>
 #include <vector>
 

@@ -160,8 +160,6 @@ private:
 
 public:
   struct ChemistryInit {
-    Field initial_grid;
-
     uint32_t total_grid_cells;
 
     std::string database;

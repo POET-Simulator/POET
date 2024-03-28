@@ -39,9 +39,9 @@ static Rcpp::NumericMatrix pqcScriptToGrid(IPhreeqcPOET &phreeqc, RInside &R) {
 
 static inline Rcpp::List matToGrid(RInside &R, const Rcpp::NumericMatrix &mat,
                                    const Rcpp::NumericMatrix &grid) {
-  Rcpp::Function pqc_to_grid("pqc_to_grid");
+  Rcpp::Function pqc_to_grid_R("pqc_to_grid");
 
-  return pqc_to_grid(mat, grid);
+  return pqc_to_grid_R(mat, grid);
 }
 
 static inline std::map<int, std::string>
