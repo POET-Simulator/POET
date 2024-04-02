@@ -93,7 +93,7 @@ master_iteration_end <- function(setup,iter) {
             msgm("results stored in <", nameout, ">")
         }
     }
-    msgm("done iteration", iter, "/", 1)
+    msgm("done iteration", iter, "/", length(setup$timesteps))
     setup$iter <- setup$iter + 1
     return(setup)
 }
