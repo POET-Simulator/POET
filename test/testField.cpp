@@ -1,15 +1,12 @@
 #include <Rcpp.h>
-#include <algorithm>
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <doctest/doctest.h>
-#include <iostream>
 #include <string>
 #include <vector>
 
 #include <Base/RInsidePOET.hpp>
-#include <DataStructures/DataStructures.hpp>
+#include <DataStructures/Field.hpp>
 
 #include "testDataStructures.hpp"
 
