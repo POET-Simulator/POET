@@ -28,7 +28,7 @@ init_cell <- list(
 
 grid <- list(
   n_cells = c(n, m),
-  s_cells = c(n*10, m*10),
+  s_cells = c(n, m),
   type = types[1]
 )
 
@@ -54,15 +54,6 @@ init_adv <- c(
 ## list of boundary conditions/inner nodes
 vecinj_adv <- list(
   list(
-    "H" = 110.124,
-    "O" = 55.0622,
-    "Charge" = -1.217e-09,
-    "C(4)" = 0,
-    "Ca" = 0,
-    "Cl" = 0,
-    "Mg" = 0
-  ),
-  list(
     "H" = 110.683,
     "O" = 55.3413,
     "Charge" = 1.90431e-16,
@@ -70,11 +61,27 @@ vecinj_adv <- list(
     "Ca" = 0,
     "Cl" = 0.002,
     "Mg" = 0.001
+  ),
+  list(
+    # "H" = 110.124,
+    # "O" = 55.0622,
+    # "Charge" = -1.216307659761E-09,
+    # "C(4)" = 1.230067028174E-04,
+    # "Ca" = 1.230067028174E-04,
+    # "Cl" = 0,
+    # "Mg" = 0
+    "H" = 110.124,
+    "O" = 55.0622,
+    "Charge" = -1.217e-09,
+    "C(4)" = 0,
+    "Ca" = 0,
+    "Cl" = 0,
+    "Mg" = 0
   )
 )
 
 vecinj_inner <- list(
-  l1 = c(2, 1, 1)
+  # l1 = c(2, 1, 1)
 )
 
 # Create a list to store grid cell information
@@ -91,8 +98,7 @@ get_index <- function(row, col) {
   return(index)
 }
 
-flux_val <- 0.4
-
+flux_val <- 0.005
 # Loop through each row and column to populate the flux_list
 for (row in 1:n) {
   for (col in 1:m) {
@@ -197,8 +203,10 @@ chemistry <- list(
 #################################################################
 
 
-iterations <- 1000
-dt <- 100
+iterations <- 500
+dt <- 600
+
+out_save <- c(1, iterations)
 
 setup <- list(
   grid = grid,
@@ -207,5 +215,5 @@ setup <- list(
   iterations = iterations,
   timesteps = rep(dt, iterations),
   store_result = TRUE,
-  out_save = c(1, iterations)
+  out_save = out_save
 )

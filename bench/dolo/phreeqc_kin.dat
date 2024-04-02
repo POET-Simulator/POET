@@ -1265,7 +1265,7 @@ Calcite
 	10 moles=0
 	20 IF ((M<=0) and (SI("Calcite")<0)) then goto 200
 	30 R=8.314462 # in J*K-1*mol-1
-	40 deltaT=1/TK-1/298.15 # wird für 40°C berechnet; TK is temp in Kelvin
+	40 deltaT=1/TK-1/298.15 # wird fï¿½r 40ï¿½C berechnet; TK is temp in Kelvin
 	50 e=2.718282 # Eulersche Zahl
 	## mechanism 1 (acid)
 	60 Ea=14400     # Aktivierungsenergie in J/mol => 65.0 in KJ/mol
@@ -1277,7 +1277,7 @@ Calcite
 	120 mech_c=(10^logK25)*(e^(-Ea/R*deltaT))
 	130 rate=mech_a+mech_c
 	140 IF (SI("Calcite")<0 AND M>0) then moles=parm(1)*rate*(1-SR("Calcite")) # dissolution
-        ## 145 IF SI("Calcite")>0 then moles=parm(1)*M*rate*(-1+SR("Calcite")) # precipitation
+    ## 145 IF SI("Calcite")>0 then moles=parm(1)*M*rate*(-1+SR("Calcite")) # precipitation
 	## 150 moles=parm(1)*rate*(1-SR("Calcite")) # precipitation
 	200 save moles*time
 -end
@@ -1287,7 +1287,7 @@ Dolomite
 	10 moles=0
 	20 IF ((M<=0) and (SI("Dolomite")<0)) then goto 200
 	30 R=8.314462 # in J*K-1*mol-1
-	40 deltaT=1/TK-1/298.15 # wird für 40°C berechnet; TK is temp in Kelvin
+	40 deltaT=1/TK-1/298.15 # wird fï¿½r 40ï¿½C berechnet; TK is temp in Kelvin
 	50 e=2.718282 # Eulersche Zahl
 	## mechanism 1 (acid)
 	60 Ea=36100     # Aktivierungsenergie in J/mol => 65.0 in KJ/mol
