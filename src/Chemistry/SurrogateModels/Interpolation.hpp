@@ -6,6 +6,7 @@
 #include "DataStructures/NamedVector.hpp"
 
 #include "DHT_Wrapper.hpp"
+#include "Init/InitialList.hpp"
 #include "LookupKey.hpp"
 #include "Rounding.hpp"
 
@@ -162,7 +163,7 @@ public:
                       const NamedVector<std::uint32_t> &interp_key_signifs,
                       const std::vector<std::int32_t> &dht_key_indices,
                       const std::vector<std::string> &out_names,
-                      const ChemistryParams::Chem_Hook_Functions &hooks);
+                      const InitialList::ChemistryHookFunctions &hooks);
 
   enum result_status { RES_OK, INSUFFICIENT_DATA, NOT_NEEDED };
 
@@ -258,7 +259,7 @@ private:
     return out_key;
   }
 
-  const ChemistryParams::Chem_Hook_Functions &hooks;
+  const InitialList::ChemistryHookFunctions &hooks;
   const std::vector<std::string> &out_names;
   const std::vector<std::string> dht_names;
 };

@@ -110,64 +110,55 @@ ParseRet parseInitValues(char **argv, RInsidePOET &R,
   cmdl("work-package-size", CHEM_DEFAULT_WORK_PACKAGE_SIZE) >>
       params.work_package_size;
 
-  // /* Parse DHT arguments */
-  // chem_params.use_dht = cmdl["dht"];
-  // chem_params.use_interp = cmdl["interp"];
-  // // cout << "CPP: DHT is " << ( dht_enabled ? "ON" : "OFF" ) << '\n';
+  /* Parse DHT arguments */
+  params.use_dht = cmdl["dht"];
+  params.use_interp = cmdl["interp"];
+  // cout << "CPP: DHT is " << ( dht_enabled ? "ON" : "OFF" ) << '\n';
 
-  // cmdl("dht-size", DHT_SIZE_PER_PROCESS_MB) >> chem_params.dht_size;
-  // // cout << "CPP: DHT size per process (Byte) = " << dht_size_per_process <<
-  // // endl;
+  cmdl("dht-size", CHEM_DHT_SIZE_PER_PROCESS_MB) >> params.dht_size;
+  // cout << "CPP: DHT size per process (Byte) = " << dht_size_per_process <<
+  // endl;
 
-  // cmdl("dht-snaps", 0) >> chem_params.dht_snaps;
+  cmdl("dht-snaps", 0) >> params.dht_snaps;
 
-  // cmdl("dht-file") >> chem_params.dht_file;
-  // /*Parse work package size*/
-  // cmdl("work-package-size", WORK_PACKAGE_SIZE_DEFAULT) >> simparams.wp_size;
+  params.use_interp = cmdl["interp"];
+  cmdl("interp-size", 100) >> params.interp_size;
+  cmdl("interp-min", 5) >> params.interp_min_entries;
+  cmdl("interp-bucket-entries", 20) >> params.interp_bucket_entries;
 
-  // cmdl("interp-size", 100) >> chem_params.pht_size;
-  // cmdl("interp-min", 5) >> chem_params.interp_min_entries;
-  // cmdl("interp-bucket-entries", 20) >> chem_params.pht_max_entries;
-
-  // /*Parse output options*/
+  /*Parse output options*/
   // simparams.store_result = !cmdl["ignore-result"];
 
-  // chem_params.use_interp = cmdl["interp"];
-  // cmdl("interp-size", 100) >> chem_params.pht_size;
-  // cmdl("interp-min", 5) >> chem_params.interp_min_entries;
-  // cmdl("interp-bucket-entries", 20) >> chem_params.pht_max_entries;
-
-  // /*Parse output options*/
+  /*Parse output options*/
   // simparams.store_result = !cmdl["ignore-result"];
 
-  // if (simparams.world_rank == 0) {
-  //   MSG("Complete results storage is " + BOOL_PRINT(simparams.store_result));
-  //   MSG("Work Package Size: " + std::to_string(simparams.wp_size));
-  //   MSG("DHT is " + BOOL_PRINT(chem_params.use_dht));
+  if (MY_RANK == 0) {
+    // MSG("Complete results storage is " + BOOL_PRINT(simparams.store_result));
+    MSG("Work Package Size: " + std::to_string(params.work_package_size));
+    MSG("DHT is " + BOOL_PRINT(params.use_dht));
 
-  //   if (chem_params.use_dht) {
-  //     MSG("DHT strategy is " + std::to_string(simparams.dht_strategy));
-  //     // MDL: these should be outdated (?)
-  //     // MSG("DHT key default digits (ignored if 'signif_vector' is "
-  //     // 	"defined) = "
-  //     // 	 << simparams.dht_significant_digits);
-  //     // MSG("DHT logarithm before rounding: "
-  //     // 	 << (simparams.dht_log ? "ON" : "OFF"));
-  //     MSG("DHT size per process (Megabyte) = " +
-  //         std::to_string(chem_params.dht_size));
-  //     MSG("DHT save snapshots is " + BOOL_PRINT(chem_params.dht_snaps));
-  //     MSG("DHT load file is " + chem_params.dht_file);
-  //   }
+    if (params.use_dht) {
+      // MSG("DHT strategy is " + std::to_string(simparams.dht_strategy));
+      // MDL: these should be outdated (?)
+      // MSG("DHT key default digits (ignored if 'signif_vector' is "
+      // 	"defined) = "
+      // 	 << simparams.dht_significant_digits);
+      // MSG("DHT logarithm before rounding: "
+      // 	 << (simparams.dht_log ? "ON" : "OFF"));
+      MSG("DHT size per process (Megabyte) = " +
+          std::to_string(params.dht_size));
+      MSG("DHT save snapshots is " + BOOL_PRINT(params.dht_snaps));
+      // MSG("DHT load file is " + chem_params.dht_file);
+    }
 
-  //   if (chem_params.use_interp) {
-  //     MSG("PHT interpolation enabled: " +
-  //     BOOL_PRINT(chem_params.use_interp)); MSG("PHT interp-size = " +
-  //     std::to_string(chem_params.pht_size)); MSG("PHT interp-min  = " +
-  //         std::to_string(chem_params.interp_min_entries));
-  //     MSG("PHT interp-bucket-entries = " +
-  //         std::to_string(chem_params.pht_max_entries));
-  //   }
-  // }
+    if (params.use_interp) {
+      MSG("PHT interpolation enabled: " + BOOL_PRINT(params.use_interp));
+      MSG("PHT interp-size = " + std::to_string(params.interp_size));
+      MSG("PHT interp-min  = " + std::to_string(params.interp_min_entries));
+      MSG("PHT interp-bucket-entries = " +
+          std::to_string(params.interp_bucket_entries));
+    }
+  }
 
   std::string init_file;
   std::string runtime_file;
@@ -225,50 +216,6 @@ ParseRet parseInitValues(char **argv, RInsidePOET &R,
   return ParseRet::PARSER_OK;
 }
 
-// void set_chem_parameters(poet::ChemistryModule &chem, uint32_t wp_size,
-//                          const std::string &database_path) {
-//   chem.SetErrorHandlerMode(1);
-//   chem.SetComponentH2O(false);
-//   chem.SetRebalanceFraction(0.5);
-//   chem.SetRebalanceByCell(true);
-//   chem.UseSolutionDensityVolume(false);
-//   chem.SetPartitionUZSolids(false);
-
-//   // Set concentration units
-//   // 1, mg/L; 2, mol/L; 3, kg/kgs
-//   chem.SetUnitsSolution(2);
-//   // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
-//   chem.SetUnitsPPassemblage(1);
-//   // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
-//   chem.SetUnitsExchange(1);
-//   // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
-//   chem.SetUnitsSurface(1);
-//   // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
-//   chem.SetUnitsGasPhase(1);
-//   // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
-//   chem.SetUnitsSSassemblage(1);
-//   // 0, mol/L cell; 1, mol/L water; 2 mol/L rock
-//   chem.SetUnitsKinetics(1);
-
-//   // Set representative volume
-//   std::vector<double> rv;
-//   rv.resize(wp_size, 1.0);
-//   chem.SetRepresentativeVolume(rv);
-
-//   // Set initial porosity
-//   std::vector<double> por;
-//   por.resize(wp_size, 1);
-//   chem.SetPorosity(por);
-
-//   // Set initial saturation
-//   std::vector<double> sat;
-//   sat.resize(wp_size, 1.0);
-//   chem.SetSaturation(sat);
-
-//   // Load database
-//   chem.LoadDatabase(database_path);
-// }
-
 static Rcpp::List RunMasterLoop(RInside &R, const RuntimeParameters &params,
                                 DiffusionModule &diffusion,
                                 ChemistryModule &chem) {
@@ -279,20 +226,9 @@ static Rcpp::List RunMasterLoop(RInside &R, const RuntimeParameters &params,
 
   double sim_time = .0;
 
-  // ChemistryModule chem(nxyz_master, params.getNumParams().wp_size, maxiter,
-  //                      params.getChemParams(), MPI_COMM_WORLD);
-
-  // set_chem_parameters(chem, nxyz_master,
-  // params.getChemParams().database_path);
-  // chem.RunInitFile(params.getChemParams().input_script);
-
-  // poet::ChemistryModule::SingleCMap init_df =
-  // DFToHashMap(d_params.initial_t);
-  // chem.initializeField(diffusion.getField());
-
-  // if (params.getNumParams().print_progressbar) {
-  chem.setProgressBarPrintout(true);
-  // }
+  if (params.print_progressbar) {
+    chem.setProgressBarPrintout(true);
+  }
 
   /* SIMULATION LOOP */
 
@@ -405,17 +341,16 @@ static Rcpp::List RunMasterLoop(RInside &R, const RuntimeParameters &params,
 int main(int argc, char *argv[]) {
   double dSimTime, sim_end;
 
-  int world_size, world_rank;
+  int world_size;
 
   MPI_Init(&argc, &argv);
 
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-
-  MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+  MPI_Comm_rank(MPI_COMM_WORLD, &MY_RANK);
 
   RInsidePOET &R = RInsidePOET::getInstance();
 
-  if (world_rank == 0) {
+  if (MY_RANK == 0) {
     MSG("Running POET version " + std::string(poet_version));
   }
 
@@ -437,18 +372,29 @@ int main(int argc, char *argv[]) {
   InitialList init_list(R);
   init_list.importList(run_params.init_params);
 
-  MSG("RInside initialized on process " + std::to_string(world_rank));
+  MSG("RInside initialized on process " + std::to_string(MY_RANK));
 
   ChemistryModule chemistry(run_params.work_package_size,
                             init_list.getChemistryInit(), MPI_COMM_WORLD);
 
-  if (world_rank > 0) {
+  const ChemistryModule::SurrogateSetup surr_setup = {
+      init_list.getInitialGrid().GetProps(),
+      run_params.use_dht,
+      run_params.dht_size,
+      run_params.use_interp,
+      run_params.interp_bucket_entries,
+      run_params.interp_size,
+      run_params.interp_min_entries};
+
+  chemistry.masterEnableSurrogates(surr_setup);
+
+  if (MY_RANK > 0) {
 
     chemistry.WorkerLoop();
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    MSG("finished, cleanup of process " + std::to_string(world_rank));
+    MSG("finished, cleanup of process " + std::to_string(MY_RANK));
 
     MPI_Finalize();
 
@@ -456,7 +402,7 @@ int main(int argc, char *argv[]) {
   }
 
   // R.parseEvalQ("mysetup <- setup");
-  // // if (world_rank == 0) { // get timestep vector from
+  // // if (MY_RANK == 0) { // get timestep vector from
   // // grid_init function ... //
   std::string master_init_code = "mysetup <- master_init(setup=mysetup)";
   R.parseEval(master_init_code);
@@ -464,13 +410,13 @@ int main(int argc, char *argv[]) {
   // run_params.initVectorParams(R);
 
   // MDL: store all parameters
-  if (world_rank == 0) {
+  if (MY_RANK == 0) {
     MSG("Calling R Function to store calling parameters");
     // R.parseEvalQ("StoreSetup(setup=mysetup)");
   }
 
-  if (world_rank == 0) {
-    MSG("Init done on process with rank " + std::to_string(world_rank));
+  if (MY_RANK == 0) {
+    MSG("Init done on process with rank " + std::to_string(MY_RANK));
   }
 
   // MPI_Barrier(MPI_COMM_WORLD);
@@ -501,10 +447,10 @@ int main(int argc, char *argv[]) {
 
   MPI_Barrier(MPI_COMM_WORLD);
 
-  MSG("finished, cleanup of process " + std::to_string(world_rank));
+  MSG("finished, cleanup of process " + std::to_string(MY_RANK));
   MPI_Finalize();
 
-  if (world_rank == 0) {
+  if (MY_RANK == 0) {
     MSG("done, bye!");
   }
 

@@ -1,4 +1,5 @@
 //  Time-stamp: "Last modified 2023-08-16 17:02:31 mluebke"
+#include "Init/InitialList.hpp"
 #include "Interpolation.hpp"
 
 #include "DHT_Wrapper.hpp"
@@ -35,7 +36,7 @@ InterpolationModule::InterpolationModule(
     const NamedVector<std::uint32_t> &interp_key_signifs,
     const std::vector<std::int32_t> &dht_key_indices,
     const std::vector<std::string> &_out_names,
-    const ChemistryParams::Chem_Hook_Functions &_hooks)
+    const InitialList::ChemistryHookFunctions &_hooks)
     : dht_instance(dht), key_signifs(interp_key_signifs),
       key_indices(dht_key_indices), min_entries_needed(min_entries_needed),
       dht_names(dht.getKeySpecies().getNames()), out_names(_out_names),

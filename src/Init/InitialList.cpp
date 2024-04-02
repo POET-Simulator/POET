@@ -1,6 +1,7 @@
 #include "InitialList.hpp"
 #include "DataStructures/NamedVector.hpp"
 #include <Rcpp/internal/wrap.h>
+#include <Rcpp/iostream/Rstreambuf.h>
 #include <Rcpp/proxy/ProtectedProxy.h>
 #include <Rcpp/vector/instantiation.h>
 #include <cstdint>
@@ -54,10 +55,14 @@ void InitialList::importList(const Rcpp::List &setup) {
   this->pqc_sol_order = Rcpp::as<std::vector<std::string>>(
       setup[static_cast<int>(ExportList::CHEM_PQC_SOL_ORDER)]);
 
-  this->dht_defined =
-      Rcpp::as<bool>(setup[static_cast<int>(ExportList::CHEM_DHT_DEFINED)]);
-  this->dht_species = Rcpp::as<NamedVector<uint32_t>>(
+  this->dht_species = NamedVector<uint32_t>(
       setup[static_cast<int>(ExportList::CHEM_DHT_SPECIES)]);
+
+  this->interp_species = Rcpp::as<NamedVector<uint32_t>>(
+      setup[static_cast<int>(ExportList::CHEM_INTERP_SPECIES)]);
+
+  this->chem_hooks =
+      Rcpp::as<Rcpp::List>(setup[static_cast<int>(ExportList::CHEM_HOOKS)]);
 }
 
 Rcpp::List InitialList::exportList() {
@@ -85,10 +90,10 @@ Rcpp::List InitialList::exportList() {
   out[static_cast<int>(ExportList::CHEM_PQC_IDS)] = Rcpp::wrap(this->pqc_ids);
   out[static_cast<int>(ExportList::CHEM_PQC_SOL_ORDER)] =
       Rcpp::wrap(this->pqc_sol_order);
-  out[static_cast<int>(ExportList::CHEM_DHT_DEFINED)] =
-      Rcpp::wrap(this->dht_defined);
-  out[static_cast<int>(ExportList::CHEM_DHT_SPECIES)] =
-      Rcpp::wrap(this->dht_species);
+  out[static_cast<int>(ExportList::CHEM_DHT_SPECIES)] = this->dht_species;
+  out[static_cast<int>(ExportList::CHEM_INTERP_SPECIES)] =
+      Rcpp::wrap(this->interp_species);
+  out[static_cast<int>(ExportList::CHEM_HOOKS)] = this->chem_hooks;
 
   return out;
 }

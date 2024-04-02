@@ -1,4 +1,4 @@
-iterations <- 500
+iterations <- 100
 dt <- 50
 
 list(

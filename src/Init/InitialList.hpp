@@ -1,8 +1,10 @@
 #pragma once
 
+#include "Base/RInsidePOET.hpp"
 #include "Chemistry/ChemistryDefs.hpp"
 #include "DataStructures/NamedVector.hpp"
 #include <Rcpp/vector/instantiation.h>
+#include <set>
 #include <tug/Boundary.hpp>
 
 #include <RInside.h>
@@ -51,8 +53,9 @@ private:
     CHEM_PQC_SCRIPTS,
     CHEM_PQC_IDS,
     CHEM_PQC_SOL_ORDER,
-    CHEM_DHT_DEFINED,
     CHEM_DHT_SPECIES,
+    CHEM_INTERP_SPECIES,
+    CHEM_HOOKS,
     ENUM_SIZE
   };
 
@@ -161,10 +164,23 @@ private:
 
   std::vector<std::string> pqc_sol_order;
 
-  bool dht_defined;
   NamedVector<std::uint32_t> dht_species;
 
+  NamedVector<std::uint32_t> interp_species;
+
+  Rcpp::List chem_hooks;
+
+  const std::set<std::string> hook_name_list{"dht_fill", "dht_fuzz",
+                                             "interp_pre", "interp_post"};
+
 public:
+  struct ChemistryHookFunctions {
+    RHookFunction<bool> dht_fill;
+    RHookFunction<std::vector<double>> dht_fuzz;
+    RHookFunction<std::vector<std::size_t>> interp_pre;
+    RHookFunction<bool> interp_post;
+  };
+
   struct ChemistryInit {
     uint32_t total_grid_cells;
 
@@ -173,8 +189,9 @@ public:
     std::vector<int> pqc_ids;
     std::vector<std::string> pqc_sol_order;
 
-    bool dht_defined;
     NamedVector<std::uint32_t> dht_species;
+    NamedVector<std::uint32_t> interp_species;
+    ChemistryHookFunctions hooks;
   };
 
   ChemistryInit getChemistryInit() const;

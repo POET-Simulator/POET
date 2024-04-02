@@ -22,6 +22,7 @@
 
 #include "DHT_Wrapper.hpp"
 
+#include "Init/InitialList.hpp"
 #include "Rounding.hpp"
 
 #include <algorithm>
@@ -41,7 +42,7 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
                          const NamedVector<std::uint32_t> &key_species,
                          const std::vector<std::int32_t> &key_indices,
                          const std::vector<std::string> &_output_names,
-                         const ChemistryParams::Chem_Hook_Functions &_hooks,
+                         const InitialList::ChemistryHookFunctions &_hooks,
                          uint32_t data_count, bool _with_interp)
     : key_count(key_indices.size()), data_count(data_count),
       input_key_elements(key_indices), communicator(dht_comm),

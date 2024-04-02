@@ -76,22 +76,35 @@ public:
     this->file_pad = std::ceil(std::log10(maxiter + 1));
   }
 
-  /**
-   * Create a new worker instance inside given MPI communicator.
-   *
-   * Wraps communication needed before instanciation can take place.
-   *
-   * \param communicator MPI communicator to distribute work in.
-   *
-   * \returns A worker instance with fixed work package size.
-   */
-  static ChemistryModule createWorker(MPI_Comm communicator,
-                                      const ChemistryParams &chem_param);
+  struct SurrogateSetup {
+    std::vector<std::string> prop_names;
 
-  /**
-   * Default work package size.
-   */
-  static constexpr uint32_t CHEM_DEFAULT_WP_SIZE = 5;
+    bool dht_enabled;
+    std::uint32_t dht_size_mb;
+
+    bool interp_enabled;
+    std::uint32_t interp_bucket_size;
+    std::uint32_t interp_size_mb;
+    std::uint32_t interp_min_entries;
+  };
+
+  void masterEnableSurrogates(const SurrogateSetup &setup) {
+    // FIXME: This is a hack to get the prop_names and prop_count from the setup
+    this->prop_names = setup.prop_names;
+    this->prop_count = setup.prop_names.size();
+
+    this->dht_enabled = setup.dht_enabled;
+    this->interp_enabled = setup.interp_enabled;
+
+    if (this->dht_enabled || this->interp_enabled) {
+      this->initializeDHT(setup.dht_size_mb, this->dht_species);
+    }
+
+    if (this->interp_enabled) {
+      this->initializeInterp(setup.interp_bucket_size, setup.interp_size_mb,
+                             setup.interp_min_entries, this->interp_species);
+    }
+  }
 
   /**
    * Intended to alias input parameters for grid initialization with a single
@@ -327,7 +340,7 @@ protected:
   bool is_sequential;
   bool is_master;
 
-  uint32_t wp_size{CHEM_DEFAULT_WP_SIZE};
+  uint32_t wp_size;
   bool dht_enabled{false};
   int dht_snaps_type{DHT_SNAPS_DISABLED};
   std::string dht_file_out_dir;
@@ -361,6 +374,10 @@ protected:
 
   uint32_t n_cells = 0;
   uint32_t prop_count = 0;
+  std::vector<std::string> prop_names;
+
+  NamedVector<std::uint32_t> dht_species;
+  NamedVector<std::uint32_t> interp_species;
 
   Field chem_field;
 
