@@ -42,10 +42,18 @@ InitialList::ChemistryInit InitialList::getChemistryInit() const {
   chem_init.interp_species = interp_species;
 
   if (this->chem_hooks.size() > 0) {
-    chem_init.hooks.dht_fill = this->chem_hooks["dht_fill"];
-    chem_init.hooks.dht_fuzz = this->chem_hooks["dht_fuzz"];
-    chem_init.hooks.interp_pre = this->chem_hooks["interp_pre"];
-    chem_init.hooks.interp_post = this->chem_hooks["interp_post"];
+    if (this->chem_hooks.containsElementNamed("dht_fill")) {
+      chem_init.hooks.dht_fill = this->chem_hooks["dht_fill"];
+    }
+    if (this->chem_hooks.containsElementNamed("dht_fuzz")) {
+      chem_init.hooks.dht_fuzz = this->chem_hooks["dht_fuzz"];
+    }
+    if (this->chem_hooks.containsElementNamed("interp_pre")) {
+      chem_init.hooks.interp_pre = this->chem_hooks["interp_pre"];
+    }
+    if (this->chem_hooks.containsElementNamed("interp_post")) {
+      chem_init.hooks.interp_post = this->chem_hooks["interp_post"];
+    }
   }
 
   return chem_init;

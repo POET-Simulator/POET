@@ -43,7 +43,7 @@ public:
    * \param communicator MPI communicator to distribute work in.
    */
   ChemistryModule(uint32_t wp_size,
-                  const InitialList::ChemistryInit &chem_params,
+                  const InitialList::ChemistryInit chem_params,
                   MPI_Comm communicator);
 
   /**
@@ -97,12 +97,13 @@ public:
     this->interp_enabled = setup.interp_enabled;
 
     if (this->dht_enabled || this->interp_enabled) {
-      this->initializeDHT(setup.dht_size_mb, this->dht_species);
+      this->initializeDHT(setup.dht_size_mb, this->params.dht_species);
     }
 
     if (this->interp_enabled) {
       this->initializeInterp(setup.interp_bucket_size, setup.interp_size_mb,
-                             setup.interp_min_entries, this->interp_species);
+                             setup.interp_min_entries,
+                             this->params.interp_species);
     }
   }
 
@@ -376,12 +377,9 @@ protected:
   uint32_t prop_count = 0;
   std::vector<std::string> prop_names;
 
-  NamedVector<std::uint32_t> dht_species;
-  NamedVector<std::uint32_t> interp_species;
-
   Field chem_field;
 
-  const InitialList::ChemistryInit &params;
+  const InitialList::ChemistryInit params;
 
   std::map<int, std::unique_ptr<IPhreeqcPOET>> phreeqc_instances;
 };

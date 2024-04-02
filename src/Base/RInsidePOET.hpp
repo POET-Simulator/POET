@@ -58,6 +58,13 @@ public:
     }
   }
 
+  RHookFunction &operator=(const RHookFunction &rhs) {
+    this->func = rhs.func;
+    return *this;
+  }
+
+  RHookFunction(const RHookFunction &rhs) { this->func = rhs.func; }
+
   bool isValid() const { return this->func.has_value(); }
 
   SEXP asSEXP() const { return Rcpp::as<SEXP>(this->func.value()); }

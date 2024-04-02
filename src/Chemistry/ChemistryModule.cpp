@@ -155,11 +155,9 @@ inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
 }
 
 poet::ChemistryModule::ChemistryModule(
-    uint32_t wp_size_, const InitialList::ChemistryInit &chem_params,
+    uint32_t wp_size_, const InitialList::ChemistryInit chem_params,
     MPI_Comm communicator)
-    : params(chem_params), wp_size(wp_size_), group_comm(communicator),
-      dht_species(chem_params.dht_species),
-      interp_species(chem_params.interp_species) {
+    : params(chem_params), wp_size(wp_size_), group_comm(communicator) {
   MPI_Comm_rank(communicator, &comm_rank);
   MPI_Comm_size(communicator, &comm_size);
 
