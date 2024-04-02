@@ -301,37 +301,32 @@ static Rcpp::List RunMasterLoop(RInside &R, const RuntimeParameters &params,
   Rcpp::List diffusion_profiling;
   diffusion_profiling["simtime"] = diffusion.getTransportTime();
 
+  if (params.use_dht) {
+    chem_profiling["dht_hits"] = Rcpp::wrap(chem.GetWorkerDHTHits());
+    chem_profiling["dht_evictions"] = Rcpp::wrap(chem.GetWorkerDHTEvictions());
+    chem_profiling["dht_get_time"] = Rcpp::wrap(chem.GetWorkerDHTGetTimings());
+    chem_profiling["dht_fill_time"] =
+        Rcpp::wrap(chem.GetWorkerDHTFillTimings());
+  }
+
+  if (params.use_interp) {
+    chem_profiling["interp_w"] =
+        Rcpp::wrap(chem.GetWorkerInterpolationWriteTimings());
+    chem_profiling["interp_r"] =
+        Rcpp::wrap(chem.GetWorkerInterpolationReadTimings());
+    chem_profiling["interp_g"] =
+        Rcpp::wrap(chem.GetWorkerInterpolationGatherTimings());
+    chem_profiling["interp_fc"] =
+        Rcpp::wrap(chem.GetWorkerInterpolationFunctionCallTimings());
+    chem_profiling["interp_calls"] =
+        Rcpp::wrap(chem.GetWorkerInterpolationCalls());
+    chem_profiling["interp_cached"] = Rcpp::wrap(chem.GetWorkerPHTCacheHits());
+  }
+
   Rcpp::List profiling;
   profiling["simtime"] = dSimTime;
   profiling["chemistry"] = chem_profiling;
   profiling["diffusion"] = diffusion_profiling;
-
-  // if (params.getChemParams().use_dht) {
-  //   R["dht_hits"] = Rcpp::wrap(chem.GetWorkerDHTHits());
-  //   R.parseEvalQ("profiling$dht_hits <- dht_hits");
-  //   R["dht_evictions"] = Rcpp::wrap(chem.GetWorkerDHTEvictions());
-  //   R.parseEvalQ("profiling$dht_evictions <- dht_evictions");
-  //   R["dht_get_time"] = Rcpp::wrap(chem.GetWorkerDHTGetTimings());
-  //   R.parseEvalQ("profiling$dht_get_time <- dht_get_time");
-  //   R["dht_fill_time"] = Rcpp::wrap(chem.GetWorkerDHTFillTimings());
-  //   R.parseEvalQ("profiling$dht_fill_time <- dht_fill_time");
-  // }
-  // if (params.getChemParams().use_interp) {
-  //   R["interp_w"] = Rcpp::wrap(chem.GetWorkerInterpolationWriteTimings());
-  //   R.parseEvalQ("profiling$interp_write <- interp_w");
-  //   R["interp_r"] = Rcpp::wrap(chem.GetWorkerInterpolationReadTimings());
-  //   R.parseEvalQ("profiling$interp_read <- interp_r");
-  //   R["interp_g"] =
-  // Rcpp::wrap(chem.GetWorkerInterpolationGatherTimings());
-  //   R.parseEvalQ("profiling$interp_gather <- interp_g");
-  //   R["interp_fc"] =
-  //       Rcpp::wrap(chem.GetWorkerInterpolationFunctionCallTimings());
-  //   R.parseEvalQ("profiling$interp_function_calls <- interp_fc");
-  //   R["interp_calls"] = Rcpp::wrap(chem.GetWorkerInterpolationCalls());
-  //   R.parseEvalQ("profiling$interp_calls <- interp_calls");
-  //   R["interp_cached"] = Rcpp::wrap(chem.GetWorkerPHTCacheHits());
-  //   R.parseEvalQ("profiling$interp_cached <- interp_cached");
-  // }
 
   chem.MasterLoopBreak();
 
