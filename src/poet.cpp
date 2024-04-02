@@ -276,8 +276,9 @@ ParseRet parseInitValues(char **argv, RInsidePOET &R,
 //   chem.LoadDatabase(database_path);
 // }
 
-static double RunMasterLoop(RInside &R, const RuntimeParameters &params,
-                            DiffusionModule &diffusion, ChemistryModule &chem) {
+static Rcpp::List RunMasterLoop(RInside &R, const RuntimeParameters &params,
+                                DiffusionModule &diffusion,
+                                ChemistryModule &chem) {
 
   /* Iteration Count is dynamic, retrieving value from R (is only needed by
    * master for the following loop) */
@@ -333,7 +334,9 @@ static double RunMasterLoop(RInside &R, const RuntimeParameters &params,
     chem.simulate(dt);
 
     writeFieldsToR(R, diffusion.getField(), chem.GetField());
-    // diffusion.getField().update(chem.GetField());
+    // R["store_result"] = true;
+    // R.parseEval("mysetup$store_result <- TRUE");
+    diffusion.getField().update(chem.GetField());
 
     R["req_dt"] = dt;
     R["simtime"] = (sim_time += dt);
@@ -341,11 +344,13 @@ static double RunMasterLoop(RInside &R, const RuntimeParameters &params,
     R.parseEval("mysetup$req_dt <- req_dt");
     R.parseEval("mysetup$simtime <- simtime");
 
+    R["iter"] = iter;
+
     // MDL master_iteration_end just writes on disk state_T and
     // state_C after every iteration if the cmdline option
     // --ignore-results is not given (and thus the R variable
     // store_result is TRUE)
-    R.parseEval("mysetup <- master_iteration_end(setup=mysetup)");
+    R.parseEval("mysetup <- master_iteration_end(setup=mysetup, iter)");
 
     MSG("End of *coupling* iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
@@ -356,31 +361,21 @@ static double RunMasterLoop(RInside &R, const RuntimeParameters &params,
     dSimTime += end_t - start_t;
   } // END SIMULATION LOOP
 
-  // R.parseEvalQ("profiling <- list()");
+  Rcpp::List chem_profiling;
+  chem_profiling["simtime"] = chem.GetChemistryTime();
+  chem_profiling["loop"] = chem.GetMasterLoopTime();
+  chem_profiling["sequential"] = chem.GetMasterSequentialTime();
+  chem_profiling["idle_master"] = chem.GetMasterIdleTime();
+  chem_profiling["idle_worker"] = Rcpp::wrap(chem.GetWorkerIdleTimings());
+  chem_profiling["phreeqc_time"] = Rcpp::wrap(chem.GetWorkerPhreeqcTimings());
 
-  // R["simtime_chemistry"] = chem.GetChemistryTime();
-  // R.parseEvalQ("profiling$simtime_chemistry <- simtime_chemistry");
+  Rcpp::List diffusion_profiling;
+  diffusion_profiling["simtime"] = diffusion.getTransportTime();
 
-  // R["chemistry_loop"] = chem.GetMasterLoopTime();
-  // R.parseEvalQ("profiling$chemistry_loop <- chemistry_loop");
-
-  // R["chemistry_sequential"] = chem.GetMasterSequentialTime();
-  // R.parseEvalQ("profiling$simtime_sequential <- chemistry_sequential");
-
-  // R["idle_master"] = chem.GetMasterIdleTime();
-  // R.parseEvalQ("profiling$idle_master <- idle_master");
-
-  // R["idle_worker"] = Rcpp::wrap(chem.GetWorkerIdleTimings());
-  // R.parseEvalQ("profiling$idle_worker <- idle_worker");
-
-  // R["phreeqc_time"] = Rcpp::wrap(chem.GetWorkerPhreeqcTimings());
-  // R.parseEvalQ("profiling$phreeqc <- phreeqc_time");
-
-  // R["simtime_transport"] = diffusion.getTransportTime();
-  // R.parseEvalQ("profiling$simtime_transport <- simtime_transport");
-
-  // R["phreeqc_count"] = phreeqc_counts;
-  // R.parseEvalQ("profiling$phreeqc_count <- phreeqc_count");
+  Rcpp::List profiling;
+  profiling["simtime"] = dSimTime;
+  profiling["chemistry"] = chem_profiling;
+  profiling["diffusion"] = diffusion_profiling;
 
   // if (params.getChemParams().use_dht) {
   //   R["dht_hits"] = Rcpp::wrap(chem.GetWorkerDHTHits());
@@ -411,7 +406,7 @@ static double RunMasterLoop(RInside &R, const RuntimeParameters &params,
 
   chem.MasterLoopBreak();
 
-  return dSimTime;
+  return profiling;
 }
 
 int main(int argc, char *argv[]) {
@@ -492,7 +487,7 @@ int main(int argc, char *argv[]) {
 
   chemistry.masterSetField(init_list.getInitialGrid());
 
-  dSimTime = RunMasterLoop(R, run_params, diffusion, chemistry);
+  Rcpp::List profiling = RunMasterLoop(R, run_params, diffusion, chemistry);
 
   MSG("finished simulation loop");
 
@@ -501,9 +496,11 @@ int main(int argc, char *argv[]) {
   // R["simtime"] = dSimTime;
   // R.parseEvalQ("profiling$simtime <- simtime");
 
-  // string r_vis_code;
-  // r_vis_code = "saveRDS(profiling, file=paste0(fileout,'/timings.rds'));";
-  // R.parseEval(r_vis_code);
+  R["profiling"] = profiling;
+
+  string r_vis_code;
+  r_vis_code = "saveRDS(profiling, file=paste0(fileout,'/timings.rds'));";
+  R.parseEval(r_vis_code);
 
   // MSG("Done! Results are stored as R objects into <" + run_params.getOutDir()
   // +

@@ -67,33 +67,32 @@ master_init <- function(setup) {
 ## This function, called only by master, stores on disk the last
 ## calculated time step if store_result is TRUE and increments the
 ## iteration counter
-master_iteration_end <- function(setup) {
+master_iteration_end <- function(setup,iter) {
     # iter <- setup$iter
     # print(iter)
     ## max digits for iterations
-    iter <- 1
-    dgts <- as.integer(ceiling(log10(1)))
+    dgts <- as.integer(ceiling(log10(iter)))
     ## string format to use in sprintf
     fmt <- paste0("%0", dgts, "d")
 
     ## Write on disk state_T and state_C after every iteration
     ## comprised in setup$out_save
-    # if (setup$store_result) {
-    #     if (iter %in% setup$out_save) {
-    nameout <- paste0(fileout, "/iter_", sprintf(fmt = fmt, iter), ".rds")
-    info <- list(
-        tr_req_dt = as.integer(1)
-        ## tr_allow_dt = setup$allowed_dt,
-        ## tr_inniter = as.integer(setup$inniter)
-    )
-    saveRDS(list(
-        T = setup$state_T, C = setup$state_C,
-        simtime = as.integer(0),
-        tr_info = info
-    ), file = nameout)
-    msgm("results stored in <", nameout, ">")
-    #     }
-    # }
+    if (setup$store_result) {
+        if (iter %in% setup$out_save) {
+            nameout <- paste0(fileout, "/iter_", sprintf(fmt = fmt, iter), ".rds")
+            info <- list(
+                tr_req_dt = as.integer(1)
+                ## tr_allow_dt = setup$allowed_dt,
+                ## tr_inniter = as.integer(setup$inniter)
+            )
+            saveRDS(list(
+                T = setup$state_T, C = setup$state_C,
+                simtime = as.integer(0),
+                tr_info = info
+            ), file = nameout)
+            msgm("results stored in <", nameout, ">")
+        }
+    }
     msgm("done iteration", iter, "/", 1)
     setup$iter <- setup$iter + 1
     return(setup)

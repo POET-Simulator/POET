@@ -35,8 +35,6 @@
 #include "tug/Grid.hpp"
 #include "tug/Simulation.hpp"
 
-#include <iostream>
-#include <ostream>
 #include <string>
 #include <vector>
 
