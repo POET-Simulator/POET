@@ -28,6 +28,31 @@ diffusion_setup <- list(
     alpha_y = 1e-6
 )
 
+check_sign_cal_dol_dht <- function(old, new) {
+    if ((old["Calcite"] == 0) != (new["Calcite"] == 0)) {
+        return(TRUE)
+    }
+    if ((old["Dolomite"] == 0) != (new["Dolomite"] == 0)) {
+        return(TRUE)
+    }
+    return(FALSE)
+}
+
+fuzz_input_dht_keys <- function(input) {
+    dht_species <- c(
+        "H" = 3,
+        "O" = 3,
+        "Charge" = 3,
+        "C(4)" = 6,
+        "Ca" = 6,
+        "Cl" = 3,
+        "Mg" = 5,
+        "Calcite" = 4,
+        "Dolomite" = 4
+    )
+    return(input[names(dht_species)])
+}
+
 chemistry_setup <- list(
     dht_species = c(
         "H" = 3,
@@ -39,6 +64,10 @@ chemistry_setup <- list(
         "Mg" = 5,
         "Calcite" = 4,
         "Dolomite" = 4
+    ),
+    hooks = list(
+        dht_fill = check_sign_cal_dol_dht,
+        dht_fuzz = fuzz_input_dht_keys
     )
 )
 
