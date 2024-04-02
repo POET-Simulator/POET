@@ -37,7 +37,6 @@ add_subdirectory(ext/iphreeqc EXCLUDE_FROM_ALL)
 option(POET_ENABLE_TESTING "Build test suite for POET" OFF)
 
 if (POET_ENABLE_TESTING)
-  add_subdirectory(ext/doctest EXCLUDE_FROM_ALL)
   add_subdirectory(test)
 endif()
 

@@ -24,7 +24,7 @@ stages:          # List of stages for jobs, and their order of execution
   - test
 
 variables:
-  GIT_SUBMODULE_STRATEGY: recursive
+#  GIT_SUBMODULE_STRATEGY: recursive
   SOURCE_ARCHIVE_NAME: 'poet_${CI_COMMIT_TAG}_sources.tar.gz'
   CHANGELOG_FILE: 'commit_changelog.md'
 
