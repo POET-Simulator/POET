@@ -340,109 +340,103 @@ int main(int argc, char *argv[]) {
 
   MPI_Init(&argc, &argv);
 
-  MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-  MPI_Comm_rank(MPI_COMM_WORLD, &MY_RANK);
+  {
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &MY_RANK);
 
-  RInsidePOET &R = RInsidePOET::getInstance();
+    RInsidePOET &R = RInsidePOET::getInstance();
 
-  if (MY_RANK == 0) {
-    MSG("Running POET version " + std::string(poet_version));
+    if (MY_RANK == 0) {
+      MSG("Running POET version " + std::string(poet_version));
+    }
+
+    /*Loading Dependencies*/
+    // TODO: kann raus
+    R.parseEvalQ(kin_r_library);
+
+    RuntimeParameters run_params;
+
+    switch (parseInitValues(argv, R, run_params)) {
+    case ParseRet::PARSER_ERROR:
+    case ParseRet::PARSER_HELP:
+      MPI_Finalize();
+      return 0;
+    case ParseRet::PARSER_OK:
+      break;
+    }
+
+    InitialList init_list(R);
+    init_list.importList(run_params.init_params);
+
+    MSG("RInside initialized on process " + std::to_string(MY_RANK));
+
+    ChemistryModule chemistry(run_params.work_package_size,
+                              init_list.getChemistryInit(), MPI_COMM_WORLD);
+
+    const ChemistryModule::SurrogateSetup surr_setup = {
+        init_list.getInitialGrid().GetProps(),
+        run_params.use_dht,
+        run_params.dht_size,
+        run_params.use_interp,
+        run_params.interp_bucket_entries,
+        run_params.interp_size,
+        run_params.interp_min_entries};
+
+    chemistry.masterEnableSurrogates(surr_setup);
+
+    if (MY_RANK > 0) {
+
+      chemistry.WorkerLoop();
+    } else {
+      // R.parseEvalQ("mysetup <- setup");
+      // // if (MY_RANK == 0) { // get timestep vector from
+      // // grid_init function ... //
+      std::string master_init_code = "mysetup <- master_init(setup=mysetup)";
+      R.parseEval(master_init_code);
+
+      // run_params.initVectorParams(R);
+
+      // MDL: store all parameters
+      if (MY_RANK == 0) {
+        MSG("Calling R Function to store calling parameters");
+        // R.parseEvalQ("StoreSetup(setup=mysetup)");
+      }
+
+      if (MY_RANK == 0) {
+        MSG("Init done on process with rank " + std::to_string(MY_RANK));
+      }
+
+      // MPI_Barrier(MPI_COMM_WORLD);
+
+      DiffusionModule diffusion(init_list.getDiffusionInit(),
+                                init_list.getInitialGrid());
+
+      chemistry.masterSetField(init_list.getInitialGrid());
+
+      Rcpp::List profiling = RunMasterLoop(R, run_params, diffusion, chemistry);
+
+      MSG("finished simulation loop");
+
+      MSG("start timing profiling");
+
+      // R["simtime"] = dSimTime;
+      // R.parseEvalQ("profiling$simtime <- simtime");
+
+      R["profiling"] = profiling;
+
+      string r_vis_code;
+      r_vis_code = "saveRDS(profiling, file=paste0(fileout,'/timings.rds'));";
+      R.parseEval(r_vis_code);
+
+      // MSG("Done! Results are stored as R objects into <" +
+      // run_params.getOutDir()
+      // +
+      //     "/timings.rds>");
+    }
   }
-
-  /*Loading Dependencies*/
-  // TODO: kann raus
-  R.parseEvalQ(kin_r_library);
-
-  RuntimeParameters run_params;
-
-  switch (parseInitValues(argv, R, run_params)) {
-  case ParseRet::PARSER_ERROR:
-  case ParseRet::PARSER_HELP:
-    MPI_Finalize();
-    return 0;
-  case ParseRet::PARSER_OK:
-    break;
-  }
-
-  InitialList init_list(R);
-  init_list.importList(run_params.init_params);
-
-  MSG("RInside initialized on process " + std::to_string(MY_RANK));
-
-  ChemistryModule chemistry(run_params.work_package_size,
-                            init_list.getChemistryInit(), MPI_COMM_WORLD);
-
-  const ChemistryModule::SurrogateSetup surr_setup = {
-      init_list.getInitialGrid().GetProps(),
-      run_params.use_dht,
-      run_params.dht_size,
-      run_params.use_interp,
-      run_params.interp_bucket_entries,
-      run_params.interp_size,
-      run_params.interp_min_entries};
-
-  chemistry.masterEnableSurrogates(surr_setup);
-
-  if (MY_RANK > 0) {
-
-    chemistry.WorkerLoop();
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    MSG("finished, cleanup of process " + std::to_string(MY_RANK));
-
-    MPI_Finalize();
-
-    return EXIT_SUCCESS;
-  }
-
-  // R.parseEvalQ("mysetup <- setup");
-  // // if (MY_RANK == 0) { // get timestep vector from
-  // // grid_init function ... //
-  std::string master_init_code = "mysetup <- master_init(setup=mysetup)";
-  R.parseEval(master_init_code);
-
-  // run_params.initVectorParams(R);
-
-  // MDL: store all parameters
-  if (MY_RANK == 0) {
-    MSG("Calling R Function to store calling parameters");
-    // R.parseEvalQ("StoreSetup(setup=mysetup)");
-  }
-
-  if (MY_RANK == 0) {
-    MSG("Init done on process with rank " + std::to_string(MY_RANK));
-  }
-
-  // MPI_Barrier(MPI_COMM_WORLD);
-
-  DiffusionModule diffusion(init_list.getDiffusionInit(),
-                            init_list.getInitialGrid());
-
-  chemistry.masterSetField(init_list.getInitialGrid());
-
-  Rcpp::List profiling = RunMasterLoop(R, run_params, diffusion, chemistry);
-
-  MSG("finished simulation loop");
-
-  MSG("start timing profiling");
-
-  // R["simtime"] = dSimTime;
-  // R.parseEvalQ("profiling$simtime <- simtime");
-
-  R["profiling"] = profiling;
-
-  string r_vis_code;
-  r_vis_code = "saveRDS(profiling, file=paste0(fileout,'/timings.rds'));";
-  R.parseEval(r_vis_code);
-
-  // MSG("Done! Results are stored as R objects into <" + run_params.getOutDir()
-  // +
-  //     "/timings.rds>");
-
-  MPI_Barrier(MPI_COMM_WORLD);
 
   MSG("finished, cleanup of process " + std::to_string(MY_RANK));
+
   MPI_Finalize();
 
   if (MY_RANK == 0) {
