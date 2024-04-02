@@ -1,10 +1,12 @@
 #pragma once
 
+#include "Chemistry/ChemistryDefs.hpp"
+#include "DataStructures/NamedVector.hpp"
+#include <Rcpp/vector/instantiation.h>
 #include <tug/Boundary.hpp>
 
 #include <RInside.h>
 #include <Rcpp.h>
-#include <Rcpp/vector/instantiation.h>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -12,7 +14,6 @@
 #include <IPhreeqcPOET.hpp>
 #include <map>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <DataStructures/Field.hpp>
@@ -50,6 +51,8 @@ private:
     CHEM_PQC_SCRIPTS,
     CHEM_PQC_IDS,
     CHEM_PQC_SOL_ORDER,
+    CHEM_DHT_DEFINED,
+    CHEM_DHT_SPECIES,
     ENUM_SIZE
   };
 
@@ -150,13 +153,16 @@ private:
   // Chemistry Members
   static constexpr const char *chemistry_key = "Chemistry";
 
-  void initChemistry();
+  void initChemistry(const Rcpp::List &chem_input);
 
   std::string database;
   std::vector<std::string> pqc_scripts;
   std::vector<int> pqc_ids;
 
   std::vector<std::string> pqc_sol_order;
+
+  bool dht_defined;
+  NamedVector<std::uint32_t> dht_species;
 
 public:
   struct ChemistryInit {
@@ -166,6 +172,9 @@ public:
     std::vector<std::string> pqc_scripts;
     std::vector<int> pqc_ids;
     std::vector<std::string> pqc_sol_order;
+
+    bool dht_defined;
+    NamedVector<std::uint32_t> dht_species;
   };
 
   ChemistryInit getChemistryInit() const;

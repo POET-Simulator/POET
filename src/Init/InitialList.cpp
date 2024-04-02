@@ -1,4 +1,5 @@
 #include "InitialList.hpp"
+#include "DataStructures/NamedVector.hpp"
 #include <Rcpp/internal/wrap.h>
 #include <Rcpp/proxy/ProtectedProxy.h>
 #include <Rcpp/vector/instantiation.h>
@@ -10,6 +11,7 @@ namespace poet {
 void InitialList::initializeFromList(const Rcpp::List &setup) {
   initGrid(setup[grid_key]);
   initDiffusion(setup[diffusion_key]);
+  initChemistry(setup[chemistry_key]);
 }
 
 void InitialList::importList(const Rcpp::List &setup) {
@@ -51,6 +53,11 @@ void InitialList::importList(const Rcpp::List &setup) {
       setup[static_cast<int>(ExportList::CHEM_PQC_IDS)]);
   this->pqc_sol_order = Rcpp::as<std::vector<std::string>>(
       setup[static_cast<int>(ExportList::CHEM_PQC_SOL_ORDER)]);
+
+  this->dht_defined =
+      Rcpp::as<bool>(setup[static_cast<int>(ExportList::CHEM_DHT_DEFINED)]);
+  this->dht_species = Rcpp::as<NamedVector<uint32_t>>(
+      setup[static_cast<int>(ExportList::CHEM_DHT_SPECIES)]);
 }
 
 Rcpp::List InitialList::exportList() {
@@ -78,6 +85,10 @@ Rcpp::List InitialList::exportList() {
   out[static_cast<int>(ExportList::CHEM_PQC_IDS)] = Rcpp::wrap(this->pqc_ids);
   out[static_cast<int>(ExportList::CHEM_PQC_SOL_ORDER)] =
       Rcpp::wrap(this->pqc_sol_order);
+  out[static_cast<int>(ExportList::CHEM_DHT_DEFINED)] =
+      Rcpp::wrap(this->dht_defined);
+  out[static_cast<int>(ExportList::CHEM_DHT_SPECIES)] =
+      Rcpp::wrap(this->dht_species);
 
   return out;
 }

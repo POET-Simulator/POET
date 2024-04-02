@@ -28,8 +28,23 @@ diffusion_setup <- list(
     alpha_y = 1e-6
 )
 
+chemistry_setup <- list(
+    dht_species = c(
+        "H" = 3,
+        "O" = 3,
+        "Charge" = 3,
+        "C(4)" = 6,
+        "Ca" = 6,
+        "Cl" = 3,
+        "Mg" = 5,
+        "Calcite" = 4,
+        "Dolomite" = 4
+    )
+)
+
 # Define a setup list for simulation configuration
 setup <- list(
     Grid = grid_setup, # Parameters related to the grid structure
-    Diffusion = diffusion_setup # Parameters related to the diffusion process
+    Diffusion = diffusion_setup, # Parameters related to the diffusion process
+    Chemistry = chemistry_setup # Parameters related to the chemistry process
 )
