@@ -288,22 +288,20 @@ void poet::ChemistryModule::WorkerRunWorkPackage(WorkPackage &work_package,
       continue;
     }
 
-    const auto &input = work_package.input[wp_id];
-    const auto pqc_id = input[0];
+    auto curr_input = work_package.input[wp_id];
+    const auto pqc_id = curr_input[0];
 
     auto &phreeqc_instance = this->phreeqc_instances[pqc_id];
     work_package.output[wp_id] = work_package.input[wp_id];
 
-    work_package.input[wp_id].erase(work_package.input[wp_id].begin());
+    curr_input.erase(curr_input.begin());
 
     // remove NaNs from the input
-    work_package.input[wp_id].erase(
-        std::remove_if(work_package.input[wp_id].begin(),
-                       work_package.input[wp_id].end(),
-                       [](double d) { return std::isnan(d); }),
-        work_package.input[wp_id].end());
+    curr_input.erase(std::remove_if(curr_input.begin(), curr_input.end(),
+                                    [](double d) { return std::isnan(d); }),
+                     curr_input.end());
 
-    phreeqc_instance->queueCell(work_package.input[wp_id]);
+    phreeqc_instance->queueCell(curr_input);
     zone_mapping[pqc_id].push_back(wp_id);
   }
 
