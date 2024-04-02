@@ -22,26 +22,20 @@
 
 #include "Base/Macros.hpp"
 #include "Base/RInsidePOET.hpp"
-// #include "Chemistry/ChemistryModule.hpp"
 #include "Chemistry/ChemistryModule.hpp"
 #include "DataStructures/Field.hpp"
 #include "Init/InitialList.hpp"
 #include "Transport/DiffusionModule.hpp"
 
 #include <RInside.h>
-#include <R_ext/Boolean.h>
-#include <Rcpp/DataFrame.h>
-#include <Rcpp/vector/instantiation.h>
-#include <poet.hpp>
-
 #include <Rcpp.h>
 #include <cstdlib>
-
+#include <mpi.h>
 #include <string>
 
-#include <mpi.h>
-
 #include "Base/argh.hpp"
+
+#include <poet.hpp>
 
 using namespace std;
 using namespace poet;
@@ -110,9 +104,11 @@ ParseRet parseInitValues(char **argv, RInsidePOET &R,
     }
   }
 
-  // simparams.print_progressbar = cmdl[{"P", "progress"}];
+  params.print_progressbar = cmdl[{"P", "progress"}];
 
-  // // simparams.print_progressbar = cmdl[{"P", "progress"}];
+  /*Parse work package size*/
+  cmdl("work-package-size", CHEM_DEFAULT_WORK_PACKAGE_SIZE) >>
+      params.work_package_size;
 
   // /* Parse DHT arguments */
   // chem_params.use_dht = cmdl["dht"];
@@ -135,9 +131,6 @@ ParseRet parseInitValues(char **argv, RInsidePOET &R,
 
   // /*Parse output options*/
   // simparams.store_result = !cmdl["ignore-result"];
-
-  // /*Parse work package size*/
-  // cmdl("work-package-size", WORK_PACKAGE_SIZE_DEFAULT) >> simparams.wp_size;
 
   // chem_params.use_interp = cmdl["interp"];
   // cmdl("interp-size", 100) >> chem_params.pht_size;
@@ -446,10 +439,12 @@ int main(int argc, char *argv[]) {
 
   MSG("RInside initialized on process " + std::to_string(world_rank));
 
+  ChemistryModule chemistry(run_params.work_package_size,
+                            init_list.getChemistryInit(), MPI_COMM_WORLD);
+
   if (world_rank > 0) {
 
-    ChemistryModule worker(1, init_list.getChemistryInit(), MPI_COMM_WORLD);
-    worker.WorkerLoop();
+    chemistry.WorkerLoop();
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -482,8 +477,6 @@ int main(int argc, char *argv[]) {
 
   DiffusionModule diffusion(init_list.getDiffusionInit(),
                             init_list.getInitialGrid());
-
-  ChemistryModule chemistry(1, init_list.getChemistryInit(), MPI_COMM_WORLD);
 
   chemistry.masterSetField(init_list.getInitialGrid());
 
