@@ -26,7 +26,6 @@
 #include "Base/RInsidePOET.hpp"
 #include "DataStructures/NamedVector.hpp"
 
-#include "../../Base/SimParams.hpp"
 #include "Chemistry/ChemistryDefs.hpp"
 
 #include "Init/InitialList.hpp"
