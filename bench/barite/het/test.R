@@ -11,7 +11,7 @@ grid_setup <- list(
 
 diffusion_setup <- list(
     boundaries = list(
-        "E" = list(
+        "W" = list(
             "type" = rep("constant", nrow(grid_def)),
             "sol_id" = rep(4, nrow(grid_def)),
             "cell" = seq_len(nrow(grid_def))
@@ -27,5 +27,6 @@ diffusion_setup <- list(
 # Define a setup list for simulation configuration
 setup <- list(
     Grid = grid_setup, # Parameters related to the grid structure
-    Diffusion = diffusion_setup # Parameters related to the diffusion process
+    Diffusion = diffusion_setup, # Parameters related to the diffusion process
+    Chemistry = list()
 )

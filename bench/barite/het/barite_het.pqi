@@ -60,6 +60,7 @@ END
 
 ## A BaCl2 solution (nr 4) is "injected" from the left boundary:
 SOLUTION 4
+units	mol/kgw
 pH 7
 water 1
 temp 25

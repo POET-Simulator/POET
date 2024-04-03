@@ -1,4 +1,4 @@
 list(
-    timesteps = c(1),
+    timesteps = rep(50, 100),
     store_result = TRUE
 )
