@@ -6,6 +6,7 @@
 
 #include <RInside.h>
 #include <Rcpp.h>
+#include <iostream>
 
 int main(int argc, char **argv) {
   if (argc < 2 || argc > 2) {
@@ -32,9 +33,14 @@ int main(int argc, char **argv) {
 
   init.initializeFromList(setup);
 
-  Rcpp::Function save("saveRDS");
+  // replace file extension by .rds
+  const std::string rds_out_filename =
+      script.substr(0, script.find_last_of('.')) + ".rds";
 
-  save(init.exportList(), "init.rds");
+  Rcpp::Function save("saveRDS");
+  save(init.exportList(), Rcpp::wrap(rds_out_filename));
+
+  std::cout << "Saved result to " << rds_out_filename << std::endl;
 
   //   parseGrid(R, grid, results);
   return EXIT_SUCCESS;
