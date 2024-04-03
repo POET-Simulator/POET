@@ -58,10 +58,6 @@ public:
   void simulate(double dt);
 
   /**
-   * Returns the chemical field.
-   */
-  auto &GetField() { return this->chem_field; }
-  /**
    * Returns all known species names, including not only aqueous species, but
    * also equilibrium, exchange, surface and kinetic reactants.
    */

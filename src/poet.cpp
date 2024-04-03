@@ -254,7 +254,7 @@ static Rcpp::List RunMasterLoop(RInside &R, const RuntimeParameters &params,
     // TODO: transport to diffusion
     diffusion.simulate(dt);
 
-    chem.GetField().update(diffusion.getField());
+    chem.getField().update(diffusion.getField());
 
     // chem.getfield().update(diffusion.getfield());
 
@@ -262,10 +262,10 @@ static Rcpp::List RunMasterLoop(RInside &R, const RuntimeParameters &params,
 
     chem.simulate(dt);
 
-    writeFieldsToR(R, diffusion.getField(), chem.GetField());
+    writeFieldsToR(R, diffusion.getField(), chem.getField());
     // R["store_result"] = true;
     // R.parseEval("mysetup$store_result <- TRUE");
-    diffusion.getField().update(chem.GetField());
+    diffusion.getField().update(chem.getField());
 
     R["req_dt"] = dt;
     R["simtime"] = (sim_time += dt);
