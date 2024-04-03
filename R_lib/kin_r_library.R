@@ -15,35 +15,19 @@
 ### this program; if not, write to the Free Software Foundation, Inc., 51
 ### Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
-
-## Simple function to check file extension. It is needed to check if
-## the GridFile is SUM (MUFITS format) or rds/RData
-FileExt <- function(x) {
-    pos <- regexpr("\\.([[:alnum:]]+)$", x)
-    ifelse(pos > -1L, substring(x, pos + 1L), "")
-}
-
-master_init <- function(setup) {
-    msgm("Process with rank 0 reading GRID properties")
-
+master_init <- function(setup, out_dir) {
     ## Setup the directory where we will store the results
-    verb <- FALSE
-    # if (local_rank == 0) {
-        verb <- TRUE ## verbosity loading MUFITS results
-        if (!dir.exists(fileout)) {
-            dir.create(fileout)
-            msgm("created directory ", fileout)
-        } else {
-            msgm("dir ", fileout, " already exists, I will overwrite!")
-        }
-        if (!exists("store_result")) {
-            msgm("store_result doesn't exist!")
-        } else {
-            msgm("store_result is ", store_result)
-        }
-    # } else {
-
-    # }
+    if (!dir.exists(out_dir)) {
+        dir.create(out_dir)
+        msgm("created directory ", out_dir)
+    } else {
+        msgm("dir ", out_dir, " already exists, I will overwrite!")
+    }
+    if (!exists("setup$store_result")) {
+        msgm("store_result doesn't exist!")
+    } else {
+        msgm("store_result is ", setup$store_result)
+    }
 
     setup$iter <- 1
     setup$timesteps <- setup$timesteps
@@ -67,8 +51,8 @@ master_init <- function(setup) {
 ## This function, called only by master, stores on disk the last
 ## calculated time step if store_result is TRUE and increments the
 ## iteration counter
-master_iteration_end <- function(setup,iter) {
-    # iter <- setup$iter
+master_iteration_end <- function(setup, state_T, state_C) {
+    iter <- setup$iter
     # print(iter)
     ## max digits for iterations
     dgts <- as.integer(ceiling(log10(iter)))
@@ -80,164 +64,34 @@ master_iteration_end <- function(setup,iter) {
     if (setup$store_result) {
         if (iter %in% setup$out_save) {
             nameout <- paste0(fileout, "/iter_", sprintf(fmt = fmt, iter), ".rds")
-            info <- list(
-                tr_req_dt = as.integer(1)
-                ## tr_allow_dt = setup$allowed_dt,
-                ## tr_inniter = as.integer(setup$inniter)
-            )
             saveRDS(list(
-                T = setup$state_T, C = setup$state_C,
-                simtime = as.integer(0),
-                tr_info = info
+                T = state_T, C = state_C,
+                simtime = as.integer(setup$simulation_time)
             ), file = nameout)
             msgm("results stored in <", nameout, ">")
         }
     }
+    ## Add last time step to simulation time
+    setup$simulation_time <- setup$simulation_time + setup$dt_differ
+
     msgm("done iteration", iter, "/", length(setup$timesteps))
     setup$iter <- setup$iter + 1
     return(setup)
 }
 
-## function for the workers to compute chemistry through PHREEQC
-slave_chemistry <- function(setup, data) {
-    base <- setup$base
-    first <- setup$first
-    prop <- setup$prop
-    immobile <- setup$immobile
-    kin <- setup$kin
-    ann <- setup$ann
-
-    iter <- setup$iter
-    timesteps <- setup$timesteps
-    dt <- timesteps[iter]
-
-    state_T <- data ## not the global field, but the work-package
-
-    ## treat special H+/pH, e-/pe cases
-    state_T <- RedModRphree::Act2pH(state_T)
-
-    ## reduction of the problem
-    if (setup$reduce) {
-        reduced <- ReduceStateOmit(state_T, omit = setup$ann)
-    } else {
-        reduced <- state_T
-    }
-
-    ## form the PHREEQC input script for the current work package
-    inplist <- SplitMultiKin(
-        data = reduced, procs = 1, base = base, first = first,
-        ann = ann, prop = prop, minerals = immobile, kin = kin, dt = dt
-    )
-
-    ## if (local_rank==1 & iter==1)
-    ##         RPhreeWriteInp("FirstInp", inplist)
-
-    tmpC <- RunPQC(inplist, procs = 1, second = TRUE)
-
-    ## recompose after the reduction
-    if (setup$reduce) {
-        state_C <- RecomposeState(tmpC, reduced)
-    } else {
-        state_C <- tmpC
-    }
-
-    ## the next line is needed since we don't need all columns of
-    ## PHREEQC output
-    return(state_C[, prop])
-}
-
-## This function, called by master
-master_chemistry <- function(setup, data) {
-    state_T <- setup$state_T
-
-    msgm(" chemistry iteration", setup$iter)
-
-    ## treat special H+/pH, e-/pe cases
-    state_T <- RedModRphree::Act2pH(state_T)
-
-    ## reduction of the problem
-    if (setup$reduce) {
-        reduced <- ReduceStateOmit(state_T, omit = setup$ann)
-    } else {
-        reduced <- state_T
-    }
-
-    ## inject data from workers
-    res_C <- data
-
-    rownames(res_C) <- NULL
-
-    ## print(res_C)
-
-    if (nrow(res_C) > nrow(reduced)) {
-        res_C <- res_C[seq(2, nrow(res_C), by = 2), ]
-    }
-
-    ## recompose after the reduction
-    if (setup$reduce) {
-        state_C <- RecomposeState(res_C, reduced)
-    } else {
-        state_C <- res_C
-    }
-
-    setup$state_C <- state_C
-    setup$reduced <- reduced
-
-    return(setup)
-}
-
-
-## Adapted version for "reduction"
-ReduceStateOmit <- function(data, omit = NULL, sign = 6) {
-    require(mgcv)
-
-    rem <- colnames(data)
-    if (is.list(omit)) {
-        indomi <- match(names(omit), colnames(data))
-        datao <- data[, -indomi]
-    } else {
-        datao <- data
-    }
-
-    datao <- signif(datao, sign)
-    red <- mgcv::uniquecombs(datao)
-    inds <- attr(red, "index")
-    now <- ncol(red)
-
-
-    ## reattach the omitted column(s)
-    ## FIXME: control if more than one ann is present
-    if (is.list(omit)) {
-        red <- cbind(red, rep(data[1, indomi], nrow(red)))
-
-        colnames(red)[now + 1] <- names(omit)
-
-        ret <- red[, colnames(data)]
-    } else {
-        ret <- red
-    }
-    rownames(ret) <- NULL
-    attr(ret, "index") <- inds
-    return(ret)
-}
-
-
 
 ## Attach the name of the calling function to the message displayed on
 ## R's stdout
 msgm <- function(...) {
-    # if (local_rank == 0) {
-    fname <- as.list(sys.call(-1))[[1]]
-    prefix <- paste0("R: ", fname, " ::")
+    prefix <- paste0("R: ")
     cat(paste(prefix, ..., "\n"))
-    # }
     invisible()
 }
 
 
 ## Function called by master R process to store on disk all relevant
 ## parameters for the simulation
-StoreSetup <- function(setup) {
+StoreSetup <- function(setup, filesim, out_dir) {
     to_store <- vector(mode = "list", length = 4)
     ## names(to_store) <- c("Sim", "Flow", "Transport", "Chemistry", "DHT")
     names(to_store) <- c("Sim", "Transport", "DHT", "Cmdline")

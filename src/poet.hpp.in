@@ -49,6 +49,7 @@ constexpr uint32_t CHEM_DEFAULT_WORK_PACKAGE_SIZE = 32;
 constexpr uint32_t CHEM_DHT_SIZE_PER_PROCESS_MB = 1.5E3;
 
 struct RuntimeParameters {
+  std::string out_dir;
   std::vector<double> timesteps;
 
   bool print_progressbar;

@@ -29,8 +29,13 @@
 
 #include <RInside.h>
 #include <Rcpp.h>
+#include <Rcpp/Function.h>
+#include <Rcpp/vector/instantiation.h>
+#include <cstdio>
 #include <cstdlib>
+#include <memory>
 #include <mpi.h>
+#include <optional>
 #include <string>
 
 #include "Base/argh.hpp"
@@ -42,6 +47,21 @@ using namespace poet;
 using namespace Rcpp;
 
 static int MY_RANK = 0;
+
+static std::unique_ptr<Rcpp::List> global_rt_setup;
+
+// we need some layz evaluation, as we can't define the functions before the R
+// runtime is initialized
+static std::optional<Rcpp::Function> master_init_R;
+static std::optional<Rcpp::Function> master_iteration_end_R;
+static std::optional<Rcpp::Function> store_setup_R;
+
+static void init_global_functions(RInside &R) {
+  R.parseEval(kin_r_library);
+  master_init_R = Rcpp::Function("master_init");
+  master_iteration_end_R = Rcpp::Function("master_iteration_end");
+  store_setup_R = Rcpp::Function("StoreSetup");
+}
 
 // HACK: this is a step back as the order and also the count of fields is
 // predefined, but it will change in the future
@@ -126,12 +146,6 @@ ParseRet parseInitValues(char **argv, RInsidePOET &R,
   cmdl("interp-min", 5) >> params.interp_min_entries;
   cmdl("interp-bucket-entries", 20) >> params.interp_bucket_entries;
 
-  /*Parse output options*/
-  // simparams.store_result = !cmdl["ignore-result"];
-
-  /*Parse output options*/
-  // simparams.store_result = !cmdl["ignore-result"];
-
   if (MY_RANK == 0) {
     // MSG("Complete results storage is " + BOOL_PRINT(simparams.store_result));
     MSG("Work Package Size: " + std::to_string(params.work_package_size));
@@ -162,21 +176,20 @@ ParseRet parseInitValues(char **argv, RInsidePOET &R,
 
   std::string init_file;
   std::string runtime_file;
-  std::string out_dir;
 
   cmdl(1) >> runtime_file;
   cmdl(2) >> init_file;
-  cmdl(3) >> out_dir;
+  cmdl(3) >> params.out_dir;
 
   // chem_params.dht_outdir = out_dir;
 
   /* distribute information to R runtime */
   // if local_rank == 0 then master else worker
-  R["local_rank"] = MY_RANK;
+  // R["local_rank"] = MY_RANK;
   // assign a char* (string) to 'filesim'
-  R["filesim"] = wrap(runtime_file);
+  // R["filesim"] = wrap(runtime_file);
   // assign a char* (string) to 'fileout'
-  R["fileout"] = wrap(out_dir);
+  // R["fileout"] = wrap(out_dir);
   // pass the boolean "store_result" to the R process
   // R["store_result"] = simparams.store_result;
   // // worker count
@@ -195,23 +208,17 @@ ParseRet parseInitValues(char **argv, RInsidePOET &R,
     Rcpp::List init_params_ = readRDS(init_file);
     params.init_params = init_params_;
 
-    Rcpp::List runtime_params =
-        source(runtime_file, Rcpp::Named("local", true));
-    runtime_params = runtime_params["value"];
-    R[r_runtime_parameters] = runtime_params;
+    global_rt_setup = std::make_unique<Rcpp::List>();
+    *global_rt_setup = source(runtime_file, Rcpp::Named("local", true));
+    *global_rt_setup = global_rt_setup->operator[]("value");
 
     params.timesteps =
-        Rcpp::as<std::vector<double>>(runtime_params["timesteps"]);
+        Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("timesteps"));
 
   } catch (const std::exception &e) {
     ERRMSG("Error while parsing R scripts: " + std::string(e.what()));
     return ParseRet::PARSER_ERROR;
   }
-  // eval the init string, ignoring any returns
-  // R.parseEvalQ("source(filesim)");
-  // R.parseEvalQ("mysetup <- setup");
-
-  // this->chem_params.initFromR(R);
 
   return ParseRet::PARSER_OK;
 }
@@ -236,8 +243,6 @@ static Rcpp::List RunMasterLoop(RInside &R, const RuntimeParameters &params,
   for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
     double start_t = MPI_Wtime();
     uint32_t tick = 0;
-    // cout << "CPP: Evaluating next time step" << endl;
-    // R.parseEvalQ("mysetup <- master_iteration_setup(mysetup)");
 
     const double &dt = params.timesteps[iter - 1];
 
@@ -246,12 +251,8 @@ static Rcpp::List RunMasterLoop(RInside &R, const RuntimeParameters &params,
 
     /* displaying iteration number, with C++ and R iterator */
     MSG("Going through iteration " + std::to_string(iter));
-    // MSG("R's $iter: " +
-    //     std::to_string((uint32_t)(R.parseEval("mysetup$iter"))) +
-    //     ". Iteration");
 
     /* run transport */
-    // TODO: transport to diffusion
     diffusion.simulate(dt);
 
     chem.getField().update(diffusion.getField());
@@ -262,24 +263,15 @@ static Rcpp::List RunMasterLoop(RInside &R, const RuntimeParameters &params,
 
     chem.simulate(dt);
 
-    writeFieldsToR(R, diffusion.getField(), chem.getField());
-    // R["store_result"] = true;
-    // R.parseEval("mysetup$store_result <- TRUE");
     diffusion.getField().update(chem.getField());
-
-    R["req_dt"] = dt;
-    R["simtime"] = (sim_time += dt);
-
-    R.parseEval("mysetup$req_dt <- req_dt");
-    R.parseEval("mysetup$simtime <- simtime");
-
-    R["iter"] = iter;
 
     // MDL master_iteration_end just writes on disk state_T and
     // state_C after every iteration if the cmdline option
     // --ignore-results is not given (and thus the R variable
     // store_result is TRUE)
-    R.parseEval("mysetup <- master_iteration_end(setup=mysetup, iter)");
+    *global_rt_setup = master_iteration_end_R.value()(
+        *global_rt_setup, diffusion.getField().asSEXP(),
+        chem.getField().asSEXP());
 
     MSG("End of *coupling* iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
@@ -350,10 +342,6 @@ int main(int argc, char *argv[]) {
       MSG("Running POET version " + std::string(poet_version));
     }
 
-    /*Loading Dependencies*/
-    // TODO: kann raus
-    R.parseEvalQ(kin_r_library);
-
     RuntimeParameters run_params;
 
     switch (parseInitValues(argv, R, run_params)) {
@@ -370,6 +358,10 @@ int main(int argc, char *argv[]) {
 
     MSG("RInside initialized on process " + std::to_string(MY_RANK));
 
+    std::cout << std::flush;
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
     ChemistryModule chemistry(run_params.work_package_size,
                               init_list.getChemistryInit(), MPI_COMM_WORLD);
 
@@ -385,26 +377,22 @@ int main(int argc, char *argv[]) {
     chemistry.masterEnableSurrogates(surr_setup);
 
     if (MY_RANK > 0) {
-
       chemistry.WorkerLoop();
     } else {
+
+      init_global_functions(R);
+
       // R.parseEvalQ("mysetup <- setup");
       // // if (MY_RANK == 0) { // get timestep vector from
       // // grid_init function ... //
-      std::string master_init_code = "mysetup <- master_init(setup=mysetup)";
-      R.parseEval(master_init_code);
-
-      // run_params.initVectorParams(R);
+      *global_rt_setup =
+          master_init_R.value()(*global_rt_setup, run_params.out_dir);
 
       // MDL: store all parameters
-      if (MY_RANK == 0) {
-        MSG("Calling R Function to store calling parameters");
-        // R.parseEvalQ("StoreSetup(setup=mysetup)");
-      }
+      // MSG("Calling R Function to store calling parameters");
+      // R.parseEvalQ("StoreSetup(setup=mysetup)");
 
-      if (MY_RANK == 0) {
-        MSG("Init done on process with rank " + std::to_string(MY_RANK));
-      }
+      MSG("Init done on process with rank " + std::to_string(MY_RANK));
 
       // MPI_Barrier(MPI_COMM_WORLD);
 
@@ -417,8 +405,6 @@ int main(int argc, char *argv[]) {
 
       MSG("finished simulation loop");
 
-      MSG("start timing profiling");
-
       // R["simtime"] = dSimTime;
       // R.parseEvalQ("profiling$simtime <- simtime");
 
@@ -428,10 +414,8 @@ int main(int argc, char *argv[]) {
       r_vis_code = "saveRDS(profiling, file=paste0(fileout,'/timings.rds'));";
       R.parseEval(r_vis_code);
 
-      // MSG("Done! Results are stored as R objects into <" +
-      // run_params.getOutDir()
-      // +
-      //     "/timings.rds>");
+      MSG("Done! Results are stored as R objects into <" + run_params.out_dir +
+          "/timings.rds>");
     }
   }
 
