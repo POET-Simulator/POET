@@ -6,6 +6,7 @@
 #include <Rcpp/vector/instantiation.h>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <regex>
 #include <sstream>
 #include <string>
@@ -13,8 +14,9 @@
 
 namespace poet {
 
-static Rcpp::NumericMatrix pqcScriptToGrid(IPhreeqcPOET &phreeqc, RInside &R) {
-  IPhreeqcPOET::PhreeqcMat phreeqc_mat = phreeqc.getPhreeqcMat();
+static Rcpp::NumericMatrix
+pqcScriptToGrid(std::unique_ptr<IPhreeqcPOET> &phreeqc, RInside &R) {
+  IPhreeqcPOET::PhreeqcMat phreeqc_mat = phreeqc->getPhreeqcMat();
 
   // add "id" to the front of the column names
 
@@ -57,7 +59,7 @@ replaceRawKeywordIDs(std::map<int, std::string> raws) {
   return raws;
 }
 
-static inline uint32_t getSolutionCount(IPhreeqcPOET &phreeqc,
+static inline uint32_t getSolutionCount(std::unique_ptr<IPhreeqcPOET> &phreeqc,
                                         const Rcpp::List &initial_grid) {
   IPhreeqcPOET::ModulesArray mod_array;
   Rcpp::Function unique_R("unique");
@@ -73,7 +75,7 @@ static inline uint32_t getSolutionCount(IPhreeqcPOET &phreeqc,
 
   // std::copy(sizes_vec.begin(), sizes_vec.end(), sizes.begin());
 
-  return phreeqc.getModuleSizes(row_ids)[POET_SOL];
+  return phreeqc->getModuleSizes(row_ids)[POET_SOL];
 }
 
 static std::string readFile(const std::string &path) {
@@ -95,7 +97,7 @@ static std::string readFile(const std::string &path) {
   return buffer.str();
 }
 
-void InitialList::initGrid(const Rcpp::List &grid_input) {
+void InitialList::prepareGrid(const Rcpp::List &grid_input) {
   // parse input values
   Rcpp::Function unique_R("unique");
 
@@ -153,7 +155,7 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
     throw std::runtime_error("Grid size must be positive.");
   }
 
-  IPhreeqcPOET phreeqc(database, script);
+  this->phreeqc = std::make_unique<IPhreeqcPOET>(database, script);
 
   this->phreeqc_mat = pqcScriptToGrid(phreeqc, R);
   this->initial_grid = matToGrid(R, this->phreeqc_mat, grid_def);
@@ -169,7 +171,7 @@ void InitialList::initGrid(const Rcpp::List &grid_input) {
 
   std::map<int, std::string> pqc_raw_dumps;
 
-  pqc_raw_dumps = replaceRawKeywordIDs(phreeqc.raw_dumps());
+  pqc_raw_dumps = replaceRawKeywordIDs(phreeqc->raw_dumps());
 
   this->pqc_ids =
       Rcpp::as<std::vector<int>>(unique_R(this->initial_grid["ID"]));

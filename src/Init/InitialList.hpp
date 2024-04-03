@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Base/RInsidePOET.hpp"
-#include "Chemistry/ChemistryDefs.hpp"
 #include "DataStructures/NamedVector.hpp"
 #include <Rcpp/vector/instantiation.h>
+#include <memory>
 #include <set>
 #include <tug/Boundary.hpp>
 
@@ -86,7 +86,10 @@ private:
     return GridMembersString[static_cast<std::size_t>(member)];
   }
 
-  void initGrid(const Rcpp::List &grid_input);
+  std::unique_ptr<IPhreeqcPOET> phreeqc;
+
+  void prepareGrid(const Rcpp::List &grid_input);
+
   std::uint8_t dim;
 
   std::uint32_t n_cols;

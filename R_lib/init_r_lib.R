@@ -29,7 +29,7 @@ pqc_to_grid <- function(pqc_in, grid) {
     return(res_df)
 }
 
-resolvePqcBound <- function(pqc_mat, transport_spec, id) {
+resolve_pqc_bound <- function(pqc_mat, transport_spec, id) {
     df <- as.data.frame(pqc_mat, check.names = FALSE)
     value <- df[df$ID == id, transport_spec]
 
@@ -38,4 +38,30 @@ resolvePqcBound <- function(pqc_mat, transport_spec, id) {
     }
 
     return(value)
+}
+
+add_column_after_position <- function(df, new_col, pos, new_col_name) {
+    # Split the data frame into two parts
+    df_left <- df[, 1:(pos)]
+    df_right <- df[, (pos + 1):ncol(df)]
+
+    # Add the new column to the left part
+    df_left[[new_col_name]] <- new_col
+
+    # Combine the left part, new column, and right part
+    df_new <- cbind(df_left, df_right)
+
+    return(df_new)
+}
+
+add_missing_transport_species <- function(init_grid, new_names, old_size) {
+    # skip the ID column
+    column_index <- old_size + 1
+
+    for (name in new_names) {
+        init_grid <- add_column_after_position(init_grid, rep(0, nrow(init_grid)), column_index, name)
+        column_index <- column_index + 1
+    }
+
+    return(init_grid)
 }

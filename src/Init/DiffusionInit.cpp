@@ -6,13 +6,16 @@
 #include <set>
 
 #include "DataStructures/Field.hpp"
+#include "IPhreeqcPOET.hpp"
 #include "InitialList.hpp"
 
+#include <Rcpp/Function.h>
 #include <Rcpp/proxy/ProtectedProxy.h>
 #include <Rcpp/vector/instantiation.h>
 #include <Rinternals.h>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -49,9 +52,81 @@ static std::vector<TugType> colMajToRowMaj(const Rcpp::NumericVector &vec,
   }
 }
 
+static std::vector<std::string> extend_transport_names(
+    std::unique_ptr<IPhreeqcPOET> &phreeqc, const Rcpp::List &boundaries_list,
+    const std::vector<std::string> &old_trans_names, Rcpp::List &initial_grid) {
+
+  std::vector<std::string> transport_names = old_trans_names;
+  std::set<int> constant_pqc_ids;
+
+  for (const auto &side : tug_side_mapping) {
+    if (!boundaries_list.containsElementNamed(side.second.c_str())) {
+      continue;
+    }
+
+    Rcpp::List mapping = boundaries_list[side.second];
+
+    const Rcpp::NumericVector cells = mapping["cell"];
+    const Rcpp::NumericVector values = mapping["sol_id"];
+    const Rcpp::CharacterVector type_str = mapping["type"];
+
+    if (cells.size() != values.size()) {
+      throw std::runtime_error("Boundary [" + side.second +
+                               "] cells and values are not the same "
+                               "length");
+    }
+
+    for (std::size_t i = 0; i < cells.size(); i++) {
+      if (type_str[i] == "constant") {
+        constant_pqc_ids.insert(values[i]);
+      }
+    }
+  }
+
+  if (!constant_pqc_ids.empty()) {
+    for (const auto &pqc_id : constant_pqc_ids) {
+      const auto solution_names = phreeqc->getSolutionNames(pqc_id);
+
+      // add those strings which are not already in the transport_names
+      for (const auto &name : solution_names) {
+        if (std::find(transport_names.begin(), transport_names.end(), name) ==
+            transport_names.end()) {
+          transport_names.push_back(name);
+        }
+      }
+    }
+  }
+
+  return transport_names;
+}
+
+static Rcpp::List extend_initial_grid(const Rcpp::List &initial_grid,
+                                      std::vector<std::string> transport_names,
+                                      std::size_t old_size) {
+  std::vector<std::string> names_to_add(transport_names.begin() + old_size,
+                                        transport_names.end());
+
+  Rcpp::Function extend_grid_R("add_missing_transport_species");
+
+  return extend_grid_R(initial_grid, Rcpp::wrap(names_to_add), old_size);
+}
+
 Rcpp::List InitialList::resolveBoundaries(const Rcpp::List &boundaries_list) {
   Rcpp::List bound_list;
-  Rcpp::Function resolve_R("resolvePqcBound");
+  Rcpp::Function resolve_R("resolve_pqc_bound");
+
+  const std::size_t old_transport_size = this->transport_names.size();
+
+  this->transport_names =
+      extend_transport_names(this->phreeqc, boundaries_list,
+                             this->transport_names, this->initial_grid);
+
+  const std::size_t new_transport_size = this->transport_names.size();
+
+  if (old_transport_size != new_transport_size) {
+    this->initial_grid = extend_initial_grid(
+        this->initial_grid, this->transport_names, old_transport_size);
+  }
 
   for (const auto &species : this->transport_names) {
     Rcpp::List spec_list;

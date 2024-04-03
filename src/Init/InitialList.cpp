@@ -10,7 +10,7 @@
 
 namespace poet {
 void InitialList::initializeFromList(const Rcpp::List &setup) {
-  initGrid(setup[grid_key]);
+  prepareGrid(setup[grid_key]);
   initDiffusion(setup[diffusion_key]);
   initChemistry(setup[chemistry_key]);
 }
