@@ -31,7 +31,7 @@ KINETICS 2
 END
 
 SOLUTION 3
-    pH 7
+    units	mol/kgw
     water 1
     temp 25 
     Mg 0.001
