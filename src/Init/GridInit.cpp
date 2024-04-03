@@ -165,7 +165,7 @@ void InitialList::prepareGrid(const Rcpp::List &grid_input) {
   std::vector<std::string> colnames =
       Rcpp::as<std::vector<std::string>>(this->initial_grid.names());
 
-  this->transport_names = this->pqc_sol_order = std::vector<std::string>(
+  this->transport_names = std::vector<std::string>(
       colnames.begin() + 1,
       colnames.begin() + 1 + solution_count); // skip ID
 

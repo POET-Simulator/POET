@@ -6,6 +6,8 @@
 namespace poet {
 
 void InitialList::initChemistry(const Rcpp::List &chem) {
+  this->pqc_sol_order = this->transport_names;
+
   if (chem.containsElementNamed("dht_species")) {
     this->dht_species = Rcpp::as<NamedVector<uint32_t>>(chem["dht_species"]);
   }
