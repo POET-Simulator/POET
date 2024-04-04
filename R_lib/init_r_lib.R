@@ -3,22 +3,26 @@ has_doParallel <- require(doParallel)
 
 seq_pqc_to_grid <- function(pqc_in, grid) {
     # Convert the input DataFrame to a matrix
-    dt <- as.matrix(pqc_in)
+    pqc_in <- as.matrix(pqc_in)
 
     # Flatten the matrix into a vector
-    id_vector <- as.vector(t(grid))
+    id_vector <- as.numeric(t(grid))
 
     # Initialize an empty matrix to store the results
-    result_mat <- matrix(nrow = 0, ncol = ncol(dt))
+    # result_mat <- matrix(NA, nrow = length(id_vector), ncol = ncol(pqc_in))
+
+    row_indices <- match(id_vector, pqc_in[, "ID"])
+
+    result_mat <- pqc_in[row_indices, ]
 
     # Iterate over each ID in the vector
-    for (id_mat in id_vector) {
-        # Find the matching row in the matrix
-        matching_row <- dt[dt[, "ID"] == id_mat, ]
+    # for (i in seq_along(id_vector)) {
+    #     # Find the matching row in the matrix
+    #     # matching_row <- pqc_in[pqc_in[, "ID"] == i, ]
 
-        # Append the matching row to the result matrix
-        result_mat <- rbind(result_mat, matching_row)
-    }
+    #     # Append the matching row to the result matrix
+    #     result_mat[i, ] <- pqc_in[pqc_in[, "ID"] == i, ]
+    # }
 
     # Convert the result matrix to a data frame
     res_df <- as.data.frame(result_mat)
@@ -72,13 +76,13 @@ par_pqc_to_grid <- function(pqc_in, grid) {
 }
 
 pqc_to_grid <- function(pqc_in, grid) {
-    if (has_doParallel && has_foreach) {
-        print("Using parallel grid creation")
-        return(par_pqc_to_grid(pqc_in, grid))
-    } else {
+    # if (has_doParallel && has_foreach) {
+    #     print("Using parallel grid creation")
+    #     return(par_pqc_to_grid(pqc_in, grid))
+    # } else {
         print("Using sequential grid creation")
         return(seq_pqc_to_grid(pqc_in, grid))
-    }
+    # }
 }
 
 resolve_pqc_bound <- function(pqc_mat, transport_spec, id) {

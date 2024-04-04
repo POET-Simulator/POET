@@ -31,7 +31,6 @@
 #include <Rcpp.h>
 #include <Rcpp/Function.h>
 #include <Rcpp/vector/instantiation.h>
-#include <cstdio>
 #include <cstdlib>
 #include <memory>
 #include <mpi.h>
@@ -386,7 +385,8 @@ int main(int argc, char *argv[]) {
       // // if (MY_RANK == 0) { // get timestep vector from
       // // grid_init function ... //
       *global_rt_setup =
-          master_init_R.value()(*global_rt_setup, run_params.out_dir);
+          master_init_R.value()(*global_rt_setup, run_params.out_dir,
+                                init_list.getInitialGrid().asSEXP());
 
       // MDL: store all parameters
       // MSG("Calling R Function to store calling parameters");
@@ -405,13 +405,12 @@ int main(int argc, char *argv[]) {
 
       MSG("finished simulation loop");
 
-      // R["simtime"] = dSimTime;
-      // R.parseEvalQ("profiling$simtime <- simtime");
-
       R["profiling"] = profiling;
+      R["setup"] = *global_rt_setup;
 
       string r_vis_code;
-      r_vis_code = "saveRDS(profiling, file=paste0(fileout,'/timings.rds'));";
+      r_vis_code =
+          "saveRDS(profiling, file=paste0(setup$out_dir,'/timings.rds'));";
       R.parseEval(r_vis_code);
 
       MSG("Done! Results are stored as R objects into <" + run_params.out_dir +

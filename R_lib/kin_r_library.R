@@ -15,7 +15,7 @@
 ### this program; if not, write to the Free Software Foundation, Inc., 51
 ### Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
-master_init <- function(setup, out_dir) {
+master_init <- function(setup, out_dir, init_field) {
     ## Setup the directory where we will store the results
     if (!dir.exists(out_dir)) {
         dir.create(out_dir)
@@ -23,7 +23,7 @@ master_init <- function(setup, out_dir) {
     } else {
         msgm("dir ", out_dir, " already exists, I will overwrite!")
     }
-    if (!exists("setup$store_result")) {
+    if (is.null(setup$store_result)) {
         msgm("store_result doesn't exist!")
     } else {
         msgm("store_result is ", setup$store_result)
@@ -40,10 +40,15 @@ master_init <- function(setup, out_dir) {
     }
 
     if (setup$store_result) {
+        init_field_out <- paste0(out_dir, "/iter_0.rds")
+        saveRDS(init_field, file = init_field_out)
+        msgm("Stored initial field in ", init_field_out)
         if (is.null(setup[["out_save"]])) {
             setup$out_save <- seq(1, setup$iterations)
         }
     }
+
+    setup$out_dir <- out_dir
 
     return(setup)
 }
@@ -63,7 +68,7 @@ master_iteration_end <- function(setup, state_T, state_C) {
     ## comprised in setup$out_save
     if (setup$store_result) {
         if (iter %in% setup$out_save) {
-            nameout <- paste0(fileout, "/iter_", sprintf(fmt = fmt, iter), ".rds")
+            nameout <- paste0(setup$out_dir, "/iter_", sprintf(fmt = fmt, iter), ".rds")
             saveRDS(list(
                 T = state_T, C = state_C,
                 simtime = as.integer(setup$simulation_time)
