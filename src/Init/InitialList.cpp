@@ -41,6 +41,8 @@ void InitialList::importList(const Rcpp::List &setup) {
       setup[static_cast<int>(ExportList::DIFFU_TRANSPORT)]);
   this->boundaries =
       Rcpp::List(setup[static_cast<int>(ExportList::DIFFU_BOUNDARIES)]);
+  this->inner_boundaries =
+      Rcpp::List(setup[static_cast<int>(ExportList::DIFFU_INNER_BOUNDARIES)]);
   this->alpha_x =
       Rcpp::List(setup[static_cast<int>(ExportList::DIFFU_ALPHA_X)]);
   this->alpha_y =
@@ -81,6 +83,8 @@ Rcpp::List InitialList::exportList() {
   out[static_cast<int>(ExportList::DIFFU_TRANSPORT)] =
       Rcpp::wrap(this->transport_names);
   out[static_cast<int>(ExportList::DIFFU_BOUNDARIES)] = this->boundaries;
+  out[static_cast<int>(ExportList::DIFFU_INNER_BOUNDARIES)] =
+      this->inner_boundaries;
   out[static_cast<int>(ExportList::DIFFU_ALPHA_X)] = this->alpha_x;
   out[static_cast<int>(ExportList::DIFFU_ALPHA_Y)] = this->alpha_y;
 

@@ -95,6 +95,10 @@ void DiffusionModule::simulate(double requested_dt) {
 
     boundary.deserialize(this->param_list.boundaries[sol_name]);
 
+    if (!this->param_list.inner_boundaries[sol_name].empty()) {
+      boundary.setInnerBoundaries(this->param_list.inner_boundaries[sol_name]);
+    }
+
     grid.setAlpha(alpha_x, alpha_y);
     grid.setConcentrations(conc);
 

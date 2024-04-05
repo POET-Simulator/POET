@@ -16,6 +16,7 @@
 #include <IPhreeqcPOET.hpp>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <DataStructures/Field.hpp>
@@ -47,6 +48,7 @@ private:
     GRID_INITIAL,
     DIFFU_TRANSPORT,
     DIFFU_BOUNDARIES,
+    DIFFU_INNER_BOUNDARIES,
     DIFFU_ALPHA_X,
     DIFFU_ALPHA_Y,
     CHEM_DATABASE,
@@ -111,6 +113,10 @@ public:
     using BoundaryMap =
         std::map<std::string, std::vector<tug::BoundaryElement<TugType>>>;
 
+    using InnerBoundaryMap =
+        std::map<std::string,
+                 std::map<std::pair<std::uint32_t, std::uint32_t>, TugType>>;
+
     uint8_t dim;
     std::uint32_t n_cols;
     std::uint32_t n_rows;
@@ -123,6 +129,7 @@ public:
     std::vector<std::string> transport_names;
 
     BoundaryMap boundaries;
+    InnerBoundaryMap inner_boundaries;
 
     Field alpha_x;
     Field alpha_y;
@@ -134,22 +141,32 @@ private:
   // Diffusion members
   static constexpr const char *diffusion_key = "Diffusion";
 
-  enum class DiffusionMembers { BOUNDARIES, ALPHA_X, ALPHA_Y, ENUM_SIZE };
+  enum class DiffusionMembers {
+    BOUNDARIES,
+    INNER_BOUNDARIES,
+    ALPHA_X,
+    ALPHA_Y,
+    ENUM_SIZE
+  };
 
   static constexpr std::size_t size_DiffusionMembers =
       static_cast<std::size_t>(InitialList::DiffusionMembers::ENUM_SIZE);
 
   static constexpr std::array<const char *, size_DiffusionMembers>
-      DiffusionMembersString = {"boundaries", "alpha_x", "alpha_y"};
+      DiffusionMembersString = {"boundaries", "inner_boundaries", "alpha_x",
+                                "alpha_y"};
 
   constexpr const char *DIFFU_MEMBER_STR(DiffusionMembers member) const {
     return DiffusionMembersString[static_cast<std::size_t>(member)];
   }
 
   void initDiffusion(const Rcpp::List &diffusion_input);
-  Rcpp::List resolveBoundaries(const Rcpp::List &boundaries_list);
+  std::pair<Rcpp::List, Rcpp::List>
+  resolveBoundaries(const Rcpp::List &boundaries_list,
+                    const Rcpp::List &inner_boundaries);
 
   Rcpp::List boundaries;
+  Rcpp::List inner_boundaries;
 
   Rcpp::List alpha_x;
   Rcpp::List alpha_y;

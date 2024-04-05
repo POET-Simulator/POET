@@ -54,6 +54,7 @@ static std::vector<TugType> colMajToRowMaj(const Rcpp::NumericVector &vec,
 
 static std::vector<std::string> extend_transport_names(
     std::unique_ptr<IPhreeqcPOET> &phreeqc, const Rcpp::List &boundaries_list,
+    const Rcpp::List &inner_boundaries,
     const std::vector<std::string> &old_trans_names, Rcpp::List &initial_grid) {
 
   std::vector<std::string> transport_names = old_trans_names;
@@ -80,6 +81,13 @@ static std::vector<std::string> extend_transport_names(
       if (type_str[i] == "constant") {
         constant_pqc_ids.insert(values[i]);
       }
+    }
+  }
+
+  if (inner_boundaries.size() > 0) {
+    const Rcpp::NumericVector values = inner_boundaries["sol_id"];
+    for (std::size_t i = 0; i < values.size(); i++) {
+      constant_pqc_ids.insert(values[i]);
     }
   }
 
@@ -111,14 +119,17 @@ static Rcpp::List extend_initial_grid(const Rcpp::List &initial_grid,
   return extend_grid_R(initial_grid, Rcpp::wrap(names_to_add), old_size);
 }
 
-Rcpp::List InitialList::resolveBoundaries(const Rcpp::List &boundaries_list) {
+std::pair<Rcpp::List, Rcpp::List>
+InitialList::resolveBoundaries(const Rcpp::List &boundaries_list,
+                               const Rcpp::List &inner_boundaries) {
   Rcpp::List bound_list;
+  Rcpp::List inner_bound;
   Rcpp::Function resolve_R("resolve_pqc_bound");
 
   const std::size_t old_transport_size = this->transport_names.size();
 
   this->transport_names =
-      extend_transport_names(this->phreeqc, boundaries_list,
+      extend_transport_names(this->phreeqc, boundaries_list, inner_boundaries,
                              this->transport_names, this->initial_grid);
 
   const std::size_t new_transport_size = this->transport_names.size();
@@ -127,6 +138,10 @@ Rcpp::List InitialList::resolveBoundaries(const Rcpp::List &boundaries_list) {
     this->initial_grid = extend_initial_grid(
         this->initial_grid, this->transport_names, old_transport_size);
   }
+
+  const Rcpp::NumericVector &inner_row_vec = inner_boundaries["row"];
+  const Rcpp::NumericVector &inner_col_vec = inner_boundaries["col"];
+  const Rcpp::NumericVector &inner_pqc_id_vec = inner_boundaries["sol_id"];
 
   for (const auto &species : this->transport_names) {
     Rcpp::List spec_list;
@@ -173,9 +188,34 @@ Rcpp::List InitialList::resolveBoundaries(const Rcpp::List &boundaries_list) {
     }
 
     bound_list[species] = spec_list;
+
+    if (inner_boundaries.size() > 0) {
+
+      std::vector<std::uint32_t> rows;
+      std::vector<std::uint32_t> cols;
+      std::vector<TugType> c_value;
+
+      if (inner_row_vec.size() != inner_col_vec.size() ||
+          inner_row_vec.size() != inner_pqc_id_vec.size()) {
+        throw std::runtime_error(
+            "Inner boundary vectors are not the same length");
+      }
+
+      for (std::size_t i = 0; i < inner_row_vec.size(); i++) {
+        rows.push_back(inner_row_vec[i] - 1);
+        cols.push_back(inner_col_vec[i] - 1);
+        c_value.push_back(Rcpp::as<TugType>(resolve_R(
+            this->phreeqc_mat, Rcpp::wrap(species), inner_pqc_id_vec[i])));
+      }
+
+      inner_bound[species] =
+          Rcpp::List::create(Rcpp::Named("row") = Rcpp::wrap(rows),
+                             Rcpp::Named("col") = Rcpp::wrap(cols),
+                             Rcpp::Named("value") = Rcpp::wrap(c_value));
+    }
   }
 
-  return bound_list;
+  return std::make_pair(bound_list, inner_bound);
 }
 
 static inline SEXP_TYPE get_datatype(const SEXP &input) {
@@ -230,26 +270,36 @@ static Rcpp::List parseAlphas(const SEXP &input,
   return out_list;
 }
 void InitialList::initDiffusion(const Rcpp::List &diffusion_input) {
-  const Rcpp::List &boundaries =
-      diffusion_input[DIFFU_MEMBER_STR(DiffusionMembers::BOUNDARIES)];
+  Rcpp::List boundaries;
+  Rcpp::List inner_boundaries;
+
+  if (diffusion_input.containsElementNamed(
+          DIFFU_MEMBER_STR(DiffusionMembers::BOUNDARIES))) {
+    boundaries =
+        diffusion_input[DIFFU_MEMBER_STR(DiffusionMembers::BOUNDARIES)];
+  }
+
+  if (diffusion_input.containsElementNamed(
+          DIFFU_MEMBER_STR(DiffusionMembers::INNER_BOUNDARIES))) {
+    inner_boundaries =
+        diffusion_input[DIFFU_MEMBER_STR(DiffusionMembers::INNER_BOUNDARIES)];
+  }
+
   const SEXP &alpha_x =
       diffusion_input[DIFFU_MEMBER_STR(DiffusionMembers::ALPHA_X)];
   const SEXP &alpha_y =
       diffusion_input[DIFFU_MEMBER_STR(DiffusionMembers::ALPHA_Y)];
 
-  this->boundaries = resolveBoundaries(boundaries);
+  const auto resolved_boundaries =
+      resolveBoundaries(boundaries, inner_boundaries);
+  this->boundaries = resolved_boundaries.first;
+  this->inner_boundaries = resolved_boundaries.second;
 
   this->alpha_x =
       parseAlphas(alpha_x, this->transport_names, this->n_cols, this->n_rows);
 
   this->alpha_y =
       parseAlphas(alpha_y, this->transport_names, this->n_cols, this->n_rows);
-
-  // R["alpha_x"] = this->alpha_x;
-  // R["alpha_y"] = this->alpha_y;
-
-  // R.parseEval("print(alpha_x)");
-  // R.parseEval("print(alpha_y)");
 }
 
 InitialList::DiffusionInit::BoundaryMap
@@ -287,6 +337,39 @@ RcppListToBoundaryMap(const std::vector<std::string> &trans_names,
 
   return map;
 }
+static InitialList::DiffusionInit::InnerBoundaryMap
+RcppListToInnerBoundaryMap(const std::vector<std::string> &trans_names,
+                           const Rcpp::List &inner_bound_list,
+                           std::uint32_t n_cols, std::uint32_t n_rows) {
+  InitialList::DiffusionInit::InnerBoundaryMap map;
+
+  if (inner_bound_list.size() == 0) {
+    return map;
+  }
+
+  for (const auto &name : trans_names) {
+    const Rcpp::List &conc_list = inner_bound_list[name];
+
+    std::map<std::pair<std::uint32_t, std::uint32_t>, TugType> inner_bc;
+
+    const Rcpp::NumericVector &row = conc_list["row"];
+    const Rcpp::NumericVector &col = conc_list["col"];
+    const Rcpp::NumericVector &value = conc_list["value"];
+
+    if (row.size() != col.size() || row.size() != value.size()) {
+      throw std::runtime_error(
+          "Inner boundary vectors are not the same length");
+    }
+
+    for (std::size_t i = 0; i < row.size(); i++) {
+      inner_bc[std::make_pair(row[i], col[i])] = value[i];
+    }
+
+    map[name] = inner_bc;
+  }
+
+  return map;
+}
 
 InitialList::DiffusionInit InitialList::getDiffusionInit() const {
   DiffusionInit diff_init;
@@ -304,6 +387,9 @@ InitialList::DiffusionInit InitialList::getDiffusionInit() const {
 
   diff_init.boundaries = RcppListToBoundaryMap(
       this->transport_names, this->boundaries, this->n_cols, this->n_rows);
+  diff_init.inner_boundaries =
+      RcppListToInnerBoundaryMap(this->transport_names, this->inner_boundaries,
+                                 this->n_cols, this->n_rows);
   diff_init.alpha_x = Field(this->alpha_x);
   diff_init.alpha_y = Field(this->alpha_y);
 
