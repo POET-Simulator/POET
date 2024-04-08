@@ -81,5 +81,5 @@ add_executable(poet_init initializer.cpp)
 target_link_libraries(poet_init PRIVATE POETLib RRuntime)
 target_include_directories(poet_init PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
-# install(TARGETS poet DESTINATION bin)
+install(TARGETS poet poet_init DESTINATION bin)
 
