@@ -18,8 +18,9 @@ mpirun -np 4 ./poet --interp  barite_interp_eval.R barite_results
 
 * List of Files
 
-- =barite.R=: POET input script for a 20x20 simulation grid
-- =barite_interp_eval.R=: POET input script for a 400x200 simulation
+- =barite_het.R=: POET input script with homogeneous zones for a 5x2 simulation
+  grid 
+- =barite_200.R=: POET input script for a 200x200 simulation
   grid
 - =db_barite.dat=: PHREEQC database containing the kinetic expressions
   for barite and celestite, stripped down from =phreeqc.dat=

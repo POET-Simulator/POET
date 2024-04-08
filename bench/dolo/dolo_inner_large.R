@@ -1,11 +1,14 @@
-grid_def <- matrix(2, nrow = 10, ncol = 10)
+rows <- 2000
+cols <- 1000
+
+grid_def <- matrix(2, nrow = rows, ncol = cols)
 
 # Define grid configuration for POET model
 grid_setup <- list(
     pqc_in_file = "./dol.pqi",
     pqc_db_file = "./phreeqc_kin.dat", # Path to the database file for Phreeqc
     grid_def = grid_def, # Definition of the grid, containing IDs according to the Phreeqc input script
-    grid_size = c(ncol(grid_def) / 10, nrow(grid_def) / 10), # Size of the grid in meters
+    grid_size = c(rows, cols) / 100, # Size of the grid in meters
     constant_cells = c() # IDs of cells with constant concentration
 )
 
@@ -13,9 +16,9 @@ bound_size <- 2
 
 diffusion_setup <- list(
     inner_boundaries = list(
-        "row" = c(1, 10),
-        "col" = c(1, 10),
-        "sol_id" = c(3, 3)
+        "row" = c(200, 800, 800),
+        "col" = c(400, 1400, 1600),
+        "sol_id" = c(3, 4, 4)
     ),
     alpha_x = 1e-6,
     alpha_y = 1e-6

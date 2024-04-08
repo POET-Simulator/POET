@@ -34,5 +34,10 @@ SOLUTION 3
     Cl 0.002
 END
 
-RUN_CELLS 
-    -cells 2-3
+SOLUTION 4
+    units mol/kgw 
+    water 1
+    temp 25
+    Mg 0.002
+    Cl 0.002
+END

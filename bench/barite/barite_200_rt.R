@@ -1,5 +1,5 @@
-iterations <- 200
-dt <- 3600
+iterations <- 50
+dt <- 100
 
 list(
     timesteps = rep(dt, iterations),
