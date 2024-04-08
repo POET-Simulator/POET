@@ -1,29 +1,16 @@
-has_foreach <- require(foreach)
-has_doParallel <- require(doParallel)
-
-seq_pqc_to_grid <- function(pqc_in, grid) {
+pqc_to_grid <- function(pqc_in, grid) {
     # Convert the input DataFrame to a matrix
     pqc_in <- as.matrix(pqc_in)
 
     # Flatten the matrix into a vector
     id_vector <- as.numeric(t(grid))
 
-    # Initialize an empty matrix to store the results
-    # result_mat <- matrix(NA, nrow = length(id_vector), ncol = ncol(pqc_in))
-
+    # Find the matching rows in the matrix
     row_indices <- match(id_vector, pqc_in[, "ID"])
 
+    # Extract the matching rows from pqc_in to size of grid matrix
     result_mat <- pqc_in[row_indices, ]
 
-    # Iterate over each ID in the vector
-    # for (i in seq_along(id_vector)) {
-    #     # Find the matching row in the matrix
-    #     # matching_row <- pqc_in[pqc_in[, "ID"] == i, ]
-
-    #     # Append the matching row to the result matrix
-    #     result_mat[i, ] <- pqc_in[pqc_in[, "ID"] == i, ]
-    # }
-
     # Convert the result matrix to a data frame
     res_df <- as.data.frame(result_mat)
 
@@ -34,55 +21,6 @@ seq_pqc_to_grid <- function(pqc_in, grid) {
     rownames(res_df) <- NULL
 
     return(res_df)
-}
-
-par_pqc_to_grid <- function(pqc_in, grid) {
-    # Convert the input DataFrame to a matrix
-    dt <- as.matrix(pqc_in)
-
-    # Flatten the matrix into a vector
-    id_vector <- as.vector(t(grid))
-
-    # Initialize an empty matrix to store the results
-    # result_mat <- matrix(nrow = 0, ncol = ncol(dt))
-
-    # Set up parallel processing
-    num_cores <- detectCores()
-    cl <- makeCluster(num_cores)
-    registerDoParallel(cl)
-
-    # Iterate over each ID in the vector in parallel
-    result_mat <- foreach(id_mat = id_vector, .combine = rbind) %dopar% {
-        # Find the matching row in the matrix
-        matching_row <- dt[dt[, "ID"] == id_mat, ]
-
-        # Return the matching row
-        matching_row
-    }
-
-    # Stop the parallel processing
-    stopCluster(cl)
-
-    # Convert the result matrix to a data frame
-    res_df <- as.data.frame(result_mat)
-
-    # Remove all columns which only contain NaN
-    res_df <- res_df[, colSums(is.na(res_df)) != nrow(res_df)]
-
-    # Remove row names
-    rownames(res_df) <- NULL
-
-    return(res_df)
-}
-
-pqc_to_grid <- function(pqc_in, grid) {
-    # if (has_doParallel && has_foreach) {
-    #     print("Using parallel grid creation")
-    #     return(par_pqc_to_grid(pqc_in, grid))
-    # } else {
-        print("Using sequential grid creation")
-        return(seq_pqc_to_grid(pqc_in, grid))
-    # }
 }
 
 resolve_pqc_bound <- function(pqc_mat, transport_spec, id) {
