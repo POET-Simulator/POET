@@ -1,27 +1,65 @@
 #include "Init/InitialList.hpp"
 #include "poet.hpp"
 
-#include <Rcpp/vector/instantiation.h>
+#include "Base/argh.hpp"
+
 #include <cstdlib>
 
 #include <RInside.h>
 #include <Rcpp.h>
 #include <iostream>
+#include <string>
 
 int main(int argc, char **argv) {
-  if (argc < 2 || argc > 2) {
-    std::cerr << "Usage: " << argv[0] << " <script.R>\n";
-    return 1;
+
+  argh::parser cmdl(argc, argv);
+
+  if (cmdl[{"-h", "--help"}] || cmdl.pos_args().size() != 2) {
+    std::cout << "Usage: " << argv[0]
+              << " [-o, --output output_file] "
+                 "[--setwd] "
+                 "<script.R>"
+              << std::endl;
+    return EXIT_SUCCESS;
   }
 
   RInside R(argc, argv);
 
   R.parseEvalQ(init_r_library);
 
-  const std::string script = argv[1];
-  Rcpp::Function source_R("source");
+  std::string input_script = cmdl.pos_args()[1];
+  std::string normalized_path_script;
+  std::string in_file_name;
 
-  source_R(script);
+  std::string curr_path =
+      Rcpp::as<std::string>(Rcpp::Function("normalizePath")(Rcpp::wrap(".")));
+
+  try {
+    normalized_path_script =
+        Rcpp::as<std::string>(Rcpp::Function("normalizePath")(input_script));
+
+    in_file_name = Rcpp::as<std::string>(
+        Rcpp::Function("basename")(normalized_path_script));
+
+    std::cout << "Using script " << input_script << std::endl;
+    Rcpp::Function("source")(input_script);
+  } catch (Rcpp::exception &e) {
+    std::cerr << "Error while sourcing " << input_script << e.what()
+              << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  std::string output_file;
+  cmdl({"-o", "--output"},
+       in_file_name.substr(0, in_file_name.find_last_of('.')) + ".rds") >>
+      output_file;
+
+  if (cmdl[{"--setwd"}]) {
+    const std::string dir_path = Rcpp::as<std::string>(
+        Rcpp::Function("dirname")(normalized_path_script));
+
+    Rcpp::Function("setwd")(Rcpp::wrap(dir_path));
+  }
 
   Rcpp::List setup = R["setup"];
 
@@ -30,13 +68,10 @@ int main(int argc, char **argv) {
   init.initializeFromList(setup);
 
   // replace file extension by .rds
-  const std::string rds_out_filename =
-      script.substr(0, script.find_last_of('.')) + ".rds";
-
   Rcpp::Function save("saveRDS");
-  save(init.exportList(), Rcpp::wrap(rds_out_filename));
+  save(init.exportList(), Rcpp::wrap(curr_path + "/" + output_file));
 
-  std::cout << "Saved result to " << rds_out_filename << std::endl;
+  std::cout << "Saved result to " << output_file << std::endl;
 
   //   parseGrid(R, grid, results);
   return EXIT_SUCCESS;
