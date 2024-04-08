@@ -351,7 +351,7 @@ int main(int argc, char *argv[]) {
     }
 
     InitialList init_list(R);
-    init_list.importList(run_params.init_params);
+    init_list.importList(run_params.init_params, MY_RANK != 0);
 
     MSG("RInside initialized on process " + std::to_string(MY_RANK));
 

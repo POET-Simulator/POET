@@ -15,7 +15,7 @@ void InitialList::initializeFromList(const Rcpp::List &setup) {
   initChemistry(setup[chemistry_key]);
 }
 
-void InitialList::importList(const Rcpp::List &setup) {
+void InitialList::importList(const Rcpp::List &setup, bool minimal) {
   this->dim = Rcpp::as<uint8_t>(setup[static_cast<int>(ExportList::GRID_DIM)]);
 
   Rcpp::NumericVector grid_specs =
@@ -34,20 +34,23 @@ void InitialList::importList(const Rcpp::List &setup) {
   this->porosity = Rcpp::as<std::vector<double>>(
       setup[static_cast<int>(ExportList::GRID_POROSITY)]);
 
-  this->initial_grid =
-      Rcpp::List(setup[static_cast<int>(ExportList::GRID_INITIAL)]);
+  if (!minimal) {
+    this->initial_grid =
+        Rcpp::List(setup[static_cast<int>(ExportList::GRID_INITIAL)]);
+  }
 
   this->transport_names = Rcpp::as<std::vector<std::string>>(
       setup[static_cast<int>(ExportList::DIFFU_TRANSPORT)]);
-  this->boundaries =
-      Rcpp::List(setup[static_cast<int>(ExportList::DIFFU_BOUNDARIES)]);
-  this->inner_boundaries =
-      Rcpp::List(setup[static_cast<int>(ExportList::DIFFU_INNER_BOUNDARIES)]);
-  this->alpha_x =
-      Rcpp::List(setup[static_cast<int>(ExportList::DIFFU_ALPHA_X)]);
-  this->alpha_y =
-      Rcpp::List(setup[static_cast<int>(ExportList::DIFFU_ALPHA_Y)]);
-
+  if (!minimal) {
+    this->boundaries =
+        Rcpp::List(setup[static_cast<int>(ExportList::DIFFU_BOUNDARIES)]);
+    this->inner_boundaries =
+        Rcpp::List(setup[static_cast<int>(ExportList::DIFFU_INNER_BOUNDARIES)]);
+    this->alpha_x =
+        Rcpp::List(setup[static_cast<int>(ExportList::DIFFU_ALPHA_X)]);
+    this->alpha_y =
+        Rcpp::List(setup[static_cast<int>(ExportList::DIFFU_ALPHA_Y)]);
+  }
   this->database =
       Rcpp::as<std::string>(setup[static_cast<int>(ExportList::CHEM_DATABASE)]);
   this->pqc_scripts = Rcpp::as<std::vector<std::string>>(

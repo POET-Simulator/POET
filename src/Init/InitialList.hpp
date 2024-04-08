@@ -31,7 +31,7 @@ public:
 
   void initializeFromList(const Rcpp::List &setup);
 
-  void importList(const Rcpp::List &setup);
+  void importList(const Rcpp::List &setup, bool minimal = false);
   Rcpp::List exportList();
 
   Field getInitialGrid() const { return Field(this->initial_grid); }
