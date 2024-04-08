@@ -12,13 +12,15 @@
 
 int main(int argc, char **argv) {
 
-  argh::parser cmdl(argc, argv);
+  argh::parser cmdl({"-o", "--output"});
+
+  cmdl.parse(argc, argv);
 
   if (cmdl[{"-h", "--help"}] || cmdl.pos_args().size() != 2) {
     std::cout << "Usage: " << argv[0]
-              << " [-o, --output output_file] "
-                 "[--setwd] "
-                 "<script.R>"
+              << " [-o, --output output_file]"
+                 " [-s, --setwd] "
+                 " <script.R>"
               << std::endl;
     return EXIT_SUCCESS;
   }
@@ -50,11 +52,13 @@ int main(int argc, char **argv) {
   }
 
   std::string output_file;
+
   cmdl({"-o", "--output"},
-       in_file_name.substr(0, in_file_name.find_last_of('.')) + ".rds") >>
+       curr_path + "/" +
+           in_file_name.substr(0, in_file_name.find_last_of('.')) + ".rds") >>
       output_file;
 
-  if (cmdl[{"--setwd"}]) {
+  if (cmdl[{"-s", "--setwd"}]) {
     const std::string dir_path = Rcpp::as<std::string>(
         Rcpp::Function("dirname")(normalized_path_script));
 
@@ -69,7 +73,8 @@ int main(int argc, char **argv) {
 
   // replace file extension by .rds
   Rcpp::Function save("saveRDS");
-  save(init.exportList(), Rcpp::wrap(curr_path + "/" + output_file));
+
+  save(init.exportList(), Rcpp::wrap(output_file));
 
   std::cout << "Saved result to " << output_file << std::endl;
 
