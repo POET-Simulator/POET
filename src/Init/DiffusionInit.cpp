@@ -139,10 +139,6 @@ InitialList::resolveBoundaries(const Rcpp::List &boundaries_list,
         this->initial_grid, this->transport_names, old_transport_size);
   }
 
-  const Rcpp::NumericVector &inner_row_vec = inner_boundaries["row"];
-  const Rcpp::NumericVector &inner_col_vec = inner_boundaries["col"];
-  const Rcpp::NumericVector &inner_pqc_id_vec = inner_boundaries["sol_id"];
-
   for (const auto &species : this->transport_names) {
     Rcpp::List spec_list;
 
@@ -190,6 +186,9 @@ InitialList::resolveBoundaries(const Rcpp::List &boundaries_list,
     bound_list[species] = spec_list;
 
     if (inner_boundaries.size() > 0) {
+      const Rcpp::NumericVector &inner_row_vec = inner_boundaries["row"];
+      const Rcpp::NumericVector &inner_col_vec = inner_boundaries["col"];
+      const Rcpp::NumericVector &inner_pqc_id_vec = inner_boundaries["sol_id"];
 
       std::vector<std::uint32_t> rows;
       std::vector<std::uint32_t> cols;
