@@ -76,8 +76,7 @@ void writeFieldsToR(RInside &R, const Field &trans, const Field &chem) {
 
 enum ParseRet { PARSER_OK, PARSER_ERROR, PARSER_HELP };
 
-ParseRet parseInitValues(char **argv, RInsidePOET &R,
-                         RuntimeParameters &params) {
+ParseRet parseInitValues(char **argv, RuntimeParameters &params) {
   // initialize argh object
   argh::parser cmdl(argv);
 
@@ -222,15 +221,13 @@ ParseRet parseInitValues(char **argv, RInsidePOET &R,
   return ParseRet::PARSER_OK;
 }
 
-static Rcpp::List RunMasterLoop(RInside &R, const RuntimeParameters &params,
+static Rcpp::List RunMasterLoop(const RuntimeParameters &params,
                                 DiffusionModule &diffusion,
                                 ChemistryModule &chem) {
 
   /* Iteration Count is dynamic, retrieving value from R (is only needed by
    * master for the following loop) */
   uint32_t maxiter = params.timesteps.size();
-
-  double sim_time = .0;
 
   if (params.print_progressbar) {
     chem.setProgressBarPrintout(true);
@@ -241,7 +238,6 @@ static Rcpp::List RunMasterLoop(RInside &R, const RuntimeParameters &params,
   double dSimTime{0};
   for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
     double start_t = MPI_Wtime();
-    uint32_t tick = 0;
 
     const double &dt = params.timesteps[iter - 1];
 
@@ -325,8 +321,6 @@ static Rcpp::List RunMasterLoop(RInside &R, const RuntimeParameters &params,
 }
 
 int main(int argc, char *argv[]) {
-  double dSimTime, sim_end;
-
   int world_size;
 
   MPI_Init(&argc, &argv);
@@ -343,7 +337,7 @@ int main(int argc, char *argv[]) {
 
     RuntimeParameters run_params;
 
-    switch (parseInitValues(argv, R, run_params)) {
+    switch (parseInitValues(argv, run_params)) {
     case ParseRet::PARSER_ERROR:
     case ParseRet::PARSER_HELP:
       MPI_Finalize();
@@ -401,7 +395,7 @@ int main(int argc, char *argv[]) {
 
       chemistry.masterSetField(init_list.getInitialGrid());
 
-      Rcpp::List profiling = RunMasterLoop(R, run_params, diffusion, chemistry);
+      Rcpp::List profiling = RunMasterLoop(run_params, diffusion, chemistry);
 
       MSG("finished simulation loop");
 

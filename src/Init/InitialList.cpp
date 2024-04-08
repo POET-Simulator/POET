@@ -20,8 +20,8 @@ void InitialList::importList(const Rcpp::List &setup) {
 
   Rcpp::NumericVector grid_specs =
       setup[static_cast<int>(ExportList::GRID_SPECS)];
-  this->n_rows = grid_specs[0];
-  this->n_cols = grid_specs[1];
+  this->n_rows = static_cast<std::uint32_t>(grid_specs[0]);
+  this->n_cols = static_cast<std::uint32_t>(grid_specs[1]);
 
   Rcpp::NumericVector spatial =
       setup[static_cast<int>(ExportList::GRID_SPATIAL)];

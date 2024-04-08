@@ -92,13 +92,13 @@ private:
 
   void prepareGrid(const Rcpp::List &grid_input);
 
-  std::uint8_t dim;
+  std::uint8_t dim{0};
 
-  std::uint32_t n_cols;
-  std::uint32_t n_rows;
+  std::uint32_t n_cols{0};
+  std::uint32_t n_rows{0};
 
-  double s_cols;
-  double s_rows;
+  double s_cols{0};
+  double s_rows{0};
 
   std::vector<std::uint32_t> constant_cells;
   std::vector<double> porosity;

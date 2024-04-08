@@ -13,8 +13,6 @@
 #include <string>
 #include <vector>
 
-constexpr uint32_t MB_FACTOR = 1E6;
-
 std::vector<double>
 inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
                          const std::vector<double> &from,
@@ -22,20 +20,21 @@ inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
                          const std::vector<std::vector<double>> &output) {
   std::vector<double> results = from;
 
-  const std::uint32_t buffer_size = input.size() + 1;
-  double buffer[buffer_size];
-  double from_rescaled;
+  // const std::uint32_t buffer_size = input.size() + 1;
+  // double buffer[buffer_size];
+  // double from_rescaled;
 
   const std::uint32_t data_set_n = input.size();
   double rescaled[to_calc.size()][data_set_n + 1];
   double weights[data_set_n];
 
   // rescaling over all key elements
-  for (int key_comp_i = 0; key_comp_i < to_calc.size(); key_comp_i++) {
+  for (std::uint32_t key_comp_i = 0; key_comp_i < to_calc.size();
+       key_comp_i++) {
     const auto output_comp_i = to_calc[key_comp_i];
 
     // rescale input between 0 and 1
-    for (int point_i = 0; point_i < data_set_n; point_i++) {
+    for (std::uint32_t point_i = 0; point_i < data_set_n; point_i++) {
       rescaled[key_comp_i][point_i] = input[point_i][key_comp_i];
     }
 
@@ -46,7 +45,7 @@ inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
     const double max = *std::max_element(rescaled[key_comp_i],
                                          rescaled[key_comp_i] + data_set_n + 1);
 
-    for (int point_i = 0; point_i < data_set_n; point_i++) {
+    for (std::uint32_t point_i = 0; point_i < data_set_n; point_i++) {
       rescaled[key_comp_i][point_i] =
           ((max - min) != 0
                ? (rescaled[key_comp_i][point_i] - min) / (max - min)
@@ -58,9 +57,10 @@ inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
 
   // calculate distances for each data set
   double inv_sum = 0;
-  for (int point_i = 0; point_i < data_set_n; point_i++) {
+  for (std::uint32_t point_i = 0; point_i < data_set_n; point_i++) {
     double distance = 0;
-    for (int key_comp_i = 0; key_comp_i < to_calc.size(); key_comp_i++) {
+    for (std::uint32_t key_comp_i = 0; key_comp_i < to_calc.size();
+         key_comp_i++) {
       distance += std::pow(
           rescaled[key_comp_i][point_i] - rescaled[key_comp_i][data_set_n], 2);
     }
@@ -75,7 +75,8 @@ inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
   // bool has_h = false;
   // bool has_o = false;
 
-  for (int key_comp_i = 0; key_comp_i < to_calc.size(); key_comp_i++) {
+  for (std::uint32_t key_comp_i = 0; key_comp_i < to_calc.size();
+       key_comp_i++) {
     const auto output_comp_i = to_calc[key_comp_i];
     double key_delta = 0;
 
@@ -87,7 +88,7 @@ inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
     //   has_o = true;
     // }
 
-    for (int j = 0; j < data_set_n; j++) {
+    for (std::uint32_t j = 0; j < data_set_n; j++) {
       key_delta += weights[j] * output[j][output_comp_i];
     }
 
@@ -157,7 +158,7 @@ inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
 poet::ChemistryModule::ChemistryModule(
     uint32_t wp_size_, const InitialList::ChemistryInit chem_params,
     MPI_Comm communicator)
-    : params(chem_params), wp_size(wp_size_), group_comm(communicator) {
+    : group_comm(communicator), wp_size(wp_size_), params(chem_params) {
   MPI_Comm_rank(communicator, &comm_rank);
   MPI_Comm_size(communicator, &comm_size);
 
@@ -306,9 +307,9 @@ void poet::ChemistryModule::initializeInterp(
 
     if (key_species.empty()) {
       map_copy = this->dht->getKeySpecies();
-      for (std::size_t i = 0; i < map_copy.size(); i++) {
+      for (auto i = 0; i < map_copy.size(); i++) {
         const std::uint32_t signif =
-            map_copy[i] - (map_copy[i] > InterpolationModule::COARSE_DIFF
+            static_cast<std::uint32_t>(map_copy[i]) - (map_copy[i] > InterpolationModule::COARSE_DIFF
                                ? InterpolationModule::COARSE_DIFF
                                : 0);
         map_copy[i] = signif;

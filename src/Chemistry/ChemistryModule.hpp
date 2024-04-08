@@ -69,7 +69,8 @@ public:
   auto GetChemistryTime() const { return this->chem_t; }
 
   void setFilePadding(std::uint32_t maxiter) {
-    this->file_pad = std::ceil(std::log10(maxiter + 1));
+    this->file_pad =
+        static_cast<std::uint8_t>(std::ceil(std::log10(maxiter + 1)));
   }
 
   struct SurrogateSetup {
@@ -365,7 +366,7 @@ protected:
 
   bool print_progessbar{false};
 
-  std::uint32_t file_pad{1};
+  std::uint8_t file_pad{1};
 
   double chem_t{0.};
 

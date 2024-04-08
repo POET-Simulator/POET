@@ -25,10 +25,6 @@ int main(int argc, char **argv) {
 
   Rcpp::List setup = R["setup"];
 
-  //   Rcpp::List grid = R.parseEval("setup$grid");
-
-  //   Rcpp::List results;
-
   poet::InitialList init(R);
 
   init.initializeFromList(setup);

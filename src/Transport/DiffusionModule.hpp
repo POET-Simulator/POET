@@ -85,7 +85,7 @@ private:
    * @brief time spent for transport
    *
    */
-  double transport_t = 0.f;
+  double transport_t = 0.;
 };
 } // namespace poet
 
