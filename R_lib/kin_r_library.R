@@ -68,16 +68,22 @@ master_iteration_end <- function(setup, state_T, state_C) {
     ## comprised in setup$out_save
     if (setup$store_result) {
         if (iter %in% setup$out_save) {
+        print(head(state_T))
+        print(head(state_C))
             nameout <- paste0(setup$out_dir, "/iter_", sprintf(fmt = fmt, iter), ".rds")
+            print(nameout)
+            # saveRDS(list(
+            #     T = state_T, C = state_C,
+            #     simtime = as.integer(setup$simulation_time)
+            # ), file = nameout)
             saveRDS(list(
-                T = state_T, C = state_C,
-                simtime = as.integer(setup$simulation_time)
+                T = state_T, C = state_C
             ), file = nameout)
             msgm("results stored in <", nameout, ">")
         }
     }
     ## Add last time step to simulation time
-    setup$simulation_time <- setup$simulation_time + setup$dt_differ
+    setup$simulation_time <- setup$simulation_time + setup$timesteps[iter]
 
     msgm("done iteration", iter, "/", length(setup$timesteps))
     setup$iter <- setup$iter + 1

@@ -29,6 +29,7 @@
 
 #include <RInside.h>
 #include <Rcpp.h>
+#include <Rcpp/DataFrame.h>
 #include <Rcpp/Function.h>
 #include <Rcpp/vector/instantiation.h>
 #include <cstdlib>
@@ -264,9 +265,12 @@ static Rcpp::List RunMasterLoop(const RuntimeParameters &params,
     // state_C after every iteration if the cmdline option
     // --ignore-results is not given (and thus the R variable
     // store_result is TRUE)
-    *global_rt_setup = master_iteration_end_R.value()(
-        *global_rt_setup, diffusion.getField().asSEXP(),
-        chem.getField().asSEXP());
+    {
+      Rcpp::DataFrame t_field = diffusion.getField().asSEXP();
+      Rcpp::DataFrame c_field = chem.getField().asSEXP();
+      *global_rt_setup =
+          master_iteration_end_R.value()(*global_rt_setup, t_field, c_field);
+    }
 
     MSG("End of *coupling* iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
