@@ -17,4 +17,4 @@ RUN git clone https://github.com/doctest/doctest.git /doctest \
     && cd / \
     && rm -rf /doctest
 
-RUN  /usr/bin/R -q -e "install.packages(c('foreach', 'doParallel', 'Rcpp', 'RInside'))"
+RUN  /usr/bin/R -q -e "install.packages(c('Rcpp', 'RInside'))"
