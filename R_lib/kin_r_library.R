@@ -41,6 +41,7 @@ master_init <- function(setup, out_dir, init_field) {
 
     if (setup$store_result) {
         init_field_out <- paste0(out_dir, "/iter_0.rds")
+        init_field <- data.frame(init_field, check.names = FALSE)
         saveRDS(init_field, file = init_field_out)
         msgm("Stored initial field in ", init_field_out)
         if (is.null(setup[["out_save"]])) {
@@ -68,16 +69,15 @@ master_iteration_end <- function(setup, state_T, state_C) {
     ## comprised in setup$out_save
     if (setup$store_result) {
         if (iter %in% setup$out_save) {
-        print(head(state_T))
-        print(head(state_C))
             nameout <- paste0(setup$out_dir, "/iter_", sprintf(fmt = fmt, iter), ".rds")
-            print(nameout)
-            # saveRDS(list(
-            #     T = state_T, C = state_C,
-            #     simtime = as.integer(setup$simulation_time)
-            # ), file = nameout)
+
+            state_T <- data.frame(state_T, check.names = FALSE)
+            state_C <- data.frame(state_C, check.names = FALSE)
+
             saveRDS(list(
-                T = state_T, C = state_C
+                T = state_T,
+                C = state_C,
+                simtime = as.integer(setup$simulation_time)
             ), file = nameout)
             msgm("results stored in <", nameout, ">")
         }

@@ -34,28 +34,23 @@ resolve_pqc_bound <- function(pqc_mat, transport_spec, id) {
     return(value)
 }
 
-add_column_after_position <- function(df, new_col, pos, new_col_name) {
-    # Split the data frame into two parts
-    df_left <- df[, 1:(pos)]
-    df_right <- df[, (pos + 1):ncol(df)]
+add_missing_transport_species <- function(init_grid, new_names) {
+    # add 'ID' to new_names front, as it is not a transport species but required
+    new_names <- c("ID", new_names)
+    sol_length <- length(new_names)
 
-    # Add the new column to the left part
-    df_left[[new_col_name]] <- new_col
+    new_grid <- data.frame(matrix(0, nrow = nrow(init_grid), ncol = sol_length))
+    names(new_grid) <- new_names
 
-    # Combine the left part, new column, and right part
-    df_new <- cbind(df_left, df_right)
+    matching_cols <- intersect(names(init_grid), new_names)
 
-    return(df_new)
-}
+    # Copy matching columns from init_grid to new_grid
+    new_grid[, matching_cols] <- init_grid[, matching_cols]
 
-add_missing_transport_species <- function(init_grid, new_names, old_size) {
-    # skip the ID column
-    column_index <- old_size + 1
 
-    for (name in new_names) {
-        init_grid <- add_column_after_position(init_grid, rep(0, nrow(init_grid)), column_index, name)
-        column_index <- column_index + 1
-    }
+    # Add missing columns to new_grid
+    append_df <- init_grid[, !(names(init_grid) %in% new_names)]
+    new_grid <- cbind(new_grid, append_df)
 
-    return(init_grid)
+    return(new_grid)
 }

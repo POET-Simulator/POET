@@ -127,7 +127,7 @@ SEXP poet::Field::asSEXP() const {
     output[elem] = Rcpp::wrap(map_it->second);
   }
 
-  return Rcpp::DataFrame(output);
+  return output;
 }
 
 poet::Field &poet::Field::operator=(const FieldColumn &cont_field) {
@@ -190,8 +190,9 @@ void poet::Field::fromSEXP(const SEXP &s_rhs) {
 
   this->props = Rcpp::as<std::vector<std::string>>(in_list.names());
 
-  this->req_vec_size =
-      static_cast<std::uint32_t>(Rcpp::DataFrame(in_list).nrow());
+  const Rcpp::NumericVector &in_vec = in_list[0];
+
+  this->req_vec_size = static_cast<std::uint32_t>(in_vec.size());
 
   for (const auto &elem : this->props) {
     const auto values = Rcpp::as<std::vector<double>>(in_list[elem]);

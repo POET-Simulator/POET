@@ -13,10 +13,13 @@ bool_named_vec <- function(input) {
 }
 
 simple_field <- function(field) {
+  field <- as.data.frame(field, check.names = FALSE)
   field$Na <- 0
   return(field)
 }
 
 extended_field <- function(field, additional) {
+  field <- as.data.frame(field, check.names = FALSE)
+  additional <- as.data.frame(additional, check.names = FALSE)
   return(field + additional)
 }
