@@ -61,7 +61,7 @@ master_iteration_end <- function(setup, state_T, state_C) {
     iter <- setup$iter
     # print(iter)
     ## max digits for iterations
-    dgts <- as.integer(ceiling(log10(iter)))
+    dgts <- as.integer(ceiling(log10(setup$maxiter)))
     ## string format to use in sprintf
     fmt <- paste0("%0", dgts, "d")
 
