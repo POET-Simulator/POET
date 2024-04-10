@@ -259,8 +259,6 @@ static Rcpp::List RunMasterLoop(const RuntimeParameters &params,
 
     chem.simulate(dt);
 
-    diffusion.getField().update(chem.getField());
-
     // MDL master_iteration_end just writes on disk state_T and
     // state_C after every iteration if the cmdline option
     // --ignore-results is not given (and thus the R variable
@@ -272,6 +270,8 @@ static Rcpp::List RunMasterLoop(const RuntimeParameters &params,
       *global_rt_setup = master_iteration_end_R.value()(
           *global_rt_setup, trans_field, chem_field);
     }
+
+    diffusion.getField().update(chem.getField());
 
     MSG("End of *coupling* iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
