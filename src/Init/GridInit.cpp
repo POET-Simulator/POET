@@ -135,8 +135,8 @@ void InitialList::prepareGrid(const Rcpp::List &grid_input) {
   this->n_rows = grid_def.nrow();
   this->n_cols = grid_def.ncol();
 
-  this->s_rows = grid_size[0];
-  this->s_cols = grid_size[1];
+  this->s_cols = grid_size[0];
+  this->s_rows = grid_size[1];
 
   this->dim = n_cols == 1 ? 1 : 2;
 
