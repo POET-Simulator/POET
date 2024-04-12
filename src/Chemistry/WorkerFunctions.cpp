@@ -4,6 +4,7 @@
 
 #include "Chemistry/ChemistryDefs.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <iomanip>
@@ -280,8 +281,6 @@ void poet::ChemistryModule::WorkerReadDHTDump(
 void poet::ChemistryModule::WorkerRunWorkPackage(WorkPackage &work_package,
                                                  double dSimTime,
                                                  double dTimestep) {
-  // check if we actually need to start phreeqc
-  std::map<int, std::vector<std::size_t>> zone_mapping;
 
   for (std::size_t wp_id = 0; wp_id < work_package.size; wp_id++) {
     if (work_package.mapping[wp_id] != CHEM_PQC) {
@@ -289,70 +288,24 @@ void poet::ChemistryModule::WorkerRunWorkPackage(WorkPackage &work_package,
     }
 
     auto curr_input = work_package.input[wp_id];
-    const auto pqc_id = curr_input[0];
+    const auto pqc_id = static_cast<int>(curr_input[0]);
 
     auto &phreeqc_instance = this->phreeqc_instances[pqc_id];
     work_package.output[wp_id] = work_package.input[wp_id];
 
-    curr_input.erase(curr_input.begin());
-
-    // remove NaNs from the input
     curr_input.erase(std::remove_if(curr_input.begin(), curr_input.end(),
                                     [](double d) { return std::isnan(d); }),
                      curr_input.end());
 
-    phreeqc_instance->queueCell(curr_input);
-    zone_mapping[pqc_id].push_back(wp_id);
-  }
+    phreeqc_instance->runCell(curr_input, dTimestep);
 
-  if (zone_mapping.empty()) {
-    return;
-  }
-
-  for (const auto &[pqc_id, eval_cells] : zone_mapping) {
-    if (eval_cells.empty()) {
-      continue;
-    }
-
-    this->phreeqc_instances[pqc_id]->runQueuedCells(dTimestep);
-
-    std::vector<std::vector<double>> pqc_out;
-    this->phreeqc_instances[pqc_id]->dequeueCells(pqc_out);
-
-    for (std::size_t i = 0; i < eval_cells.size(); i++) {
-      std::size_t wp_id = eval_cells[i];
-      std::size_t output_index = 0;
-      for (std::size_t j = 1; j < work_package.output[wp_id].size(); j++) {
-        if (!(std::isnan(work_package.output[wp_id][j]))) {
-          work_package.output[wp_id][j] = pqc_out[i][output_index++];
-        }
+    std::size_t output_index = 0;
+    for (std::size_t i = 0; i < work_package.output[wp_id].size(); i++) {
+      if (std::isnan(work_package.output[wp_id][i])) {
+        work_package.output[wp_id][i] = curr_input[output_index++];
       }
     }
   }
-
-  // run the phreeqc instances
-  // for (const auto &[pqc_id, phreeqc_instance] : this->phreeqc_instances) {
-  //   // if (zone_mapping.find(pqc_id) == zone_mapping.end()) {
-  //   //   continue;
-  //   // }
-  //   phreeqc_instance->runQueuedCells(dTimestep);
-
-  //   // remap the output to the work_package
-  //   std::vector<std::vector<double>> pqc_out;
-  //   phreeqc_instance->dequeueCells(pqc_out);
-
-  //   std::size_t output_id = 0;
-
-  //   for (const auto &wp_id : zone_mapping[pqc_id]) {
-  //     std::size_t output_index = 0;
-  //     for (std::size_t i = 1; i < work_package.output[wp_id].size(); i++) {
-  //       if (!(std::isnan(work_package.output[wp_id][i]))) {
-  //         work_package.output[wp_id][i] = pqc_out[output_id][output_index++];
-  //       }
-  //     }
-  //     output_id++;
-  //   }
-  // }
 }
 
 void poet::ChemistryModule::WorkerPerfToMaster(int type,

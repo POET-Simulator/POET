@@ -16,8 +16,8 @@ bound_size <- 2
 
 diffusion_setup <- list(
     inner_boundaries = list(
-        "row" = c(200, 800, 800),
-        "col" = c(400, 1400, 1600),
+        "row" = c(400, 1400, 1600),
+        "col" = c(200, 800, 800),
         "sol_id" = c(3, 4, 4)
     ),
     alpha_x = 1e-6,

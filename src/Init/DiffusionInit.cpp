@@ -7,8 +7,8 @@
 #include <set>
 
 #include "DataStructures/Field.hpp"
-#include "IPhreeqcPOET.hpp"
 #include "InitialList.hpp"
+#include "PhreeqcInit.hpp"
 
 #include <Rcpp/Function.h>
 #include <Rcpp/proxy/ProtectedProxy.h>
@@ -54,7 +54,7 @@ static std::vector<TugType> colMajToRowMaj(const Rcpp::NumericVector &vec,
 }
 
 static std::vector<std::string>
-extend_transport_names(std::unique_ptr<IPhreeqcPOET> &phreeqc,
+extend_transport_names(std::unique_ptr<PhreeqcInit> &phreeqc,
                        const Rcpp::List &boundaries_list,
                        const Rcpp::List &inner_boundaries,
                        const std::vector<std::string> &old_trans_names) {
@@ -332,7 +332,7 @@ RcppListToBoundaryMap(const std::vector<std::string> &trans_names,
       }
 
       for (std::size_t i = 0; i < type.size(); i++) {
-        if (type[i] == tug::BC_TYPE_CONSTANT) {
+        if (static_cast<tug::BC_TYPE>(type[i]) == tug::BC_TYPE_CONSTANT) {
           bc.setBoundaryElementConstant(static_cast<tug::BC_SIDE>(tug_index), i,
                                         value[i]);
         }

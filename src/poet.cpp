@@ -65,15 +65,16 @@ static void init_global_functions(RInside &R) {
 
 // HACK: this is a step back as the order and also the count of fields is
 // predefined, but it will change in the future
-void writeFieldsToR(RInside &R, const Field &trans, const Field &chem) {
+// static inline void writeFieldsToR(RInside &R, const Field &trans,
+//                                   const Field &chem) {
 
-  Rcpp::DataFrame t_field(trans.asSEXP());
-  R["TMP"] = t_field;
-  R.parseEval("mysetup$state_T <- TMP");
+//   Rcpp::DataFrame t_field(trans.asSEXP());
+//   R["TMP"] = t_field;
+//   R.parseEval("mysetup$state_T <- TMP");
 
-  R["TMP"] = chem.asSEXP();
-  R.parseEval("mysetup$state_C <- TMP");
-}
+//   R["TMP"] = chem.asSEXP();
+//   R.parseEval("mysetup$state_C <- TMP");
+// }
 
 enum ParseRet { PARSER_OK, PARSER_ERROR, PARSER_HELP };
 
@@ -222,7 +223,26 @@ ParseRet parseInitValues(char **argv, RuntimeParameters &params) {
   return ParseRet::PARSER_OK;
 }
 
-static Rcpp::List RunMasterLoop(const RuntimeParameters &params,
+// HACK: this is a step back as the order and also the count of fields is
+// predefined, but it will change in the future
+void call_master_iter_end(RInside &R, const Field &trans, const Field &chem) {
+  R["TMP"] = Rcpp::wrap(trans.AsVector());
+  R["TMP_PROPS"] = Rcpp::wrap(trans.GetProps());
+  R.parseEval(std::string("state_T <- setNames(data.frame(matrix(TMP, nrow=" +
+                          std::to_string(trans.GetRequestedVecSize()) +
+                          ")), TMP_PROPS)"));
+
+  R["TMP"] = Rcpp::wrap(chem.AsVector());
+  R["TMP_PROPS"] = Rcpp::wrap(chem.GetProps());
+  R.parseEval(std::string("state_C <- setNames(data.frame(matrix(TMP, nrow=" +
+                          std::to_string(chem.GetRequestedVecSize()) +
+                          ")), TMP_PROPS)"));
+  R["setup"] = *global_rt_setup;
+  R.parseEval("setup <- master_iteration_end(setup, state_T, state_C)");
+  *global_rt_setup = R["setup"];
+}
+
+static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
                                 DiffusionModule &diffusion,
                                 ChemistryModule &chem) {
 
@@ -263,13 +283,7 @@ static Rcpp::List RunMasterLoop(const RuntimeParameters &params,
     // state_C after every iteration if the cmdline option
     // --ignore-results is not given (and thus the R variable
     // store_result is TRUE)
-    {
-      const auto &trans_field = diffusion.getField().asSEXP();
-      const auto &chem_field = chem.getField().asSEXP();
-
-      *global_rt_setup = master_iteration_end_R.value()(
-          *global_rt_setup, trans_field, chem_field);
-    }
+    call_master_iter_end(R, diffusion.getField(), chem.getField());
 
     diffusion.getField().update(chem.getField());
 
@@ -400,7 +414,7 @@ int main(int argc, char *argv[]) {
 
       chemistry.masterSetField(init_list.getInitialGrid());
 
-      Rcpp::List profiling = RunMasterLoop(run_params, diffusion, chemistry);
+      Rcpp::List profiling = RunMasterLoop(R, run_params, diffusion, chemistry);
 
       MSG("finished simulation loop");
 

@@ -11,7 +11,7 @@
 #include "SurrogateModels/DHT_Wrapper.hpp"
 #include "SurrogateModels/Interpolation.hpp"
 
-#include "IPhreeqcPOET.hpp"
+#include "PhreeqcEngine.hpp"
 #include <array>
 #include <cstdint>
 #include <map>
@@ -378,7 +378,7 @@ protected:
 
   const InitialList::ChemistryInit params;
 
-  std::map<int, std::unique_ptr<IPhreeqcPOET>> phreeqc_instances;
+  std::map<int, std::unique_ptr<PhreeqcEngine>> phreeqc_instances;
 };
 } // namespace poet
 

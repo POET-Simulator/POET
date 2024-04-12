@@ -2,8 +2,8 @@
 
 #include "Base/RInsidePOET.hpp"
 #include "DataStructures/NamedVector.hpp"
+#include "POETInit.hpp"
 #include <Rcpp/vector/instantiation.h>
-#include <memory>
 #include <set>
 #include <tug/Boundary.hpp>
 
@@ -13,8 +13,9 @@
 #include <cstddef>
 #include <cstdint>
 
-#include <IPhreeqcPOET.hpp>
+#include <PhreeqcInit.hpp>
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -52,9 +53,16 @@ private:
     DIFFU_ALPHA_X,
     DIFFU_ALPHA_Y,
     CHEM_DATABASE,
+    CHEM_FIELD_HEADER,
     CHEM_PQC_SCRIPTS,
     CHEM_PQC_IDS,
-    CHEM_PQC_SOL_ORDER,
+    CHEM_PQC_SOLUTIONS,
+    CHEM_PQC_SOLUTION_PRIMARY,
+    CHEM_PQC_EXCHANGER,
+    CHEM_PQC_KINETICS,
+    CHEM_PQC_EQUILIBRIUM,
+    CHEM_PQC_SURFACE_COMPS,
+    CHEM_PQC_SURFACE_CHARGES,
     CHEM_DHT_SPECIES,
     CHEM_INTERP_SPECIES,
     CHEM_HOOKS,
@@ -88,7 +96,7 @@ private:
     return GridMembersString[static_cast<std::size_t>(member)];
   }
 
-  std::unique_ptr<IPhreeqcPOET> phreeqc;
+  std::unique_ptr<PhreeqcInit> phreeqc;
 
   void prepareGrid(const Rcpp::List &grid_input);
 
@@ -178,11 +186,19 @@ private:
 
   void initChemistry(const Rcpp::List &chem_input);
 
+  std::vector<std::string> field_header;
+
   std::string database;
   std::vector<std::string> pqc_scripts;
   std::vector<int> pqc_ids;
 
-  std::vector<std::string> pqc_sol_order;
+  std::vector<std::string> pqc_solutions;
+  std::vector<std::string> pqc_solution_primaries;
+  Rcpp::List pqc_exchanger;
+  Rcpp::List pqc_kinetics;
+  Rcpp::List pqc_equilibrium;
+  Rcpp::List pqc_surface_comps;
+  Rcpp::List pqc_surface_charges;
 
   NamedVector<std::uint32_t> dht_species;
 
@@ -204,10 +220,15 @@ public:
   struct ChemistryInit {
     uint32_t total_grid_cells;
 
+    // std::vector<std::string> field_header;
+
     std::string database;
-    std::vector<std::string> pqc_scripts;
-    std::vector<int> pqc_ids;
-    std::vector<std::string> pqc_sol_order;
+    // std::vector<std::string> pqc_scripts;
+    // std::vector<int> pqc_ids;
+
+    std::map<int, POETConfig> pqc_config;
+
+    // std::vector<std::string> pqc_sol_order;
 
     NamedVector<std::uint32_t> dht_species;
     NamedVector<std::uint32_t> interp_species;

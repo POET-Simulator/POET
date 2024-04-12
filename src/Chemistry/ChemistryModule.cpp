@@ -1,12 +1,11 @@
 #include "ChemistryModule.hpp"
 
-#include "IPhreeqcPOET.hpp"
+#include "PhreeqcEngine.hpp"
 #include "SurrogateModels/DHT_Wrapper.hpp"
 #include "SurrogateModels/Interpolation.hpp"
 
 #include <algorithm>
 #include <cassert>
-#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <mpi.h>
@@ -168,12 +167,16 @@ poet::ChemistryModule::ChemistryModule(
   this->n_cells = chem_params.total_grid_cells;
 
   if (!is_master) {
-    for (std::size_t i = 0; i < chem_params.pqc_ids.size(); i++) {
-      this->phreeqc_instances[chem_params.pqc_ids[i]] =
-          std::make_unique<IPhreeqcPOET>(chem_params.database,
-                                         chem_params.pqc_scripts[i],
-                                         chem_params.pqc_sol_order, wp_size_);
+    for (const auto &[pqc_id, pqc_config] : chem_params.pqc_config) {
+      this->phreeqc_instances[pqc_id] =
+          std::make_unique<PhreeqcEngine>(pqc_config);
     }
+    // for (std::size_t i = 0; i < chem_params.pqc_ids.size(); i++) {
+    //   this->phreeqc_instances[chem_params.pqc_ids[i]] =
+    //       std::make_unique<PhreeqcWrapper>(
+    //           chem_params.database, chem_params.pqc_scripts[i],
+    //           chem_params.pqc_sol_order, chem_params.field_header, wp_size_);
+    // }
   }
 }
 

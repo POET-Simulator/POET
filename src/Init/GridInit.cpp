@@ -1,6 +1,7 @@
 #include "InitialList.hpp"
 
-#include <IPhreeqcPOET.hpp>
+#include "PhreeqcInit.hpp"
+
 #include <RInside.h>
 #include <Rcpp/Function.h>
 #include <Rcpp/vector/instantiation.h>
@@ -15,8 +16,8 @@
 namespace poet {
 
 static Rcpp::NumericMatrix
-pqcScriptToGrid(std::unique_ptr<IPhreeqcPOET> &phreeqc, RInside &R) {
-  IPhreeqcPOET::PhreeqcMat phreeqc_mat = phreeqc->getPhreeqcMat();
+pqcScriptToGrid(std::unique_ptr<PhreeqcInit> &phreeqc, RInside &R) {
+  PhreeqcInit::PhreeqcMat phreeqc_mat = phreeqc->getPhreeqcMat();
 
   // add "id" to the front of the column names
 
@@ -59,9 +60,9 @@ replaceRawKeywordIDs(std::map<int, std::string> raws) {
   return raws;
 }
 
-static inline uint32_t getSolutionCount(std::unique_ptr<IPhreeqcPOET> &phreeqc,
+static inline uint32_t getSolutionCount(std::unique_ptr<PhreeqcInit> &phreeqc,
                                         const Rcpp::List &initial_grid) {
-  IPhreeqcPOET::ModulesArray mod_array;
+  PhreeqcInit::ModulesArray mod_array;
   Rcpp::Function unique_R("unique");
 
   std::vector<int> row_ids =
@@ -155,7 +156,7 @@ void InitialList::prepareGrid(const Rcpp::List &grid_input) {
     throw std::runtime_error("Grid size must be positive.");
   }
 
-  this->phreeqc = std::make_unique<IPhreeqcPOET>(database, script);
+  this->phreeqc = std::make_unique<PhreeqcInit>(database, script);
 
   this->phreeqc_mat = pqcScriptToGrid(phreeqc, R);
   this->initial_grid = matToGrid(R, this->phreeqc_mat, grid_def);
@@ -178,6 +179,11 @@ void InitialList::prepareGrid(const Rcpp::List &grid_input) {
 
   for (const auto &id : this->pqc_ids) {
     this->pqc_scripts.push_back(pqc_raw_dumps[id]);
+    this->pqc_exchanger.push_back(phreeqc->getExchanger(id));
+    this->pqc_kinetics.push_back(phreeqc->getKineticsNames(id));
+    this->pqc_equilibrium.push_back(phreeqc->getEquilibriumNames(id));
+    this->pqc_surface_comps.push_back(phreeqc->getSurfaceCompNames(id));
+    this->pqc_surface_charges.push_back(phreeqc->getSurfaceChargeNames(id));
   }
 }
 

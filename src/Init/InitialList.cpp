@@ -53,12 +53,26 @@ void InitialList::importList(const Rcpp::List &setup, bool minimal) {
   }
   this->database =
       Rcpp::as<std::string>(setup[static_cast<int>(ExportList::CHEM_DATABASE)]);
+  this->field_header = Rcpp::as<std::vector<std::string>>(
+      setup[static_cast<int>(ExportList::CHEM_FIELD_HEADER)]);
   this->pqc_scripts = Rcpp::as<std::vector<std::string>>(
       setup[static_cast<int>(ExportList::CHEM_PQC_SCRIPTS)]);
   this->pqc_ids = Rcpp::as<std::vector<int>>(
       setup[static_cast<int>(ExportList::CHEM_PQC_IDS)]);
-  this->pqc_sol_order = Rcpp::as<std::vector<std::string>>(
-      setup[static_cast<int>(ExportList::CHEM_PQC_SOL_ORDER)]);
+  this->pqc_solutions = Rcpp::as<std::vector<std::string>>(
+      setup[static_cast<int>(ExportList::CHEM_PQC_SOLUTIONS)]);
+  this->pqc_solution_primaries = Rcpp::as<std::vector<std::string>>(
+      setup[static_cast<int>(ExportList::CHEM_PQC_SOLUTION_PRIMARY)]);
+  this->pqc_exchanger =
+      Rcpp::List(setup[static_cast<int>(ExportList::CHEM_PQC_EXCHANGER)]);
+  this->pqc_kinetics =
+      Rcpp::List(setup[static_cast<int>(ExportList::CHEM_PQC_KINETICS)]);
+  this->pqc_equilibrium =
+      Rcpp::List(setup[static_cast<int>(ExportList::CHEM_PQC_EQUILIBRIUM)]);
+  this->pqc_surface_comps =
+      Rcpp::List(setup[static_cast<int>(ExportList::CHEM_PQC_SURFACE_COMPS)]);
+  this->pqc_surface_charges =
+      Rcpp::List(setup[static_cast<int>(ExportList::CHEM_PQC_SURFACE_CHARGES)]);
 
   this->dht_species = NamedVector<uint32_t>(
       setup[static_cast<int>(ExportList::CHEM_DHT_SPECIES)]);
@@ -92,11 +106,25 @@ Rcpp::List InitialList::exportList() {
   out[static_cast<int>(ExportList::DIFFU_ALPHA_Y)] = this->alpha_y;
 
   out[static_cast<int>(ExportList::CHEM_DATABASE)] = Rcpp::wrap(this->database);
+  out[static_cast<int>(ExportList::CHEM_FIELD_HEADER)] =
+      Rcpp::wrap(this->field_header);
   out[static_cast<int>(ExportList::CHEM_PQC_SCRIPTS)] =
       Rcpp::wrap(this->pqc_scripts);
   out[static_cast<int>(ExportList::CHEM_PQC_IDS)] = Rcpp::wrap(this->pqc_ids);
-  out[static_cast<int>(ExportList::CHEM_PQC_SOL_ORDER)] =
-      Rcpp::wrap(this->pqc_sol_order);
+  out[static_cast<int>(ExportList::CHEM_PQC_SOLUTIONS)] =
+      Rcpp::wrap(this->pqc_solutions);
+  out[static_cast<int>(ExportList::CHEM_PQC_SOLUTION_PRIMARY)] =
+      Rcpp::wrap(this->pqc_solution_primaries);
+  out[static_cast<int>(ExportList::CHEM_PQC_EXCHANGER)] =
+      Rcpp::wrap(this->pqc_exchanger);
+  out[static_cast<int>(ExportList::CHEM_PQC_KINETICS)] =
+      Rcpp::wrap(this->pqc_kinetics);
+  out[static_cast<int>(ExportList::CHEM_PQC_EQUILIBRIUM)] =
+      Rcpp::wrap(this->pqc_equilibrium);
+  out[static_cast<int>(ExportList::CHEM_PQC_SURFACE_COMPS)] =
+      Rcpp::wrap(this->pqc_surface_comps);
+  out[static_cast<int>(ExportList::CHEM_PQC_SURFACE_CHARGES)] =
+      Rcpp::wrap(this->pqc_surface_charges);
   out[static_cast<int>(ExportList::CHEM_DHT_SPECIES)] = this->dht_species;
   out[static_cast<int>(ExportList::CHEM_INTERP_SPECIES)] =
       Rcpp::wrap(this->interp_species);

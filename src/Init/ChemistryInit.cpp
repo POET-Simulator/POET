@@ -1,12 +1,16 @@
 #include "InitialList.hpp"
 
 #include <Rcpp.h>
+#include <cstddef>
 #include <vector>
 
 namespace poet {
 
 void InitialList::initChemistry(const Rcpp::List &chem) {
-  this->pqc_sol_order = this->transport_names;
+  this->pqc_solutions = std::vector<std::string>(
+      this->transport_names.begin() + 3, this->transport_names.end());
+
+  this->pqc_solution_primaries = this->phreeqc->getSolutionPrimaries();
 
   if (chem.containsElementNamed("dht_species")) {
     this->dht_species = Rcpp::as<NamedVector<uint32_t>>(chem["dht_species"]);
@@ -27,6 +31,10 @@ void InitialList::initChemistry(const Rcpp::List &chem) {
       }
     }
   }
+
+  this->field_header =
+      Rcpp::as<std::vector<std::string>>(this->initial_grid.names());
+  this->field_header.erase(this->field_header.begin());
 }
 
 InitialList::ChemistryInit InitialList::getChemistryInit() const {
@@ -34,11 +42,26 @@ InitialList::ChemistryInit InitialList::getChemistryInit() const {
 
   chem_init.total_grid_cells = this->n_cols * this->n_rows;
 
-  chem_init.database = database;
-  chem_init.pqc_scripts = pqc_scripts;
-  chem_init.pqc_ids = pqc_ids;
+  // chem_init.field_header = this->field_header;
 
-  chem_init.pqc_sol_order = pqc_sol_order;
+  chem_init.database = database;
+  // chem_init.pqc_scripts = pqc_scripts;
+  // chem_init.pqc_ids = pqc_ids;
+
+  for (std::size_t i = 0; i < pqc_scripts.size(); i++) {
+    POETInitCell cell = {
+        pqc_solutions,
+        pqc_solution_primaries,
+        Rcpp::as<std::vector<std::string>>(pqc_exchanger[i]),
+        Rcpp::as<std::vector<std::string>>(pqc_kinetics[i]),
+        Rcpp::as<std::vector<std::string>>(pqc_equilibrium[i]),
+        Rcpp::as<std::vector<std::string>>(pqc_surface_comps[i]),
+        Rcpp::as<std::vector<std::string>>(pqc_surface_charges[i])};
+
+    chem_init.pqc_config[pqc_ids[i]] = {database, pqc_scripts[i], cell};
+  }
+
+  // chem_init.pqc_sol_order = pqc_solutions;
 
   chem_init.dht_species = dht_species;
   chem_init.interp_species = interp_species;
