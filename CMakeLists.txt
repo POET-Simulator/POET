@@ -15,14 +15,9 @@ list(APPEND CMAKE_MODULE_PATH "${POET_SOURCE_DIR}/CMake")
 
 get_poet_version()
 
-# set(GCC_CXX_FLAGS "-D STRICT_R_HEADERS") add_definitions(${GCC_CXX_FLAGS})
-
 find_package(MPI REQUIRED)
 
 find_package(RRuntime REQUIRED)
-
-# add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
-# add_link_options(-fsanitize=address)
 
 add_subdirectory(src)
 add_subdirectory(bench)
