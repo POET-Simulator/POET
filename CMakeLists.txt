@@ -20,7 +20,12 @@ find_package(MPI REQUIRED)
 find_package(RRuntime REQUIRED)
 
 add_subdirectory(src)
-add_subdirectory(bench)
+
+option(POET_PREPROCESS_BENCHS "Preprocess benchmarks" ON)
+
+if (POET_PREPROCESS_BENCHS)
+  add_subdirectory(bench)
+endif()
 
 # as tug will also pull in doctest as a dependency
 set(TUG_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
