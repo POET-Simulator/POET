@@ -1,49 +1,85 @@
-add_library(poetlib
-  Base/Grid.cpp
-  Base/SimParams.cpp
-  Chemistry/ChemistryModule.cpp
-  Chemistry/MasterFunctions.cpp 
-  Chemistry/WorkerFunctions.cpp 
-  Chemistry/SurrogateModels/DHT_Wrapper.cpp 
-  Chemistry/SurrogateModels/DHT.c 
-  Chemistry/SurrogateModels/HashFunctions.cpp 
-  Chemistry/SurrogateModels/InterpolationModule.cpp 
-  Chemistry/SurrogateModels/ProximityHashTable.cpp
+add_library(POETLib)
+
+target_sources(POETLib 
+  PRIVATE
+  Init/InitialList.cpp 
+  Init/GridInit.cpp 
+  Init/DiffusionInit.cpp
+  Init/ChemistryInit.cpp
   DataStructures/Field.cpp
   Transport/DiffusionModule.cpp
+  Chemistry/ChemistryModule.cpp
+  Chemistry/MasterFunctions.cpp
+  Chemistry/WorkerFunctions.cpp
+  Chemistry/SurrogateModels/DHT_Wrapper.cpp
+  Chemistry/SurrogateModels/DHT.c
+  Chemistry/SurrogateModels/HashFunctions.cpp
+  Chemistry/SurrogateModels/InterpolationModule.cpp
+  Chemistry/SurrogateModels/ProximityHashTable.cpp
 )
 
-target_link_libraries(poetlib PUBLIC
-  MPI::MPI_C 
-  ${MATH_LIBRARY} 
-  RRuntime 
-  PhreeqcRM 
-  tug
+target_include_directories(POETLib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(
+  POETLib 
+  PUBLIC RRuntime
+  PUBLIC IPhreeqcPOET
+  PUBLIC tug
+  PUBLIC MPI::MPI_C
 )
 
-target_compile_definitions(poetlib PUBLIC STRICT_R_HEADERS OMPI_SKIP_MPICXX)
+# add_library(poetlib
+#   Base/Grid.cpp
+#   Base/SimParams.cpp
+#   Chemistry/ChemistryModule.cpp
+#   Chemistry/MasterFunctions.cpp 
+#   Chemistry/WorkerFunctions.cpp 
+#   Chemistry/SurrogateModels/DHT_Wrapper.cpp 
+#   Chemistry/SurrogateModels/DHT.c 
+#   Chemistry/SurrogateModels/HashFunctions.cpp 
+#   Chemistry/SurrogateModels/InterpolationModule.cpp 
+#   Chemistry/SurrogateModels/ProximityHashTable.cpp
+#   Transport/DiffusionModule.cpp
+# )
 
-mark_as_advanced(PHREEQCRM_BUILD_MPI PHREEQCRM_DISABLE_OPENMP)
-set(PHREEQCRM_DISABLE_OPENMP ON CACHE BOOL "" FORCE)
+# target_link_libraries(poetlib PUBLIC
+#   DataStructures
+#   Init
+#   MPI::MPI_C 
+#   ${MATH_LIBRARY} 
+#   RRuntime 
+#   PhreeqcRM
+#   tug
+# )
 
-option(POET_DHT_DEBUG "Build with DHT debug info" OFF)
+target_compile_definitions(POETLib PUBLIC STRICT_R_HEADERS OMPI_SKIP_MPICXX)
 
-if(POET_DHT_DEBUG)
-  target_compile_definitions(poetlib PRIVATE DHT_STATISTICS)
-endif()
+# mark_as_advanced(PHREEQCRM_BUILD_MPI PHREEQCRM_DISABLE_OPENMP)
+# set(PHREEQCRM_DISABLE_OPENMP ON CACHE BOOL "" FORCE)
 
-option(POET_PHT_ADDITIONAL_INFO "Enables additional information in the PHT" OFF)
+# option(POET_DHT_DEBUG "Build with DHT debug info" OFF)
 
-if (POET_PHT_ADDITIONAL_INFO)
-  target_compile_definitions(poetlib PRIVATE POET_PHT_ADD)
-endif()
+# if(POET_DHT_DEBUG)
+#   target_compile_definitions(poetlib PRIVATE DHT_STATISTICS)
+# endif()
+
+# option(POET_PHT_ADDITIONAL_INFO "Enables additional information in the PHT" OFF)
+
+# if (POET_PHT_ADDITIONAL_INFO)
+#   target_compile_definitions(poetlib PRIVATE POET_PHT_ADD)
+# endif()
 
 file(READ "${PROJECT_SOURCE_DIR}/R_lib/kin_r_library.R" R_KIN_LIB )
+file(READ "${PROJECT_SOURCE_DIR}/R_lib/init_r_lib.R" R_INIT_LIB)
 
 configure_file(poet.hpp.in poet.hpp @ONLY)
 
 add_executable(poet poet.cpp)
-target_link_libraries(poet PRIVATE poetlib MPI::MPI_C RRuntime)
+target_link_libraries(poet PRIVATE POETLib MPI::MPI_C RRuntime)
 target_include_directories(poet PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
-install(TARGETS poet DESTINATION bin)
+add_executable(poet_init initializer.cpp)
+target_link_libraries(poet_init PRIVATE POETLib RRuntime)
+target_include_directories(poet_init PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+
+install(TARGETS poet poet_init DESTINATION bin)
+

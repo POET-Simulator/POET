@@ -2,10 +2,9 @@
 #include "SurrogateModels/DHT_Wrapper.hpp"
 #include "SurrogateModels/Interpolation.hpp"
 
-#include <IrmResult.h>
+#include "Chemistry/ChemistryDefs.hpp"
+
 #include <algorithm>
-#include <cassert>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <iomanip>
@@ -17,6 +16,7 @@
 #include <vector>
 
 namespace poet {
+
 inline std::string get_string(int root, MPI_Comm communicator) {
   int count;
   MPI_Bcast(&count, 1, MPI_INT, root, communicator);
@@ -45,13 +45,8 @@ void poet::ChemistryModule::WorkerLoop() {
     PropagateFunctionType(func_type);
 
     switch (func_type) {
-    case CHEM_INIT: {
-      RunInitFile(get_string(0, this->group_comm));
-      break;
-    }
-    case CHEM_INIT_SPECIES: {
-      Field dummy;
-      initializeField(dummy);
+    case CHEM_FIELD_INIT: {
+      ChemBCast(&this->prop_count, 1, MPI_UINT32_T);
       break;
     }
     case CHEM_WORK_LOOP: {
@@ -177,9 +172,7 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
 
   phreeqc_time_start = MPI_Wtime();
 
-  if (WorkerRunWorkPackage(s_curr_wp, current_sim_time, dt) != IRM_OK) {
-    std::cerr << "Phreeqc error" << std::endl;
-  };
+  WorkerRunWorkPackage(s_curr_wp, current_sim_time, dt);
 
   phreeqc_time_end = MPI_Wtime();
 
@@ -285,42 +278,34 @@ void poet::ChemistryModule::WorkerReadDHTDump(
   }
 }
 
-IRM_RESULT
-poet::ChemistryModule::WorkerRunWorkPackage(WorkPackage &work_package,
-                                            double dSimTime, double dTimestep) {
-  // check if we actually need to start phreeqc
-  std::vector<std::uint32_t> pqc_mapping;
+void poet::ChemistryModule::WorkerRunWorkPackage(WorkPackage &work_package,
+                                                 double dSimTime,
+                                                 double dTimestep) {
 
-  for (std::size_t i = 0; i < work_package.size; i++) {
-    if (work_package.mapping[i] == CHEM_PQC) {
-      pqc_mapping.push_back(i);
+  for (std::size_t wp_id = 0; wp_id < work_package.size; wp_id++) {
+    if (work_package.mapping[wp_id] != CHEM_PQC) {
+      continue;
+    }
+
+    auto curr_input = work_package.input[wp_id];
+    const auto pqc_id = static_cast<int>(curr_input[0]);
+
+    auto &phreeqc_instance = this->phreeqc_instances[pqc_id];
+    work_package.output[wp_id] = work_package.input[wp_id];
+
+    curr_input.erase(std::remove_if(curr_input.begin(), curr_input.end(),
+                                    [](double d) { return std::isnan(d); }),
+                     curr_input.end());
+
+    phreeqc_instance->runCell(curr_input, dTimestep);
+
+    std::size_t output_index = 0;
+    for (std::size_t i = 0; i < work_package.output[wp_id].size(); i++) {
+      if (std::isnan(work_package.output[wp_id][i])) {
+        work_package.output[wp_id][i] = curr_input[output_index++];
+      }
     }
   }
-
-  if (pqc_mapping.empty()) {
-    return IRM_OK;
-  }
-
-  IRM_RESULT result;
-  this->PhreeqcRM::setPOETMapping(pqc_mapping);
-  this->setDumpedField(work_package.input);
-
-  this->PhreeqcRM::SetTime(dSimTime);
-  this->PhreeqcRM::SetTimeStep(dTimestep);
-
-  result = this->PhreeqcRM::RunCells();
-
-  std::vector<std::vector<double>> output_tmp(work_package.size);
-
-  this->getDumpedField(output_tmp);
-
-  for (std::size_t i = 0; i < work_package.size; i++) {
-    if (work_package.mapping[i] == CHEM_PQC) {
-      work_package.output[i] = output_tmp[i];
-    }
-  }
-
-  return result;
 }
 
 void poet::ChemistryModule::WorkerPerfToMaster(int type,

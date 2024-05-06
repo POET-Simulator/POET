@@ -18,16 +18,13 @@ mpirun -np 4 ./poet --dht --interp dolo_interp_long.R dolo_interp_long_res
 
 * List of Files
 
-- =dolo_diffu_inner.R=: POET input script for a 100x100 simulation
+- =dolo_interp.R=: POET input script for a 400x200 simulation
   grid
-- =dolo_interp_long.R=: POET input script for a 400x200 simulation
-  grid
+- =dolo_diffu_inner_large.R=: POET input script for a 400x200
+  simulation grid
 - =phreeqc_kin.dat=: PHREEQC database containing the kinetic expressions
   for dolomite and celestite, stripped down from =phreeqc.dat=
 - =dol.pqi=: PHREEQC input script for the chemical system
-# - =dolo.R=: POET input script for a 20x20 simulation grid
-# - =dolo_diffu_inner_large.R=: POET input script for a 400x200
-#   simulation grid
 
 * Chemical system
 

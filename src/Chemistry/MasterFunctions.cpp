@@ -1,12 +1,9 @@
 #include "ChemistryModule.hpp"
 
-#include <PhreeqcRM.h>
-
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <mpi.h>
-#include <stdexcept>
 #include <vector>
 
 std::vector<uint32_t>
@@ -308,45 +305,46 @@ inline void poet::ChemistryModule::MasterRecvPkgs(worker_list_t &w_list,
   }
 }
 
-void poet::ChemistryModule::RunCells() {
+void poet::ChemistryModule::simulate(double dt) {
   double start_t{MPI_Wtime()};
   if (this->is_sequential) {
     MasterRunSequential();
     return;
   }
 
-  MasterRunParallel();
+  MasterRunParallel(dt);
   double end_t{MPI_Wtime()};
   this->chem_t += end_t - start_t;
 }
 
 void poet::ChemistryModule::MasterRunSequential() {
-  std::vector<double> shuffled_field =
-      shuffleField(chem_field.AsVector(), n_cells, prop_count, 1);
+  // std::vector<double> shuffled_field =
+  //     shuffleField(chem_field.AsVector(), n_cells, prop_count, 1);
 
-  std::vector<std::vector<double>> input;
-  for (std::size_t i = 0; i < n_cells; i++) {
-    input.push_back(
-        std::vector<double>(shuffled_field.begin() + (i * prop_count),
-                            shuffled_field.begin() + ((i + 1) * prop_count)));
-  }
+  // std::vector<std::vector<double>> input;
+  // for (std::size_t i = 0; i < n_cells; i++) {
+  //   input.push_back(
+  //       std::vector<double>(shuffled_field.begin() + (i * prop_count),
+  //                           shuffled_field.begin() + ((i + 1) *
+  //                           prop_count)));
+  // }
 
-  this->setDumpedField(input);
-  PhreeqcRM::RunCells();
-  this->getDumpedField(input);
+  // this->setDumpedField(input);
+  // PhreeqcRM::RunCells();
+  // this->getDumpedField(input);
 
-  shuffled_field.clear();
-  for (std::size_t i = 0; i < n_cells; i++) {
-    shuffled_field.insert(shuffled_field.end(), input[i].begin(),
-                          input[i].end());
-  }
+  // shuffled_field.clear();
+  // for (std::size_t i = 0; i < n_cells; i++) {
+  //   shuffled_field.insert(shuffled_field.end(), input[i].begin(),
+  //                         input[i].end());
+  // }
 
-  std::vector<double> out_vec{shuffled_field};
-  unshuffleField(shuffled_field, n_cells, prop_count, 1, out_vec);
-  chem_field = out_vec;
+  // std::vector<double> out_vec{shuffled_field};
+  // unshuffleField(shuffled_field, n_cells, prop_count, 1, out_vec);
+  // chem_field = out_vec;
 }
 
-void poet::ChemistryModule::MasterRunParallel() {
+void poet::ChemistryModule::MasterRunParallel(double dt) {
   /* declare most of the needed variables here */
   double seq_a, seq_b, seq_c, seq_d;
   double worker_chemistry_a, worker_chemistry_b;
@@ -360,7 +358,6 @@ void poet::ChemistryModule::MasterRunParallel() {
 
   MPI_Barrier(this->group_comm);
 
-  double dt = this->PhreeqcRM::GetTimeStep();
   static uint32_t iteration = 0;
 
   /* start time measurement of sequential part */
@@ -465,4 +462,14 @@ poet::ChemistryModule::CalculateWPSizesVector(uint32_t n_cells,
   }
 
   return wp_sizes_vector;
+}
+
+void poet::ChemistryModule::masterSetField(Field field) {
+  this->chem_field = field;
+  this->prop_count = field.GetProps().size();
+
+  int ftype = CHEM_FIELD_INIT;
+  PropagateFunctionType(ftype);
+
+  ChemBCast(&this->prop_count, 1, MPI_UINT32_T);
 }

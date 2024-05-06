@@ -1,53 +1,14 @@
 #ifndef DATASTRUCTURES_H_
 #define DATASTRUCTURES_H_
 
-#include "../Chemistry/enums.hpp"
-
 #include <Rcpp.h>
 
-#include <cassert>
-#include <cinttypes>
 #include <cstddef>
-#include <iostream>
-#include <list>
+#include <cstdint>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace poet {
-
-struct WorkPackage {
-  std::size_t size;
-  std::vector<std::vector<double>> input;
-  std::vector<std::vector<double>> output;
-  std::vector<std::uint8_t> mapping;
-
-  WorkPackage(size_t _size) : size(_size) {
-    input.resize(size);
-    output.resize(size);
-    mapping.resize(size, CHEM_PQC);
-  }
-};
-
-template <typename T> class NamedVector : public Rcpp::NumericVector {
-public:
-  NamedVector() : Rcpp::NumericVector(){};
-
-  NamedVector(const std::vector<std::string> &in_names,
-              const std::vector<T> &in_values)
-      : Rcpp::NumericVector(Rcpp::wrap(in_values)) {
-    this->names() = Rcpp::CharacterVector(Rcpp::wrap(in_names));
-  }
-
-  NamedVector(const SEXP &s) : Rcpp::NumericVector(s){};
-
-  bool empty() const { return (this->size() == 0); }
-
-  std::vector<std::string> getNames() const {
-    return Rcpp::as<std::vector<std::string>>(this->names());
-  }
-  std::vector<T> getValues() const { return Rcpp::as<std::vector<T>>(*this); }
-};
 
 using FieldColumn = std::vector<double>;
 

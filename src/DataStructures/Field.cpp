@@ -1,6 +1,9 @@
-#include "DataStructures.hpp"
+#include "Field.hpp"
 
 #include <Rcpp.h>
+#include <Rcpp/DataFrame.h>
+#include <Rcpp/exceptions.h>
+#include <Rcpp/vector/instantiation.h>
 #include <Rinternals.h>
 #include <cstddef>
 #include <cstdint>
@@ -117,40 +120,14 @@ poet::FieldColumn &poet::Field::operator[](const std::string &key) {
 }
 
 SEXP poet::Field::asSEXP() const {
-  const std::size_t cols = this->props.size();
+  Rcpp::List output;
 
-  SEXP s_names = PROTECT(Rf_allocVector(STRSXP, cols));
-  SEXP s_output = PROTECT(Rf_allocVector(VECSXP, cols));
-
-  for (std::size_t prop_i = 0; prop_i < this->props.size(); prop_i++) {
-    const auto &name = this->props[prop_i];
-    SEXP s_values = PROTECT(Rf_allocVector(REALSXP, this->req_vec_size));
-    const auto values = this->find(name)->second;
-
-    SET_STRING_ELT(s_names, prop_i, Rf_mkChar(name.c_str()));
-
-    for (std::size_t i = 0; i < this->req_vec_size; i++) {
-      REAL(s_values)[i] = values[i];
-    }
-
-    SET_VECTOR_ELT(s_output, prop_i, s_values);
-
-    UNPROTECT(1);
+  for (const auto &elem : this->props) {
+    const auto map_it = this->find(elem);
+    output[elem] = Rcpp::wrap(map_it->second);
   }
 
-  SEXP s_rownames = PROTECT(Rf_allocVector(INTSXP, this->req_vec_size));
-  for (std::size_t i = 0; i < this->req_vec_size; i++) {
-    INTEGER(s_rownames)[i] = static_cast<int>(i + 1);
-  }
-
-  Rf_setAttrib(s_output, R_ClassSymbol,
-               Rf_ScalarString(Rf_mkChar("data.frame")));
-  Rf_setAttrib(s_output, R_NamesSymbol, s_names);
-  Rf_setAttrib(s_output, R_RowNamesSymbol, s_rownames);
-
-  UNPROTECT(3);
-
-  return s_output;
+  return output;
 }
 
 poet::Field &poet::Field::operator=(const FieldColumn &cont_field) {
@@ -199,34 +176,26 @@ poet::Field::operator=(const std::vector<FieldColumn> &cont_field) {
 void poet::Field::fromSEXP(const SEXP &s_rhs) {
   this->clear();
 
-  SEXP s_vec = PROTECT(Rf_coerceVector(s_rhs, VECSXP));
-  SEXP s_names = PROTECT(Rf_getAttrib(s_vec, R_NamesSymbol));
+  Rcpp::List in_list;
 
-  std::size_t cols = static_cast<std::size_t>(Rf_length(s_vec));
-
-  this->props.clear();
-  this->props.reserve(cols);
-
-  for (std::size_t i = 0; i < cols; i++) {
-    const std::string prop_name(CHAR(STRING_ELT(s_names, i)));
-    this->props.push_back(prop_name);
-
-    SEXP s_values = PROTECT(VECTOR_ELT(s_vec, i));
-
-    if (i == 0) {
-      this->req_vec_size = static_cast<std::uint32_t>(Rf_length(s_values));
-    }
-
-    FieldColumn input(this->req_vec_size);
-
-    for (std::size_t j = 0; j < this->req_vec_size; j++) {
-      input[j] = static_cast<double>(REAL(s_values)[j]);
-    }
-
-    UNPROTECT(1);
-
-    this->insert({prop_name, input});
+  try {
+    in_list = Rcpp::List(s_rhs);
+  } catch (const Rcpp::exception &e) {
+    throw std::runtime_error("Input cannot be casted as list.");
   }
 
-  UNPROTECT(2);
+  if (in_list.size() == 0) {
+    return;
+  }
+
+  this->props = Rcpp::as<std::vector<std::string>>(in_list.names());
+
+  const Rcpp::NumericVector &in_vec = in_list[0];
+
+  this->req_vec_size = static_cast<std::uint32_t>(in_vec.size());
+
+  for (const auto &elem : this->props) {
+    const auto values = Rcpp::as<std::vector<double>>(in_list[elem]);
+    this->insert({elem, values});
+  }
 }

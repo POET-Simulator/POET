@@ -3,6 +3,7 @@
 
 #include <RInside.h>
 #include <Rcpp.h>
+#include <Rinternals.h>
 #include <cstddef>
 #include <exception>
 #include <optional>
@@ -42,6 +43,13 @@ public:
     }
   }
 
+  RHookFunction(SEXP f) {
+    try {
+      this->func = Rcpp::Function(f);
+    } catch (const std::exception &e) {
+    }
+  }
+
   template <typename... Args> T operator()(Args... args) const {
     if (func.has_value()) {
       return (Rcpp::as<T>(this->func.value()(args...)));
@@ -50,7 +58,16 @@ public:
     }
   }
 
+  RHookFunction &operator=(const RHookFunction &rhs) {
+    this->func = rhs.func;
+    return *this;
+  }
+
+  RHookFunction(const RHookFunction &rhs) { this->func = rhs.func; }
+
   bool isValid() const { return this->func.has_value(); }
+
+  SEXP asSEXP() const { return Rcpp::as<SEXP>(this->func.value()); }
 
 private:
   std::optional<Rcpp::Function> func;

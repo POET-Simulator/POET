@@ -20,7 +20,7 @@ mpirun -np 4 ./poet surfex.R surfex_res
 - =ex.R=: POET input script for a 100x100 simulation grid, only
   exchange
 - =ExBase.pqi=: PHREEQC input script for the =ex.R= model
-- =surfex.R=: POET input script for a 100x100 simulation grid
+- =surfex.R=: POET input script for a 1000x1000 simulation grid
   considering both cation exchange and surface complexation
 - =SurfExBase.pqi=: PHREEQC input script for the =surfex.R= model
 - =SMILE_2021_11_01_TH.dat=: PHREEQC database containing the

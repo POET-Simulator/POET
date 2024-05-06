@@ -1,9 +1,20 @@
-install(FILES
-    ExBase.pqi
-    ex.R
-    surfex.R
-    SurfExBase.pqi
-    SMILE_2021_11_01_TH.dat
-DESTINATION
-    share/poet/bench/surfex
+set(bench_files
+    # surfex.R
+    # ex.R
+    PoetEGU_surfex_500.R
 )
+
+set(runtime_files
+    # surfex_rt.R 
+    # ex_rt.R
+    PoetEGU_surfex_500_rt.R
+)
+
+ADD_BENCH_TARGET(
+    surfex_bench
+    bench_files 
+    runtime_files
+    "surfex"
+)
+
+add_dependencies(${BENCHTARGET} surfex_bench)

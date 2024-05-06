@@ -23,19 +23,18 @@
 #ifndef DHT_WRAPPER_H
 #define DHT_WRAPPER_H
 
-#include "../../Base/RInsidePOET.hpp"
-#include "../../Base/SimParams.hpp"
-#include "../../DataStructures/DataStructures.hpp"
-#include "../enums.hpp"
-#include "HashFunctions.hpp"
+#include "Base/RInsidePOET.hpp"
+#include "DataStructures/NamedVector.hpp"
+
+#include "Chemistry/ChemistryDefs.hpp"
+
+#include "Init/InitialList.hpp"
 #include "LookupKey.hpp"
-#include "Rounding.hpp"
 
 #include <array>
 #include <cstdint>
 #include <limits>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -88,7 +87,7 @@ public:
               const NamedVector<std::uint32_t> &key_species,
               const std::vector<std::int32_t> &key_indices,
               const std::vector<std::string> &output_names,
-              const ChemistryParams::Chem_Hook_Functions &hooks,
+              const InitialList::ChemistryHookFunctions &hooks,
               uint32_t data_count, bool with_interp);
   /**
    * @brief Destroy the dht wrapper object
@@ -260,7 +259,7 @@ private:
 
   const std::vector<std::string> &output_names;
 
-  const ChemistryParams::Chem_Hook_Functions &hooks;
+  const InitialList::ChemistryHookFunctions &hooks;
   const bool with_interp;
 
   DHT_ResultObject dht_results;

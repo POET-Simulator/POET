@@ -14,7 +14,6 @@ if(DOXYGEN_FOUND)
   doxygen_add_docs(doxygen
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/README.md
-    ${PROJECT_SOURCE_DIR}/docs/Input_Scripts.md
     ${PROJECT_SOURCE_DIR}/docs/Output.md
     COMMENT "Generate html pages")
 endif()

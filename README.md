@@ -20,10 +20,10 @@ pages](https://naaice.git-pages.gfz-potsdam.de/poet).
 The following external header library is shipped with POET:
 
 - **argh** - https://github.com/adishavit/argh (BSD license)
-- **PhreeqcRM** with patches from GFZ -
-  https://www.usgs.gov/software/phreeqc-version-3 -
-  https://git.gfz-potsdam.de/mluebke/phreeqcrm-gfz
-- **tug** - https://git.gfz-potsdam.de/sec34/tug
+- **IPhreeqc** with patches from GFZ -
+  https://github.com/usgs-coupled/iphreeqc -
+  https://git.gfz-potsdam.de/naaice/iphreeqc
+- **tug** - https://git.gfz-potsdam.de/naaice/tug
 
 ## Installation
 
@@ -35,6 +35,7 @@ To compile POET you need several software to be installed:
 - MPI-Implementation (tested with OpenMPI and MVAPICH)
 - R language and environment
 - CMake 3.9+
+- Eigen3 3.4+ (required by `tug`)
 - *optional*: `doxygen` with `dot` bindings for documentiation
 
 The following R libraries must then be installed, which will get the
@@ -107,58 +108,50 @@ The correspondending directory tree would look like this:
 ```sh
 poet
 ├── bin
-│   └── poet
-├── R_lib
-│   └── kin_r_library.R
+│   ├── poet
+│   └── poet_init
 └── share
     └── poet
-        └── bench
-            ├── barite
-            │   ├── barite_interp_eval.R
-            │   ├── barite.pqi
-            │   ├── barite.R
-            │   └── db_barite.dat
-            ├── dolo
-            │   ├── dolo_diffu_inner_large.R
-            │   ├── dolo_diffu_inner.R
-            │   ├── dolo_inner.pqi
-            │   ├── dolo_interp_long.R
-            │   └── phreeqc_kin.dat
-            └── surfex
-                ├── ExBase.pqi
-                ├── ex.R
-                ├── SMILE_2021_11_01_TH.dat
-                ├── SurfExBase.pqi
-                └── surfex.R
+        ├── barite
+        │   ├── barite_200.rds
+        │   ├── barite_200_rt.R
+        │   ├── barite_het.rds
+        │   └── barite_het_rt.R
+        ├── dolo
+        │   ├── dolo_inner_large.rds
+        │   ├── dolo_inner_large_rt.R
+        │   ├── dolo_interp.rds
+        │   └── dolo_interp_rt.R
+        └── surfex
+            ├── PoetEGU_surfex_500.rds
+            └── PoetEGU_surfex_500_rt.R
 ```
 
-The R libraries will be loaded at runtime and the paths are hardcoded
-absolute paths inside `poet.cpp`. So, if you consider to move
-`bin/poet` either change paths of the R source files and recompile
-POET or also move `R_lib/*` relative to the binary.
+With the installation of POET, two executables are provided: 
+  - `poet` - the main executable to run simulations
+  - `poet_init` - a preprocessor to generate input files for POET from R scripts
 
-The benchmarks consist of input scripts, which are provided as .R files.
-Additionally, Phreeqc scripts and their corresponding databases are required,
-stored as .pqi and .dat files, respectively.
+Preprocessed benchmarks can be found in the `share/poet` directory with an
+according *runtime* setup. More on those files and how to create them later. 
 
 ## Running
 
-Run POET by `mpirun ./poet <OPTIONS> <SIMFILE> <OUTPUT_DIRECTORY>`
+Run POET by `mpirun ./poet [OPTIONS] <RUNFILE> <SIMFILE> <OUTPUT_DIRECTORY>`
 where:
 
-- **OPTIONS** - runtime parameters (explained below)
-- **SIMFILE** - simulation described as R script (e.g.
-  `<POET_INSTALL_DIR>/share/poet/bench/dolo/dolo_interp_long.R`)
+- **OPTIONS** - POET options (explained below)
+- **RUNFILE** - Runtime parameters described as R script 
+- **SIMFILE** - Simulation input prepared by `poet_init`
 - **OUTPUT_DIRECTORY** - path, where all output of POET should be stored
 
-### Runtime options
+### POET options
 
 The following parameters can be set:
 
 | Option                      | Value        | Description                                                                                                              |
 |-----------------------------|--------------|--------------------------------------------------------------------------------------------------------------------------|
 | **--work-package-size=**    | _1..n_       | size of work packages (defaults to _5_)                                                                                  |
-| **--ignore-result**         |              | disables store of simulation resuls                                                                                      |
+| **-P, --progress**          |              | show progress bar                                                                                                        |
 | **--dht**                   |              | enabling DHT usage (defaults to _OFF_)                                                                                   |
 | **--dht-strategy=**         | _0-1_        | change DHT strategy. **NOT IMPLEMENTED YET** (Defaults to _0_)                                                           |
 | **--dht-size=**             | _1-n_        | size of DHT per process involved in megabyte (defaults to _1000 MByte_)                                                  |
@@ -180,14 +173,16 @@ Following values can be set:
 
 ### Example: Running from scratch
 
-We will continue the above example and start a simulation with
-`dolo_diffu_inner.R`. As transport a simple fixed-coefficient diffusion is used.
-It's a 2D, 100x100 grid, simulating 10 time steps. To start the simulation with
-4 processes `cd` into your previously installed POET-dir
-`<POET_INSTALL_DIR>/bin` and run:
+We will continue the above example and start a simulation with *barite_het*,
+which simulation files can be found in
+`<INSTALL_DIR>/share/poet/barite/barite_het*`. As transport a heterogeneous
+diffusion is used. It's a small 2D grid, 2x5 grid, simulating 50 time steps with
+a time step size of 100 seconds. To start the simulation with 4 processes `cd`
+into your previously installed POET-dir `<POET_INSTALL_DIR>/bin` and run:
 
 ```sh
-mpirun -n 4 ./poet ../share/poet/bench/dolo/dolo_diffu_inner.R/ output
+cp ../share/poet/barite/barite_het* .
+mpirun -n 4 ./poet barite_het_rt.R barite_het.rds output
 ```
 
 After a finished simulation all data generated by POET will be found
@@ -200,8 +195,31 @@ produced. This is done by appending the `--dht-snaps=<value>` option. The
 resulting call would look like this:
 
 ```sh
-mpirun -n 4 ./poet --dht --dht-snaps=2 ../share/poet/bench/dolo/dolo_diffu_inner.R/ output
+mpirun -n 4 ./poet --dht --dht-snaps=2 barite_het_rt.R barite_het.rds output
 ```
+
+## Defining a model
+
+In order to provide a model to POET, you need to setup a R script which can then
+be used by `poet_init` to generate the simulation input. Which parameters are
+required can be found in the
+[Wiki](https://git.gfz-potsdam.de/naaice/poet/-/wikis/Initialization). We try to
+keep the document up-to-date. However, if you encounter missing information or
+need help, please get in touch with us via the issue tracker or E-Mail.
+
+`poet_init` can be used as follows:
+
+```sh
+./poet_init [-o, --output output_file] [-s, --setwd]  <script.R>
+```
+
+where: 
+
+- **output** - name of the output file (defaults to the input file name
+  with the extension `.rds`)
+- **setwd** - set the working directory to the directory of the input file (e.g.
+  to allow relative paths in the input script). However, the output file
+  will be stored in the directory from which `poet_init` was called.
 
 ## About the usage of MPI_Wtime()
 

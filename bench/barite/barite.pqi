@@ -1,25 +1,32 @@
-SELECTED_OUTPUT
-  -high_precision true
-  -reset false
-  -kinetic_reactants Barite Celestite
-  -saturation_indices Barite Celestite
 SOLUTION 1
-units	mol/kgw
-water	1
-temperature	25
-pH	7
-pe	10.799
-Ba	0.1
-Cl	0.2
-S	1e-9
-Sr	1e-9
-KINETICS 1
-Barite
--m 0.001
--parms 50.  # reactive surface area
--tol 1e-9
-Celestite
--m 1
--parms 10.0  # reactive surface area
--tol 1e-9
+  units	mol/kgw
+  water	1
+  temperature	25
+  pH	7
+PURE 1 
+  Celestite 0.0 1
+END
+
+RUN_CELLS
+  -cells 1
+
+COPY solution 1 2
+
+KINETICS 2
+  Barite
+    -m 0.001
+    -parms 50.  # reactive surface area
+    -tol 1e-9
+  Celestite
+    -m 1
+    -parms 10.0  # reactive surface area
+    -tol 1e-9
+END
+
+SOLUTION 3
+  units mol/kgw
+  water 1
+  temperature 25
+  Ba 0.1
+  Cl 0.2
 END
