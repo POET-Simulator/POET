@@ -1,0 +1,108 @@
+##  Time-stamp: "Last modified 2024-04-12 10:59:59 delucia"
+## KNOBS
+##  -logfile            false
+##  -iterations         10000
+##  -convergence_tolerance  1E-12
+##  -step_size          2
+##  -pe_step_size       2
+
+SOLUTION 1                     ## Porewater composition Opalinus Clay, WITHOUT radionuclides, AFTER EQUI_PHASES
+  pe           -2.627          ## Eh = -227 mV, Value from Bossart & Thury (2008)-> PC borehole measurement 2003, Eh still decreasing  
+  density      1.01583         ## kg/dm³ = g/cm³
+  temp         13              ## mean temperature Mont Terri, Bossart & Thury (2008), calculations performed for 25°C
+  units        mol/kgw
+  ## Mean composition   
+  pH           7.064                    
+  Na           2.763e-01
+  Cl           3.228e-01  charge 
+  S(6)         1.653e-02  as SO4
+  Ca           2.173e-02 
+  Mg           1.740e-02
+  K            1.902e-03 
+  Sr           4.520e-04 
+  Fe           1.435e-04                 
+  U            2.247e-09                
+
+SURFACE 1 Opalinus Clay, clay minerals 
+  ## calculated with rho_b=2.2903 kg/dm³, poro=0.1662
+  ## 1 dm³ = 13.565641 kg_sed/kg_pw
+  -equil 1                ## equilibrate with solution 1 
+  -sites_units density    ## set unit for binding site density to sites/nm2
+  -donnan 4.9e-10         ## calculated after Wigger & Van Loon (2018) for ionic strength after equilibration with minerales for pCO2=2.2 log10 bar    
+
+  # surface  density SSA (m2/g)  mass (g/kgw) 
+  Kln_aOH  1.155   11.         3798.4     ## Kaolinite 28 wt% (aluminol and silanol sites) 
+  Kln_siOH 1.155               
+  Ill_sOH  0.05    100.        4205.35    ## Illite 31 wt% (weak und strong binding sites) 
+  Ill_wOH  2.26                           ## 2 % strong binding sites  
+  Mll_sOH  0.05    100.        813.94     ## Montmorillonite = smektite = 6 wt% (weak und strong binding sites)            
+  Mll_wOH  2.26                           ## 2 % strong binding sites
+
+EXCHANGE 1 Exchanger, only illite+montmorillonite 
+  ## Illite = 0.225 eq/kg_rock, Montmorillonit = 0.87 eq/kg_rock 
+ -equil 1         ## equilibrate with solution 1
+  Z     0.9462    ## = Illite
+  Y     0.70813   ## = Montmorillonite
+END
+
+SOLUTION 2                     ##  Porewater composition Opalinus Clay, WITHOUT radionuclides, AFTER EQUI_PHASES
+  pe           -2.627          ## Eh = -227 mV, Value from Bossart & Thury (2008)-> PC borehole measurement 2003, Eh still decreasing  
+  density      1.01583         ## kg/dm³ = g/cm³
+  temp         13              ## mean temperature Mont Terri, Bossart & Thury (2008), calculations performed for 25°C
+  units        mol/kgw
+  ## Mean composition   
+  pH           7.064                    
+  Na           2.763e-01
+  Cl           3.228e-01  charge 
+  S(6)         1.653e-02  as SO4
+  Ca           2.173e-02 
+  Mg           1.740e-02
+  K            1.902e-03 
+  Sr           4.520e-04 
+  Fe           1.435e-04                 
+  U            2.247e-09                
+
+SURFACE 2 Opalinus Clay, clay minerals 
+  -equil 2                ## equilibrate with solution 2 
+  -sites_units density    ## set unit for binding site density to
+			  ## sites/nm2
+  -donnan 4.9e-10         ## calculated after Wigger & Van Loon (2018)
+			  ## for ionic strength after equilibration
+			  ## with minerales for pCO2=2.2 log10 bar
+
+  ## surface  density SSA (m2/g)  mass (g/kgw) 
+  Kln_aOH  1.155   11.         2798.4     ## Kaolinite 28 wt% (aluminol and silanol sites) 
+  Kln_siOH 1.155               
+  Ill_sOH  0.05    100.        1205.35    ## Illite 31 wt% (weak und strong binding sites) 
+  Ill_wOH  2.26                           ## 2 % strong binding sites  
+  Mll_sOH  0.05    100.        113.94     ## Montmorillonite = smektite = 6 wt% (weak und strong binding sites)            
+  Mll_wOH  2.26                           ## 2 % strong binding sites
+
+EXCHANGE 2 Exchanger, only illite+montmorillonite 
+  ## Illite = 0.225 eq/kg_rock, Montmorillonit = 0.87 eq/kg_rock 
+ -equil 2         ## equilibrate with solution 1
+  Z     0.5       ## = Illite
+  Y     0.2       ## = Montmorillonite
+END
+
+SOLUTION 3
+  pe           -2.627          ## Eh = -227 mV, Value from Bossart & Thury (2008)-> PC borehole measurement 2003, Eh still decreasing  
+  density      1.01583         ## kg/dm³ = g/cm³
+  temp         13              ## mean temperature Mont Terri, Bossart & Thury (2008), calculations performed for 25°C
+  units        mol/kgw
+  ## Mean composition   
+  pH           7.064                    
+  Na           3.763e-01
+  Cl           4.228e-01  charge 
+  S(6)         1.653e-02  as SO4
+  Ca           2.173e-02 
+  Mg           1.740e-02
+  K            1.902e-03 
+  Sr           4.520e-04 
+  Fe           1.435e-04                 
+  U            1e-6            
+  C            1.991e-03 
+END
+
+RUN_CELLS
+END

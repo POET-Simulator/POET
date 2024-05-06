@@ -1,11 +1,13 @@
 set(bench_files
-    surfex.R
-    ex.R
+    # surfex.R
+    # ex.R
+    PoetEGU_surfex_500.R
 )
 
 set(runtime_files
-    surfex_rt.R 
-    ex_rt.R
+    # surfex_rt.R 
+    # ex_rt.R
+    PoetEGU_surfex_500_rt.R
 )
 
 ADD_BENCH_TARGET(
