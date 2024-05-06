@@ -73,6 +73,8 @@ following available options:
 - **POET_PHT_ADDITIONAL_INFO**=_boolean_ - enabling the count of accesses to one
   PHT bucket. Use with caution, as things will get slowed down significantly.
   Defaults to _OFF_.
+- **POET_PREPROCESS_BENCHS**=*boolean* - enables the preprocessing of predefined
+  models/benchmarks. Defaults to *ON*.
   
 ### Example: Build from scratch
 

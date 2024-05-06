@@ -32,7 +32,7 @@ build-poet:       # This job runs in the build stage, which runs first.
   stage: build
   script:
     - mkdir -p build && cd build
-    - cmake -DPOET_ENABLE_TESTING=ON ..
+    - cmake -DPOET_ENABLE_TESTING=ON -DPOET_PREPROCESS_BENCHS=OFF ..
     - make -j$(nproc)
   cache: 
     key: build-$CI_COMMIT_BRANCH
