@@ -301,7 +301,7 @@ void poet::ChemistryModule::WorkerRunWorkPackage(WorkPackage &work_package,
 
     std::size_t output_index = 0;
     for (std::size_t i = 0; i < work_package.output[wp_id].size(); i++) {
-      if (std::isnan(work_package.output[wp_id][i])) {
+      if (!std::isnan(work_package.output[wp_id][i])) {
         work_package.output[wp_id][i] = curr_input[output_index++];
       }
     }
