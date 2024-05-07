@@ -35,7 +35,13 @@ public:
   void importList(const Rcpp::List &setup, bool minimal = false);
   Rcpp::List exportList();
 
-  Field getInitialGrid() const { return Field(this->initial_grid); }
+  Field<TugType> getInitialGrid() const {
+    return Field<TugType>(this->initial_grid);
+  }
+
+  std::vector<std::string> getGridColnames() const {
+    return this->grid_colnames;
+  }
 
 private:
   RInside &R;
@@ -47,6 +53,7 @@ private:
     GRID_CONSTANT,
     GRID_POROSITY,
     GRID_INITIAL,
+    GRID_COLNAMES,
     DIFFU_TRANSPORT,
     DIFFU_BOUNDARIES,
     DIFFU_INNER_BOUNDARIES,
@@ -113,6 +120,8 @@ private:
 
   Rcpp::List initial_grid;
 
+  std::vector<std::string> grid_colnames;
+
   // No export
   Rcpp::NumericMatrix phreeqc_mat;
 
@@ -139,8 +148,8 @@ public:
     BoundaryMap boundaries;
     InnerBoundaryMap inner_boundaries;
 
-    Field alpha_x;
-    Field alpha_y;
+    Field<TugType> alpha_x;
+    Field<TugType> alpha_y;
   };
 
   DiffusionInit getDiffusionInit() const;

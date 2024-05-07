@@ -46,7 +46,8 @@ public:
    *
    * @param R RRuntime object
    */
-  DiffusionModule(const InitialList::DiffusionInit &init_list, Field field)
+  DiffusionModule(InitialList::DiffusionInit &&init_list,
+                  Field<TugType> &&field)
       : param_list(init_list), transport_field(field){};
 
   /**
@@ -69,7 +70,7 @@ public:
    *
    * \return Reference to the diffusion field.
    */
-  Field &getField() { return this->transport_field; }
+  Field<TugType> &getField() { return this->transport_field; }
 
 private:
   /**
@@ -79,7 +80,7 @@ private:
 
   InitialList::DiffusionInit param_list;
 
-  Field transport_field;
+  Field<TugType> transport_field;
 
   /**
    * @brief time spent for transport

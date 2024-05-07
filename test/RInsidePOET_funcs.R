@@ -14,7 +14,7 @@ bool_named_vec <- function(input) {
 
 simple_field <- function(field) {
   field <- as.data.frame(field, check.names = FALSE)
-  field$Na <- 0
+  field$C <- 0
   return(field)
 }
 

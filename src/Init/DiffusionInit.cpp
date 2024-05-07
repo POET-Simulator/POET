@@ -379,7 +379,8 @@ RcppListToInnerBoundaryMap(const std::vector<std::string> &trans_names,
 }
 
 InitialList::DiffusionInit InitialList::getDiffusionInit() const {
-  DiffusionInit diff_init;
+  DiffusionInit diff_init = {.alpha_x = Field<TugType>(this->alpha_x),
+                             .alpha_y = Field<TugType>(this->alpha_y)};
 
   diff_init.dim = this->dim;
 
@@ -397,8 +398,8 @@ InitialList::DiffusionInit InitialList::getDiffusionInit() const {
   diff_init.inner_boundaries =
       RcppListToInnerBoundaryMap(this->transport_names, this->inner_boundaries,
                                  this->n_cols, this->n_rows);
-  diff_init.alpha_x = Field(this->alpha_x);
-  diff_init.alpha_y = Field(this->alpha_y);
+  // diff_init.alpha_x = Field(this->alpha_x);
+  // diff_init.alpha_y = Field(this->alpha_y);
 
   return diff_init;
 }

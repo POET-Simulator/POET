@@ -1,9 +1,13 @@
 #include "ChemistryModule.hpp"
+#include "DataStructures/Field.hpp"
+#include "Init/InitialList.hpp"
 
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <mpi.h>
+#include <span>
 #include <vector>
 
 std::vector<uint32_t>
@@ -159,10 +163,9 @@ std::vector<uint32_t> poet::ChemistryModule::GetWorkerPHTCacheHits() const {
   return ret;
 }
 
-inline std::vector<double> shuffleField(const std::vector<double> &in_field,
-                                        uint32_t size_per_prop,
-                                        uint32_t prop_count,
-                                        uint32_t wp_count) {
+static inline std::vector<double>
+shuffleField(const std::span<poet::TugType> &in_field, uint32_t size_per_prop,
+             uint32_t prop_count, uint32_t wp_count) {
   std::vector<double> out_buffer(in_field.size());
   uint32_t write_i = 0;
   for (uint32_t i = 0; i < wp_count; i++) {
@@ -177,9 +180,10 @@ inline std::vector<double> shuffleField(const std::vector<double> &in_field,
   return out_buffer;
 }
 
-inline void unshuffleField(const std::vector<double> &in_buffer,
-                           uint32_t size_per_prop, uint32_t prop_count,
-                           uint32_t wp_count, std::vector<double> &out_field) {
+static inline void unshuffleField(const std::vector<double> &in_buffer,
+                                  uint32_t size_per_prop, uint32_t prop_count,
+                                  uint32_t wp_count,
+                                  std::span<poet::TugType> &&out_field) {
   uint32_t read_i = 0;
 
   for (uint32_t i = 0; i < wp_count; i++) {
@@ -368,9 +372,8 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
 
   /* shuffle grid */
   // grid.shuffleAndExport(mpi_buffer);
-  std::vector<double> mpi_buffer =
-      shuffleField(chem_field.AsVector(), this->n_cells, this->prop_count,
-                   wp_sizes_vector.size());
+  std::vector<double> mpi_buffer = shuffleField(
+      *chem_field, this->n_cells, this->prop_count, wp_sizes_vector.size());
 
   /* setup local variables */
   pkg_to_send = wp_sizes_vector.size();
@@ -418,10 +421,8 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
 
   /* unshuffle grid */
   // grid.importAndUnshuffle(mpi_buffer);
-  std::vector<double> out_vec{mpi_buffer};
   unshuffleField(mpi_buffer, this->n_cells, this->prop_count,
-                 wp_sizes_vector.size(), out_vec);
-  chem_field = out_vec;
+                 wp_sizes_vector.size(), *chem_field);
 
   /* do master stuff */
 
@@ -464,9 +465,9 @@ poet::ChemistryModule::CalculateWPSizesVector(uint32_t n_cells,
   return wp_sizes_vector;
 }
 
-void poet::ChemistryModule::masterSetField(Field field) {
-  this->chem_field = field;
-  this->prop_count = field.GetProps().size();
+void poet::ChemistryModule::masterSetField(Field<TugType> &&field) {
+  this->chem_field = std::make_unique<Field<TugType>>(field);
+  this->prop_count = chem_field->size();
 
   int ftype = CHEM_FIELD_INIT;
   PropagateFunctionType(ftype);

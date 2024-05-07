@@ -12,6 +12,10 @@ namespace poet {
 void InitialList::initializeFromList(const Rcpp::List &setup) {
   prepareGrid(setup[grid_key]);
   initDiffusion(setup[diffusion_key]);
+
+  this->grid_colnames =
+      Rcpp::as<std::vector<std::string>>(this->initial_grid.names());
+
   initChemistry(setup[chemistry_key]);
 }
 
@@ -38,6 +42,9 @@ void InitialList::importList(const Rcpp::List &setup, bool minimal) {
     this->initial_grid =
         Rcpp::List(setup[static_cast<int>(ExportList::GRID_INITIAL)]);
   }
+
+  this->grid_colnames = Rcpp::as<std::vector<std::string>>(
+      setup[static_cast<int>(ExportList::GRID_COLNAMES)]);
 
   this->transport_names = Rcpp::as<std::vector<std::string>>(
       setup[static_cast<int>(ExportList::DIFFU_TRANSPORT)]);
@@ -96,6 +103,7 @@ Rcpp::List InitialList::exportList() {
       Rcpp::wrap(this->constant_cells);
   out[static_cast<int>(ExportList::GRID_POROSITY)] = Rcpp::wrap(this->porosity);
   out[static_cast<int>(ExportList::GRID_INITIAL)] = this->initial_grid;
+  out[static_cast<int>(ExportList::GRID_COLNAMES)] = this->grid_colnames;
 
   out[static_cast<int>(ExportList::DIFFU_TRANSPORT)] =
       Rcpp::wrap(this->transport_names);

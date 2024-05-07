@@ -335,39 +335,3 @@ void poet::ChemistryModule::initializeInterp(
     interp->setInterpolationFunction(inverseDistanceWeighting);
   }
 }
-
-std::vector<double>
-poet::ChemistryModule::shuffleField(const std::vector<double> &in_field,
-                                    uint32_t size_per_prop, uint32_t prop_count,
-                                    uint32_t wp_count) {
-  std::vector<double> out_buffer(in_field.size());
-  uint32_t write_i = 0;
-  for (uint32_t i = 0; i < wp_count; i++) {
-    for (uint32_t j = i; j < size_per_prop; j += wp_count) {
-      for (uint32_t k = 0; k < prop_count; k++) {
-        out_buffer[(write_i * prop_count) + k] =
-            in_field[(k * size_per_prop) + j];
-      }
-      write_i++;
-    }
-  }
-  return out_buffer;
-}
-
-void poet::ChemistryModule::unshuffleField(const std::vector<double> &in_buffer,
-                                           uint32_t size_per_prop,
-                                           uint32_t prop_count,
-                                           uint32_t wp_count,
-                                           std::vector<double> &out_field) {
-  uint32_t read_i = 0;
-
-  for (uint32_t i = 0; i < wp_count; i++) {
-    for (uint32_t j = i; j < size_per_prop; j += wp_count) {
-      for (uint32_t k = 0; k < prop_count; k++) {
-        out_field[(k * size_per_prop) + j] =
-            in_buffer[(read_i * prop_count) + k];
-      }
-      read_i++;
-    }
-  }
-}

@@ -6,7 +6,7 @@ target_sources(POETLib
   Init/GridInit.cpp 
   Init/DiffusionInit.cpp
   Init/ChemistryInit.cpp
-  DataStructures/Field.cpp
+  # DataStructures/Field.cpp
   Transport/DiffusionModule.cpp
   Chemistry/ChemistryModule.cpp
   Chemistry/MasterFunctions.cpp

@@ -34,6 +34,20 @@ public:
   T *data() { return _m_data.get(); }
 
   /**
+   * @brief Return the count of elements of type T allocated
+   *
+   * @return std::size_t Count of elements allocated
+   */
+  std::size_t size() const { return _m_count; }
+
+  /**
+   * @brief Return the size of the allocated memory in bytes
+   *
+   * @return std::size_t Size of the allocated memory in bytes
+   */
+  std::size_t size_bytes() const { return _m_count * sizeof(T); }
+
+  /**
    * @brief Returns the element at the given index
    *
    * @param index Index of the element to return

@@ -36,6 +36,7 @@
 #include <memory>
 #include <mpi.h>
 #include <optional>
+#include <span>
 #include <string>
 
 #include "Base/argh.hpp"
@@ -225,18 +226,17 @@ ParseRet parseInitValues(char **argv, RuntimeParameters &params) {
 
 // HACK: this is a step back as the order and also the count of fields is
 // predefined, but it will change in the future
-void call_master_iter_end(RInside &R, const Field &trans, const Field &chem) {
-  R["TMP"] = Rcpp::wrap(trans.AsVector());
-  R["TMP_PROPS"] = Rcpp::wrap(trans.GetProps());
+void call_master_iter_end(RInside &R, Field<TugType> &trans,
+                          Field<TugType> &chem) {
+  R["TMP"] = Rcpp::wrap(static_cast<std::span<double>>(trans));
+  R["TMP_PROPS"] = Rcpp::wrap(trans.colnames());
   R.parseEval(std::string("state_T <- setNames(data.frame(matrix(TMP, nrow=" +
-                          std::to_string(trans.GetRequestedVecSize()) +
-                          ")), TMP_PROPS)"));
+                          std::to_string(trans.rows()) + ")), TMP_PROPS)"));
 
-  R["TMP"] = Rcpp::wrap(chem.AsVector());
-  R["TMP_PROPS"] = Rcpp::wrap(chem.GetProps());
+  R["TMP"] = Rcpp::wrap(static_cast<std::span<double>>(chem));
+  R["TMP_PROPS"] = Rcpp::wrap(chem.colnames());
   R.parseEval(std::string("state_C <- setNames(data.frame(matrix(TMP, nrow=" +
-                          std::to_string(chem.GetRequestedVecSize()) +
-                          ")), TMP_PROPS)"));
+                          std::to_string(chem.rows()) + ")), TMP_PROPS)"));
   R["setup"] = *global_rt_setup;
   R.parseEval("setup <- master_iteration_end(setup, state_T, state_C)");
   *global_rt_setup = R["setup"];
@@ -271,7 +271,8 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     /* run transport */
     diffusion.simulate(dt);
 
-    chem.getField().update(diffusion.getField());
+    chem.getField() = diffusion.getField();
+    ;
 
     // chem.getfield().update(diffusion.getfield());
 
@@ -285,7 +286,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     // store_result is TRUE)
     call_master_iter_end(R, diffusion.getField(), chem.getField());
 
-    diffusion.getField().update(chem.getField());
+    diffusion.getField() = chem.getField();
 
     MSG("End of *coupling* iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
@@ -378,7 +379,7 @@ int main(int argc, char *argv[]) {
                               init_list.getChemistryInit(), MPI_COMM_WORLD);
 
     const ChemistryModule::SurrogateSetup surr_setup = {
-        init_list.getInitialGrid().GetProps(),
+        init_list.getGridColnames(),
         run_params.use_dht,
         run_params.dht_size,
         run_params.use_interp,
@@ -397,9 +398,9 @@ int main(int argc, char *argv[]) {
       // R.parseEvalQ("mysetup <- setup");
       // // if (MY_RANK == 0) { // get timestep vector from
       // // grid_init function ... //
-      *global_rt_setup =
-          master_init_R.value()(*global_rt_setup, run_params.out_dir,
-                                init_list.getInitialGrid().asSEXP());
+      *global_rt_setup = master_init_R.value()(
+          *global_rt_setup, run_params.out_dir,
+          static_cast<std::span<double>>(init_list.getInitialGrid()));
 
       // MDL: store all parameters
       // MSG("Calling R Function to store calling parameters");

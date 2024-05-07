@@ -1,182 +1,154 @@
-#ifndef DATASTRUCTURES_H_
-#define DATASTRUCTURES_H_
+#pragma once
 
 #include <Rcpp.h>
-
+#include <Rcpp/vector/Matrix.h>
+#include <Rcpp/vector/instantiation.h>
+#include <Rinternals.h>
+#include <algorithm>
 #include <cstddef>
-#include <cstdint>
-#include <string>
+#include <cstring>
+#include <iterator>
+#include <optional>
+#include <span>
+#include <utility>
 #include <vector>
 
+#include "DataStructures/PinnableMemory.hpp"
+
 namespace poet {
-
-using FieldColumn = std::vector<double>;
-
-/**
- * Stores data for input/output of a module. The class keeps track of all
- * defined properties with name and import/export to 1D and 2D STL vectors.
- * Also, it eases the update process of a field with an input from another
- * field.
- *
- * It can be seen as an R-like data frame, but with less access to the members.
- * Species values are stored as "columns", where column is a STL vector.
- */
-class Field : private std::unordered_map<std::string, FieldColumn> {
+template <class T> class Field {
 public:
-  Field(){};
+  Field() = delete;
+  Field(Field &&) = delete;
+  Field &operator=(Field &&) = delete;
 
-  /**
-   * Creates a new instance of a field with fixed expected vector size.
-   *
-   * \param vec_s expected vector size of each component/column.
-   */
-  Field(std::uint32_t vec_s) : req_vec_size(vec_s){};
-
-  /**
-   * Initializes instance with a 2D vector and according names for each columnn.
-   * There is no check if names were given multiple times. The order of name
-   * vector also defines the ordering of the output.
-   *
-   * \param vec_s expected vector size of each component/column.
-   * \param input 2D vector using STL semantic describing the current state of
-   * the field.
-   * \param prop_vec Name of each vector in the input. Shall match
-   * the count of vectors.
-   *
-   * \exception std::runtime_error If prop_vec size doesn't match input vector
-   * size or column vectors size doesn't match expected vector size.
-   */
-  Field(std::uint32_t vec_s, const std::vector<std::vector<double>> &input,
-        const std::vector<std::string> &prop_vec, bool row_major = false);
-
-  /**
-   * Initializes instance with a 1D continious memory vector and according names
-   * for each columnn. There is no check if names were given multiple times. The
-   * order of name vector also defines the ordering of the output.
-   *
-   * \param vec_s expected vector size of each component/column.
-   * \param input 1D vector using STL semantic describing the current state of
-   * the field storing each column starting at index *i times requested vector
-   * size*.
-   * \param prop_vec Name of each vector in the input. Shall match the
-   * count of vectors.
-   *
-   * \exception std::runtime_error If prop_vec size doesn't match input vector
-   * size or column vectors size doesn't match expected vector size.
-   */
-  Field(std::uint32_t vec_s, const std::vector<double> &input,
-        const std::vector<std::string> &prop_vec);
-
-  Field(const SEXP &s_init) { fromSEXP(s_init); }
-
-  Field &operator=(const Field &rhs) {
-    this->req_vec_size = rhs.req_vec_size;
-    this->props = rhs.props;
-
-    this->clear();
-
-    for (const auto &pair : rhs) {
-      this->insert(pair);
+  Field(const SEXP &s_rhs) {
+    Rcpp::List in_list;
+    try {
+      in_list = Rcpp::List(s_rhs);
+    } catch (const Rcpp::not_compatible &) {
+      throw std::runtime_error("Input is not a list.");
     }
+
+    if (in_list.size() == 0) {
+      throw std::runtime_error("Input list is empty.");
+    }
+
+    Rcpp::NumericVector first_vec = Rcpp::NumericVector(in_list[0]);
+    _m_vec_size = first_vec.size();
+
+    // check if all elements are vectors of the same size
+    for (const Rcpp::NumericVector &vec : in_list) {
+      if (vec.size() != _m_vec_size) {
+        throw std::runtime_error("Input vectors have different sizes.");
+      }
+    }
+
+    _m_data.emplace(in_list.size() * _m_vec_size);
+
+    // copy data
+    for (std::size_t i = 0; i < in_list.size(); i++) {
+      Rcpp::NumericVector curr_vec = Rcpp::NumericVector(in_list[i]);
+      for (std::size_t j = 0; j < _m_vec_size; j++) {
+        _m_data.value()[i * _m_vec_size + j] = curr_vec[j];
+      }
+    }
+
+    // get the column names
+    Rcpp::CharacterVector colnames = in_list.names();
+
+    if (colnames.size() != in_list.size()) {
+      throw std::runtime_error(
+          "Column names do not match the number of columns.");
+    }
+
+    _m_colnames.resize(colnames.size());
+    for (std::size_t i = 0; i < colnames.size(); i++) {
+      _m_colnames[i] = (Rcpp::as<std::string>(colnames[i]));
+    }
+  }
+
+  Field &operator=(Field &rhs) {
+    if (this == &rhs) {
+      return *this;
+    }
+
+    if (_m_vec_size != rhs._m_vec_size) {
+      throw std::runtime_error("Vector sizes do not match.");
+    }
+
+    for (const auto &colname : _m_colnames) {
+      auto it =
+          std::find(rhs._m_colnames.begin(), rhs._m_colnames.end(), colname);
+
+      if (it == rhs._m_colnames.end()) {
+        continue;
+      }
+
+      std::span<T> rhs_col = rhs[colname];
+      std::span<T> this_col = this->operator[](colname);
+
+      std::memcpy(this_col.data(), rhs_col.data(), rhs_col.size_bytes());
+    }
+
     return *this;
   }
 
-  /**
-   * Read in a (previously exported) 1D vector. It has to have the same
-   * dimensions as the current column count times the requested vector size of
-   * this instance. Import order is given by the species name vector.
-   *
-   * \param cont_field 1D field as vector.
-   *
-   * \exception std::runtime_error Input vector does not match the expected
-   * size.
-   */
-  Field &operator=(const FieldColumn &cont_field);
-
-  /**
-   * Read in a (previously exported) 2D vector. It has to have the same
-   * dimensions as the current column count of this instance and each vector
-   * must have the size of the requested vector size. Import order is given by
-   * the species name vector.
-   *
-   * \param cont_field 2D field as vector.
-   *
-   * \exception std::runtime_error Input vector has more or less elements than
-   * the instance or a column vector does not match expected vector size.
-   */
-  Field &operator=(const std::vector<FieldColumn> &cont_field);
-
-  Field &operator=(const SEXP &s_rhs) {
-    fromSEXP(s_rhs);
-    return *this;
+  Field(Field &rhs)
+      : _m_vec_size(rhs._m_vec_size), _m_colnames(rhs._m_colnames) {
+    _m_data.emplace(rhs._m_data.value().size());
+    std::memcpy(_m_data.value().data(), rhs._m_data.value().data(),
+                rhs._m_data.value().size_bytes());
   }
 
-  /**
-   * Returns a reference to the column vector with given name. Creates a new
-   * vector if prop was not found. The prop name will be added to the end of the
-   * list.
-   *
-   * \param key Name of the prop.
-   *
-   * \return Reference to the column vector.
-   */
-  FieldColumn &operator[](const std::string &key);
+  std::span<T> operator[](const std::string &colname) {
+    auto it = std::find(_m_colnames.begin(), _m_colnames.end(), colname);
+    if (it == _m_colnames.end()) {
+      throw std::runtime_error("Column name not found.");
+    }
 
-  /**
-   * Returns the names of all species defined in the instance.
-   *
-   * \return Vector containing all species names in output order.
-   */
-  auto GetProps() const -> std::vector<std::string> { return this->props; }
+    const std::size_t col_idx = std::distance(_m_colnames.begin(), it);
 
-  /**
-   * Return the requested vector size.
-   *
-   * \return Requested vector size set in the instanciation of the object.
-   */
-  auto GetRequestedVecSize() const -> std::uint32_t {
-    return this->req_vec_size;
-  };
+    return this->operator[](col_idx);
+  }
 
-  /**
-   * Updates all species with values from another field. If one element of the
-   * input field doesn't match the names of the calling instance it will get
-   * skipped.
-   *
-   * \param input Field to update the current instance's columns.
-   */
-  void update(const Field &input);
+  std::span<T> operator[](std::size_t col_idx) {
+    if (col_idx >= _m_colnames.size()) {
+      throw std::runtime_error("Column index out of bounds.");
+    }
 
-  /**
-   * Builds a new 1D vector with the current state of the instance. The output
-   * order is given by the given species name vector set earlier and/or added
-   * values using the [] operator.
-   *
-   * \return 1D STL vector stored each column one after another.
-   */
-  auto AsVector() const -> FieldColumn;
+    return std::span<T>(&_m_data.value()[col_idx * _m_vec_size], _m_vec_size);
+  }
 
-  /**
-   * Builds a new 2D vector with the current state of the instance. The output
-   * order is given by the given species name vector set earlier and/or added
-   * values using the [] operator.
-   *
-   * \return 2D STL vector stored each column one after anothe in a new vector
-   * element.
-   */
-  auto As2DVector() const -> std::vector<FieldColumn>;
+  operator std::span<T>() { return std::span<T>(_m_data.value()); }
 
-  SEXP asSEXP() const;
+  operator SEXP() {
+    Rcpp::List out_list(_m_colnames.size());
 
-  std::size_t cols() const { return this->props.size(); }
+    for (std::size_t i = 0; i < _m_colnames.size(); i++) {
+      Rcpp::NumericVector vec(_m_vec_size);
+      std::memcpy(vec.begin(), _m_data.value().data() + i * _m_vec_size,
+                  _m_vec_size * sizeof(T));
+      out_list[i] = vec;
+    }
+
+    out_list.names() =
+        Rcpp::CharacterVector(_m_colnames.begin(), _m_colnames.end());
+
+    return std::move(out_list);
+  }
+
+  std::size_t size() const { return _m_colnames.size(); }
+
+  std::size_t rows() const { return _m_vec_size; }
+
+  T *data() { return _m_data.value().data(); }
+
+  const std::vector<std::string> &colnames() const { return _m_colnames; }
 
 private:
-  std::uint32_t req_vec_size{0};
-
-  std::vector<std::string> props{{}};
-
-  void fromSEXP(const SEXP &s_rhs);
+  std::optional<PinnableMemory<T>> _m_data;
+  std::uint32_t _m_vec_size;
+  std::vector<std::string> _m_colnames;
 };
-
 } // namespace poet
-#endif // DATASTRUCTURES_H_

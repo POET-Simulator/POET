@@ -51,7 +51,7 @@ public:
    */
   ~ChemistryModule();
 
-  void masterSetField(Field field);
+  void masterSetField(Field<TugType> &&field);
   /**
    * Run the chemical simulation with parameters set.
    */
@@ -208,7 +208,7 @@ public:
    *
    * \return Reference to the chemical field.
    */
-  Field &getField() { return this->chem_field; }
+  Field<TugType> &getField() { return *this->chem_field; }
 
   /**
    * **Master only** Enable/disable progress bar.
@@ -320,12 +320,6 @@ protected:
   std::vector<uint32_t> CalculateWPSizesVector(uint32_t n_cells,
                                                uint32_t wp_size) const;
 
-  std::vector<double> shuffleField(const std::vector<double> &in_field,
-                                   uint32_t size_per_prop, uint32_t prop_count,
-                                   uint32_t wp_count);
-  void unshuffleField(const std::vector<double> &in_buffer,
-                      uint32_t size_per_prop, uint32_t prop_count,
-                      uint32_t wp_count, std::vector<double> &out_field);
   std::vector<std::int32_t>
   parseDHTSpeciesVec(const NamedVector<std::uint32_t> &key_species,
                      const std::vector<std::string> &to_compare) const;
@@ -374,7 +368,7 @@ protected:
   uint32_t prop_count = 0;
   std::vector<std::string> prop_names;
 
-  Field chem_field;
+  std::unique_ptr<Field<TugType>> chem_field;
 
   const InitialList::ChemistryInit params;
 

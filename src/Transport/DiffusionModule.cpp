@@ -40,22 +40,18 @@
 
 using namespace poet;
 
-static inline std::vector<TugType>
-MatrixToVec(const Eigen::MatrixX<TugType> &mat) {
-  std::vector<TugType> vec(mat.rows() * mat.cols());
-
+static inline void MatrixToVec(const Eigen::MatrixX<TugType> &mat,
+                               std::span<TugType> &out_vec) {
   for (std::uint32_t i = 0; i < mat.cols(); i++) {
     for (std::uint32_t j = 0; j < mat.rows(); j++) {
-      vec[j * mat.cols() + i] = mat(j, i);
+      out_vec[j * mat.cols() + i] = mat(j, i);
     }
   }
-
-  return vec;
 }
 
-static inline Eigen::MatrixX<TugType>
-VecToMatrix(const std::vector<TugType> &vec, std::uint32_t n_rows,
-            std::uint32_t n_cols) {
+static inline Eigen::MatrixX<TugType> VecToMatrix(const std::span<TugType> &vec,
+                                                  std::uint32_t n_rows,
+                                                  std::uint32_t n_cols) {
   Eigen::MatrixX<TugType> mat(n_rows, n_cols);
 
   for (std::uint32_t i = 0; i < n_cols; i++) {
@@ -85,7 +81,7 @@ void DiffusionModule::simulate(double requested_dt) {
   sim.setIterations(1);
 
   for (const auto &sol_name : this->param_list.transport_names) {
-    auto &species_conc = this->transport_field[sol_name];
+    auto species_conc = this->transport_field[sol_name];
 
     Eigen::MatrixX<TugType> conc = VecToMatrix(species_conc, n_rows, n_cols);
     Eigen::MatrixX<TugType> alpha_x =
@@ -106,7 +102,7 @@ void DiffusionModule::simulate(double requested_dt) {
 
     sim.run();
 
-    species_conc = MatrixToVec(grid.getConcentrations());
+    MatrixToVec(grid.getConcentrations(), species_conc);
   }
 
   const auto end_diffusion_t = std::chrono::high_resolution_clock::now();
