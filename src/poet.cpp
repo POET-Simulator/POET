@@ -289,9 +289,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       // Predict
       R.parseEval("predictors_scaled <- preprocess(predictors)");
 
-      R.parseEval("print('PREDICTORS:')");
-      R.parseEval("print(head(predictors))");
-
       R.parseEval("prediction <- preprocess(prediction_step(model, predictors_scaled),\
                                             backtransform = TRUE,\
                                             outputs = TRUE)");
@@ -327,9 +324,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       
       // TODO: Check how to get the correct columns
       R.parseEval("target_scaled <- preprocess(targets, outputs = TRUE)");
-      
-      R.parseEval("print('TARGET:')");
-      R.parseEval("print(head(target_scaled))");
 
       R.parseEval("training_step(model, predictors_scaled, target_scaled, validity_vector)");
       double ai_end_t = MPI_Wtime();

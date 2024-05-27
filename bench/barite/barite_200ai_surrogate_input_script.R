@@ -38,7 +38,7 @@ mass_balance <- function(predictors, prediction) {
 }
 
 validate_predictions <- function(predictors, prediction) {
-  epsilon <- 0.00003
+  epsilon <- 0.000000003
   mb <- mass_balance(predictors, prediction)
   msgm("Mass balance mean:", mean(mb))
   msgm("Mass balance variance:", var(mb))

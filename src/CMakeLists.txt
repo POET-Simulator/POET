@@ -83,4 +83,3 @@ target_link_libraries(poet_init PRIVATE POETLib RRuntime)
 target_include_directories(poet_init PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 install(TARGETS poet poet_init DESTINATION bin)
-
