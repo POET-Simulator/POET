@@ -159,6 +159,20 @@ std::vector<uint32_t> poet::ChemistryModule::GetWorkerPHTCacheHits() const {
   return ret;
 }
 
+inline std::vector<int> shuffleVector(const std::vector<int> &in_vector,
+                                      uint32_t size_per_prop,
+                                      uint32_t wp_count) {
+  std::vector<int> out_buffer(in_vector.size());
+  uint32_t write_i = 0;
+  for (uint32_t i = 0; i < wp_count; i++) {
+    for (uint32_t j = i; j < size_per_prop; j += wp_count) {
+      out_buffer[write_i] = in_vector[j];
+      write_i++;
+    }
+  }
+  return out_buffer;
+}
+
 inline std::vector<double> shuffleField(const std::vector<double> &in_field,
                                         uint32_t size_per_prop,
                                         uint32_t prop_count,
@@ -247,8 +261,10 @@ inline void poet::ChemistryModule::MasterSendPkgs(
       send_buffer[end_of_wp + 2] = dt;
       // current time of simulation (age) in seconds
       send_buffer[end_of_wp + 3] = this->simtime;
-      // placeholder for work_package_count
-      send_buffer[end_of_wp + 4] = 0.;
+      // current work package start location in field
+      uint32_t wp_start_index = std::accumulate(wp_sizes_vector.begin(), std::next(wp_sizes_vector.begin(), count_pkgs), 0);
+      send_buffer[end_of_wp + 4] = wp_start_index;
+
 
       /* ATTENTION Worker p has rank p+1 */
       // MPI_Send(send_buffer, end_of_wp + BUFFER_OFFSET, MPI_DOUBLE, p + 1,
@@ -352,8 +368,21 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
   int pkg_to_send, pkg_to_recv;
   int free_workers;
   int i_pkgs;
+  int ftype;
 
-  int ftype = CHEM_WORK_LOOP;
+  const std::vector<uint32_t> wp_sizes_vector =
+      CalculateWPSizesVector(this->n_cells, this->wp_size);
+
+  if (this->ai_surrogate_enabled) {
+    ftype = CHEM_AI_BCAST_VALIDITY;
+    PropagateFunctionType(ftype);
+    this->ai_surrogate_validity_vector = shuffleVector(this->ai_surrogate_validity_vector,
+                                                       this->n_cells, 
+                                                       wp_sizes_vector.size());
+    ChemBCast(&this->ai_surrogate_validity_vector.front(), this->n_cells, MPI_INT);
+  }  
+
+  ftype = CHEM_WORK_LOOP;
   PropagateFunctionType(ftype);
 
   MPI_Barrier(this->group_comm);
@@ -362,9 +391,6 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
 
   /* start time measurement of sequential part */
   seq_a = MPI_Wtime();
-
-  const std::vector<uint32_t> wp_sizes_vector =
-      CalculateWPSizesVector(this->n_cells, this->wp_size);
 
   /* shuffle grid */
   // grid.shuffleAndExport(mpi_buffer);

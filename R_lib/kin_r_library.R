@@ -70,14 +70,19 @@ master_iteration_end <- function(setup, state_T, state_C) {
     if (setup$store_result) {
         if (iter %in% setup$out_save) {
             nameout <- paste0(setup$out_dir, "/iter_", sprintf(fmt = fmt, iter), ".rds")
-
             state_T <- data.frame(state_T, check.names = FALSE)
             state_C <- data.frame(state_C, check.names = FALSE)
-
+            
+            ai_surrogate_info <- list(
+                prediction_time = if(exists("ai_prediction_time")) as.integer(ai_prediction_time) else NULL,
+                training_time = if(exists("ai_training_time")) as.integer(ai_training_time) else NULL,
+                valid_predictions = if(exists("validity_vector")) validity_vector else NULL)
             saveRDS(list(
                 T = state_T,
                 C = state_C,
-                simtime = as.integer(setup$simulation_time)
+                simtime = as.integer(setup$simulation_time),
+                totaltime = as.integer(totaltime),
+                ai_surrogate_info = ai_surrogate_info
             ), file = nameout)
             msgm("results stored in <", nameout, ">")
         }

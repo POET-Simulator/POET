@@ -146,10 +146,13 @@ ParseRet parseInitValues(char **argv, RuntimeParameters &params) {
   cmdl("interp-min", 5) >> params.interp_min_entries;
   cmdl("interp-bucket-entries", 20) >> params.interp_bucket_entries;
 
+  params.use_ai_surrogate = cmdl["ai-surrogate"];
+
   if (MY_RANK == 0) {
     // MSG("Complete results storage is " + BOOL_PRINT(simparams.store_result));
     MSG("Work Package Size: " + std::to_string(params.work_package_size));
     MSG("DHT is " + BOOL_PRINT(params.use_dht));
+    MSG("AI Surrogate is " + BOOL_PRINT(params.use_ai_surrogate));
 
     if (params.use_dht) {
       // MSG("DHT strategy is " + std::to_string(simparams.dht_strategy));
@@ -253,9 +256,9 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   if (params.print_progressbar) {
     chem.setProgressBarPrintout(true);
   }
-
+  R["TMP_PROPS"] = Rcpp::wrap(chem.getField().GetProps());
+  
   /* SIMULATION LOOP */
-
   double dSimTime{0};
   for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
     double start_t = MPI_Wtime();
@@ -273,11 +276,70 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
     chem.getField().update(diffusion.getField());
 
-    // chem.getfield().update(diffusion.getfield());
-
     MSG("Chemistry step");
+    if (params.use_ai_surrogate) {
+      double ai_start_t = MPI_Wtime();
+      // Save current values from the tug field as predictor for the ai step
+      R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
+      R.parseEval(std::string(
+        "predictors <- setNames(data.frame(matrix(TMP, nrow=" +
+        std::to_string(chem.getField().GetRequestedVecSize()) + ")), TMP_PROPS)"));
+      R.parseEval("predictors <- predictors[ai_surrogate_species]");
+
+      // Predict
+      R.parseEval("predictors_scaled <- preprocess(predictors)");
+
+      R.parseEval("print('PREDICTORS:')");
+      R.parseEval("print(head(predictors))");
+
+      R.parseEval("prediction <- preprocess(prediction_step(model, predictors_scaled),\
+                                            backtransform = TRUE,\
+                                            outputs = TRUE)");
+
+      // Validate prediction and write valid predictions to chem field
+      R.parseEval("validity_vector <- validate_predictions(predictors,\
+                                                           prediction)");
+      chem.set_ai_surrogate_validity_vector(R.parseEval("validity_vector"));
+
+      std::vector<std::vector<double>> RTempField = R.parseEval("set_valid_predictions(predictors,\
+                                                                                       prediction,\
+                                                                                       validity_vector)");
+
+      Field predictions_field = Field(R.parseEval("nrow(predictors)"), 
+                                      RTempField,
+                                      R.parseEval("names(predictors)"));
+      chem.getField().update(predictions_field);
+      double ai_end_t = MPI_Wtime();  
+      R["ai_prediction_time"] = ai_end_t - ai_start_t;
+    }
 
     chem.simulate(dt);
+
+    /* AI surrogate iterative training*/
+    if (params.use_ai_surrogate) {
+      double ai_start_t = MPI_Wtime();
+
+      R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
+      R.parseEval(std::string(
+        "targets <- setNames(data.frame(matrix(TMP, nrow=" +
+        std::to_string(chem.getField().GetRequestedVecSize()) + ")), TMP_PROPS)"));
+      R.parseEval("targets <- targets[ai_surrogate_species]");
+      
+      // TODO: Check how to get the correct columns
+      R.parseEval("target_scaled <- preprocess(targets, outputs = TRUE)");
+      
+      R.parseEval("print('TARGET:')");
+      R.parseEval("print(head(target_scaled))");
+
+      R.parseEval("training_step(model, predictors_scaled, target_scaled, validity_vector)");
+      double ai_end_t = MPI_Wtime();
+      R["ai_training_time"] = ai_end_t - ai_start_t;
+    }
+
+    // MPI_Barrier(MPI_COMM_WORLD);
+    double end_t = MPI_Wtime();
+    dSimTime += end_t - start_t;
+    R["totaltime"] = dSimTime;
 
     // MDL master_iteration_end just writes on disk state_T and
     // state_C after every iteration if the cmdline option
@@ -290,10 +352,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     MSG("End of *coupling* iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
     MSG();
-
-    // MPI_Barrier(MPI_COMM_WORLD);
-    double end_t = MPI_Wtime();
-    dSimTime += end_t - start_t;
   } // END SIMULATION LOOP
 
   Rcpp::List chem_profiling;
@@ -384,16 +442,15 @@ int main(int argc, char *argv[]) {
         run_params.use_interp,
         run_params.interp_bucket_entries,
         run_params.interp_size,
-        run_params.interp_min_entries};
+        run_params.interp_min_entries,
+        run_params.use_ai_surrogate};
 
     chemistry.masterEnableSurrogates(surr_setup);
 
     if (MY_RANK > 0) {
       chemistry.WorkerLoop();
     } else {
-
       init_global_functions(R);
-
       // R.parseEvalQ("mysetup <- setup");
       // // if (MY_RANK == 0) { // get timestep vector from
       // // grid_init function ... //
@@ -404,6 +461,22 @@ int main(int argc, char *argv[]) {
       // MDL: store all parameters
       // MSG("Calling R Function to store calling parameters");
       // R.parseEvalQ("StoreSetup(setup=mysetup)");
+      if (run_params.use_ai_surrogate) {
+        /* Incorporate ai surrogate from R */
+        R.parseEvalQ(ai_surrogate_r_library);
+        /* Use dht species for model input and output */
+        R["ai_surrogate_species"] = init_list.getChemistryInit().dht_species.getNames();
+        R["out_dir"] = run_params.out_dir;
+        
+        const std::string ai_surrogate_input_script_path = init_list.getChemistryInit().ai_surrogate_input_script;
+
+        if (!ai_surrogate_input_script_path.empty()) {
+          R["ai_surrogate_base_path"] = ai_surrogate_input_script_path.substr(0, ai_surrogate_input_script_path.find_last_of('/') + 1);
+          R.parseEvalQ("source('" + ai_surrogate_input_script_path + "')");
+        }
+        R.parseEval("model <- initiate_model()");
+        R.parseEval("gpu_info()");
+      }
 
       MSG("Init done on process with rank " + std::to_string(MY_RANK));
 

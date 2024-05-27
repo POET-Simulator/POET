@@ -20,7 +20,7 @@
 ** Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#pragma once
+#pragma once  
 
 #include <cstdint>
 #include <set>
@@ -35,11 +35,11 @@ static const char *poet_version = "@POET_VERSION@";
 static const inline std::string kin_r_library = R"(@R_KIN_LIB@)";
 
 static const inline std::string init_r_library = R"(@R_INIT_LIB@)";
-
+static const inline std::string ai_surrogate_r_library = R"(@R_AI_SURROGATE_LIB@)";
 static const inline std::string r_runtime_parameters = "mysetup";
 
 const std::set<std::string> flaglist{"ignore-result", "dht", "P", "progress",
-                                     "interp"};
+                                     "interp", "ai-surrogate"};
 const std::set<std::string> paramlist{
     "work-package-size", "dht-strategy", "dht-size",   "dht-snaps",
     "dht-file",          "interp-size",  "interp-min", "interp-bucket-entries"};
@@ -66,6 +66,7 @@ struct RuntimeParameters {
   std::uint32_t interp_min_entries;
   std::uint32_t interp_bucket_entries;
 
+  bool use_ai_surrogate;
   struct ChemistryParams {
     // std::string database_path;
     // std::string input_script;

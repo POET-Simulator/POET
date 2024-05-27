@@ -32,6 +32,11 @@ void InitialList::initChemistry(const Rcpp::List &chem) {
     }
   }
 
+  if (chem.containsElementNamed("ai_surrogate_input_script")) {
+    std::string ai_surrogate_input_script_path = chem["ai_surrogate_input_script"];
+    this->ai_surrogate_input_script = Rcpp::as<std::string>(Rcpp::Function("normalizePath")(Rcpp::wrap(ai_surrogate_input_script_path)));
+  }
+
   this->field_header =
       Rcpp::as<std::vector<std::string>>(this->initial_grid.names());
   this->field_header.erase(this->field_header.begin());
@@ -65,6 +70,7 @@ InitialList::ChemistryInit InitialList::getChemistryInit() const {
 
   chem_init.dht_species = dht_species;
   chem_init.interp_species = interp_species;
+  chem_init.ai_surrogate_input_script = ai_surrogate_input_script;
 
   if (this->chem_hooks.size() > 0) {
     if (this->chem_hooks.containsElementNamed("dht_fill")) {

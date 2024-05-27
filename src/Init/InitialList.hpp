@@ -35,7 +35,7 @@ public:
   void importList(const Rcpp::List &setup, bool minimal = false);
   Rcpp::List exportList();
 
-  Field getInitialGrid() const { return Field(this->initial_grid); }
+  Field getInitialGrid() const { return Field(this->initial_grid); }  
 
 private:
   RInside &R;
@@ -66,8 +66,9 @@ private:
     CHEM_DHT_SPECIES,
     CHEM_INTERP_SPECIES,
     CHEM_HOOKS,
-    ENUM_SIZE
-  };
+    AI_SURROGATE_INPUT_SCRIPT,
+    ENUM_SIZE // Hack: Last element of the enum to show enum size
+    };
 
   // Grid members
   static constexpr const char *grid_key = "Grid";
@@ -203,6 +204,9 @@ private:
   NamedVector<std::uint32_t> dht_species;
 
   NamedVector<std::uint32_t> interp_species;
+  
+  // Path to R script that the user defines in the input file
+  std::string ai_surrogate_input_script;
 
   Rcpp::List chem_hooks;
 
@@ -233,6 +237,8 @@ public:
     NamedVector<std::uint32_t> dht_species;
     NamedVector<std::uint32_t> interp_species;
     ChemistryHookFunctions hooks;
+
+    std::string ai_surrogate_input_script;
   };
 
   ChemistryInit getChemistryInit() const;

@@ -371,3 +371,7 @@ void poet::ChemistryModule::unshuffleField(const std::vector<double> &in_buffer,
     }
   }
 }
+  
+void poet::ChemistryModule::set_ai_surrogate_validity_vector(std::vector<int> r_vector) {
+  this->ai_surrogate_validity_vector = r_vector;
+}

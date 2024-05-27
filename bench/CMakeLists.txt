@@ -1,4 +1,3 @@
-
 function(ADD_BENCH_TARGET TARGET POET_BENCH_LIST RT_FILES OUT_PATH)
     set(bench_install_dir share/poet/${OUT_PATH})
 
@@ -41,4 +40,3 @@ add_custom_target(${BENCHTARGET} ALL)
 add_subdirectory(barite)
 add_subdirectory(dolo)
 add_subdirectory(surfex)
-

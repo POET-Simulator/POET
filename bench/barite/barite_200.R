@@ -47,7 +47,8 @@ dht_species <- c(
 )
 
 chemistry_setup <- list(
-  dht_species = dht_species
+  dht_species = dht_species,
+  ai_surrogate_input_script = "./barite_200ai_surrogate_input_script.R"
 )
 
 # Define a setup list for simulation configuration

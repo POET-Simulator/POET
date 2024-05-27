@@ -82,6 +82,8 @@ void InitialList::importList(const Rcpp::List &setup, bool minimal) {
 
   this->chem_hooks =
       Rcpp::as<Rcpp::List>(setup[static_cast<int>(ExportList::CHEM_HOOKS)]);
+
+  this->ai_surrogate_input_script = Rcpp::as<std::string>(setup[static_cast<int>(ExportList::AI_SURROGATE_INPUT_SCRIPT)]);
 }
 
 Rcpp::List InitialList::exportList() {
@@ -129,6 +131,7 @@ Rcpp::List InitialList::exportList() {
   out[static_cast<int>(ExportList::CHEM_INTERP_SPECIES)] =
       Rcpp::wrap(this->interp_species);
   out[static_cast<int>(ExportList::CHEM_HOOKS)] = this->chem_hooks;
+  out[static_cast<int>(ExportList::AI_SURROGATE_INPUT_SCRIPT)] = this->ai_surrogate_input_script;
 
   return out;
 }

@@ -83,6 +83,7 @@ public:
     std::uint32_t interp_bucket_size;
     std::uint32_t interp_size_mb;
     std::uint32_t interp_min_entries;
+    bool ai_surrogate_enabled;
   };
 
   void masterEnableSurrogates(const SurrogateSetup &setup) {
@@ -92,6 +93,7 @@ public:
 
     this->dht_enabled = setup.dht_enabled;
     this->interp_enabled = setup.interp_enabled;
+    this->ai_surrogate_enabled = setup.ai_surrogate_enabled;
 
     if (this->dht_enabled || this->interp_enabled) {
       this->initializeDHT(setup.dht_size_mb, this->params.dht_species);
@@ -219,6 +221,11 @@ public:
     this->print_progessbar = enabled;
   };
 
+  /**
+  *  **Master only** Set the ai surrogate validity vector from R
+  */
+  void set_ai_surrogate_validity_vector(std::vector<int> r_vector);
+
   std::vector<uint32_t> GetWorkerInterpolationCalls() const;
 
   std::vector<double> GetWorkerInterpolationWriteTimings() const;
@@ -227,6 +234,8 @@ public:
   std::vector<double> GetWorkerInterpolationFunctionCallTimings() const;
 
   std::vector<uint32_t> GetWorkerPHTCacheHits() const;
+
+  std::vector<int> ai_surrogate_validity_vector;
 
 protected:
   void initializeDHT(uint32_t size_mb,
@@ -249,7 +258,8 @@ protected:
     CHEM_IP_SIGNIF_VEC,
     CHEM_WORK_LOOP,
     CHEM_PERF,
-    CHEM_BREAK_MAIN_LOOP
+    CHEM_BREAK_MAIN_LOOP,
+    CHEM_AI_BCAST_VALIDITY
   };
 
   enum { LOOP_WORK, LOOP_END };
@@ -347,6 +357,8 @@ protected:
 
   bool interp_enabled{false};
   std::unique_ptr<poet::InterpolationModule> interp;
+
+  bool ai_surrogate_enabled{false};
 
   static constexpr uint32_t BUFFER_OFFSET = 5;
 

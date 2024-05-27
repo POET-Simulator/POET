@@ -47,6 +47,14 @@ void poet::ChemistryModule::WorkerLoop() {
     switch (func_type) {
     case CHEM_FIELD_INIT: {
       ChemBCast(&this->prop_count, 1, MPI_UINT32_T);
+      if (this->ai_surrogate_enabled) {
+        this->ai_surrogate_validity_vector.reserve(this->n_cells);
+      }
+      break;
+    }
+    case CHEM_AI_BCAST_VALIDITY: {
+      // Receive the index vector of valid ai surrogate predictions
+      MPI_Bcast(&this->ai_surrogate_validity_vector.front(), this->n_cells, MPI_INT, 0, this->group_comm);
       break;
     }
     case CHEM_WORK_LOOP: {
@@ -118,7 +126,7 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
   uint32_t iteration;
   double dt;
   double current_sim_time;
-
+  uint32_t wp_start_index;
   int count = double_count;
   std::vector<double> mpi_buffer(count);
 
@@ -169,6 +177,16 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
   if (interp_enabled) {
     interp->tryInterpolation(s_curr_wp);
   }
+
+  if (this->ai_surrogate_enabled) {
+    // Map valid predictions from the ai surrogate in the workpackage
+    for (int i = 0; i < s_curr_wp.size; i++) {
+      if (this->ai_surrogate_validity_vector[wp_start_index + i] == 1) {
+        s_curr_wp.mapping[i] = CHEM_AISURR;
+      }
+    }
+  }
+
 
   phreeqc_time_start = MPI_Wtime();
 
