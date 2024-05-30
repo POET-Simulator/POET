@@ -154,6 +154,7 @@ The following parameters can be set:
 |-----------------------------|--------------|--------------------------------------------------------------------------------------------------------------------------|
 | **--work-package-size=**    | _1..n_       | size of work packages (defaults to _5_)                                                                                  |
 | **-P, --progress**          |              | show progress bar                                                                                                        |
+| **--ai-surrogate**          |              | activates the AI surrogate chemistry model (defaults to _OFF_) |
 | **--dht**                   |              | enabling DHT usage (defaults to _OFF_)                                                                                   |
 | **--dht-strategy=**         | _0-1_        | change DHT strategy. **NOT IMPLEMENTED YET** (Defaults to _0_)                                                           |
 | **--dht-size=**             | _1-n_        | size of DHT per process involved in megabyte (defaults to _1000 MByte_)                                                  |
@@ -231,3 +232,21 @@ important information from the OpenMPI Man Page:
 For example, on platforms that support it, the clock_gettime()
 function will be used to obtain a monotonic clock value with whatever
 precision is supported on that platform (e.g., nanoseconds).
+
+## Additional functions for the AI surrogate
+
+The AI surrogate can be activated for any benchmark and is by default initiated as a sequential keras model with three hidden layer of depth 48, 96, 24 with relu activation and adam optimizer. All functions in `ai_surrogate_model.R` can be overridden by adding custom definitions via an R file in the input script.
+This is done by adding the path to this file in the input script. Simply add the path as an element called `ai_surrogate_input_script` to the `chemistry_setup` list.
+Please use the global variable `ai_surrogate_base_path` as a base path when relative filepaths are used in custom funtions.
+
+**There is currently no default implementation to determine the validity of predicted values.** This means, that every input script must include an R source file with a custom function `validate_predictions(predictors, prediction)`. Examples for custom functions can be found for the barite_200 benchmark
+
+The functions can be defined as follows:  
+
+`validate_predictions(predictors, prediction)`: Returns a boolean index vector that signals for each row in the predictions if the values are considered valid. Can eg. be implemented as a mass balance threshold between the predictors and the prediction.
+
+`initiate_model()`: Returns a keras model. Can be used to load pretrained models.
+
+`preprocess(df, backtransform = FALSE, outputs = FALSE)`: Returns the scaled/transformed/backtransformed dataframe. The `backtransform` flag signals if the current processing step is applied to data that's assumed to be scaled and expects backtransformed values. The `outputs` flag signals if the current processing step is applied to the output or tatget of the model. This can be used to eg. skip these processing steps and only scale the model input.
+
+`training_step (model, predictor, target, validity)`: Trains the model after each iteration. `validity` is the bool index vector given by `validate_predictions` and can eg. be used to only train on values that have not been valid predictions.

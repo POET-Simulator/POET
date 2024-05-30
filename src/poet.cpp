@@ -462,11 +462,14 @@ int main(int argc, char *argv[]) {
         R["ai_surrogate_species"] = init_list.getChemistryInit().dht_species.getNames();
         R["out_dir"] = run_params.out_dir;
         
-        const std::string ai_surrogate_input_script_path = init_list.getChemistryInit().ai_surrogate_input_script;
+        const std::string ai_surrogate_input_script = init_list.getChemistryInit().ai_surrogate_input_script;
 
-        if (!ai_surrogate_input_script_path.empty()) {
-          R["ai_surrogate_base_path"] = ai_surrogate_input_script_path.substr(0, ai_surrogate_input_script_path.find_last_of('/') + 1);
-          R.parseEvalQ("source('" + ai_surrogate_input_script_path + "')");
+        if (!ai_surrogate_input_script.empty()) {
+          /* Incorporate user defined ai surrogate input script */
+          R.parseEvalQ(ai_surrogate_input_script);
+
+          std::string ai_surrogate_base_path = R["ai_surrogate_base_path"];
+          R["ai_surrogate_base_path"] = ai_surrogate_base_path.substr(0, ai_surrogate_base_path.find_last_of('/') + 1);
         }
         R.parseEval("model <- initiate_model()");
         R.parseEval("gpu_info()");

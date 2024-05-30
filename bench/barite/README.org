@@ -22,6 +22,15 @@ mpirun -np 4 ./poet --interp  barite_interp_eval.R barite_results
   grid 
 - =barite_200.R=: POET input script for a 200x200 simulation
   grid
+- =barite_200ai_surrogate_input_script.R=: Defines the ai surrogate functions 
+  to load a pretrained model and apply min-max-feature scaling on the model inputs
+  and target. Prediction validity is assessed with a threshold of 3e-5 on the mass 
+  balance of Ba and Sr.
+- =barite_200min_max_bounds=: Minimum and maximum values from 50 iterations of the
+  barite_200 benchmark. Used for feature scaling in the ai surrogate.
+- =barite_200model_min_max.keras=: A sequential keras model that has been trained 
+  on 50 iterations of the barite_200 benchmark with min-max-scaled inputs
+  and targets/outputs.
 - =db_barite.dat=: PHREEQC database containing the kinetic expressions
   for barite and celestite, stripped down from =phreeqc.dat=
 - =barite.pqi=: PHREEQC input script defining the chemical system
