@@ -336,7 +336,8 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       // TODO: Check how to get the correct columns
       R.parseEval("target_scaled <- preprocess(targets)");
 
-      R.parseEval("training_step(model, predictors_scaled, target_scaled, validity_vector)");
+      MSG("AI: incremental training");
+      R.parseEval("model <- training_step(model, predictors_scaled, target_scaled, validity_vector)");
       double ai_end_t = MPI_Wtime();
       R["ai_training_time"] = ai_end_t - ai_start_t;
     }
@@ -477,9 +478,12 @@ int main(int argc, char *argv[]) {
 
         if (!ai_surrogate_input_script_path.empty()) {
           R["ai_surrogate_base_path"] = ai_surrogate_input_script_path.substr(0, ai_surrogate_input_script_path.find_last_of('/') + 1);
-          R.parseEvalQ("source('" + ai_surrogate_input_script_path + "')");
+
+	  MSG("AI: sourcing user-provided script");
+	  R.parseEvalQ("source('" + ai_surrogate_input_script_path + "')");
         }
-        R.parseEval("model <- initiate_model()");
+	MSG("AI: initialize AI model");
+	R.parseEval("model <- initiate_model()");
         R.parseEval("gpu_info()");
       }
 
@@ -501,7 +505,7 @@ int main(int argc, char *argv[]) {
 
       string r_vis_code;
       r_vis_code =
-          "saveRDS(profiling, file=paste0(setup$out_dir,'/timings.rds'));";
+	"saveRDS(profiling, file=paste0(setup$out_dir,'/timings.rds'));";
       R.parseEval(r_vis_code);
 
       MSG("Done! Results are stored as R objects into <" + run_params.out_dir +

@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2024-05-29 10:51:35 delucia"
+## Time-stamp: "Last modified 2024-05-30 13:34:14 delucia"
 cols <- 50
 rows <- 50
 
@@ -10,10 +10,10 @@ grid_def <- matrix(2, nrow = rows, ncol = cols)
 # Define grid configuration for POET model
 grid_setup <- list(
   pqc_in_file = "./barite.pqi",
-  pqc_db_file = "./db_barite.dat", # Path to the database file for Phreeqc
-  grid_def = grid_def, # Definition of the grid, containing IDs according to the Phreeqc input script
-  grid_size = c(s_rows, s_cols), # Size of the grid in meters
-  constant_cells = c() # IDs of cells with constant concentration
+  pqc_db_file = "./db_barite.dat", ## Path to the database file for Phreeqc
+  grid_def = grid_def,             ## Definition of the grid, containing IDs according to the Phreeqc input script
+  grid_size = c(s_rows, s_cols),   ## Size of the grid in meters
+  constant_cells = c()             ## IDs of cells with constant concentration
 )
 
 bound_length <- 2
@@ -37,14 +37,14 @@ diffusion_setup <- list(
 
 dht_species <- c(
   "H"         = 4,
-  "O"         = 9,
+  "O"         = 10,
   "Charge"    = 4,
-  "Ba"        = 4,
+  "Ba"        = 7,
   "Cl"        = 4,
   "S(6)"      = 7,
   "Sr"        = 4,
-  "Barite"    = 7,
-  "Celestite" = 7
+  "Barite"    = 2,
+  "Celestite" = 2
 )
 
 chemistry_setup <- list(

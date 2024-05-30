@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2024-05-30 11:16:57 delucia"
+## Time-stamp: "Last modified 2024-05-30 13:27:06 delucia"
 
 ## load a pretrained model from tensorflow file
 ## Use the global variable "ai_surrogate_base_path" when using file paths
@@ -74,12 +74,17 @@ validate_predictions <- function(predictors, prediction) {
 }
 
 training_step <- function(model, predictor, target, validity) {
-  msgm("Training:")
+  msgm("Starting incremental training:")
 
-  x <- as.matrix(predictor)
-  y <- as.matrix(target[colnames(x)])
+  ## x <- as.matrix(predictor)
+  ## y <- as.matrix(target[colnames(x)])
 
-  model %>% keras3::fit(x, y)
+  history <- model %>% keras3::fit(x = data.matrix(predictor),
+                                   y = data.matrix(target),
+                                   epochs = 10, verbose=1)
 
-  model %>% keras3::save_model(paste0(out_dir, "/current_model.keras"), overwrite=TRUE)
+  keras3::save_model(model,
+                     filepath = paste0(out_dir, "/current_model.keras"),
+                     overwrite=TRUE)
+  return(model)
 }
