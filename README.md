@@ -8,7 +8,7 @@
 simulator implementing a parallel architecture and a fast, original MPI-based
 Distributed Hash Table.
 
-![POET's Coupling Scheme](./docs/20230720_Scheme_POET_en.svg)
+![POET's Coupling Scheme](./docs/Scheme_POET_en.svg)
 
 ## Parsed code documentiation
 
