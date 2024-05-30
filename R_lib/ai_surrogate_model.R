@@ -5,8 +5,8 @@
 ## in the variable "ai_surrogate_input_script". See the barite_200.R file as an
 ## example and the general README for more information.
 
-library(keras)
-library(tensorflow)
+## library(keras3)
+## library(tensorflow)
 
 initiate_model <- function() {
   hidden_layers <- c(48, 96, 24)
@@ -51,6 +51,10 @@ prediction_step <- function(model, predictors) {
 }
 
 preprocess <- function(df, backtransform = FALSE, outputs = FALSE) {
+  return(df)
+}
+
+postprocess <- function(df, backtransform = TRUE, outputs = TRUE) {
   return(df)
 }
 
