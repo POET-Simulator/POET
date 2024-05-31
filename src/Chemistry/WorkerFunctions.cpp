@@ -48,7 +48,7 @@ void poet::ChemistryModule::WorkerLoop() {
     case CHEM_FIELD_INIT: {
       ChemBCast(&this->prop_count, 1, MPI_UINT32_T);
       if (this->ai_surrogate_enabled) {
-        this->ai_surrogate_validity_vector.reserve(this->n_cells);
+        this->ai_surrogate_validity_vector.resize(this->n_cells); // resize statt reserve?
       }
       break;
     }
@@ -152,8 +152,8 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
   // current simulation time ('age' of simulation)
   current_sim_time = mpi_buffer[count + 3];
 
-  /* 4th double value is currently a placeholder */
-  // placeholder = mpi_buffer[count+4];
+  // current work package start location in field
+  wp_start_index = mpi_buffer[count+4];
 
   for (std::size_t wp_i = 0; wp_i < s_curr_wp.size; wp_i++) {
     s_curr_wp.input[wp_i] =
