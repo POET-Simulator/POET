@@ -286,25 +286,36 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
         std::to_string(chem.getField().GetRequestedVecSize()) + ")), TMP_PROPS)"));
       R.parseEval("predictors <- predictors[ai_surrogate_species]");
 
-      // Predict
+      // Apply preprocessing 
+      MSG("AI Preprocessing");
       R.parseEval("predictors_scaled <- preprocess(predictors)");
 
-      R.parseEval("prediction <- preprocess(prediction_step(model, predictors_scaled),\
-                                            backtransform = TRUE,\
-                                            outputs = TRUE)");
+      // Predict
+      MSG("AI Predict");
+      R.parseEval("aipreds_scaled <- prediction_step(model, predictors_scaled)");
+
+      // Apply postprocessing
+      MSG("AI Postprocesing");
+      R.parseEval("aipreds <- postprocess(aipreds_scaled)");
 
       // Validate prediction and write valid predictions to chem field
-      R.parseEval("validity_vector <- validate_predictions(predictors,\
-                                                           prediction)");
+      MSG("AI Validate");
+      R.parseEval("validity_vector <- validate_predictions(predictors, aipreds)");
+      
+      MSG("AI Marking accepted");
       chem.set_ai_surrogate_validity_vector(R.parseEval("validity_vector"));
 
+      MSG("AI TempField");
       std::vector<std::vector<double>> RTempField = R.parseEval("set_valid_predictions(predictors,\
-                                                                                       prediction,\
+                                                                                       aipreds,\
                                                                                        validity_vector)");
 
+      MSG("AI Set Field");
       Field predictions_field = Field(R.parseEval("nrow(predictors)"), 
                                       RTempField,
-                                      R.parseEval("names(predictors)"));
+                                      R.parseEval("colnames(predictors)"));
+
+      MSG("AI Update");
       chem.getField().update(predictions_field);
       double ai_end_t = MPI_Wtime();  
       R["ai_prediction_time"] = ai_end_t - ai_start_t;
@@ -323,9 +334,10 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       R.parseEval("targets <- targets[ai_surrogate_species]");
       
       // TODO: Check how to get the correct columns
-      R.parseEval("target_scaled <- preprocess(targets, outputs = TRUE)");
+      R.parseEval("target_scaled <- preprocess(targets)");
 
-      R.parseEval("training_step(model, predictors_scaled, target_scaled, validity_vector)");
+      MSG("AI: incremental training");
+      R.parseEval("model <- training_step(model, predictors_scaled, target_scaled, validity_vector)");
       double ai_end_t = MPI_Wtime();
       R["ai_training_time"] = ai_end_t - ai_start_t;
     }
@@ -464,14 +476,14 @@ int main(int argc, char *argv[]) {
         
         const std::string ai_surrogate_input_script = init_list.getChemistryInit().ai_surrogate_input_script;
 
-        if (!ai_surrogate_input_script.empty()) {
-          /* Incorporate user defined ai surrogate input script */
-          R.parseEvalQ(ai_surrogate_input_script);
+        if (!ai_surrogate_input_script_path.empty()) {
+          R["ai_surrogate_base_path"] = ai_surrogate_input_script_path.substr(0, ai_surrogate_input_script_path.find_last_of('/') + 1);
 
-          std::string ai_surrogate_base_path = R["ai_surrogate_base_path"];
-          R["ai_surrogate_base_path"] = ai_surrogate_base_path.substr(0, ai_surrogate_base_path.find_last_of('/') + 1);
+	  MSG("AI: sourcing user-provided script");
+	  R.parseEvalQ("source('" + ai_surrogate_input_script_path + "')");
         }
-        R.parseEval("model <- initiate_model()");
+	MSG("AI: initialize AI model");
+	R.parseEval("model <- initiate_model()");
         R.parseEval("gpu_info()");
       }
 
@@ -493,7 +505,7 @@ int main(int argc, char *argv[]) {
 
       string r_vis_code;
       r_vis_code =
-          "saveRDS(profiling, file=paste0(setup$out_dir,'/timings.rds'));";
+	"saveRDS(profiling, file=paste0(setup$out_dir,'/timings.rds'));";
       R.parseEval(r_vis_code);
 
       MSG("Done! Results are stored as R objects into <" + run_params.out_dir +
