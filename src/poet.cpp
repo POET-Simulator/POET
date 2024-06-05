@@ -463,7 +463,6 @@ int main(int argc, char *argv[]) {
       *global_rt_setup =
           master_init_R.value()(*global_rt_setup, run_params.out_dir,
                                 init_list.getInitialGrid().asSEXP());
-
       // MDL: store all parameters
       // MSG("Calling R Function to store calling parameters");
       // R.parseEvalQ("StoreSetup(setup=mysetup)");
@@ -476,17 +475,14 @@ int main(int argc, char *argv[]) {
         
         const std::string ai_surrogate_input_script = init_list.getChemistryInit().ai_surrogate_input_script;
 
-        if (!ai_surrogate_input_script_path.empty()) {
-          R["ai_surrogate_base_path"] = ai_surrogate_input_script_path.substr(0, ai_surrogate_input_script_path.find_last_of('/') + 1);
-
-	  MSG("AI: sourcing user-provided script");
-	  R.parseEvalQ("source('" + ai_surrogate_input_script_path + "')");
-        }
-	MSG("AI: initialize AI model");
-	R.parseEval("model <- initiate_model()");
+    	  MSG("AI: sourcing user-provided script");
+	      R.parseEvalQ(ai_surrogate_input_script);
+	      
+        MSG("AI: initialize AI model");
+	      R.parseEval("model <- initiate_model()");
         R.parseEval("gpu_info()");
-      }
-
+        }
+        
       MSG("Init done on process with rank " + std::to_string(MY_RANK));
 
       // MPI_Barrier(MPI_COMM_WORLD);

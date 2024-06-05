@@ -40,14 +40,16 @@ void InitialList::initChemistry(const Rcpp::List &chem) {
     std::ifstream file(ai_surrogate_input_script_path);
     if (!file.is_open()) {
         // print error message and return
-        Rcpp::Rcerr << "AI surroghate input script was not found at: " << ai_surrogate_input_script_path << std::endl;
+        Rcpp::Rcerr << "AI surrogate input script was not found at: " << ai_surrogate_input_script_path << std::endl;
     }
 
     std::stringstream buffer;
     buffer << file.rdbuf();
     std::string fileContent = buffer.str();
     file.close();
-
+    
+    // Get base path
+    ai_surrogate_input_script_path = ai_surrogate_input_script_path.substr(0, ai_surrogate_input_script_path.find_last_of('/') + 1);
     // Add the filepath as a global variable in R to enable relative filepaths in the R script
     fileContent += "\nai_surrogate_base_path <- \"" + ai_surrogate_input_script_path + "\"";
     

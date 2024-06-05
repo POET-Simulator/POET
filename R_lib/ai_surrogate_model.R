@@ -5,8 +5,8 @@
 ## in the variable "ai_surrogate_input_script". See the barite_200.R file as an
 ## example and the general README for more information.
 
-## library(keras3)
-## library(tensorflow)
+require(keras3)
+require(tensorflow)
 
 initiate_model <- function() {
   hidden_layers <- c(48, 96, 24)
