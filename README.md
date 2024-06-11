@@ -163,20 +163,20 @@ Run POET by `mpirun ./poet [OPTIONS] <RUNFILE> <SIMFILE>
 
 The following parameters can be set:
 
-| Option                      | Value        | Description                                                                      |
-|-----------------------------|--------------|----------------------------------------------------------------------------------|
-| **--work-package-size=**    | _1..n_       | size of work packages (defaults to _5_)                                          |
-| **-P, --progress**          |              | show progress bar                                                                |
-| **--ai-surrogate**          |              | activates the AI surrogate chemistry model (defaults to _OFF_)                   |
-| **--dht**                   |              | enabling DHT usage (defaults to _OFF_)                                           |
-| **--qs**                    |              | store results using qs::qsave() (.qs extension) instead of default RDS (.rds)    |
-| **--dht-strategy=**         | _0-1_        | change DHT strategy. **NOT IMPLEMENTED YET** (Defaults to _0_)                   |
-| **--dht-size=**             | _1-n_        | size of DHT per process involved in megabyte (defaults to _1000 MByte_)          |
-| **--dht-snaps=**            | _0-2_        | disable or enable storage of DHT snapshots                                       |
-| **--dht-file=**             | `<SNAPSHOT>` | initializes DHT with the given snapshot file                                     |
-| **--interp-size**           | _1-n_        | size of PHT (interpolation) per process in megabyte                              |
-| **--interp-bucket-entries** | _1-n_        | number of entries to store at maximum in one PHT bucket                          |
-| **--interp-min**            | _1-n_        | number of entries in PHT bucket needed to start interpolation                    |
+| Option                      | Value        | Description                                                                                                              |
+|-----------------------------|--------------|--------------------------------------------------------------------------------------------------------------------------|
+| **--work-package-size=**    | _1..n_       | size of work packages (defaults to _5_)                                                                                  |
+| **-P, --progress**          |              | show progress bar                                                                                                        |
+| **--ai-surrogate**          |              | activates the AI surrogate chemistry model (defaults to _OFF_)                                                           |
+| **--dht**                   |              | enabling DHT usage (defaults to _OFF_)                                                                                   |
+| **--qs**                    |              | store results using qs::qsave() (.qs extension) instead of default RDS (.rds)                                            |
+| **--dht-strategy=**         | _0-1_        | change DHT strategy. **NOT IMPLEMENTED YET** (Defaults to _0_)                                                           |
+| **--dht-size=**             | _1-n_        | size of DHT per process involved in megabyte (defaults to _1000 MByte_)                                                  |
+| **--dht-snaps=**            | _0-2_        | disable or enable storage of DHT snapshots                                                                               |
+| **--dht-file=**             | `<SNAPSHOT>` | initializes DHT with the given snapshot file                                                                             |
+| **--interp-size**           | _1-n_        | size of PHT (interpolation) per process in megabyte                                                                      |
+| **--interp-bucket-entries** | _1-n_        | number of entries to store at maximum in one PHT bucket                                                                  |
+| **--interp-min**            | _1-n_        | number of entries in PHT bucket needed to start interpolation                                                            |
 
 #### Additions to `dht-snaps`
 
@@ -290,6 +290,15 @@ where:
   file (e.g. to allow relative paths in the input script). However,
   the output file will be stored in the directory from which
   `poet_init` was called.
+
+## About the usage of MPI_Wtime()
+
+Implemented time measurement functions uses `MPI_Wtime()`. Some
+important information from the OpenMPI Man Page:
+
+For example, on platforms that support it, the clock_gettime()
+function will be used to obtain a monotonic clock value with whatever
+precision is supported on that platform (e.g., nanoseconds).
 
 ## Additional functions for the AI surrogate
 
