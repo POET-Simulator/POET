@@ -1,4 +1,4 @@
-## Time-stamp: "Last modified 2023-08-15 11:58:23 delucia"
+## Time-stamp: "Last modified 2024-06-11 14:26:33 delucia"
 
 ### Copyright (C) 2018-2023 Marco De Lucia, Max Luebke (GFZ Potsdam)
 ###
@@ -35,14 +35,18 @@ master_init <- function(setup, out_dir, init_field) {
     setup$iterations <- setup$maxiter
     setup$simulation_time <- 0
 
+    dgts <- as.integer(ceiling(log10(setup$maxiter)))
+    ## string format to use in sprintf
+    fmt <- paste0("%0", dgts, "d")
+
     if (is.null(setup[["store_result"]])) {
         setup$store_result <- TRUE
     }
 
     if (setup$store_result) {
-        init_field_out <- paste0(out_dir, "/iter_0.rds")
+        init_field_out <- paste0(out_dir, "/iter_", sprintf(fmt = fmt, 0), ".", setup$out_ext)
         init_field <- data.frame(init_field, check.names = FALSE)
-        saveRDS(init_field, file = init_field_out)
+        SaveRObj(x = init_field, path = init_field_out)
         msgm("Stored initial field in ", init_field_out)
         if (is.null(setup[["out_save"]])) {
             setup$out_save <- seq(1, setup$iterations)
@@ -69,7 +73,7 @@ master_iteration_end <- function(setup, state_T, state_C) {
     ## comprised in setup$out_save
     if (setup$store_result) {
         if (iter %in% setup$out_save) {
-            nameout <- paste0(setup$out_dir, "/iter_", sprintf(fmt = fmt, iter), ".rds")
+            nameout <- paste0(setup$out_dir, "/iter_", sprintf(fmt = fmt, iter), ".", setup$out_ext)
             state_T <- data.frame(state_T, check.names = FALSE)
             state_C <- data.frame(state_C, check.names = FALSE)
             
@@ -77,13 +81,14 @@ master_iteration_end <- function(setup, state_T, state_C) {
                 prediction_time = if(exists("ai_prediction_time")) as.integer(ai_prediction_time) else NULL,
                 training_time = if(exists("ai_training_time")) as.integer(ai_training_time) else NULL,
                 valid_predictions = if(exists("validity_vector")) validity_vector else NULL)
-            saveRDS(list(
-                T = state_T,
-                C = state_C,
-                simtime = as.integer(setup$simulation_time),
-                totaltime = as.integer(totaltime),
-                ai_surrogate_info = ai_surrogate_info
-            ), file = nameout)
+
+            SaveRObj(x = list(
+                         T = state_T,
+                         C = state_C,
+                         simtime = as.integer(setup$simulation_time),
+                         totaltime = as.integer(totaltime),
+                         ai_surrogate_info = ai_surrogate_info
+                     ), path = nameout)
             msgm("results stored in <", nameout, ">")
         }
     }
@@ -172,3 +177,30 @@ GetWorkPackageSizesVector <- function(n_packages, package_size, len) {
     ids <- rep(1:n_packages, times = package_size, each = 1)[1:len]
     return(as.integer(table(ids)))
 }
+
+
+## Handler to read R objs from binary files using either builtin
+## readRDS() or qs::qread() based on file extension
+ReadRObj <- function(path) {
+    ## code borrowed from tools::file_ext()
+    pos <- regexpr("\\.([[:alnum:]]+)$", path)
+    extension <- ifelse(pos > -1L, substring(path, pos + 1L), "")
+
+    switch(extension,
+           rds = readRDS(path),
+           qs  = qs::qread(path))
+}
+
+## Handler to store R objs to binary files using either builtin
+## saveRDS() or qs::qsave() based on file extension
+SaveRObj <- function(x, path) {
+    msgm("Storing to", path)
+    ## code borrowed from tools::file_ext()
+    pos <- regexpr("\\.([[:alnum:]]+)$", path)
+    extension <- ifelse(pos > -1L, substring(path, pos + 1L), "")
+
+    switch(extension,
+           rds = saveRDS(object = x, file=path),
+           qs  = qs::qsave(x=x, file = path))
+}
+

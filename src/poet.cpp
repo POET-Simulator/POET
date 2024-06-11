@@ -52,17 +52,23 @@ static int MY_RANK = 0;
 
 static std::unique_ptr<Rcpp::List> global_rt_setup;
 
-// we need some layz evaluation, as we can't define the functions before the R
-// runtime is initialized
+// we need some lazy evaluation, as we can't define the functions
+// before the R runtime is initialized
 static std::optional<Rcpp::Function> master_init_R;
 static std::optional<Rcpp::Function> master_iteration_end_R;
 static std::optional<Rcpp::Function> store_setup_R;
+static std::optional<Rcpp::Function> ReadRObj_R;
+static std::optional<Rcpp::Function> SaveRObj_R;
+static std::optional<Rcpp::Function> source_R;
 
 static void init_global_functions(RInside &R) {
   R.parseEval(kin_r_library);
-  master_init_R = Rcpp::Function("master_init");
+  master_init_R		 = Rcpp::Function("master_init");
   master_iteration_end_R = Rcpp::Function("master_iteration_end");
-  store_setup_R = Rcpp::Function("StoreSetup");
+  store_setup_R		 = Rcpp::Function("StoreSetup");
+  source_R		 = Rcpp::Function("source");
+  ReadRObj_R		 = Rcpp::Function("ReadRObj");
+  SaveRObj_R		 = Rcpp::Function("SaveRObj");
 }
 
 // HACK: this is a step back as the order and also the count of fields is
@@ -150,8 +156,16 @@ ParseRet parseInitValues(char **argv, RuntimeParameters &params) {
 
   params.use_ai_surrogate = cmdl["ai-surrogate"];
 
+  // MDL: optional flag "qs" to switch to qsave()
+  params.out_ext = "rds";
+  if (cmdl["qs"]) {
+    MSG("Enabled <qs> output");
+    params.out_ext = "qs";
+  }
+
   if (MY_RANK == 0) {
     // MSG("Complete results storage is " + BOOL_PRINT(simparams.store_result));
+    MSG("Output format/extension is " + params.out_ext);
     MSG("Work Package Size: " + std::to_string(params.work_package_size));
     MSG("DHT is " + BOOL_PRINT(params.use_dht));
     MSG("AI Surrogate is " + BOOL_PRINT(params.use_ai_surrogate));
@@ -207,18 +221,22 @@ ParseRet parseInitValues(char **argv, RuntimeParameters &params) {
   // R["dht_log"] = simparams.dht_log;
 
   try {
-    Rcpp::Function source("source");
-    Rcpp::Function readRDS("readRDS");
+    // Rcpp::Function source("source");
+    // Rcpp::Function ReadRObj("ReadRObj");
+    // Rcpp::Function SaveRObj("SaveRObj");
 
-    Rcpp::List init_params_ = readRDS(init_file);
+    Rcpp::List init_params_ = ReadRObj_R.value()(init_file);
     params.init_params = init_params_;
-
+    
     global_rt_setup = std::make_unique<Rcpp::List>();
-    *global_rt_setup = source(runtime_file, Rcpp::Named("local", true));
+    *global_rt_setup = source_R.value()(runtime_file, Rcpp::Named("local", true));
     *global_rt_setup = global_rt_setup->operator[]("value");
 
+    // MDL add "out_ext" for output format to R setup
+    (*global_rt_setup)["out_ext"] = params.out_ext;
+
     params.timesteps =
-        Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("timesteps"));
+      Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("timesteps"));
 
   } catch (const std::exception &e) {
     ERRMSG("Error while parsing R scripts: " + std::string(e.what()));
@@ -450,18 +468,21 @@ std::vector<std::string> getSpeciesNames(const Field &&field, int root,
 
 int main(int argc, char *argv[]) {
   int world_size;
-
+  
   MPI_Init(&argc, &argv);
 
   {
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &MY_RANK);
-
+    
     RInsidePOET &R = RInsidePOET::getInstance();
-
+    
     if (MY_RANK == 0) {
       MSG("Running POET version " + std::string(poet_version));
     }
+    
+
+    init_global_functions(R);
 
     RuntimeParameters run_params;
 
@@ -473,19 +494,19 @@ int main(int argc, char *argv[]) {
     case ParseRet::PARSER_OK:
       break;
     }
-
+    
     InitialList init_list(R);
     init_list.importList(run_params.init_params, MY_RANK != 0);
-
+    
     MSG("RInside initialized on process " + std::to_string(MY_RANK));
-
+    
     std::cout << std::flush;
-
+    
     MPI_Barrier(MPI_COMM_WORLD);
-
+    
     ChemistryModule chemistry(run_params.work_package_size,
                               init_list.getChemistryInit(), MPI_COMM_WORLD);
-
+    
     const ChemistryModule::SurrogateSetup surr_setup = {
         getSpeciesNames(init_list.getInitialGrid(), 0, MPI_COMM_WORLD),
         run_params.use_dht,
@@ -501,56 +522,58 @@ int main(int argc, char *argv[]) {
     if (MY_RANK > 0) {
       chemistry.WorkerLoop();
     } else {
-      init_global_functions(R);
       // R.parseEvalQ("mysetup <- setup");
       // // if (MY_RANK == 0) { // get timestep vector from
       // // grid_init function ... //
       *global_rt_setup =
-          master_init_R.value()(*global_rt_setup, run_params.out_dir,
-                                init_list.getInitialGrid().asSEXP());
+	master_init_R.value()(*global_rt_setup, run_params.out_dir,
+			      init_list.getInitialGrid().asSEXP());
       // MDL: store all parameters
       // MSG("Calling R Function to store calling parameters");
       // R.parseEvalQ("StoreSetup(setup=mysetup)");
+      R["out_ext"] = run_params.out_ext;
+      R["out_dir"] = run_params.out_dir;
+
       if (run_params.use_ai_surrogate) {
         /* Incorporate ai surrogate from R */
         R.parseEvalQ(ai_surrogate_r_library);
         /* Use dht species for model input and output */
         R["ai_surrogate_species"] = init_list.getChemistryInit().dht_species.getNames();
-        R["out_dir"] = run_params.out_dir;
-        
+
         const std::string ai_surrogate_input_script = init_list.getChemistryInit().ai_surrogate_input_script;
-
-    	  MSG("AI: sourcing user-provided script");
-	      R.parseEvalQ(ai_surrogate_input_script);
-	      
+	
+	MSG("AI: sourcing user-provided script");
+	R.parseEvalQ(ai_surrogate_input_script);
+	
         MSG("AI: initialize AI model");
-	      R.parseEval("model <- initiate_model()");
+	R.parseEval("model <- initiate_model()");
         R.parseEval("gpu_info()");
-        }
-        
+      }
+      
       MSG("Init done on process with rank " + std::to_string(MY_RANK));
-
+      
       // MPI_Barrier(MPI_COMM_WORLD);
-
+      
       DiffusionModule diffusion(init_list.getDiffusionInit(),
                                 init_list.getInitialGrid());
-
+      
       chemistry.masterSetField(init_list.getInitialGrid());
-
+      
       Rcpp::List profiling = RunMasterLoop(R, run_params, diffusion, chemistry);
-
+      
       MSG("finished simulation loop");
-
+      
       R["profiling"] = profiling;
       R["setup"] = *global_rt_setup;
+      R["setup$out_ext"] = run_params.out_ext;
 
       string r_vis_code;
       r_vis_code =
-	"saveRDS(profiling, file=paste0(setup$out_dir,'/timings.rds'));";
+	"SaveRObj(x = profiling, path = paste0(out_dir, '/timings.', setup$out_ext));";
       R.parseEval(r_vis_code);
-
+      
       MSG("Done! Results are stored as R objects into <" + run_params.out_dir +
-          "/timings.rds>");
+          "/timings." + run_params.out_ext);
     }
   }
 

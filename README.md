@@ -1,5 +1,5 @@
 <!--
-    Time-stamp: "Last modified 2023-08-02 13:55:11 mluebke"
+    Time-stamp: "Last modified 2024-09-12 11:39:28 delucia"
 -->
 
 # POET
@@ -87,7 +87,7 @@ follows:
 $ R
 
 # install R dependencies
-> install.packages(c("Rcpp", "RInside"))
+> install.packages(c("Rcpp", "RInside","qs"))
 > q(save="no")
 
 # cd into POET project root
@@ -133,13 +133,14 @@ With the installation of POET, two executables are provided:
   - `poet` - the main executable to run simulations
   - `poet_init` - a preprocessor to generate input files for POET from R scripts
 
-Preprocessed benchmarks can be found in the `share/poet` directory with an
-according *runtime* setup. More on those files and how to create them later. 
+Preprocessed benchmarks can be found in the `share/poet` directory
+with an according *runtime* setup. More on those files and how to
+create them later.
 
 ## Running
 
-Run POET by `mpirun ./poet [OPTIONS] <RUNFILE> <SIMFILE> <OUTPUT_DIRECTORY>`
-where:
+Run POET by `mpirun ./poet [OPTIONS] <RUNFILE> <SIMFILE>
+<OUTPUT_DIRECTORY>` where:
 
 - **OPTIONS** - POET options (explained below)
 - **RUNFILE** - Runtime parameters described as R script 
@@ -154,8 +155,9 @@ The following parameters can be set:
 |-----------------------------|--------------|--------------------------------------------------------------------------------------------------------------------------|
 | **--work-package-size=**    | _1..n_       | size of work packages (defaults to _5_)                                                                                  |
 | **-P, --progress**          |              | show progress bar                                                                                                        |
-| **--ai-surrogate**          |              | activates the AI surrogate chemistry model (defaults to _OFF_) |
+| **--ai-surrogate**          |              | activates the AI surrogate chemistry model (defaults to _OFF_)                                                           |
 | **--dht**                   |              | enabling DHT usage (defaults to _OFF_)                                                                                   |
+| **--qs**                    |              | store results using qs::qsave() (.qs extension) instead of default RDS (.rds)                                            |
 | **--dht-strategy=**         | _0-1_        | change DHT strategy. **NOT IMPLEMENTED YET** (Defaults to _0_)                                                           |
 | **--dht-size=**             | _1-n_        | size of DHT per process involved in megabyte (defaults to _1000 MByte_)                                                  |
 | **--dht-snaps=**            | _0-2_        | disable or enable storage of DHT snapshots                                                                               |
@@ -253,12 +255,13 @@ produce any valid predictions.
 
 ## Defining a model
 
-In order to provide a model to POET, you need to setup a R script which can then
-be used by `poet_init` to generate the simulation input. Which parameters are
-required can be found in the
-[Wiki](https://git.gfz-potsdam.de/naaice/poet/-/wikis/Initialization). We try to
-keep the document up-to-date. However, if you encounter missing information or
-need help, please get in touch with us via the issue tracker or E-Mail.
+In order to provide a model to POET, you need to setup a R script
+which can then be used by `poet_init` to generate the simulation
+input. Which parameters are required can be found in the
+[Wiki](https://git.gfz-potsdam.de/naaice/poet/-/wikis/Initialization).
+We try to keep the document up-to-date. However, if you encounter
+missing information or need help, please get in touch with us via the
+issue tracker or E-Mail.
 
 `poet_init` can be used as follows:
 
@@ -268,46 +271,50 @@ need help, please get in touch with us via the issue tracker or E-Mail.
 
 where: 
 
-- **output** - name of the output file (defaults to the input file name
-  with the extension `.rds`)
-- **setwd** - set the working directory to the directory of the input file (e.g.
-  to allow relative paths in the input script). However, the output file
-  will be stored in the directory from which `poet_init` was called.
+- **output** - name of the output file (defaults to the input file
+  name with the extension `.rds`)
+- **setwd** - set the working directory to the directory of the input
+  file (e.g. to allow relative paths in the input script). However,
+  the output file will be stored in the directory from which
+  `poet_init` was called.
 
 ## Additional functions for the AI surrogate
 
-The AI surrogate can be activated for any benchmark and is by default initiated
-as a sequential keras model with three hidden layer of depth 48, 96, 24 with
-relu activation and adam optimizer. All functions in `ai_surrogate_model.R` can
-be overridden by adding custom definitions via an R file in the input script.
-This is done by adding the path to this file in the input script. Simply add the
-path as an element called `ai_surrogate_input_script` to the `chemistry_setup`
-list. Please use the global variable `ai_surrogate_base_path` as a base path
+The AI surrogate can be activated for any benchmark and is by default
+initiated as a sequential keras model with three hidden layer of depth
+48, 96, 24 with relu activation and adam optimizer. All functions in
+`ai_surrogate_model.R` can be overridden by adding custom definitions
+via an R file in the input script. This is done by adding the path to
+this file in the input script. Simply add the path as an element
+called `ai_surrogate_input_script` to the `chemistry_setup` list.
+Please use the global variable `ai_surrogate_base_path` as a base path
 when relative filepaths are used in custom funtions.
 
-**There is currently no default implementation to determine the validity of
-predicted values.** This means, that every input script must include an R source
-file with a custom function `validate_predictions(predictors, prediction)`.
-Examples for custom functions can be found for the barite_200 benchmark
+**There is currently no default implementation to determine the
+validity of predicted values.** This means, that every input script
+must include an R source file with a custom function
+`validate_predictions(predictors, prediction)`. Examples for custom
+functions can be found for the barite_200 benchmark
 
-The functions can be defined as follows:  
+The functions can be defined as follows:
 
-`validate_predictions(predictors, prediction)`: Returns a boolean index vector
-that signals for each row in the predictions if the values are considered valid.
-Can eg. be implemented as a mass balance threshold between the predictors and
-the prediction.
+`validate_predictions(predictors, prediction)`: Returns a boolean
+index vector that signals for each row in the predictions if the
+values are considered valid. Can eg. be implemented as a mass balance
+threshold between the predictors and the prediction.
 
-`initiate_model()`: Returns a keras model. Can be used to load pretrained
-models.
+`initiate_model()`: Returns a keras model. Can be used to load
+pretrained models.
 
 `preprocess(df, backtransform = FALSE, outputs = FALSE)`: Returns the
-scaled/transformed/backtransformed dataframe. The `backtransform` flag signals
-if the current processing step is applied to data that's assumed to be scaled
-and expects backtransformed values. The `outputs` flag signals if the current
-processing step is applied to the output or tatget of the model. This can be
-used to eg. skip these processing steps and only scale the model input.
+scaled/transformed/backtransformed dataframe. The `backtransform` flag
+signals if the current processing step is applied to data that's
+assumed to be scaled and expects backtransformed values. The `outputs`
+flag signals if the current processing step is applied to the output
+or tatget of the model. This can be used to eg. skip these processing
+steps and only scale the model input.
 
-`training_step (model, predictor, target, validity)`: Trains the model after
-each iteration. `validity` is the bool index vector given by
-`validate_predictions` and can eg. be used to only train on values that have not
-been valid predictions.
+`training_step (model, predictor, target, validity)`: Trains the model
+after each iteration. `validity` is the bool index vector given by
+`validate_predictions` and can eg. be used to only train on values
+that have not been valid predictions.

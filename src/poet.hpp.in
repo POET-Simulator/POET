@@ -39,7 +39,7 @@ static const inline std::string ai_surrogate_r_library = R"(@R_AI_SURROGATE_LIB@
 static const inline std::string r_runtime_parameters = "mysetup";
 
 const std::set<std::string> flaglist{"ignore-result", "dht", "P", "progress",
-                                     "interp", "ai-surrogate"};
+                                     "interp", "ai-surrogate", "qs"};
 const std::set<std::string> paramlist{
     "work-package-size", "dht-strategy", "dht-size",   "dht-snaps",
     "dht-file",          "interp-size",  "interp-min", "interp-bucket-entries"};
@@ -51,6 +51,7 @@ constexpr uint32_t CHEM_DHT_SIZE_PER_PROCESS_MB = 1.5E3;
 struct RuntimeParameters {
   std::string out_dir;
   std::vector<double> timesteps;
+  std::string out_ext; // MDL added to accomodate for qs::qsave/qread
 
   bool print_progressbar;
   uint32_t work_package_size;
