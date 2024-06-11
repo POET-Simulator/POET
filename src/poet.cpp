@@ -156,10 +156,9 @@ ParseRet parseInitValues(char **argv, RuntimeParameters &params) {
 
   params.use_ai_surrogate = cmdl["ai-surrogate"];
 
-  // MDL: optional flag "qs" to switch to qsave()
+  // MDL: optional flag "--qs" to switch to qsave()
   params.out_ext = "rds";
   if (cmdl["qs"]) {
-    MSG("Enabled <qs> output");
     params.out_ext = "qs";
   }
 
