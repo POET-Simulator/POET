@@ -12,15 +12,15 @@
 
 int main(int argc, char **argv) {
 
+  // pre-register expected parameters before calling `parse`
   argh::parser cmdl({"-o", "--output"});
-
   cmdl.parse(argc, argv);
 
   if (cmdl[{"-h", "--help"}] || cmdl.pos_args().size() != 2) {
     std::cout << "Usage: " << argv[0]
               << " [-o, --output output_file]"
-                 " [-s, --setwd] "
-                 " <script.R>"
+              << " [-s, --setwd] "
+              << " <PoetScript.R>"
               << std::endl;
     return EXIT_SUCCESS;
   }
@@ -28,6 +28,7 @@ int main(int argc, char **argv) {
   RInside R(argc, argv);
 
   R.parseEvalQ(init_r_library);
+  R.parseEvalQ(kin_r_library);
 
   std::string input_script = cmdl.pos_args()[1];
   std::string normalized_path_script;
@@ -53,11 +54,19 @@ int main(int argc, char **argv) {
 
   std::string output_file;
 
-  cmdl({"-o", "--output"},
-       curr_path + "/" +
-           in_file_name.substr(0, in_file_name.find_last_of('.')) + ".rds") >>
-      output_file;
+  // MDL: some test to understand
+  // std::string output_ext = ".rds";
+  // if (cmdl["q"]) output_ext = ".qs";
+  // std::cout << "Ouptut ext: " << output_ext << " ; infile substr: "
+  //           << in_file_name.substr(0, in_file_name.find_last_of('.')) << std::endl;
 
+  // cmdl({"-o", "--output"},
+  //      curr_path + "/" +
+  //      in_file_name.substr(0, in_file_name.find_last_of('.')) + ".qs") >>   output_file;
+
+  cmdl({"-o", "--output"}) >> output_file;
+
+  
   if (cmdl[{"-s", "--setwd"}]) {
     const std::string dir_path = Rcpp::as<std::string>(
         Rcpp::Function("dirname")(normalized_path_script));
@@ -71,10 +80,9 @@ int main(int argc, char **argv) {
 
   init.initializeFromList(setup);
 
-  // replace file extension by .rds
-  Rcpp::Function save("saveRDS");
-
-  save(init.exportList(), Rcpp::wrap(output_file));
+  // use the generic handler defined in kin_r_library.R
+  Rcpp::Function SaveRObj_R("SaveRObj");
+  SaveRObj_R(init.exportList(), Rcpp::wrap(output_file));
 
   std::cout << "Saved result to " << output_file << std::endl;
 
