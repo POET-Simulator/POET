@@ -227,8 +227,9 @@ ParseRet parseInitValues(char **argv, RuntimeParameters &params) {
     Rcpp::List init_params_(ReadRObj_R(init_file));
     params.init_params = init_params_;
 
-    global_rt_setup = std::make_unique<Rcpp::List>(source_R(runtime_file, Rcpp::Named("local", true)));
-    *global_rt_setup = (*global_rt_setup)["value"];
+    global_rt_setup = std::make_unique<Rcpp::List>();
+    *global_rt_setup = source(runtime_file, Rcpp::Named("local", true));
+    *global_rt_setup = global_rt_setup->operator[]("value");
 
     // MDL add "out_ext" for output format to R setup
     (*global_rt_setup)["out_ext"] = params.out_ext;
