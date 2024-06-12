@@ -89,14 +89,14 @@ TEST_CASE("Field") {
   }
 
   SUBCASE("Apply R function (set Na to zero)") {
-    RHookFunction<Field> to_call(R, "simple_field");
+    poet::DEFunc to_call("simple_field");
     Field field_proc = to_call(dut.asSEXP());
 
     CHECK_EQ(field_proc["Na"], FieldColumn(dut.GetRequestedVecSize(), 0));
   }
 
   SUBCASE("Apply R function (add two fields)") {
-    RHookFunction<Field> to_call(R, "extended_field");
+    poet::DEFunc to_call("extended_field");
     Field field_proc = to_call(dut.asSEXP(), dut.asSEXP());
 
     CHECK_EQ(field_proc["Na"],

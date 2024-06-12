@@ -4,7 +4,8 @@
 **
 ** Copyright (C) 2018-2022 Marco De Lucia, Max Luebke (GFZ Potsdam)
 **
-** Copyright (C) 2023-2024 Max Luebke (University of Potsdam)
+** Copyright (C) 2023-2024 Marco De Lucia (GFZ Potsdam), Max Luebke (University
+** of Potsdam)
 **
 ** POET is free software; you can redistribute it and/or modify it under the
 ** terms of the GNU General Public License as published by the Free Software
@@ -36,7 +37,6 @@
 #include <cstdlib>
 #include <memory>
 #include <mpi.h>
-#include <optional>
 #include <string>
 
 #include "Base/argh.hpp"
@@ -54,21 +54,21 @@ static std::unique_ptr<Rcpp::List> global_rt_setup;
 
 // we need some lazy evaluation, as we can't define the functions
 // before the R runtime is initialized
-static std::optional<Rcpp::Function> master_init_R;
-static std::optional<Rcpp::Function> master_iteration_end_R;
-static std::optional<Rcpp::Function> store_setup_R;
-static std::optional<Rcpp::Function> ReadRObj_R;
-static std::optional<Rcpp::Function> SaveRObj_R;
-static std::optional<Rcpp::Function> source_R;
+static poet::DEFunc master_init_R;
+static poet::DEFunc master_iteration_end_R;
+static poet::DEFunc store_setup_R;
+static poet::DEFunc ReadRObj_R;
+static poet::DEFunc SaveRObj_R;
+static poet::DEFunc source_R;
 
 static void init_global_functions(RInside &R) {
   R.parseEval(kin_r_library);
-  master_init_R		 = Rcpp::Function("master_init");
-  master_iteration_end_R = Rcpp::Function("master_iteration_end");
-  store_setup_R		 = Rcpp::Function("StoreSetup");
-  source_R		 = Rcpp::Function("source");
-  ReadRObj_R		 = Rcpp::Function("ReadRObj");
-  SaveRObj_R		 = Rcpp::Function("SaveRObj");
+  master_init_R = DEFunc("master_init");
+  master_iteration_end_R = DEFunc("master_iteration_end");
+  store_setup_R = DEFunc("StoreSetup");
+  source_R = DEFunc("source");
+  ReadRObj_R = DEFunc("ReadRObj");
+  SaveRObj_R = DEFunc("SaveRObj");
 }
 
 // HACK: this is a step back as the order and also the count of fields is
@@ -224,12 +224,12 @@ ParseRet parseInitValues(char **argv, RuntimeParameters &params) {
     // Rcpp::Function ReadRObj("ReadRObj");
     // Rcpp::Function SaveRObj("SaveRObj");
 
-    Rcpp::List init_params_ = ReadRObj_R.value()(init_file);
+    Rcpp::List init_params_(ReadRObj_R(init_file));
     params.init_params = init_params_;
-    
-    global_rt_setup = std::make_unique<Rcpp::List>();
-    *global_rt_setup = source_R.value()(runtime_file, Rcpp::Named("local", true));
-    *global_rt_setup = global_rt_setup->operator[]("value");
+
+    global_rt_setup = std::make_unique<Rcpp::List>(
+        source_R(runtime_file, Rcpp::Named("local", true)));
+    *global_rt_setup = (*global_rt_setup)["value"];
 
     // MDL add "out_ext" for output format to R setup
     (*global_rt_setup)["out_ext"] = params.out_ext;
@@ -524,9 +524,8 @@ int main(int argc, char *argv[]) {
       // R.parseEvalQ("mysetup <- setup");
       // // if (MY_RANK == 0) { // get timestep vector from
       // // grid_init function ... //
-      *global_rt_setup =
-	master_init_R.value()(*global_rt_setup, run_params.out_dir,
-			      init_list.getInitialGrid().asSEXP());
+      *global_rt_setup = master_init_R(*global_rt_setup, run_params.out_dir,
+                                       init_list.getInitialGrid().asSEXP());
       // MDL: store all parameters
       // MSG("Calling R Function to store calling parameters");
       // R.parseEvalQ("StoreSetup(setup=mysetup)");
