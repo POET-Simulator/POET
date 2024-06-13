@@ -1,4 +1,3 @@
-
 #include <algorithm>
 #include <tug/Boundary.hpp>
 // leave above Rcpp includes, as eigen seem to have problems with a preceding
