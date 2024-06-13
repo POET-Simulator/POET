@@ -1,11 +1,3 @@
-<!--
-<<<<<<< HEAD
-    Time-stamp: "Last modified 2024-09-12 11:39:28 delucia"
-=======
-    Time-stamp: "Last modified 2024-06-13 09:43:22 delucia"
->>>>>>> 9272556 (Fixes in README and poet.cpp)
--->
-
 # POET
 
 [POET](https://doi.org/10.5281/zenodo.4757913) is a coupled reactive
