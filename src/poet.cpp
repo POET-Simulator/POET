@@ -1,3 +1,5 @@
+//  Time-stamp: "Last modified 2024-09-12 14:53:17 delucia"
+
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
@@ -220,9 +222,6 @@ ParseRet parseInitValues(char **argv, RuntimeParameters &params) {
   // R["dht_log"] = simparams.dht_log;
 
   try {
-    // Rcpp::Function source("source");
-    // Rcpp::Function ReadRObj("ReadRObj");
-    // Rcpp::Function SaveRObj("SaveRObj");
 
     Rcpp::List init_params_(ReadRObj_R(init_file));
     params.init_params = init_params_;
@@ -236,7 +235,7 @@ ParseRet parseInitValues(char **argv, RuntimeParameters &params) {
     
     params.timesteps =
       Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("timesteps"));
-
+    
   } catch (const std::exception &e) {
     ERRMSG("Error while parsing R scripts: " + std::string(e.what()));
     return ParseRet::PARSER_ERROR;
@@ -464,7 +463,6 @@ std::vector<std::string> getSpeciesNames(const Field &&field, int root,
 
   return species_names_out;
 }
-
 
 
 int main(int argc, char *argv[]) {

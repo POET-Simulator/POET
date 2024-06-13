@@ -32,7 +32,8 @@ To compile POET you need following software to be installed:
 - CMake 3.9+
 - Eigen3 3.4+ (required by `tug`)
 - *optional*: `doxygen` with `dot` bindings for documentation
-- R language and environment (distro dependent)
+- R language and environment including headers or `-dev` packages
+  (distro dependent)
 
 The following R packages (and their dependencies) must also be
 installed:
@@ -162,20 +163,20 @@ Run POET by `mpirun ./poet [OPTIONS] <RUNFILE> <SIMFILE>
 
 The following parameters can be set:
 
-| Option                      | Value        | Description                                                                                                              |
-|-----------------------------|--------------|--------------------------------------------------------------------------------------------------------------------------|
-| **--work-package-size=**    | _1..n_       | size of work packages (defaults to _5_)                                                                                  |
-| **-P, --progress**          |              | show progress bar                                                                                                        |
-| **--ai-surrogate**          |              | activates the AI surrogate chemistry model (defaults to _OFF_)                                                           |
-| **--dht**                   |              | enabling DHT usage (defaults to _OFF_)                                                                                   |
-| **--qs**                    |              | store results using qs::qsave() (.qs extension) instead of default RDS (.rds)                                            |
-| **--dht-strategy=**         | _0-1_        | change DHT strategy. **NOT IMPLEMENTED YET** (Defaults to _0_)                                                           |
-| **--dht-size=**             | _1-n_        | size of DHT per process involved in megabyte (defaults to _1000 MByte_)                                                  |
-| **--dht-snaps=**            | _0-2_        | disable or enable storage of DHT snapshots                                                                               |
-| **--dht-file=**             | `<SNAPSHOT>` | initializes DHT with the given snapshot file                                                                             |
-| **--interp-size**           | _1-n_        | size of PHT (interpolation) per process in megabyte                                                                      |
-| **--interp-bucket-entries** | _1-n_        | number of entries to store at maximum in one PHT bucket                                                                  |
-| **--interp-min**            | _1-n_        | number of entries in PHT bucket needed to start interpolation                                                            |
+| Option                      | Value        | Description                                                                      |
+|-----------------------------|--------------|----------------------------------------------------------------------------------|
+| **--work-package-size=**    | _1..n_       | size of work packages (defaults to _5_)                                          |
+| **-P, --progress**          |              | show progress bar                                                                |
+| **--ai-surrogate**          |              | activates the AI surrogate chemistry model (defaults to _OFF_)                   |
+| **--dht**                   |              | enabling DHT usage (defaults to _OFF_)                                           |
+| **--qs**                    |              | store results using qs::qsave() (.qs extension) instead of default RDS (.rds)    |
+| **--dht-strategy=**         | _0-1_        | change DHT strategy. **NOT IMPLEMENTED YET** (Defaults to _0_)                   |
+| **--dht-size=**             | _1-n_        | size of DHT per process involved in megabyte (defaults to _1000 MByte_)          |
+| **--dht-snaps=**            | _0-2_        | disable or enable storage of DHT snapshots                                       |
+| **--dht-file=**             | `<SNAPSHOT>` | initializes DHT with the given snapshot file                                     |
+| **--interp-size**           | _1-n_        | size of PHT (interpolation) per process in megabyte                              |
+| **--interp-bucket-entries** | _1-n_        | number of entries to store at maximum in one PHT bucket                          |
+| **--interp-min**            | _1-n_        | number of entries in PHT bucket needed to start interpolation                    |
 
 #### Additions to `dht-snaps`
 
