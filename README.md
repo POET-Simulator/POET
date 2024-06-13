@@ -12,7 +12,7 @@ Distributed Hash Table.
 
 ## Parsed code documentiation
 
-A parsed version of POET's documentiation can be found at [Gitlab
+A parsed version of POET's documentation can be found at [Gitlab
 pages](https://naaice.git-pages.gfz-potsdam.de/poet).
 
 ## External Libraries
@@ -29,25 +29,24 @@ The following external header library is shipped with POET:
 
 ### Requirements
 
-To compile POET you need several software to be installed:
+To compile POET you need following software to be installed:
 
 - C/C++ compiler (tested with GCC)
 - MPI-Implementation (tested with OpenMPI and MVAPICH)
-- R language and environment
 - CMake 3.9+
 - Eigen3 3.4+ (required by `tug`)
-- *optional*: `doxygen` with `dot` bindings for documentiation
+- *optional*: `doxygen` with `dot` bindings for documentation
+- R language and environment (distro dependent)
 
-The following R libraries must then be installed, which will get the
-needed dependencies automatically:
+The following R packages (and their dependencies) must also be installed:
 
 - [Rcpp](https://cran.r-project.org/web/packages/Rcpp/index.html)
 - [RInside](https://cran.r-project.org/web/packages/RInside/index.html)
+- [qs](https://cran.r-project.org/web/packages/qs/index.html)
 
 ### Compiling source code
 
-The generation of makefiles is done with CMake. You should be able to generate
-Makefiles by running:
+POET is built with CMake. You can generate Makefiles by running the usual:
 
 ```sh
 mkdir build && cd build
@@ -58,7 +57,7 @@ This will create the directory `build` and processes the CMake files
 and generate Makefiles from it. You're now able to run `make` to start
 build process.
 
-If everything went well you'll find the executable at
+If everything went well you'll find the executables at
 `build/app/poet`, but it is recommended to install the POET project
 structure to a desired `CMAKE_INSTALL_PREFIX` with `make install`.
 
