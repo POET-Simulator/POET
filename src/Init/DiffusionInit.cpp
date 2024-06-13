@@ -1,3 +1,6 @@
+//  Time-stamp: "Last modified 2024-06-13 11:30:34 delucia"
+
+
 #include <algorithm>
 #include <tug/Boundary.hpp>
 // leave above Rcpp includes, as eigen seem to have problems with a preceding
