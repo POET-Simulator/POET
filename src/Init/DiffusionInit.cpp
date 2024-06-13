@@ -1,3 +1,6 @@
+//  Time-stamp: "Last modified 2024-06-13 11:30:34 delucia"
+
+
 #include <algorithm>
 #include <tug/Boundary.hpp>
 // leave above Rcpp includes, as eigen seem to have problems with a preceding
@@ -146,7 +149,7 @@ InitialList::resolveBoundaries(const Rcpp::List &boundaries_list,
         extend_initial_grid(this->initial_grid, this->transport_names);
   }
 
-  for (const auto &species : this->transport_names) {
+  for (const auto &species_name : this->transport_names) {
     Rcpp::List spec_list;
 
     for (const auto &side : tug_side_mapping) {
@@ -163,8 +166,8 @@ InitialList::resolveBoundaries(const Rcpp::List &boundaries_list,
       if (boundaries_list.containsElementNamed(side.second.c_str())) {
         const Rcpp::List mapping = boundaries_list[side.second];
 
-        const Rcpp::NumericVector cells = mapping["cell"];
-        const Rcpp::NumericVector values = mapping["sol_id"];
+        const Rcpp::IntegerVector cells  = mapping["cell"];   // MDL 2024-06-13 
+        const Rcpp::IntegerVector values = mapping["sol_id"]; // MDL 
         const Rcpp::CharacterVector type_str = mapping["type"];
 
         if (cells.size() != values.size()) {
@@ -180,7 +183,7 @@ InitialList::resolveBoundaries(const Rcpp::List &boundaries_list,
           } else if (type_str[i] == "constant") {
             c_type[c_id] = tug::BC_TYPE_CONSTANT;
             c_value[c_id] = Rcpp::as<TugType>(
-                resolve_R(this->phreeqc_mat, Rcpp::wrap(species), values[i]));
+                resolve_R(this->phreeqc_mat, Rcpp::wrap(species_name), values[i]));
           } else {
             throw std::runtime_error("Unknown boundary type");
           }
@@ -191,7 +194,7 @@ InitialList::resolveBoundaries(const Rcpp::List &boundaries_list,
           Rcpp::Named("type") = c_type, Rcpp::Named("value") = c_value);
     }
 
-    bound_list[species] = spec_list;
+    bound_list[species_name] = spec_list;
 
     if (inner_boundaries.size() > 0) {
       const Rcpp::NumericVector &inner_row_vec = inner_boundaries["row"];
@@ -212,10 +215,10 @@ InitialList::resolveBoundaries(const Rcpp::List &boundaries_list,
         rows.push_back(inner_row_vec[i] - 1);
         cols.push_back(inner_col_vec[i] - 1);
         c_value.push_back(Rcpp::as<TugType>(resolve_R(
-            this->phreeqc_mat, Rcpp::wrap(species), inner_pqc_id_vec[i])));
+            this->phreeqc_mat, Rcpp::wrap(species_name), inner_pqc_id_vec[i])));
       }
 
-      inner_bound[species] =
+      inner_bound[species_name] =
           Rcpp::List::create(Rcpp::Named("row") = Rcpp::wrap(rows),
                              Rcpp::Named("col") = Rcpp::wrap(cols),
                              Rcpp::Named("value") = Rcpp::wrap(c_value));

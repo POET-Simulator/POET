@@ -1,5 +1,3 @@
-## Time-stamp: "Last modified 2024-06-11 14:26:33 delucia"
-
 ### Copyright (C) 2018-2023 Marco De Lucia, Max Luebke (GFZ Potsdam)
 ###
 ### POET is free software; you can redistribute it and/or modify it under the

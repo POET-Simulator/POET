@@ -1,3 +1,4 @@
+## Time-stamp: "Last modified 2024-06-13 10:25:44 delucia"
 # prepare R environment (Rcpp + RInside)
 find_program(R_EXE "R")
 
