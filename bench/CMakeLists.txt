@@ -6,7 +6,7 @@ function(ADD_BENCH_TARGET TARGET POET_BENCH_LIST RT_FILES OUT_PATH)
 
     foreach(BENCH_FILE ${${POET_BENCH_LIST}})
         get_filename_component(BENCH_NAME ${BENCH_FILE} NAME_WE)
-        set(OUT_FILE ${CMAKE_CURRENT_BINARY_DIR}/${BENCH_NAME}.rds)
+        set(OUT_FILE ${CMAKE_CURRENT_BINARY_DIR}/${BENCH_NAME}.qs)
 
         add_custom_command(
             OUTPUT ${OUT_FILE}
