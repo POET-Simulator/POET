@@ -1,5 +1,3 @@
-
-
 #include <algorithm>
 #include <tug/Boundary.hpp>
 // leave above Rcpp includes, as eigen seem to have problems with a preceding
@@ -29,9 +27,9 @@ namespace poet {
 enum SEXP_TYPE { SEXP_IS_LIST, SEXP_IS_VEC };
 
 const std::map<std::uint8_t, std::string> tug_side_mapping = {
-    {tug::BC_SIDE_RIGHT, "E"},
-    {tug::BC_SIDE_LEFT, "W"},
-    {tug::BC_SIDE_TOP, "N"},
+    {tug::BC_SIDE_RIGHT	, "E"},
+    {tug::BC_SIDE_LEFT	, "W"},
+    {tug::BC_SIDE_TOP	, "N"},
     {tug::BC_SIDE_BOTTOM, "S"}};
 
 static std::vector<TugType> colMajToRowMaj(const Rcpp::NumericVector &vec,
