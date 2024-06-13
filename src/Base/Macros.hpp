@@ -1,4 +1,3 @@
-//  Time-stamp: "Last modified 2023-08-09 14:16:04 mluebke"
 #ifndef MACROS_H
 #define MACROS_H
 

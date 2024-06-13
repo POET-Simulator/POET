@@ -1,4 +1,3 @@
-//  Time-stamp: "Last modified 2023-08-16 17:02:31 mluebke"
 #include "Init/InitialList.hpp"
 #include "Interpolation.hpp"
 

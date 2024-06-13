@@ -1,4 +1,3 @@
-//  Time-stamp: "Last modified 2023-08-15 14:50:59 mluebke"
 #include "Interpolation.hpp"
 
 #include "DHT_Wrapper.hpp"

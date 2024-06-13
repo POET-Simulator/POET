@@ -1,4 +1,3 @@
-//  Time-stamp: "Last modified 2023-08-16 16:49:31 mluebke"
 
 #ifndef INTERPOLATION_H_
 #define INTERPOLATION_H_

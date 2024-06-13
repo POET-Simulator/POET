@@ -1,5 +1,3 @@
-//  Time-stamp: "Last modified 2024-06-13 09:46:48 delucia"
-
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
