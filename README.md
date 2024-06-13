@@ -32,8 +32,7 @@ To compile POET you need following software to be installed:
 - CMake 3.9+
 - Eigen3 3.4+ (required by `tug`)
 - *optional*: `doxygen` with `dot` bindings for documentation
-- R language and environment including headers or `-dev` packages
-  (distro dependent)
+- R language and environment (distro dependent)
 
 The following R packages (and their dependencies) must also be
 installed:
