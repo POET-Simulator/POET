@@ -24,8 +24,6 @@ else()
   message(FATAL_ERROR "No R runtime found!")
 endif()
 
-mark_as_advanced(R_INCLUDE_DIR R_LIBRARY R_EXE)
-
 set(R_LIBRARIES ${R_LIBRARY})
 set(R_INCLUDE_DIRS ${R_INCLUDE_DIR})
 
@@ -44,8 +42,6 @@ endif()
 find_path(R_Rcpp_INCLUDE_DIR Rcpp.h
   HINTS ${RCPP_PATH}
   PATH_SUFFIXES include)
-
-mark_as_advanced(R_Rcpp_INCLUDE_DIR)
 
 list(APPEND R_INCLUDE_DIRS ${R_Rcpp_INCLUDE_DIR})
 
@@ -71,8 +67,6 @@ find_path(R_RInside_INCLUDE_DIR RInside.h
 
 list(APPEND R_LIBRARIES ${R_RInside_LIBRARY})
 list(APPEND R_INCLUDE_DIRS ${R_RInside_INCLUDE_DIR})
-
-mark_as_advanced(R_RInside_LIBRARY R_RInside_INCLUDE_DIR)
 
 # putting all together into interface library
 
