@@ -201,6 +201,56 @@ resulting call would look like this:
 mpirun -n 4 ./poet --dht --dht-snaps=2 barite_het_rt.R barite_het.rds output
 ```
 
+### Example: Preparing Environment and Running with AI surrogate
+
+To run the AI surrogate, you need to install the R package `keras3`. The
+compilation process of POET remains the same as shown above.
+
+In the following code block, the installation process on the Turing Cluster is
+shown. `miniconda` is used to create a virtual environment to install
+tensorflow/keras. Please adapt the installation process to your needs.
+
+<!-- Start an R interactive session and install the required packages: -->
+
+```sh
+# First, install the required R packages
+R -e "install.packages('keras3', repos='https://cloud.r-project.org/')"
+
+# manually create a virtual environment to install keras/python using conda, 
+# as this is somehow broken on the Turing Cluster when using the `keras::install_keras()` function
+cd poet
+
+# create a virtual environment in the .ai directory with python 3.11
+conda create -p ./.ai python=3.11
+conda activate ./.ai
+
+# install tensorflow and keras
+pip install keras tensorflow[and-cuda]
+
+# add conda's python path to the R environment
+# make sure to have the conda environment activated
+echo -e "RETICULATE_PYTHON=$(which python)\n" >> ~/.Renviron
+```
+
+After setup the R environment, recompile POET and you're ready to run the AI
+surrogate.
+
+```sh
+cd <installation_dir>/bin
+
+# copy the benchmark files to the installation directory
+cp <project_root_dir>/bench/barite/{barite_50ai*,db_barite.dat,barite.pqi} .
+
+# preprocess the benchmark
+./poet_init barite_50ai.R
+
+# run POET with AI surrogate and GPU utilization
+srun --gres=gpu -N 1 -n 12 ./poet --ai-surrogate barite_50ai_rt.R barite_50ai.rds output
+```
+
+Keep in mind that the AI surrogate is currently not stable or might also not
+produce any valid predictions.
+
 ## Defining a model
 
 In order to provide a model to POET, you need to setup a R script which can then
@@ -224,29 +274,40 @@ where:
   to allow relative paths in the input script). However, the output file
   will be stored in the directory from which `poet_init` was called.
 
-## About the usage of MPI_Wtime()
-
-Implemented time measurement functions uses `MPI_Wtime()`. Some
-important information from the OpenMPI Man Page:
-
-For example, on platforms that support it, the clock_gettime()
-function will be used to obtain a monotonic clock value with whatever
-precision is supported on that platform (e.g., nanoseconds).
-
 ## Additional functions for the AI surrogate
 
-The AI surrogate can be activated for any benchmark and is by default initiated as a sequential keras model with three hidden layer of depth 48, 96, 24 with relu activation and adam optimizer. All functions in `ai_surrogate_model.R` can be overridden by adding custom definitions via an R file in the input script.
-This is done by adding the path to this file in the input script. Simply add the path as an element called `ai_surrogate_input_script` to the `chemistry_setup` list.
-Please use the global variable `ai_surrogate_base_path` as a base path when relative filepaths are used in custom funtions.
+The AI surrogate can be activated for any benchmark and is by default initiated
+as a sequential keras model with three hidden layer of depth 48, 96, 24 with
+relu activation and adam optimizer. All functions in `ai_surrogate_model.R` can
+be overridden by adding custom definitions via an R file in the input script.
+This is done by adding the path to this file in the input script. Simply add the
+path as an element called `ai_surrogate_input_script` to the `chemistry_setup`
+list. Please use the global variable `ai_surrogate_base_path` as a base path
+when relative filepaths are used in custom funtions.
 
-**There is currently no default implementation to determine the validity of predicted values.** This means, that every input script must include an R source file with a custom function `validate_predictions(predictors, prediction)`. Examples for custom functions can be found for the barite_200 benchmark
+**There is currently no default implementation to determine the validity of
+predicted values.** This means, that every input script must include an R source
+file with a custom function `validate_predictions(predictors, prediction)`.
+Examples for custom functions can be found for the barite_200 benchmark
 
 The functions can be defined as follows:  
 
-`validate_predictions(predictors, prediction)`: Returns a boolean index vector that signals for each row in the predictions if the values are considered valid. Can eg. be implemented as a mass balance threshold between the predictors and the prediction.
+`validate_predictions(predictors, prediction)`: Returns a boolean index vector
+that signals for each row in the predictions if the values are considered valid.
+Can eg. be implemented as a mass balance threshold between the predictors and
+the prediction.
 
-`initiate_model()`: Returns a keras model. Can be used to load pretrained models.
+`initiate_model()`: Returns a keras model. Can be used to load pretrained
+models.
 
-`preprocess(df, backtransform = FALSE, outputs = FALSE)`: Returns the scaled/transformed/backtransformed dataframe. The `backtransform` flag signals if the current processing step is applied to data that's assumed to be scaled and expects backtransformed values. The `outputs` flag signals if the current processing step is applied to the output or tatget of the model. This can be used to eg. skip these processing steps and only scale the model input.
+`preprocess(df, backtransform = FALSE, outputs = FALSE)`: Returns the
+scaled/transformed/backtransformed dataframe. The `backtransform` flag signals
+if the current processing step is applied to data that's assumed to be scaled
+and expects backtransformed values. The `outputs` flag signals if the current
+processing step is applied to the output or tatget of the model. This can be
+used to eg. skip these processing steps and only scale the model input.
 
-`training_step (model, predictor, target, validity)`: Trains the model after each iteration. `validity` is the bool index vector given by `validate_predictions` and can eg. be used to only train on values that have not been valid predictions.
+`training_step (model, predictor, target, validity)`: Trains the model after
+each iteration. `validity` is the bool index vector given by
+`validate_predictions` and can eg. be used to only train on values that have not
+been valid predictions.
