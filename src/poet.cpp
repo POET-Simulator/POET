@@ -1,3 +1,5 @@
+//  Time-stamp: "Last modified 2024-06-13 09:46:48 delucia"
+
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
 ** Potsdam)
@@ -220,23 +222,19 @@ ParseRet parseInitValues(char **argv, RuntimeParameters &params) {
   // R["dht_log"] = simparams.dht_log;
 
   try {
-    // Rcpp::Function source("source");
-    // Rcpp::Function ReadRObj("ReadRObj");
-    // Rcpp::Function SaveRObj("SaveRObj");
 
     Rcpp::List init_params_(ReadRObj_R(init_file));
     params.init_params = init_params_;
 
-    global_rt_setup = std::make_unique<Rcpp::List>(
-        source_R(runtime_file, Rcpp::Named("local", true)));
+    global_rt_setup = std::make_unique<Rcpp::List>(source_R(runtime_file, Rcpp::Named("local", true)));
     *global_rt_setup = (*global_rt_setup)["value"];
 
     // MDL add "out_ext" for output format to R setup
     (*global_rt_setup)["out_ext"] = params.out_ext;
-
+    
     params.timesteps =
       Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("timesteps"));
-
+    
   } catch (const std::exception &e) {
     ERRMSG("Error while parsing R scripts: " + std::string(e.what()));
     return ParseRet::PARSER_ERROR;
@@ -253,7 +251,7 @@ void call_master_iter_end(RInside &R, const Field &trans, const Field &chem) {
   R.parseEval(std::string("state_T <- setNames(data.frame(matrix(TMP, nrow=" +
                           std::to_string(trans.GetRequestedVecSize()) +
                           ")), TMP_PROPS)"));
-
+  
   R["TMP"] = Rcpp::wrap(chem.AsVector());
   R["TMP_PROPS"] = Rcpp::wrap(chem.GetProps());
   R.parseEval(std::string("state_C <- setNames(data.frame(matrix(TMP, nrow=" +
@@ -267,11 +265,11 @@ void call_master_iter_end(RInside &R, const Field &trans, const Field &chem) {
 static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
                                 DiffusionModule &diffusion,
                                 ChemistryModule &chem) {
-
+  
   /* Iteration Count is dynamic, retrieving value from R (is only needed by
    * master for the following loop) */
   uint32_t maxiter = params.timesteps.size();
-
+  
   if (params.print_progressbar) {
     chem.setProgressBarPrintout(true);
   }
@@ -422,6 +420,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   return profiling;
 }
 
+<<<<<<< HEAD
 std::vector<std::string> getSpeciesNames(const Field &&field, int root,
                                          MPI_Comm comm) {
   std::uint32_t n_elements;
@@ -465,6 +464,11 @@ std::vector<std::string> getSpeciesNames(const Field &&field, int root,
   return species_names_out;
 }
 
+=======
+
+
+// MAIN
+>>>>>>> 9272556 (Fixes in README and poet.cpp)
 int main(int argc, char *argv[]) {
   int world_size;
   

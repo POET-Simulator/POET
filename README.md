@@ -1,12 +1,16 @@
 <!--
+<<<<<<< HEAD
     Time-stamp: "Last modified 2024-09-12 11:39:28 delucia"
+=======
+    Time-stamp: "Last modified 2024-06-13 09:43:22 delucia"
+>>>>>>> 9272556 (Fixes in README and poet.cpp)
 -->
 
 # POET
 
-[POET](https://doi.org/10.5281/zenodo.4757913) is a coupled reactive transport
-simulator implementing a parallel architecture and a fast, original MPI-based
-Distributed Hash Table.
+[POET](https://doi.org/10.5281/zenodo.4757913) is a coupled reactive
+transport simulator implementing a parallel architecture and a fast,
+original MPI-based Distributed Hash Table.
 
 ![POET's Coupling Scheme](./docs/Scheme_POET_en.svg)
 
@@ -17,7 +21,7 @@ pages](https://naaice.git-pages.gfz-potsdam.de/poet).
 
 ## External Libraries
 
-The following external header library is shipped with POET:
+The following external libraries are shipped with POET:
 
 - **argh** - https://github.com/adishavit/argh (BSD license)
 - **IPhreeqc** with patches from GFZ -
@@ -36,17 +40,32 @@ To compile POET you need following software to be installed:
 - CMake 3.9+
 - Eigen3 3.4+ (required by `tug`)
 - *optional*: `doxygen` with `dot` bindings for documentation
-- R language and environment (distro dependent)
+- R language and environment including headers or `-dev` packages
+  (distro dependent)
 
-The following R packages (and their dependencies) must also be installed:
+The following R packages (and their dependencies) must also be
+installed:
 
 - [Rcpp](https://cran.r-project.org/web/packages/Rcpp/index.html)
 - [RInside](https://cran.r-project.org/web/packages/RInside/index.html)
 - [qs](https://cran.r-project.org/web/packages/qs/index.html)
 
+This can be simply achieved by issuing the following commands:
+
+```sh
+# start R environment
+$ R
+
+# install R dependencies (case sensitive!)
+> install.packages(c("Rcpp", "RInside","qs"))
+> q(save="no")
+```
+
+
 ### Compiling source code
 
-POET is built with CMake. You can generate Makefiles by running the usual:
+POET is built with CMake. You can generate Makefiles by running the
+usual:
 
 ```sh
 mkdir build && cd build
@@ -58,22 +77,22 @@ and generate Makefiles from it. You're now able to run `make` to start
 build process.
 
 If everything went well you'll find the executables at
-`build/app/poet`, but it is recommended to install the POET project
+`build/src/poet`, but it is recommended to install the POET project
 structure to a desired `CMAKE_INSTALL_PREFIX` with `make install`.
 
 During the generation of Makefiles, various options can be specified
 via `cmake -D <option>=<value> [...]`. Currently, there are the
 following available options:
 
-- **POET_DHT_Debug**=_boolean_ - toggles the output of detailed statistics about
-  DHT usage. Defaults to _OFF_.
-- **POET_ENABLE_TESTING**=_boolean_ - enables small set of unit tests (more to
-  come). Defaults to _OFF_.
-- **POET_PHT_ADDITIONAL_INFO**=_boolean_ - enabling the count of accesses to one
-  PHT bucket. Use with caution, as things will get slowed down significantly.
-  Defaults to _OFF_.
-- **POET_PREPROCESS_BENCHS**=*boolean* - enables the preprocessing of predefined
-  models/benchmarks. Defaults to *ON*.
+- **POET_DHT_Debug**=_boolean_ - toggles the output of detailed
+  statistics about DHT usage. Defaults to _OFF_.
+- **POET_ENABLE_TESTING**=_boolean_ - enables small set of unit tests
+  (more to come). Defaults to _OFF_.
+- **POET_PHT_ADDITIONAL_INFO**=_boolean_ - enabling the count of
+  accesses to one PHT bucket. Use with caution, as things will get
+  slowed down significantly. Defaults to _OFF_.
+- **POET_PREPROCESS_BENCHS**=*boolean* - enables the preprocessing of
+  predefined models/benchmarks. Defaults to *ON*.
   
 ### Example: Build from scratch
 
@@ -130,7 +149,8 @@ poet
 
 With the installation of POET, two executables are provided: 
   - `poet` - the main executable to run simulations
-  - `poet_init` - a preprocessor to generate input files for POET from R scripts
+  - `poet_init` - a preprocessor to generate input files for POET from
+    R scripts
 
 Preprocessed benchmarks can be found in the `share/poet` directory
 with an according *runtime* setup. More on those files and how to
@@ -142,28 +162,29 @@ Run POET by `mpirun ./poet [OPTIONS] <RUNFILE> <SIMFILE>
 <OUTPUT_DIRECTORY>` where:
 
 - **OPTIONS** - POET options (explained below)
-- **RUNFILE** - Runtime parameters described as R script 
+- **RUNFILE** - Runtime parameters described as R script
 - **SIMFILE** - Simulation input prepared by `poet_init`
-- **OUTPUT_DIRECTORY** - path, where all output of POET should be stored
+- **OUTPUT_DIRECTORY** - path, where all output of POET should be
+  stored
 
-### POET options
+### POET command line arguments
 
 The following parameters can be set:
 
-| Option                      | Value        | Description                                                                                                              |
-|-----------------------------|--------------|--------------------------------------------------------------------------------------------------------------------------|
-| **--work-package-size=**    | _1..n_       | size of work packages (defaults to _5_)                                                                                  |
-| **-P, --progress**          |              | show progress bar                                                                                                        |
-| **--ai-surrogate**          |              | activates the AI surrogate chemistry model (defaults to _OFF_)                                                           |
-| **--dht**                   |              | enabling DHT usage (defaults to _OFF_)                                                                                   |
-| **--qs**                    |              | store results using qs::qsave() (.qs extension) instead of default RDS (.rds)                                            |
-| **--dht-strategy=**         | _0-1_        | change DHT strategy. **NOT IMPLEMENTED YET** (Defaults to _0_)                                                           |
-| **--dht-size=**             | _1-n_        | size of DHT per process involved in megabyte (defaults to _1000 MByte_)                                                  |
-| **--dht-snaps=**            | _0-2_        | disable or enable storage of DHT snapshots                                                                               |
-| **--dht-file=**             | `<SNAPSHOT>` | initializes DHT with the given snapshot file                                                                             |
-| **--interp-size**           | _1-n_        | size of PHT (interpolation) per process in megabyte                                                                      |
-| **--interp-bucket-entries** | _1-n_        | number of entries to store at maximum in one PHT bucket                                                                  |
-| **--interp-min**            | _1-n_        | number of entries in PHT bucket needed to start interpolation                                                            |
+| Option                      | Value        | Description                                                                      |
+|-----------------------------|--------------|----------------------------------------------------------------------------------|
+| **--work-package-size=**    | _1..n_       | size of work packages (defaults to _5_)                                          |
+| **-P, --progress**          |              | show progress bar                                                                |
+| **--ai-surrogate**          |              | activates the AI surrogate chemistry model (defaults to _OFF_)                   |
+| **--dht**                   |              | enabling DHT usage (defaults to _OFF_)                                           |
+| **--qs**                    |              | store results using qs::qsave() (.qs extension) instead of default RDS (.rds)    |
+| **--dht-strategy=**         | _0-1_        | change DHT strategy. **NOT IMPLEMENTED YET** (Defaults to _0_)                   |
+| **--dht-size=**             | _1-n_        | size of DHT per process involved in megabyte (defaults to _1000 MByte_)          |
+| **--dht-snaps=**            | _0-2_        | disable or enable storage of DHT snapshots                                       |
+| **--dht-file=**             | `<SNAPSHOT>` | initializes DHT with the given snapshot file                                     |
+| **--interp-size**           | _1-n_        | size of PHT (interpolation) per process in megabyte                              |
+| **--interp-bucket-entries** | _1-n_        | number of entries to store at maximum in one PHT bucket                          |
+| **--interp-min**            | _1-n_        | number of entries in PHT bucket needed to start interpolation                    |
 
 #### Additions to `dht-snaps`
 
@@ -177,12 +198,13 @@ Following values can be set:
 
 ### Example: Running from scratch
 
-We will continue the above example and start a simulation with *barite_het*,
-which simulation files can be found in
-`<INSTALL_DIR>/share/poet/barite/barite_het*`. As transport a heterogeneous
-diffusion is used. It's a small 2D grid, 2x5 grid, simulating 50 time steps with
-a time step size of 100 seconds. To start the simulation with 4 processes `cd`
-into your previously installed POET-dir `<POET_INSTALL_DIR>/bin` and run:
+We will continue the above example and start a simulation with
+*barite_het*, which simulation files can be found in
+`<INSTALL_DIR>/share/poet/barite/barite_het*`. As transport a
+heterogeneous diffusion is used. It's a small 2D grid, 2x5 grid,
+simulating 50 time steps with a time step size of 100 seconds. To
+start the simulation with 4 processes `cd` into your previously
+installed POET-dir `<POET_INSTALL_DIR>/bin` and run:
 
 ```sh
 cp ../share/poet/barite/barite_het* .
@@ -192,11 +214,11 @@ mpirun -n 4 ./poet barite_het_rt.R barite_het.rds output
 After a finished simulation all data generated by POET will be found
 in the directory `output`.
 
-You might want to use the DHT to cache previously simulated data and reuse them
-in further time-steps. Just append `--dht` to the options of POET to activate
-the usage of the DHT. Also, after each iteration a DHT snapshot shall be
-produced. This is done by appending the `--dht-snaps=<value>` option. The
-resulting call would look like this:
+You might want to use the DHT to cache previously simulated data and
+reuse them in further time-steps. Just append `--dht` to the options
+of POET to activate the usage of the DHT. Also, after each iteration a
+DHT snapshot shall be produced. This is done by appending the
+`--dht-snaps=<value>` option. The resulting call would look like this:
 
 ```sh
 mpirun -n 4 ./poet --dht --dht-snaps=2 barite_het_rt.R barite_het.rds output
