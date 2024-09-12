@@ -225,15 +225,15 @@ ParseRet parseInitValues(char **argv, RuntimeParameters &params) {
     params.init_params = init_params_;
 
     global_rt_setup = std::make_unique<Rcpp::List>();
-    *global_rt_setup = source(runtime_file, Rcpp::Named("local", true));
+    *global_rt_setup = source_R(runtime_file, Rcpp::Named("local", true));
     *global_rt_setup = global_rt_setup->operator[]("value");
 
     // MDL add "out_ext" for output format to R setup
     (*global_rt_setup)["out_ext"] = params.out_ext;
-    
+
     params.timesteps =
       Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("timesteps"));
-    
+
   } catch (const std::exception &e) {
     ERRMSG("Error while parsing R scripts: " + std::string(e.what()));
     return ParseRet::PARSER_ERROR;
@@ -250,7 +250,7 @@ void call_master_iter_end(RInside &R, const Field &trans, const Field &chem) {
   R.parseEval(std::string("state_T <- setNames(data.frame(matrix(TMP, nrow=" +
                           std::to_string(trans.GetRequestedVecSize()) +
                           ")), TMP_PROPS)"));
-  
+
   R["TMP"] = Rcpp::wrap(chem.AsVector());
   R["TMP_PROPS"] = Rcpp::wrap(chem.GetProps());
   R.parseEval(std::string("state_C <- setNames(data.frame(matrix(TMP, nrow=" +
@@ -264,16 +264,16 @@ void call_master_iter_end(RInside &R, const Field &trans, const Field &chem) {
 static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
                                 DiffusionModule &diffusion,
                                 ChemistryModule &chem) {
-  
+
   /* Iteration Count is dynamic, retrieving value from R (is only needed by
    * master for the following loop) */
   uint32_t maxiter = params.timesteps.size();
-  
+
   if (params.print_progressbar) {
     chem.setProgressBarPrintout(true);
   }
   R["TMP_PROPS"] = Rcpp::wrap(chem.getField().GetProps());
-  
+
   /* SIMULATION LOOP */
   double dSimTime{0};
   for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
@@ -302,7 +302,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
         std::to_string(chem.getField().GetRequestedVecSize()) + ")), TMP_PROPS)"));
       R.parseEval("predictors <- predictors[ai_surrogate_species]");
 
-      // Apply preprocessing 
+      // Apply preprocessing
       MSG("AI Preprocessing");
       R.parseEval("predictors_scaled <- preprocess(predictors)");
 
@@ -317,7 +317,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       // Validate prediction and write valid predictions to chem field
       MSG("AI Validate");
       R.parseEval("validity_vector <- validate_predictions(predictors, aipreds)");
-      
+
       MSG("AI Marking accepted");
       chem.set_ai_surrogate_validity_vector(R.parseEval("validity_vector"));
 
@@ -327,13 +327,13 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
                                                                                        validity_vector)");
 
       MSG("AI Set Field");
-      Field predictions_field = Field(R.parseEval("nrow(predictors)"), 
+      Field predictions_field = Field(R.parseEval("nrow(predictors)"),
                                       RTempField,
                                       R.parseEval("colnames(predictors)"));
 
       MSG("AI Update");
       chem.getField().update(predictions_field);
-      double ai_end_t = MPI_Wtime();  
+      double ai_end_t = MPI_Wtime();
       R["ai_prediction_time"] = ai_end_t - ai_start_t;
     }
 
@@ -348,7 +348,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
         "targets <- setNames(data.frame(matrix(TMP, nrow=" +
         std::to_string(chem.getField().GetRequestedVecSize()) + ")), TMP_PROPS)"));
       R.parseEval("targets <- targets[ai_surrogate_species]");
-      
+
       // TODO: Check how to get the correct columns
       R.parseEval("target_scaled <- preprocess(targets)");
 
@@ -465,19 +465,19 @@ std::vector<std::string> getSpeciesNames(const Field &&field, int root,
 
 int main(int argc, char *argv[]) {
   int world_size;
-  
+
   MPI_Init(&argc, &argv);
 
   {
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &MY_RANK);
-    
+
     RInsidePOET &R = RInsidePOET::getInstance();
-    
+
     if (MY_RANK == 0) {
       MSG("Running POET version " + std::string(poet_version));
     }
-    
+
 
     init_global_functions(R);
 
@@ -491,19 +491,19 @@ int main(int argc, char *argv[]) {
     case ParseRet::PARSER_OK:
       break;
     }
-    
+
     InitialList init_list(R);
     init_list.importList(run_params.init_params, MY_RANK != 0);
-    
+
     MSG("RInside initialized on process " + std::to_string(MY_RANK));
-    
+
     std::cout << std::flush;
-    
+
     MPI_Barrier(MPI_COMM_WORLD);
-    
+
     ChemistryModule chemistry(run_params.work_package_size,
                               init_list.getChemistryInit(), MPI_COMM_WORLD);
-    
+
     const ChemistryModule::SurrogateSetup surr_setup = {
 
         getSpeciesNames(init_list.getInitialGrid(), 0, MPI_COMM_WORLD),
@@ -541,28 +541,28 @@ int main(int argc, char *argv[]) {
         R["ai_surrogate_species"] = init_list.getChemistryInit().dht_species.getNames();
 
         const std::string ai_surrogate_input_script = init_list.getChemistryInit().ai_surrogate_input_script;
-	
+
 	MSG("AI: sourcing user-provided script");
 	R.parseEvalQ(ai_surrogate_input_script);
-	
+
         MSG("AI: initialize AI model");
 	R.parseEval("model <- initiate_model()");
         R.parseEval("gpu_info()");
       }
-      
+
       MSG("Init done on process with rank " + std::to_string(MY_RANK));
-      
+
       // MPI_Barrier(MPI_COMM_WORLD);
-      
+
       DiffusionModule diffusion(init_list.getDiffusionInit(),
                                 init_list.getInitialGrid());
-      
+
       chemistry.masterSetField(init_list.getInitialGrid());
-      
+
       Rcpp::List profiling = RunMasterLoop(R, run_params, diffusion, chemistry);
-      
+
       MSG("finished simulation loop");
-      
+
       R["profiling"] = profiling;
       R["setup"] = *global_rt_setup;
       R["setup$out_ext"] = run_params.out_ext;
@@ -571,7 +571,7 @@ int main(int argc, char *argv[]) {
       r_vis_code =
 	"SaveRObj(x = profiling, path = paste0(out_dir, '/timings.', setup$out_ext));";
       R.parseEval(r_vis_code);
-      
+
       MSG("Done! Results are stored as R objects into <" + run_params.out_dir +
           "/timings." + run_params.out_ext);
     }
