@@ -15,11 +15,11 @@ pages](https://naaice.git-pages.gfz-potsdam.de/poet).
 
 The following external libraries are shipped with POET:
 
-- **argh** - https://github.com/adishavit/argh (BSD license)
-- **IPhreeqc** with patches from GFZ -
-  https://github.com/usgs-coupled/iphreeqc -
-  https://git.gfz-potsdam.de/naaice/iphreeqc
-- **tug** - https://git.gfz-potsdam.de/naaice/tug
+- **CLI11** - <https://github.com/CLIUtils/CLI11>
+- **IPhreeqc** with patches from GFZ/UP -
+  <https://github.com/usgs-coupled/iphreeqc> -
+  <https://git.gfz-potsdam.de/naaice/iphreeqc>
+- **tug** - <https://git.gfz-potsdam.de/naaice/tug>
 
 ## Installation
 
