@@ -1,15 +1,33 @@
-pqc_to_grid <- function(pqc_in, grid) {
+### Copyright (C) 2018-2024 Marco De Lucia, Max Luebke (GFZ Potsdam, University of Potsdam)
+###
+### POET is free software; you can redistribute it and/or modify it under the
+### terms of the GNU General Public License as published by the Free Software
+### Foundation; either version 2 of the License, or (at your option) any later
+### version.
+###
+### POET is distributed in the hope that it will be useful, but WITHOUT ANY
+### WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+### A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License along with
+### this program; if not, write to the Free Software Foundation, Inc., 51
+### Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
+##' @param pqc_mat matrix, containing IDs and PHREEQC outputs 
+##' @param grid matrix, zonation referring to pqc_mat$ID 
+##' @return a data.frame
+pqc_to_grid <- function(pqc_mat, grid) {
     # Convert the input DataFrame to a matrix
-    pqc_in <- as.matrix(pqc_in)
+    pqc_mat <- as.matrix(pqc_mat)
 
     # Flatten the matrix into a vector
-    id_vector <- as.numeric(t(grid))
+    id_vector <- as.integer(t(grid))
 
     # Find the matching rows in the matrix
-    row_indices <- match(id_vector, pqc_in[, "ID"])
+    row_indices <- match(id_vector, pqc_mat[, "ID"])
 
-    # Extract the matching rows from pqc_in to size of grid matrix
-    result_mat <- pqc_in[row_indices, ]
+    # Extract the matching rows from pqc_mat to size of grid matrix
+    result_mat <- pqc_mat[row_indices, ]
 
     # Convert the result matrix to a data frame
     res_df <- as.data.frame(result_mat)
@@ -23,6 +41,12 @@ pqc_to_grid <- function(pqc_in, grid) {
     return(res_df)
 }
 
+
+##' @param pqc_mat matrix, 
+##' @param transport_spec column name of species in pqc_mat
+##' @param id
+##' @title 
+##' @return 
 resolve_pqc_bound <- function(pqc_mat, transport_spec, id) {
     df <- as.data.frame(pqc_mat, check.names = FALSE)
     value <- df[df$ID == id, transport_spec]
@@ -34,6 +58,10 @@ resolve_pqc_bound <- function(pqc_mat, transport_spec, id) {
     return(value)
 }
 
+##' @title 
+##' @param init_grid 
+##' @param new_names 
+##' @return 
 add_missing_transport_species <- function(init_grid, new_names) {
     # add 'ID' to new_names front, as it is not a transport species but required
     new_names <- c("ID", new_names)

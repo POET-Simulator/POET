@@ -27,6 +27,16 @@ target_link_libraries(
   PUBLIC MPI::MPI_C
 )
 
+include(FetchContent)
+FetchContent_Declare(
+  cli11
+  QUIET 
+  GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+  GIT_TAG v2.4.2
+)
+
+FetchContent_MakeAvailable(cli11)
+
 # add_library(poetlib
 #   Base/Grid.cpp
 #   Base/SimParams.cpp
@@ -75,11 +85,11 @@ file(READ "${PROJECT_SOURCE_DIR}/R_lib/ai_surrogate_model.R" R_AI_SURROGATE_LIB)
 configure_file(poet.hpp.in poet.hpp @ONLY)
 
 add_executable(poet poet.cpp)
-target_link_libraries(poet PRIVATE POETLib MPI::MPI_C RRuntime)
+target_link_libraries(poet PRIVATE POETLib MPI::MPI_C RRuntime CLI11::CLI11)
 target_include_directories(poet PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_executable(poet_init initializer.cpp)
-target_link_libraries(poet_init PRIVATE POETLib RRuntime)
+target_link_libraries(poet_init PRIVATE POETLib RRuntime CLI11::CLI11)
 target_include_directories(poet_init PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 install(TARGETS poet poet_init DESTINATION bin)

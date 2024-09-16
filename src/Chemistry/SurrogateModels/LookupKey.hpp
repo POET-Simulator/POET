@@ -1,4 +1,3 @@
-//  Time-stamp: "Last modified 2023-08-11 10:12:52 mluebke"
 
 #ifndef LOOKUPKEY_H_
 #define LOOKUPKEY_H_

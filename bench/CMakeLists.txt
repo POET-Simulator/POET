@@ -6,18 +6,19 @@ function(ADD_BENCH_TARGET TARGET POET_BENCH_LIST RT_FILES OUT_PATH)
 
     foreach(BENCH_FILE ${${POET_BENCH_LIST}})
         get_filename_component(BENCH_NAME ${BENCH_FILE} NAME_WE)
-        set(OUT_FILE ${CMAKE_CURRENT_BINARY_DIR}/${BENCH_NAME}.rds)
+        set(OUT_FILE ${CMAKE_CURRENT_BINARY_DIR}/${BENCH_NAME})
+        set(OUT_FILE_EXT ${OUT_FILE}.qs)
 
         add_custom_command(
-            OUTPUT ${OUT_FILE}
-            COMMAND $<TARGET_FILE:poet_init> -o ${OUT_FILE} -s ${CMAKE_CURRENT_SOURCE_DIR}/${BENCH_FILE}
+            OUTPUT ${OUT_FILE_EXT}
+            COMMAND $<TARGET_FILE:poet_init> -n ${OUT_FILE} -s ${CMAKE_CURRENT_SOURCE_DIR}/${BENCH_FILE}
             COMMENT "Running poet_init on ${BENCH_FILE}"
             DEPENDS poet_init ${CMAKE_CURRENT_SOURCE_DIR}/${BENCH_FILE}
             VERBATIM
             COMMAND_EXPAND_LISTS
         )
 
-        list(APPEND OUT_FILES_LIST ${OUT_FILE})
+        list(APPEND OUT_FILES_LIST ${OUT_FILE_EXT})
 
     endforeach(BENCH_FILE ${${POET_BENCH_LIST}})
         

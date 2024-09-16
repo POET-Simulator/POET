@@ -215,10 +215,10 @@ private:
 
 public:
   struct ChemistryHookFunctions {
-    RHookFunction<bool> dht_fill;
-    RHookFunction<std::vector<double>> dht_fuzz;
-    RHookFunction<std::vector<std::size_t>> interp_pre;
-    RHookFunction<bool> interp_post;
+    poet::DEFunc dht_fill;
+    poet::DEFunc dht_fuzz;
+    poet::DEFunc interp_pre;
+    poet::DEFunc interp_post;
   };
 
   struct ChemistryInit {

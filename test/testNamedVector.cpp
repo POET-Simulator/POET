@@ -9,7 +9,7 @@
 #include "testDataStructures.hpp"
 
 TEST_CASE("NamedVector") {
-  RInsidePOET &R = RInsidePOET::getInstance();
+  poet::RInsidePOET &R = poet::RInsidePOET::getInstance();
 
   R["sourcefile"] = RInside_source_file;
   R.parseEval("source(sourcefile)");
@@ -36,14 +36,14 @@ TEST_CASE("NamedVector") {
   }
 
   SUBCASE("Apply R function (set to zero)") {
-    RHookFunction<poet::NamedVector<double>> to_call(R, "simple_named_vec");
+    poet::DEFunc to_call("simple_named_vec");
     nv = to_call(nv);
 
     CHECK_EQ(nv[2], 0);
   }
 
   SUBCASE("Apply R function (second NamedVector)") {
-    RHookFunction<poet::NamedVector<double>> to_call(R, "extended_named_vec");
+    poet::DEFunc to_call("extended_named_vec");
 
     const std::vector<std::string> names{{"C", "H", "Mg"}};
     const std::vector<double> values{{0, 1, 2}};
@@ -56,8 +56,8 @@ TEST_CASE("NamedVector") {
   }
 
   SUBCASE("Apply R function (check if zero)") {
-    RHookFunction<bool> to_call(R, "bool_named_vec");
+    poet::DEFunc to_call("bool_named_vec");
 
-    CHECK_FALSE(to_call(nv));
+    CHECK_FALSE(Rcpp::as<bool>(to_call(nv)));
   }
 }

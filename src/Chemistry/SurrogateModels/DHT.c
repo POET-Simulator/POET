@@ -1,4 +1,3 @@
-/// Time-stamp: "Last modified 2023-08-10 11:50:46 mluebke"
 /*
 ** Copyright (C) 2017-2021 Max Luebke (University of Potsdam)
 **

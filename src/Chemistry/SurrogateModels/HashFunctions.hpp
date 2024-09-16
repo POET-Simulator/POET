@@ -1,4 +1,3 @@
-// //  Time-stamp: "Last modified 2023-03-31 14:59:49 mluebke"
 
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of

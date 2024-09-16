@@ -1,4 +1,3 @@
-//  Time-stamp: "Last modified 2023-08-16 17:02:31 mluebke"
 #include "Init/InitialList.hpp"
 #include "Interpolation.hpp"
 
@@ -9,6 +8,7 @@
 #include "Rounding.hpp"
 
 #include <Rcpp.h>
+#include <Rcpp/proxy/ProtectedProxy.h>
 #include <Rinternals.h>
 
 #include <algorithm>
@@ -94,7 +94,8 @@ void InterpolationModule::tryInterpolation(WorkPackage &work_package) {
     if (hooks.interp_pre.isValid()) {
       NamedVector<double> nv_in(this->out_names, work_package.input[wp_i]);
 
-      auto rm_indices = hooks.interp_pre(nv_in, pht_result.in_values);
+      std::vector<int> rm_indices = Rcpp::as<std::vector<int>>(
+          hooks.interp_pre(nv_in, pht_result.in_values));
 
       pht_result.size -= rm_indices.size();
 

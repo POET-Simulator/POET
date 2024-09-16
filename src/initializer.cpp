@@ -1,7 +1,7 @@
 #include "Init/InitialList.hpp"
 #include "poet.hpp"
 
-#include "Base/argh.hpp"
+#include <CLI/CLI.hpp>
 
 #include <cstdlib>
 
@@ -11,30 +11,38 @@
 #include <string>
 
 int main(int argc, char **argv) {
-
-  argh::parser cmdl({"-o", "--output"});
-
-  cmdl.parse(argc, argv);
-
-  if (cmdl[{"-h", "--help"}] || cmdl.pos_args().size() != 2) {
-    std::cout << "Usage: " << argv[0]
-              << " [-o, --output output_file]"
-                 " [-s, --setwd] "
-                 " <script.R>"
-              << std::endl;
-    return EXIT_SUCCESS;
-  }
-
+  // initialize RIinside
   RInside R(argc, argv);
 
   R.parseEvalQ(init_r_library);
+  R.parseEvalQ(kin_r_library);
 
-  std::string input_script = cmdl.pos_args()[1];
+  // parse command line arguments
+  CLI::App app{"POET Initializer - Poet R script to POET qs/rds converter"};
+
+  std::string input_script;
+  app.add_option("PoetScript.R", input_script, "POET R script to convert")
+      ->required();
+
+  std::string output_file;
+  app.add_option("-n, --name", output_file,
+                 "Name of the output file without file extension");
+
+  bool setwd;
+  app.add_flag("-s, --setwd", setwd,
+               "Set working directory to the directory of the directory of the "
+               "input script")
+      ->default_val(false);
+
+  bool asRDS;
+  app.add_flag("-r, --rds", asRDS, "Save output as .rds file instead of .qs")
+      ->default_val(false);
+
+  CLI11_PARSE(app, argc, argv);
+
+  // source the input script
   std::string normalized_path_script;
   std::string in_file_name;
-
-  std::string curr_path =
-      Rcpp::as<std::string>(Rcpp::Function("normalizePath")(Rcpp::wrap(".")));
 
   try {
     normalized_path_script =
@@ -51,14 +59,20 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  std::string output_file;
+  // if output file is not specified, use the input file name
+  if (output_file.empty()) {
+    std::string curr_path =
+        Rcpp::as<std::string>(Rcpp::Function("normalizePath")(Rcpp::wrap(".")));
 
-  cmdl({"-o", "--output"},
-       curr_path + "/" +
-           in_file_name.substr(0, in_file_name.find_last_of('.')) + ".rds") >>
-      output_file;
+    output_file = curr_path + "/" +
+                  in_file_name.substr(0, in_file_name.find_last_of('.'));
+  }
 
-  if (cmdl[{"-s", "--setwd"}]) {
+  // append the correct file extension
+  output_file += asRDS ? ".rds" : ".qs";
+
+  // set working directory to the directory of the input script
+  if (setwd) {
     const std::string dir_path = Rcpp::as<std::string>(
         Rcpp::Function("dirname")(normalized_path_script));
 
@@ -71,10 +85,9 @@ int main(int argc, char **argv) {
 
   init.initializeFromList(setup);
 
-  // replace file extension by .rds
-  Rcpp::Function save("saveRDS");
-
-  save(init.exportList(), Rcpp::wrap(output_file));
+  // use the generic handler defined in kin_r_library.R
+  Rcpp::Function SaveRObj_R("SaveRObj");
+  SaveRObj_R(init.exportList(), Rcpp::wrap(output_file));
 
   std::cout << "Saved result to " << output_file << std::endl;
 

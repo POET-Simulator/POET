@@ -1,4 +1,3 @@
-//  Time-stamp: "Last modified 2023-11-01 10:54:45 mluebke"
 
 /*
 ** Copyright (C) 2018-2021 Alexander Lindemann, Max Luebke (University of
@@ -25,6 +24,7 @@
 #include "Init/InitialList.hpp"
 #include "Rounding.hpp"
 
+#include <Rcpp/proxy/ProtectedProxy.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -267,7 +267,8 @@ LookupKey DHT_Wrapper::fuzzForDHT_R(const std::vector<double> &cell,
 
   NamedVector<double> input_nv(this->output_names, cell);
 
-  const std::vector<double> eval_vec = hooks.dht_fuzz(input_nv);
+  const std::vector<double> eval_vec =
+      Rcpp::as<std::vector<double>>(hooks.dht_fuzz(input_nv));
   assert(eval_vec.size() == this->key_count);
   LookupKey vecFuzz(this->key_count + 1, {.0});
 

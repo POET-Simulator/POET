@@ -1,17 +1,13 @@
-#ifndef RPOET_H_
-#define RPOET_H_
+#pragma once
 
 #include <RInside.h>
 #include <Rcpp.h>
 #include <Rinternals.h>
-#include <cstddef>
 #include <exception>
-#include <optional>
-#include <stdexcept>
+#include <memory>
 #include <string>
-#include <utility>
-#include <vector>
 
+namespace poet {
 class RInsidePOET : public RInside {
 public:
   static RInsidePOET &getInstance() {
@@ -33,44 +29,64 @@ private:
   RInsidePOET() : RInside(){};
 };
 
-template <typename T> class RHookFunction {
+/**
+ * @brief Deferred evaluation function
+ *
+ * The class is intended to call R functions within an existing RInside
+ * instance. The problem with "original" Rcpp::Function is that they require:
+ * 1. RInside instance already present, restricting the declaration of
+ *     Rcpp::Functions in global scope
+ * 2. Require the function to be present. Otherwise, they will throw an
+ *     exception.
+ * This class solves both problems by deferring the evaluation of the function
+ *  until the constructor is called and evaluating whether the function is
+ *  present or not, wihout throwing an exception.
+ *
+ * @tparam T Return type of the function
+ */
+class DEFunc {
 public:
-  RHookFunction() {}
-  RHookFunction(RInside &R, const std::string &f_name) {
+  DEFunc() {}
+  DEFunc(const std::string &f_name) {
     try {
-      this->func = Rcpp::Function(Rcpp::as<SEXP>(R.parseEval(f_name.c_str())));
+      this->func = std::make_shared<Rcpp::Function>(f_name);
     } catch (const std::exception &e) {
     }
   }
 
-  RHookFunction(SEXP f) {
+  DEFunc(SEXP f) {
     try {
-      this->func = Rcpp::Function(f);
+      this->func = std::make_shared<Rcpp::Function>(f);
     } catch (const std::exception &e) {
     }
   }
 
-  template <typename... Args> T operator()(Args... args) const {
-    if (func.has_value()) {
-      return (Rcpp::as<T>(this->func.value()(args...)));
+  template <typename... Args> SEXP operator()(Args... args) const {
+    if (func) {
+      return (*this->func)(args...);
     } else {
       throw std::exception();
     }
   }
 
-  RHookFunction &operator=(const RHookFunction &rhs) {
+  DEFunc &operator=(const DEFunc &rhs) {
     this->func = rhs.func;
     return *this;
   }
 
-  RHookFunction(const RHookFunction &rhs) { this->func = rhs.func; }
+  DEFunc(const DEFunc &rhs) { this->func = rhs.func; }
 
-  bool isValid() const { return this->func.has_value(); }
+  bool isValid() const { return static_cast<bool>(func); }
 
-  SEXP asSEXP() const { return Rcpp::as<SEXP>(this->func.value()); }
+  SEXP asSEXP() const {
+    if (!func) {
+      return R_NilValue;
+    }
+    return Rcpp::as<SEXP>(*this->func.get());
+  }
 
 private:
-  std::optional<Rcpp::Function> func;
+  std::shared_ptr<Rcpp::Function> func;
 };
 
-#endif // RPOET_H_
+} // namespace poet
