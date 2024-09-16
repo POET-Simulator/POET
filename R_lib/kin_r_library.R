@@ -63,7 +63,7 @@ master_iteration_end <- function(setup, state_T, state_C) {
     iter <- setup$iter
     # print(iter)
     ## max digits for iterations
-    dgts <- as.integer(ceiling(log10(setup$maxiter)))
+    dgts <- as.integer(ceiling(log10(setup$maxiter + 1)))
     ## string format to use in sprintf
     fmt <- paste0("%0", dgts, "d")
 
@@ -74,19 +74,20 @@ master_iteration_end <- function(setup, state_T, state_C) {
             nameout <- paste0(setup$out_dir, "/iter_", sprintf(fmt = fmt, iter), ".", setup$out_ext)
             state_T <- data.frame(state_T, check.names = FALSE)
             state_C <- data.frame(state_C, check.names = FALSE)
-            
+
             ai_surrogate_info <- list(
-                prediction_time = if(exists("ai_prediction_time")) as.integer(ai_prediction_time) else NULL,
-                training_time = if(exists("ai_training_time")) as.integer(ai_training_time) else NULL,
-                valid_predictions = if(exists("validity_vector")) validity_vector else NULL)
+                prediction_time = if (exists("ai_prediction_time")) as.integer(ai_prediction_time) else NULL,
+                training_time = if (exists("ai_training_time")) as.integer(ai_training_time) else NULL,
+                valid_predictions = if (exists("validity_vector")) validity_vector else NULL
+            )
 
             SaveRObj(x = list(
-                         T = state_T,
-                         C = state_C,
-                         simtime = as.integer(setup$simulation_time),
-                         totaltime = as.integer(totaltime),
-                         ai_surrogate_info = ai_surrogate_info
-                     ), path = nameout)
+                T = state_T,
+                C = state_C,
+                simtime = as.integer(setup$simulation_time),
+                totaltime = as.integer(totaltime),
+                ai_surrogate_info = ai_surrogate_info
+            ), path = nameout)
             msgm("results stored in <", nameout, ">")
         }
     }
@@ -185,8 +186,9 @@ ReadRObj <- function(path) {
     extension <- ifelse(pos > -1L, substring(path, pos + 1L), "")
 
     switch(extension,
-           rds = readRDS(path),
-           qs  = qs::qread(path))
+        rds = readRDS(path),
+        qs  = qs::qread(path)
+    )
 }
 
 ## Handler to store R objs to binary files using either builtin
@@ -198,7 +200,7 @@ SaveRObj <- function(x, path) {
     extension <- ifelse(pos > -1L, substring(path, pos + 1L), "")
 
     switch(extension,
-           rds = saveRDS(object = x, file=path),
-           qs  = qs::qsave(x=x, file = path))
+        rds = saveRDS(object = x, file = path),
+        qs  = qs::qsave(x = x, file = path)
+    )
 }
-
