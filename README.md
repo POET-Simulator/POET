@@ -53,6 +53,19 @@ $ R
 > q(save="no")
 ```
 
+### Clone the repository
+
+POET can be anonimously cloned from this repo over https. Make sure to 
+also download the submodules:
+
+```sh
+git clone --recurse-submodules https://git.gfz-potsdam.de/naaice/poet.git
+```
+The `--recurse-submodules` option is a shorthand for:
+```sh
+cd poet
+git submodule init && git submodule update
+```
 
 ### Compiling source code
 
