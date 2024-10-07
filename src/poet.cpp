@@ -567,7 +567,6 @@ int main(int argc, char *argv[]) {
 
         MSG("AI: sourcing user-provided script");
         R.parseEvalQ(ai_surrogate_input_script);
-
         MSG("AI: initialize AI model");
         //R.parseEval("model <- initiate_model()");
       }
