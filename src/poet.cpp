@@ -275,6 +275,10 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   /* Iteration Count is dynamic, retrieving value from R (is only needed by
    * master for the following loop) */
   uint32_t maxiter = params.timesteps.size();
+  
+  /* Stores the weights and biases of the AI surrogate model
+   * for use in an inference function with Eigen */ 
+  EigenModel Eigen_model;
 
   if (params.print_progress) {
     chem.setProgressBarPrintout(true);
@@ -314,12 +318,25 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       MSG("AI Preprocessing");
       R.parseEval("predictors_scaled <- preprocess(predictors)");
 
-      
       // Predict
       MSG("AI: Predict");
-      R["predictions_scaled"] = Rcpp::wrap(Python_keras_predict(R["predictors_scaled"], params.batch_size));
-      R.parseEval("setNames(predictions_scaled, TMP_POPS)");
+      R["TMP"] = Python_keras_predict(R["predictors_scaled"], params.batch_size);
+      R.parseEval("predictions_scaled <- matrix(TMP, nrow=nrow(predictors), byrow = TRUE)");
+      R.parseEval("predictions_scaled <- setNames(data.frame(predictions_scaled), colnames(predictors))");
       
+      MSG("Prediction from Python sent to R")
+      R.parseEval("print(head(predictions_scaled))");
+
+      EigenModel Eigen_model = Python_Keras_get_weights_as_Eigen();
+      MSG("EIGEN WEIGHTS SUCESFULLY IMPORTED");
+      R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size);
+      R.parseEval("predictions_scaled <- matrix(TMP, nrow=nrow(predictors), byrow = TRUE)");
+      MSG("EIGEN SUCESFULLY PREDICTED");
+      R.parseEval("predictions_scaled <- setNames(data.frame(predictions_scaled), colnames(predictors))");
+
+      MSG("Prediction from Eigen sent to R")
+      R.parseEval("print(head(predictions_scaled))");
+
       // after this comes old R code!
       // Apply postprocessing
       MSG("AI Postprocesing");

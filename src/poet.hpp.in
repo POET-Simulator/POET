@@ -67,4 +67,5 @@ struct RuntimeParameters {
   std::uint32_t interp_bucket_entries;
 
   bool use_ai_surrogate = false;
+  int batch_size;
 };
