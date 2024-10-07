@@ -16,15 +16,17 @@ target_sources(POETLib
   Chemistry/SurrogateModels/HashFunctions.cpp
   Chemistry/SurrogateModels/InterpolationModule.cpp
   Chemistry/SurrogateModels/ProximityHashTable.cpp
-)
+  Chemistry/SurrogateModels/AI_functions.cpp
+) 
 
-target_include_directories(POETLib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(POETLib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${Python3_INCLUDE_DIRS}")
 target_link_libraries(
   POETLib 
   PUBLIC RRuntime
   PUBLIC IPhreeqcPOET
   PUBLIC tug
   PUBLIC MPI::MPI_C
+  PUBLIC "${Python3_LIBRARIES}"
 )
 
 include(FetchContent)
@@ -80,9 +82,9 @@ target_compile_definitions(POETLib PUBLIC STRICT_R_HEADERS OMPI_SKIP_MPICXX)
 
 file(READ "${PROJECT_SOURCE_DIR}/R_lib/kin_r_library.R" R_KIN_LIB )
 file(READ "${PROJECT_SOURCE_DIR}/R_lib/init_r_lib.R" R_INIT_LIB)
-file(READ "${PROJECT_SOURCE_DIR}/R_lib/ai_surrogate_model.R" R_AI_SURROGATE_LIB)
 
 configure_file(poet.hpp.in poet.hpp @ONLY)
+
 
 add_executable(poet poet.cpp)
 target_link_libraries(poet PRIVATE POETLib MPI::MPI_C RRuntime CLI11::CLI11)

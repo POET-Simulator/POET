@@ -28,6 +28,7 @@
 #include "DataStructures/Field.hpp"
 #include "Init/InitialList.hpp"
 #include "Transport/DiffusionModule.hpp"
+#include "Chemistry/SurrogateModels/AI_functions.hpp"
 
 #include <RInside.h>
 #include <Rcpp.h>
@@ -299,6 +300,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     chem.getField().update(diffusion.getField());
 
     MSG("Chemistry step");
+    Python_Keras_setup(SRC_DIR, R["model_file_path"]);
     if (params.use_ai_surrogate) {
       double ai_start_t = MPI_Wtime();
       // Save current values from the tug field as predictor for the ai step
@@ -548,9 +550,14 @@ int main(int argc, char *argv[]) {
       R["out_ext"] = run_params.out_ext;
       R["out_dir"] = run_params.out_dir;
 
+      // MPI_Barrier(MPI_COMM_WORLD);
+
+      DiffusionModule diffusion(init_list.getDiffusionInit(),
+                                init_list.getInitialGrid());
+
+      chemistry.masterSetField(init_list.getInitialGrid());
+
       if (run_params.use_ai_surrogate) {
-        /* Incorporate ai surrogate from R */
-        R.parseEvalQ(ai_surrogate_r_library);
         /* Use dht species for model input and output */
         R["ai_surrogate_species"] =
             init_list.getChemistryInit().dht_species.getNames();
@@ -562,18 +569,10 @@ int main(int argc, char *argv[]) {
         R.parseEvalQ(ai_surrogate_input_script);
 
         MSG("AI: initialize AI model");
-        R.parseEval("model <- initiate_model()");
-        R.parseEval("gpu_info()");
+        //R.parseEval("model <- initiate_model()");
       }
 
       MSG("Init done on process with rank " + std::to_string(MY_RANK));
-
-      // MPI_Barrier(MPI_COMM_WORLD);
-
-      DiffusionModule diffusion(init_list.getDiffusionInit(),
-                                init_list.getInitialGrid());
-
-      chemistry.masterSetField(init_list.getInitialGrid());
 
       Rcpp::List profiling = RunMasterLoop(R, run_params, diffusion, chemistry);
 

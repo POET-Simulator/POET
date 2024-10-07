@@ -51,8 +51,8 @@ void InitialList::initChemistry(const Rcpp::List &chem) {
     // Get base path
     ai_surrogate_input_script_path = ai_surrogate_input_script_path.substr(0, ai_surrogate_input_script_path.find_last_of('/') + 1);
     // Add the filepath as a global variable in R to enable relative filepaths in the R script
-    fileContent += "\nai_surrogate_base_path <- \"" + ai_surrogate_input_script_path + "\"";
-    
+    fileContent.insert(0, "ai_surrogate_base_path <- \"" + ai_surrogate_input_script_path + "\"\n");
+
     this->ai_surrogate_input_script = fileContent;
   }
 

@@ -19,6 +19,14 @@ find_package(MPI REQUIRED)
 
 find_package(RRuntime REQUIRED)
 
+# make sure to use the python installation from the conda environment
+if(DEFINED ENV{CONDA_PREFIX})
+  set(Python3_EXECUTABLE "$ENV{CONDA_PREFIX}/bin/python3")
+endif()
+# Python is required to use the AI surrogate
+#find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
+find_package(Python3 COMPONENTS Development Interpreter REQUIRED)
+
 add_subdirectory(src)
 
 option(POET_PREPROCESS_BENCHS "Preprocess benchmarks" ON)

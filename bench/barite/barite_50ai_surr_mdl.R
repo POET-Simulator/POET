@@ -3,6 +3,10 @@
 ## load a pretrained model from tensorflow file
 ## Use the global variable "ai_surrogate_base_path" when using file paths
 ## relative to the input script
+
+model_file_path <- normalizePath(paste0(ai_surrogate_base_path,
+                                        "barite_50ai_all.keras"))
+
 initiate_model <- function() {
     require(keras3)
     require(tensorflow)
