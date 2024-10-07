@@ -300,10 +300,9 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     chem.getField().update(diffusion.getField());
 
     MSG("Chemistry step");
-    Python_Keras_setup(SRC_DIR, R["model_file_path"]);
     if (params.use_ai_surrogate) {
       double ai_start_t = MPI_Wtime();
-      // Save current values from the tug field as predictor for the ai step
+      // Get current values from the tug field for the ai predictions
       R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
       R.parseEval(
           std::string("predictors <- setNames(data.frame(matrix(TMP, nrow=" +
@@ -315,19 +314,21 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       MSG("AI Preprocessing");
       R.parseEval("predictors_scaled <- preprocess(predictors)");
 
+      
       // Predict
-      MSG("AI Predict");
-      R.parseEval(
-          "aipreds_scaled <- prediction_step(model, predictors_scaled)");
-
+      MSG("AI: Predict");
+      R["predictions_scaled"] = Rcpp::wrap(Python_keras_predict(R["predictors_scaled"], params.batch_size));
+      R.parseEval("setNames(predictions_scaled, TMP_POPS)");
+      
+      // after this comes old R code!
       // Apply postprocessing
       MSG("AI Postprocesing");
-      R.parseEval("aipreds <- postprocess(aipreds_scaled)");
+      R.parseEval("predictions <- postprocess(predictions_scaled)");
 
       // Validate prediction and write valid predictions to chem field
       MSG("AI Validate");
       R.parseEval(
-          "validity_vector <- validate_predictions(predictors, aipreds)");
+          "validity_vector <- validate_predictions(predictors, predictions)");
 
       MSG("AI Marking accepted");
       chem.set_ai_surrogate_validity_vector(R.parseEval("validity_vector"));
@@ -565,10 +566,25 @@ int main(int argc, char *argv[]) {
         const std::string ai_surrogate_input_script =
             init_list.getChemistryInit().ai_surrogate_input_script;
 
-        MSG("AI: sourcing user-provided script");
+        MSG("AI: Sourcing user-provided script");
         R.parseEvalQ(ai_surrogate_input_script);
-        MSG("AI: initialize AI model");
-        //R.parseEval("model <- initiate_model()");
+        if (!Rcpp::as<bool>(R.parseEval("exists(\"model_file_path\")"))) {
+          throw std::runtime_error("AI surrogate input script must contain variable model_file_path!");
+        }
+        run_params.batch_size = 2560; // default value determined in tests wtih the barite benchmark 
+        if (Rcpp::as<bool>(R.parseEval("exists(\"batch_size\")"))) {
+          run_params.batch_size = R["batch_size"];
+        }
+
+        MSG("AI: Initialize Python for AI surrogate functions");
+        std::string python_keras_file = std::string(SRC_DIR) +
+          "/src/Chemistry/SurrogateModels/AI_Python_functions/keras_AI_surrogate.py";
+        Python_Keras_setup(python_keras_file);
+        
+        MSG("AI: Initialize model");
+        Python_Keras_load_model(R["model_file_path"]);
+        
+        MSG("AI: Surrogate model initialized");
       }
 
       MSG("Init done on process with rank " + std::to_string(MY_RANK));

@@ -19,7 +19,12 @@ target_sources(POETLib
   Chemistry/SurrogateModels/AI_functions.cpp
 ) 
 
-target_include_directories(POETLib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${Python3_INCLUDE_DIRS}")
+target_include_directories(
+  POETLib PUBLIC
+  "${CMAKE_CURRENT_SOURCE_DIR}"
+  "${Python3_INCLUDE_DIRS}"
+  "${Python3_NumPy_INCLUDE_DIRS}")
+
 target_link_libraries(
   POETLib 
   PUBLIC RRuntime
@@ -28,6 +33,9 @@ target_link_libraries(
   PUBLIC MPI::MPI_C
   PUBLIC "${Python3_LIBRARIES}"
 )
+# Define Python API version
+target_compile_definitions(POETLib PRIVATE NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION)
+
 
 include(FetchContent)
 FetchContent_Declare(

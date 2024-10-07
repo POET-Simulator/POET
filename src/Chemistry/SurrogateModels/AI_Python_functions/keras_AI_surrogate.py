@@ -1,12 +1,11 @@
 import tensorflow as tf
+import numpy as np
 import os
 
 def initiate_model(model_file_path):
-    print(model_file_path, flush=True)
-    #model = tf.keras.load_model(model_file_path)
-    #return model
-    return
-
+    model = tf.keras.models.load_model(model_file_path)
+    return model
+    
 def training_step(model, x, y, x_val, y_val, batch_size, epochs):
     epochs = 2000 # This is a constant parameter during all experiments
     history = model.fit(x, y, 
@@ -18,4 +17,4 @@ def training_step(model, x, y, x_val, y_val, batch_size, epochs):
 
 def prediction_step(model, x, batch_size):
     prediction = model.predict(x, batch_size)
-    return prediction
+    return np.array(prediction, dtype=np.float64)

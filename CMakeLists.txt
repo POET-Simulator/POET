@@ -24,8 +24,7 @@ if(DEFINED ENV{CONDA_PREFIX})
   set(Python3_EXECUTABLE "$ENV{CONDA_PREFIX}/bin/python3")
 endif()
 # Python is required to use the AI surrogate
-#find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
-find_package(Python3 COMPONENTS Development Interpreter REQUIRED)
+find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
 
 add_subdirectory(src)
 
