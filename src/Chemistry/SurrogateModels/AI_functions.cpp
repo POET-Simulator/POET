@@ -83,7 +83,7 @@ PyObject* vector_to_numpy_array(const std::vector<std::vector<double>>& field) {
 std::vector<double> numpy_array_to_vector(PyObject* py_array) {
   std::vector<double> result;
   if (!PyArray_Check(py_array)) {
-    std::cerr << "The model's predictions are not a numpy array." << std::endl;
+    std::cerr << "The model's output is not a numpy array." << std::endl;
     return result;
   }
   // Cast generic PyObject to PyArrayObject
@@ -151,141 +151,102 @@ std::vector<double> Python_keras_predict(std::vector<std::vector<double>> x, int
  * in input_batch
  */
 Eigen::MatrixXd eigen_inference_batched(const Eigen::Ref<Eigen::MatrixXd>& input_batch, const EigenModel& model) {
-    Eigen::MatrixXd current_layer = input_batch;
-    std::cout << "input_batch ROWS " << current_layer.rows() << std::endl;
-    std::cout << "input_batch COLS " << current_layer.cols() << std::endl;
-    // Process all hidden layers
-    for (size_t layer = 0; layer < model.weight_matrices.size() - 1; ++layer) {
-
-        std::cout << "WEIGHTS LAYER " << layer << std::endl;
-        std::cout << "WEIGHTS ROWS " << model.weight_matrices[layer].rows() << std::endl;
-        std::cout << "WEIGHTS COLS " << model.weight_matrices[layer].cols() << std::endl;
-        std::cout << "BIASES SIZE " << model.biases[layer].size() << std::endl;
-
-        current_layer = (model.weight_matrices[layer] * current_layer);
-        std::cout << "MULTIPLIED" << std::endl;
-        current_layer = current_layer.colwise() + model.biases[layer];
-        current_layer = current_layer.array().max(0.0);
-    }
-
-    // Process output layer (without ReLU)
-    size_t output_layer = model.weight_matrices.size() - 1;
-    return (model.weight_matrices[output_layer] * current_layer).colwise() + model.biases[output_layer];
+  Eigen::MatrixXd current_layer = input_batch;
+  // Process all hidden layers
+  for (size_t layer = 0; layer < model.weight_matrices.size() - 1; ++layer) {
+    current_layer = (model.weight_matrices[layer] * current_layer);
+    current_layer = current_layer.colwise() + model.biases[layer];
+    current_layer = current_layer.array().max(0.0);
+  }
+  // Process output layer (without ReLU)
+  size_t output_layer = model.weight_matrices.size() - 1;
+  return (model.weight_matrices[output_layer] * current_layer).colwise() + model.biases[output_layer];
 }
+
 /**
  * @brief Converts the weights and biases from a Python Keras model to Eigen matrices
- * @return The struct containing the model weights and biases as aligned Eigen matrices 
+ * @return A EigenModel struct containing the model weights and biases as aligned Eigen matrices 
  */
 #include <iostream>
 
 EigenModel Python_Keras_get_weights_as_Eigen() {
-    EigenModel eigen_model;
+  EigenModel eigen_model;
 
-    PyObject* py_main_module = PyImport_AddModule("__main__");
-    if (!py_main_module) throw std::runtime_error("Failed to import Python main module");
+  PyObject* py_main_module = PyImport_AddModule("__main__");
+  PyObject* py_global_dict = PyModule_GetDict(py_main_module);
+  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
+  PyObject* py_get_weights_function = PyDict_GetItemString(py_global_dict, "get_weights");
+  PyObject* args = Py_BuildValue("(O)", py_keras_model);
+  PyObject* py_weights_list = PyObject_CallObject(py_get_weights_function, args);
+  
+  if (!py_weights_list) {
+    PyErr_Print(); // Print Python error
+    throw std::runtime_error("Failed to get weights from Keras model");
+  }
 
-    PyObject* py_global_dict = PyModule_GetDict(py_main_module);
-    if (!py_global_dict) throw std::runtime_error("Failed to get global dictionary");
+  Py_ssize_t num_layers = PyList_Size(py_weights_list);
+  for (Py_ssize_t i = 0; i < num_layers; i += 2) {
+    // Get weight matrix
+    PyObject* weight_array = PyList_GetItem(py_weights_list, i);
+    if (!PyArray_Check(weight_array)) throw std::runtime_error("Weight array is not a NumPy array");
+    PyArrayObject* weight_np = reinterpret_cast<PyArrayObject*>(weight_array);
+    if (PyArray_NDIM(weight_np) != 2) throw std::runtime_error("Weight array is not 2-dimensional");
 
-    PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
-    if (!py_keras_model) throw std::runtime_error("Failed to get Keras model from Python dictionary");
-
-    PyObject* py_get_weights_function = PyDict_GetItemString(py_global_dict, "get_weights");
-    if (!py_get_weights_function) throw std::runtime_error("Failed to get Keras get_weights function");
-
-    PyObject* args = Py_BuildValue("(O)", py_keras_model);
-    if (!args) throw std::runtime_error("Failed to create argument tuple");
-
-    // Call Python function
-    PyObject* py_weights_list = PyObject_CallObject(py_get_weights_function, args);
-    Py_DECREF(args); // Cleanup args
-
-    if (!py_weights_list) {
-        PyErr_Print(); // Print Python error
-        throw std::runtime_error("Failed to get weights from Keras model");
+    // Check weight data type (corresponding to the model's precision settings)
+    int dtype = PyArray_TYPE(weight_np);
+    if (dtype != NPY_FLOAT32 && dtype != NPY_DOUBLE) {
+        throw std::runtime_error("Unsupported data type for model weights. Must be NPY_FLOAT32 or");
     }
 
-    Py_ssize_t num_layers = PyList_Size(py_weights_list);
-    for (Py_ssize_t i = 0; i < num_layers; i += 2) {
-        // Get weight matrix
-        PyObject* weight_array = PyList_GetItem(py_weights_list, i);
-        if (!weight_array) throw std::runtime_error("Failed to get weight array");
-        if (!PyArray_Check(weight_array)) throw std::runtime_error("Weight array is not a NumPy array");
+    int num_rows = PyArray_DIM(weight_np, 0);
+    int num_cols = PyArray_DIM(weight_np, 1);
+    
+    // Cast the data depending on the model's precision setting
+    void* weight_data = PyArray_DATA(weight_np);
+    Eigen::MatrixXd weight_matrix;
 
-        PyArrayObject* weight_np = reinterpret_cast<PyArrayObject*>(weight_array);
-        if (PyArray_NDIM(weight_np) != 2) throw std::runtime_error("Weight array is not 2-dimensional");
-
-        // Check data type
-        int dtype = PyArray_TYPE(weight_np);
-        if (dtype == NPY_FLOAT32) {
-          std::cout << "DTYPE: SINGLE" << std::endl;
-        }
-        if (dtype == NPY_DOUBLE) {
-          std::cout << "DTYPE: DOUBLE" << std::endl;
-        }
-        if (dtype != NPY_FLOAT32 && dtype != NPY_DOUBLE) {
-            throw std::runtime_error("Unsupported data type for weight array");
-        }
-
-        // Cast the data correctly depending on the type
-        void* weight_data = PyArray_DATA(weight_np);
-        if (!weight_data) throw std::runtime_error("Failed to get weight data pointer");
-
-        int num_rows = PyArray_DIM(weight_np, 0);  // NumPy's row count
-        int num_cols = PyArray_DIM(weight_np, 1);  // NumPy's column count
-
-        Eigen::MatrixXd weight_matrix; // Use double-precision matrix
-
-        if (dtype == NPY_FLOAT32) {
-            // Handle float32 array from NumPy
-            float* weight_data_float = static_cast<float*>(weight_data);
-            weight_matrix = Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-                weight_data_float, num_rows, num_cols).cast<double>().transpose();
-        } else if (dtype == NPY_DOUBLE) {
-            // Handle double (float64) array from NumPy
-            double* weight_data_double = static_cast<double*>(weight_data);
-            weight_matrix = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-                weight_data_double, num_rows, num_cols).transpose();
-        }
-
-        // Get bias vector
-        PyObject* bias_array = PyList_GetItem(py_weights_list, i + 1);
-        if (!bias_array) throw std::runtime_error("Failed to get bias array");
-        if (!PyArray_Check(bias_array)) throw std::runtime_error("Bias array is not a NumPy array");
-
-        PyArrayObject* bias_np = reinterpret_cast<PyArrayObject*>(bias_array);
-        if (PyArray_NDIM(bias_np) != 1) throw std::runtime_error("Bias array is not 1-dimensional");
-
-        // Check bias data type and cast accordingly
-        int bias_dtype = PyArray_TYPE(bias_np);
-        void* bias_data = PyArray_DATA(bias_np);
-        if (!bias_data) throw std::runtime_error("Failed to get bias data pointer");
-
-        int bias_size = PyArray_DIM(bias_np, 0);
-        Eigen::VectorXd bias_vector; // Use double-precision vector
-
-        if (bias_dtype == NPY_FLOAT32) {
-            float* bias_data_float = static_cast<float*>(bias_data);
-            bias_vector = Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, 1>>(bias_data_float, bias_size).cast<double>();
-        } else if (bias_dtype == NPY_DOUBLE) {
-            double* bias_data_double = static_cast<double*>(bias_data);
-            bias_vector = Eigen::Map<Eigen::VectorXd>(bias_data_double, bias_size);
-        }
-
-        // Add to EigenModel
-        eigen_model.weight_matrices.push_back(weight_matrix);
-        eigen_model.biases.push_back(bias_vector);
+    if (dtype == NPY_FLOAT32) {
+      float* weight_data_float = static_cast<float*>(weight_data);
+      weight_matrix = Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        weight_data_float, num_rows, num_cols).cast<double>().transpose();
+    } else if (dtype == NPY_DOUBLE) {
+      double* weight_data_double = static_cast<double*>(weight_data);
+      weight_matrix = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        weight_data_double, num_rows, num_cols).transpose();
     }
 
-    // Clean up
-    Py_DECREF(py_weights_list); // Clean up Python list object
-    Py_DECREF(py_main_module); // Clean up Python module object
+    // Get bias vector
+    PyObject* bias_array = PyList_GetItem(py_weights_list, i + 1);
+    PyArrayObject* bias_np = reinterpret_cast<PyArrayObject*>(bias_array);
+    
+    // Check bias data type and cast accordingly
+    int bias_dtype = PyArray_TYPE(bias_np);
+    void* bias_data = PyArray_DATA(bias_np);
+    int bias_size = PyArray_DIM(bias_np, 0);
+    Eigen::VectorXd bias_vector;
 
-    return eigen_model;
+    if (bias_dtype == NPY_FLOAT32) {
+        float* bias_data_float = static_cast<float*>(bias_data);
+        bias_vector = Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, 1>>(bias_data_float, bias_size).cast<double>();
+    } else if (bias_dtype == NPY_DOUBLE) {
+        double* bias_data_double = static_cast<double*>(bias_data);
+        bias_vector = Eigen::Map<Eigen::VectorXd>(bias_data_double, bias_size);
+    }
+
+    // Add layer to Eigen model
+    eigen_model.weight_matrices.push_back(weight_matrix);
+    eigen_model.biases.push_back(bias_vector);
+  }
+  // Clean up
+  Py_DECREF(py_main_module);
+  Py_DECREF(py_global_dict);
+  Py_DECREF(py_keras_model);
+  Py_DECREF(py_get_weights_function);
+  Py_DECREF(args);
+  Py_DECREF(py_weights_list);
+  
+  return eigen_model;
 }
-
-
-
 
 
 /**
@@ -299,48 +260,30 @@ std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vect
   // Convert input data to Eigen matrix
   const int num_samples = x[0].size();
   const int num_features = x.size();
-  
-  std::cout << "num_samples " << num_samples << std::endl;
-  std::cout << "num_features " << num_features << std::endl;
 
   Eigen::MatrixXd full_input_matrix(num_features, num_samples);
   for (int i = 0; i < num_samples; ++i) {
     for (int j = 0; j < num_features; ++j) {
       full_input_matrix(j, i) = x[j][i];
-      if (i < 6) {std::cout << full_input_matrix.coeff(j, i) << "  ";}
     }
-    if (i < 6) {std::cout << std::endl;}
   }
-    
 
-  std::cout << "Eigen rows " << full_input_matrix.rows() << std::endl;
-  std::cout << "Eigen cols " << full_input_matrix.cols() << std::endl;
-
-    std::vector<double> result;
-    result.reserve(num_samples * model.biases.back().size());
+  std::vector<double> result;
+  result.reserve(num_samples * model.biases.back().size());
+  
+  int num_batches = std::ceil(static_cast<double>(num_samples) / batch_size);
+  for (int batch = 0; batch < num_batches; ++batch) {
+    int start_idx = batch * batch_size;
+    int end_idx = std::min((batch + 1) * batch_size, num_samples);
+    int current_batch_size = end_idx - start_idx;
+    // Extract the current input data batch
+    Eigen::MatrixXd batch_data(num_features, current_batch_size); 
+    batch_data = full_input_matrix.block(0, start_idx, num_features, current_batch_size);
     
-    int num_batches = std::ceil(static_cast<double>(num_samples) / batch_size);
-    for (int batch = 0; batch < num_batches; ++batch) {
-        int start_idx = batch * batch_size;
-        int end_idx = std::min((batch + 1) * batch_size, num_samples);
-        int current_batch_size = end_idx - start_idx;
-        std::cout << "CREATE INPUT BATCH" << std::endl;
-        // Extract the current batch
-        Eigen::MatrixXd input_batch(num_features, current_batch_size); 
-        input_batch = full_input_matrix.block(0, start_idx, num_features, current_batch_size);
-        // Perform inference on the batch
-        Eigen::MatrixXd output_batch(num_features, current_batch_size);
-        output_batch = eigen_inference_batched(input_batch, model);
-        for (int i = 0; i < num_samples; ++i) {
-          for (int j = 0; j < num_features; ++j) {
-            if (i < 6) {std::cout << output_batch.coeff(j, i) << "  ";}
-          }
-          if (i < 6) {std::cout << std::endl;}
-        }
-        
-        //result.insert(result.end(), output_batch.data(), output_batch.data() + output_batch.size());
-    }
-    
-    return result;
+    // Predict
+    batch_data = eigen_inference_batched(batch_data, model);
+    result.insert(result.end(), batch_data.data(), batch_data.data() + batch_data.size());
+  }
+  return result;
 }
 }

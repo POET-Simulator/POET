@@ -183,6 +183,12 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
     MSG("Work Package Size: " + std::to_string(params.work_package_size));
     MSG("DHT is " + BOOL_PRINT(params.use_dht));
     MSG("AI Surrogate is " + BOOL_PRINT(params.use_ai_surrogate));
+    #ifndef USE_AI_SURROGATE
+      if (params.use_ai_surrogate) {
+        throw std::runtime_error("AI Surrogate functions can only be used if they are included during compile time.\n \
+          Please use the CMake flag -DUSE_AI_SURROGATE=ON.");
+      }
+    #endif
 
     if (params.use_dht) {
       // MSG("DHT strategy is " + std::to_string(simparams.dht_strategy));
@@ -320,22 +326,14 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
       // Predict
       MSG("AI: Predict");
-      R["TMP"] = Python_keras_predict(R["predictors_scaled"], params.batch_size);
-      R.parseEval("predictions_scaled <- matrix(TMP, nrow=nrow(predictors), byrow = TRUE)");
-      R.parseEval("predictions_scaled <- setNames(data.frame(predictions_scaled), colnames(predictors))");
-      
-      MSG("Prediction from Python sent to R")
-      R.parseEval("print(head(predictions_scaled))");
+      //R["TMP"] = Python_keras_predict(R["predictors_scaled"], params.batch_size);
+      //R.parseEval("predictions_scaled <- matrix(TMP, nrow=nrow(predictors), byrow = TRUE)");
+      //R.parseEval("predictions_scaled <- setNames(data.frame(predictions_scaled), colnames(predictors))");
 
       EigenModel Eigen_model = Python_Keras_get_weights_as_Eigen();
-      MSG("EIGEN WEIGHTS SUCESFULLY IMPORTED");
       R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size);
       R.parseEval("predictions_scaled <- matrix(TMP, nrow=nrow(predictors), byrow = TRUE)");
-      MSG("EIGEN SUCESFULLY PREDICTED");
       R.parseEval("predictions_scaled <- setNames(data.frame(predictions_scaled), colnames(predictors))");
-
-      MSG("Prediction from Eigen sent to R")
-      R.parseEval("print(head(predictions_scaled))");
 
       // after this comes old R code!
       // Apply postprocessing

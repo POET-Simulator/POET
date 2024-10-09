@@ -22,7 +22,4 @@ def prediction_step(model, x, batch_size):
     return np.array(prediction, dtype=np.float64)
 
 def get_weights(model):
-    weights = model.get_weights()
-    # Convert all weight and bias arrays to float64 (double precision)
-    weights_as_double = [w.astype(np.float64) for w in weights]
-    return weights_as_double
+    return model.get_weights()

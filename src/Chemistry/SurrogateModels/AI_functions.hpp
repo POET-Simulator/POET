@@ -14,27 +14,15 @@
 #ifndef AI_FUNCTIONS_H
 #define AI_FUNCTIONS_H
 
-#include <Python.h>
-#include <string>
-
 // PhreeqC definition of pi clashes with Eigen macros so we have to temporarily undef it 
 #pragma push_macro("pi")
 #undef pi
 #include <Eigen/Dense> 
 #pragma pop_macro("pi")
 
+#include <string>
+
 namespace poet {
-
-int Python_Keras_setup(std::string functions_file_path);
-
-int Python_Keras_load_model(std::string model_file_path);
-
-PyObject* vector_to_numpy_array(const std::vector<std::vector<double>>& field);
-
-std::vector<double> numpy_array_to_vector(PyObject* py_matrix);
-
-std::vector<double> Python_keras_predict(std::vector<std::vector<double>> x, int batch_size);  
-
 // Define an aligned allocator for std::vector
 template<typename T>
 using aligned_vector = std::vector<T, Eigen::aligned_allocator<T>>;
@@ -44,14 +32,31 @@ struct EigenModel {
     aligned_vector<Eigen::VectorXd> biases;
 };
 
+// Ony declare the actual functions if flag is set 
+#ifdef USE_AI_SURROGATE
+
+int Python_Keras_setup(std::string functions_file_path);
+
+int Python_Keras_load_model(std::string model_file_path);
+
+std::vector<double> Python_keras_predict(std::vector<std::vector<double>> x, int batch_size);  
+
 EigenModel Python_Keras_get_weights_as_Eigen();
 
-Eigen::MatrixXd Eigen_batched_inference(const Eigen::Ref<Eigen::MatrixXd>& input_batch, const EigenModel& model);
+Eigen::MatrixXd eigen_inference_batched(const Eigen::Ref<Eigen::MatrixXd>& input_batch, const EigenModel& model);
 
 std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>> x, int batch_size);  
 
 //int Python_keras_train(Field &x, Field &y, Field &x_val, Field &y_val, int batch_size, std::string pid)
 
+// Otherwise, define the necessary stubs
+#else
+inline void Python_Keras_setup(std::string functions_file_path){}
+inline void Python_Keras_load_model(std::string model_file_path){}
+inline std::vector<double> Python_keras_predict(std::vector<std::vector<double>>, int){return {};}
+inline EigenModel Python_Keras_get_weights_as_Eigen(){return {};}
+inline std::vector<double> Eigen_predict(const EigenModel&, std::vector<std::vector<double>>, int){return {};}
+#endif
 
 } // namespace poet
 #endif // AI_FUNCTIONS_HPP

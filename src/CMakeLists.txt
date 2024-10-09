@@ -16,23 +16,52 @@ target_sources(POETLib
   Chemistry/SurrogateModels/HashFunctions.cpp
   Chemistry/SurrogateModels/InterpolationModule.cpp
   Chemistry/SurrogateModels/ProximityHashTable.cpp
-  Chemistry/SurrogateModels/AI_functions.cpp
 ) 
 
 target_include_directories(
-  POETLib PUBLIC
-  "${CMAKE_CURRENT_SOURCE_DIR}"
-  "${Python3_INCLUDE_DIRS}"
-  "${Python3_NumPy_INCLUDE_DIRS}")
+ POETLib PUBLIC
+ "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+option(USE_AI_SURROGATE "Compiles the AI surrogate functions with Python.h integration" OFF)
+if(USE_AI_SURROGATE)
+  add_definitions(-DUSE_AI_SURROGATE)
+  message("Building with AI surrogate functions")
+  # make sure to use the python installation from the conda environment
+  if(DEFINED ENV{CONDA_PREFIX})
+    set(Python3_EXECUTABLE "$ENV{CONDA_PREFIX}/bin/python3")
+  endif()
+  find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
+  
+  set_source_files_properties(
+    Chemistry/SurrogateModels/AI_functions.cpp
+    PROPERTIES COMPILE_FLAGS "-O3 -march=native -mtune=native"
+  )
+
+  target_sources(POETLib
+   PRIVATE
+   Chemistry/SurrogateModels/AI_functions.cpp
+  )
+  
+  target_include_directories(POETLib PUBLIC
+   "${Python3_INCLUDE_DIRS}"
+   "${Python3_NumPy_INCLUDE_DIRS}"
+  )
+  
+  target_link_libraries(POETLib
+   PUBLIC "${Python3_LIBRARIES}"
+  )
+endif() # USE_AI_SURROGATE
+
 
 target_link_libraries(
-  POETLib 
-  PUBLIC RRuntime
-  PUBLIC IPhreeqcPOET
-  PUBLIC tug
-  PUBLIC MPI::MPI_C
-  PUBLIC "${Python3_LIBRARIES}"
+ POETLib
+ PUBLIC RRuntime
+ PUBLIC IPhreeqcPOET
+ PUBLIC tug
+ PUBLIC MPI::MPI_C
 )
+
 # Define Python API version
 target_compile_definitions(POETLib PRIVATE NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION)
 

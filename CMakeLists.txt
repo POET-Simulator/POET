@@ -4,6 +4,8 @@ project(POET
   LANGUAGES CXX C
   DESCRIPTION "A coupled reactive transport simulator")
 
+set(CMAKE_CXX_FLAGS "-O3 -march=native -mtune=native")
+
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -18,13 +20,6 @@ get_poet_version()
 find_package(MPI REQUIRED)
 
 find_package(RRuntime REQUIRED)
-
-# make sure to use the python installation from the conda environment
-if(DEFINED ENV{CONDA_PREFIX})
-  set(Python3_EXECUTABLE "$ENV{CONDA_PREFIX}/bin/python3")
-endif()
-# Python is required to use the AI surrogate
-find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
 
 add_subdirectory(src)
 
