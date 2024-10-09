@@ -180,24 +180,29 @@ EigenModel Python_Keras_get_weights_as_Eigen() {
   PyObject* py_weights_list = PyObject_CallObject(py_get_weights_function, args);
   
   if (!py_weights_list) {
-    PyErr_Print(); // Print Python error
+    PyErr_Print();
     throw std::runtime_error("Failed to get weights from Keras model");
   }
 
   Py_ssize_t num_layers = PyList_Size(py_weights_list);
   for (Py_ssize_t i = 0; i < num_layers; i += 2) {
     // Get weight matrix
+    PyErr_Print();
     PyObject* weight_array = PyList_GetItem(py_weights_list, i);
-    if (!PyArray_Check(weight_array)) throw std::runtime_error("Weight array is not a NumPy array");
+    PyErr_Print();
+    if (!weight_array) {
+      PyErr_Print();
+      throw std::runtime_error("Failed to get layer from Keras weights");
+    }
+
     PyArrayObject* weight_np = reinterpret_cast<PyArrayObject*>(weight_array);
     if (PyArray_NDIM(weight_np) != 2) throw std::runtime_error("Weight array is not 2-dimensional");
-
+    PyErr_Print();
     // Check weight data type (corresponding to the model's precision settings)
     int dtype = PyArray_TYPE(weight_np);
     if (dtype != NPY_FLOAT32 && dtype != NPY_DOUBLE) {
         throw std::runtime_error("Unsupported data type for model weights. Must be NPY_FLOAT32 or");
     }
-
     int num_rows = PyArray_DIM(weight_np, 0);
     int num_cols = PyArray_DIM(weight_np, 1);
     
@@ -214,7 +219,6 @@ EigenModel Python_Keras_get_weights_as_Eigen() {
       weight_matrix = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         weight_data_double, num_rows, num_cols).transpose();
     }
-
     // Get bias vector
     PyObject* bias_array = PyList_GetItem(py_weights_list, i + 1);
     PyArrayObject* bias_np = reinterpret_cast<PyArrayObject*>(bias_array);
@@ -269,7 +273,7 @@ std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vect
   }
 
   std::vector<double> result;
-  result.reserve(num_samples * model.biases.back().size());
+  result.reserve(num_samples * num_features);
   
   int num_batches = std::ceil(static_cast<double>(num_samples) / batch_size);
   for (int batch = 0; batch < num_batches; ++batch) {

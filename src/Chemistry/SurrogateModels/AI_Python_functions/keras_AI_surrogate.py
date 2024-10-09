@@ -17,9 +17,7 @@ def training_step(model, x, y, x_val, y_val, batch_size, epochs):
 
 def prediction_step(model, x, batch_size):
     prediction = model.predict(x, batch_size)
-    print("Prediction from Python", flush=True)
-    print(prediction, flush=True)
     return np.array(prediction, dtype=np.float64)
 
 def get_weights(model):
-    return model.get_weights()
+    return  model.get_weights()

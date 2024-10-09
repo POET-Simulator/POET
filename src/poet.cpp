@@ -314,52 +314,61 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       double ai_start_t = MPI_Wtime();
       // Get current values from the tug field for the ai predictions
       R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
-      R.parseEval(
-          std::string("predictors <- setNames(data.frame(matrix(TMP, nrow=" +
-                      std::to_string(chem.getField().GetRequestedVecSize()) +
-                      ")), TMP_PROPS)"));
+      
+      R.parseEval("predictors <- matrix(TMP, nrow=" + 
+                  std::to_string(chem.getField().GetRequestedVecSize()) + ")");
+      R.parseEval("predictors <- setNames(data.frame(predictors), TMP_PROPS)");
       R.parseEval("predictors <- predictors[ai_surrogate_species]");
 
       // Apply preprocessing
       MSG("AI Preprocessing");
       R.parseEval("predictors_scaled <- preprocess(predictors)");
-
+      R.parseEval("print(head(predictors_scaled))");
       // Predict
       MSG("AI: Predict");
-      //R["TMP"] = Python_keras_predict(R["predictors_scaled"], params.batch_size);
-      //R.parseEval("predictions_scaled <- matrix(TMP, nrow=nrow(predictors), byrow = TRUE)");
-      //R.parseEval("predictions_scaled <- setNames(data.frame(predictions_scaled), colnames(predictors))");
+      R["TMP"] = Python_keras_predict(R["predictors_scaled"], params.batch_size);
+      R.parseEval(std:string("predictions_scaled <-" + 
+                              "matrix(TMP, nrow=nrow(predictors), byrow = TRUE)"));
+      R.parseEval(std::string("predictions_scaled <- " +
+                  "setNames(data.frame(predictions_scaled), colnames(predictors))"));
+      
+      MSG("Keras predictions:")
+      R.parseEval("print(head(predictions_scaled))");
+
 
       EigenModel Eigen_model = Python_Keras_get_weights_as_Eigen();
       R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size);
-      R.parseEval("predictions_scaled <- matrix(TMP, nrow=nrow(predictors), byrow = TRUE)");
-      R.parseEval("predictions_scaled <- setNames(data.frame(predictions_scaled), colnames(predictors))");
-
-      // after this comes old R code!
+      R.parseEval(std::string("predictions_scaled <- matrix(TMP, " +
+                  "nrow=nrow(predictors), byrow = TRUE)"));
+      R.parseEval(std::string("predictions_scaled <- " +
+                  "setNames(data.frame(predictions_scaled), colnames(predictors))"));
+      
+      MSG("Eigen predictions:")
+      R.parseEval("print(head(predictions_scaled))");
+      
+      
       // Apply postprocessing
       MSG("AI Postprocesing");
       R.parseEval("predictions <- postprocess(predictions_scaled)");
 
       // Validate prediction and write valid predictions to chem field
       MSG("AI Validate");
-      R.parseEval(
-          "validity_vector <- validate_predictions(predictors, predictions)");
+      R.parseEval("validity_vector <- validate_predictions(predictors, predictions)");
 
-      MSG("AI Marking accepted");
+      MSG("AI Marking valid");
       chem.set_ai_surrogate_validity_vector(R.parseEval("validity_vector"));
 
-      MSG("AI TempField");
       std::vector<std::vector<double>> RTempField =
-          R.parseEval("set_valid_predictions(predictors,\
-                                                                                       aipreds,\
-                                                                                       validity_vector)");
+      R.parseEval("set_valid_predictions(predictors, predictions, validity_vector)");
 
-      MSG("AI Set Field");
+      std::vector<std::vector<double>> RTempField =
+      R.parseEval("set_valid_predictions(predictors, predictions, validity_vector)");
+
       Field predictions_field =
           Field(R.parseEval("nrow(predictors)"), RTempField,
                 R.parseEval("colnames(predictors)"));
 
-      MSG("AI Update");
+      MSG("AI Update field with AI predictions");
       chem.getField().update(predictions_field);
       double ai_end_t = MPI_Wtime();
       R["ai_prediction_time"] = ai_end_t - ai_start_t;

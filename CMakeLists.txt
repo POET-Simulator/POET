@@ -4,8 +4,6 @@ project(POET
   LANGUAGES CXX C
   DESCRIPTION "A coupled reactive transport simulator")
 
-set(CMAKE_CXX_FLAGS "-O3 -march=native -mtune=native")
-
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
