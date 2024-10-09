@@ -583,6 +583,8 @@ int main(int argc, char *argv[]) {
       chemistry.masterSetField(init_list.getInitialGrid());
 
       if (run_params.use_ai_surrogate) {
+        // Load default function implementations 
+        R.parseEvalQ(ai_surrogate_r_library);
         /* Use dht species for model input and output */
         R["ai_surrogate_species"] =
             init_list.getChemistryInit().dht_species.getNames();

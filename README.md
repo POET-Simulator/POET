@@ -98,7 +98,11 @@ following available options:
   slowed down significantly. Defaults to _OFF_.
 - **POET_PREPROCESS_BENCHS**=*boolean* - enables the preprocessing of
   predefined models/benchmarks. Defaults to *ON*.
-  
+- **USE_AI_SURROGATE**=*boolean* - includes the functions of the AI
+  surrogate model. This relies on the presence of a Python environment
+  where Keras is installed.
+
+
 ### Example: Build from scratch
 
 Assuming that only the C/C++ compiler, MPI libraries, R runtime
@@ -318,7 +322,7 @@ precision is supported on that platform (e.g., nanoseconds).
 The AI surrogate can be activated for any benchmark and is by default
 initiated as a sequential keras model with three hidden layer of depth
 48, 96, 24 with relu activation and adam optimizer. All functions in
-`ai_surrogate_model.R` can be overridden by adding custom definitions
+`ai_surrogate_model_functions.R` can be overridden by adding custom definitions
 via an R file in the input script. This is done by adding the path to
 this file in the input script. Simply add the path as an element
 called `ai_surrogate_input_script` to the `chemistry_setup` list.
