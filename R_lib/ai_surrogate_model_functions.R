@@ -16,3 +16,7 @@ set_valid_predictions <- function(temp_field, prediction, validity) {
   temp_field[validity == 1, ] <- prediction[validity == 1, ]
   return(temp_field)
 }
+
+get_invalid_values <- function(df, validity) {
+  return(df[validity == 0, ])
+}

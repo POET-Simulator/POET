@@ -32,6 +32,11 @@ struct EigenModel {
     aligned_vector<Eigen::VectorXd> biases;
 };
 
+struct TrainingData {
+  std::vector<std::vector<double>> x;
+  std::vector<std::vector<double>> y;
+};
+
 // Ony declare the actual functions if flag is set 
 #ifdef USE_AI_SURROGATE
 
@@ -41,13 +46,16 @@ void Python_finalize();
 
 int Python_Keras_load_model(std::string model_file_path);
 
+int Python_Keras_training_thread(EigenModel* Eigen_model,
+                                 std::mutex* Eigen_model_mutex,
+                                 TrainingData* training_data_buffer,
+                                 std::mutex* training_data_buffer_mutex,
+                                 std::condition_variable* training_data_buffer_full,
+                                 bool* start_training);
+
 std::vector<double> Python_keras_predict(std::vector<std::vector<double>> x, int batch_size);  
 
-EigenModel Python_Keras_get_weights_as_Eigen();
-
-std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights();
-
-EigenModel transform_weights(const std::vector<std::vector<std::vector<double>>>& weights);
+void Python_Keras_set_weights_as_Eigen(EigenModel& eigen_model);
 
 Eigen::MatrixXd eigen_inference_batched(const Eigen::Ref<Eigen::MatrixXd>& input_batch, const EigenModel& model);
 
@@ -60,8 +68,11 @@ std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vect
 inline void Python_Keras_setup(std::string functions_file_path){}
 inline void Python_finalize(){};
 inline void Python_Keras_load_model(std::string model_file_path){}
+inline int Python_Keras_training_thread(EigenModel*, std::mutex*, 
+                                        TrainingData*, std::mutex*,
+                                        std::condition_variable*, bool*){return {};}
 inline std::vector<double> Python_keras_predict(std::vector<std::vector<double>>, int){return {};}
-inline EigenModel Python_Keras_get_weights_as_Eigen(){return {};}
+inline void Python_Keras_set_weights_as_Eigen(EigenModel&){}
 inline EigenModel transform_weights(const std::vector<std::vector<std::vector<double>>>){return {};}
 inline std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights(){return {};}
 inline std::vector<double> Eigen_predict(const EigenModel&, std::vector<std::vector<double>>, int){return {};}

@@ -28,8 +28,6 @@
 #include "DataStructures/Field.hpp"
 #include "Init/InitialList.hpp"
 #include "Transport/DiffusionModule.hpp"
-#include "Chemistry/SurrogateModels/AI_functions.hpp"
-
 #include <RInside.h>
 #include <Rcpp.h>
 #include <Rcpp/DataFrame.h>
@@ -40,7 +38,9 @@
 #include <memory>
 #include <mpi.h>
 #include <string>
-
+#include <mutex>
+#include <condition_variable>
+#include "Chemistry/SurrogateModels/AI_functions.hpp"
 #include <CLI/CLI.hpp>
 
 #include <poet.hpp>
@@ -72,6 +72,20 @@ static void init_global_functions(RInside &R) {
   ReadRObj_R = DEFunc("ReadRObj");
   SaveRObj_R = DEFunc("SaveRObj");
 }
+
+
+/* Global variables for the AI surrogate model */
+
+ /* For the weights and biases of the model
+  * to use in an inference function with Eigen */
+std::mutex Eigen_model_mutex; 
+static EigenModel Eigen_model;
+
+/* For the training data */
+std::mutex training_data_buffer_mutex;
+std::condition_variable training_data_buffer_full;
+bool start_training;
+TrainingData training_data_buffer;
 
 // HACK: this is a step back as the order and also the count of fields is
 // predefined, but it will change in the future
@@ -282,10 +296,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
    * master for the following loop) */
   uint32_t maxiter = params.timesteps.size();
   
-  /* Stores the weights and biases of the AI surrogate model
-   * for use in an inference function with Eigen */ 
-  EigenModel Eigen_model;
-
   if (params.print_progress) {
     chem.setProgressBarPrintout(true);
   }
@@ -337,70 +347,97 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       MSG("Keras predictions:")
       R.parseEval("print(head(predictions_scaled))");*/
 
-      static EigenModel Eigen_model;
-      Eigen_model = Python_Keras_get_weights_as_Eigen();
-      MSG("Eigen predictions")
+      MSG("AI: Predicting");
       R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size);
-      MSG("Eigen scaling")
       R.parseEval(std::string("predictions_scaled <- matrix(TMP, ") +
                   "nrow=nrow(predictors), byrow = TRUE)");
       R.parseEval(std::string("predictions_scaled <- ") +
                   "setNames(data.frame(predictions_scaled), colnames(predictors))");
       
-      R.parseEval("print(head(predictions_scaled))");
-      
-      
       // Apply postprocessing
-      MSG("AI Postprocesing");
+      MSG("AI: Postprocesing");
       R.parseEval("predictions <- postprocess(predictions_scaled)");
 
       // Validate prediction and write valid predictions to chem field
-      MSG("AI Validate");
+      MSG("AI: Validate");
       R.parseEval("validity_vector <- validate_predictions(predictors, predictions)");
 
-      MSG("AI Marking valid");
+      MSG("AI: Marking valid");
 
       chem.set_ai_surrogate_validity_vector(R.parseEval("validity_vector"));
 
       std::vector<std::vector<double>> RTempField =
         R.parseEval("set_valid_predictions(predictors, predictions, validity_vector)");
 
-
-      // ToDo: Set temp field for training data here
-      
       Field predictions_field =
           Field(R.parseEval("nrow(predictors)"), RTempField,
                 R.parseEval("colnames(predictors)"));
 
-      MSG("AI Update field with AI predictions");
+      MSG("AI: Update field with AI predictions");
       chem.getField().update(predictions_field);
       
+      // Add to training data buffer:
+      // Input values for which the predictions were invalid
+      MSG("AI: Add invalid input data to training data buffer");
+      std::vector<std::vector<double>> R_temp_x = 
+        R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
+      training_data_buffer_mutex.lock();
+
+      // Initialize training data buffer if empty
+      if (training_data_buffer.x.size() == 0) {
+        training_data_buffer.x = R_temp_x;
+      } else { // otherwise append
+        for (int col = 0; col < training_data_buffer.x.size(); col++) {
+          training_data_buffer.x[col].insert(training_data_buffer.x[col].end(),
+                                            R_temp_x[col].begin(), R_temp_x[col].end());
+        }
+      }
+      training_data_buffer_mutex.unlock();
+
+
       double ai_end_t = MPI_Wtime();
       R["ai_prediction_time"] = ai_end_t - ai_start_t;
     }
 
     // Run simulation step
+    MSG("Simulate chemistry");
     chem.simulate(dt);
 
     /* AI surrogate iterative training*/
     if (params.use_ai_surrogate) {
       double ai_start_t = MPI_Wtime();
 
+      // Add to training data buffer targets:
+      // True values for invalid predictions      
+      MSG("AI: Add invalid target data to training data buffer");
       R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
-      R.parseEval(
-          std::string("targets <- setNames(data.frame(matrix(TMP, nrow=" +
-                      std::to_string(chem.getField().GetRequestedVecSize()) +
-                      ")), TMP_PROPS)"));
-      R.parseEval("targets <- targets[ai_surrogate_species]");
-
-      // TODO: Check how to get the correct columns
+      R.parseEval("targets <- matrix(TMP, nrow=" + 
+                  std::to_string(chem.getField().GetRequestedVecSize()) + ")");
+      R.parseEval("targets <- setNames(data.frame(targets), TMP_PROPS)");
+      R.parseEval("targets <- predictors[ai_surrogate_species]");
       R.parseEval("target_scaled <- preprocess(targets)");
 
-      MSG("AI: incremental training");
-      R.parseEval("model <- training_step(model, predictors_scaled, "
-                  "target_scaled, validity_vector)");
-      double ai_end_t = MPI_Wtime();
-      R["ai_training_time"] = ai_end_t - ai_start_t;
+      std::vector<std::vector<double>> R_temp_y = 
+        R.parseEval("get_invalid_values(target_scaled, validity_vector)");
+      training_data_buffer_mutex.lock();
+      
+      // Initialize training data buffer if empty
+      if (training_data_buffer.y.size() == 0) {
+        training_data_buffer.y = R_temp_y;
+      } else { // otherwise append  
+        for (int col = 0; col < training_data_buffer.y.size(); col++) {
+          training_data_buffer.y[col].insert(training_data_buffer.y[col].end(),
+                                             R_temp_y[col].begin(), R_temp_y[col].end());
+        }
+      }
+
+      training_data_buffer_mutex.unlock();
+
+      // Signal to training thread if training data buffer is full
+      if (training_data_buffer.y[0].size() > 2000) {
+        start_training = true;
+        training_data_buffer_full.notify_one();
+      }
     }
 
     // MPI_Barrier(MPI_COMM_WORLD);
@@ -615,7 +652,13 @@ int main(int argc, char *argv[]) {
         
         MSG("AI: Initialize model");
         Python_Keras_load_model(R["model_file_path"]);
-        
+        Python_Keras_set_weights_as_Eigen(Eigen_model);
+
+        MSG("AI: Initialize training thread");
+        Python_Keras_training_thread(&Eigen_model, &Eigen_model_mutex,
+                                     &training_data_buffer, &training_data_buffer_mutex,
+                                     &training_data_buffer_full, &start_training);
+
         MSG("AI: Surrogate model initialized");
       }
 

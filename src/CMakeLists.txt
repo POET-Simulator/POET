@@ -27,11 +27,14 @@ option(USE_AI_SURROGATE "Compiles the AI surrogate functions with Python.h integ
 if(USE_AI_SURROGATE)
   add_definitions(-DUSE_AI_SURROGATE)
   message("Building with AI surrogate functions")
+  message(" - Needs Python with Numpy and Keras and Threads libraries")
   # make sure to use the python installation from the conda environment
   if(DEFINED ENV{CONDA_PREFIX})
     set(Python3_EXECUTABLE "$ENV{CONDA_PREFIX}/bin/python3")
   endif()
   find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
+  
+  find_package(Threads REQUIRED)
   
   set_source_files_properties(
     Chemistry/SurrogateModels/AI_functions.cpp
@@ -50,6 +53,7 @@ if(USE_AI_SURROGATE)
   
   target_link_libraries(POETLib
    PUBLIC "${Python3_LIBRARIES}"
+   PUBLIC Threads::Threads pthread
   )
 endif() # USE_AI_SURROGATE
 

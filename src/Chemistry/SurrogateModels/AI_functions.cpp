@@ -5,6 +5,9 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include <Eigen/Dense>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 #include "AI_functions.hpp"
 
 
@@ -49,6 +52,95 @@ int Python_Keras_load_model(std::string model_file_path) {
     throw std::runtime_error("Keras model could not be loaded from: " + model_file_path);
   }
   return py_model_loaded;
+}
+
+
+/**
+ * @brief Function for threadsafe parallel training and weight updating.
+ * The function waits conditionally until the training data buffer is full.
+ * It then clears the buffer and starts training, after training it writes the new weights to 
+ * the Eigen model.  
+ * @param Eigen_model Pointer to the EigenModel struct that will be updates with new weights
+ * @param Eigen_model_mutex Mutex to ensure threadsafe access to the EigenModel struct
+ * @param training_data_buffer Pointer to the Training data struct with which the model is trained
+ * @param training_data_buffer_mutex Mutex to ensure threadsafe access to the training data struct
+ * @param training_data_buffer_full Conditional waiting variable with wich the main thread signals
+ * when a training run can start
+ * @param start_training Conditional waiting predicate to mitigate against spurious wakeups
+ * @return 0 if function was succesful
+ */
+void parallel_training(EigenModel* Eigen_model,
+                       std::mutex* Eigen_model_mutex,
+                       TrainingData* training_data_buffer,
+                       std::mutex* training_data_buffer_mutex,
+                       std::condition_variable* training_data_buffer_full,
+                       bool* start_training) {
+  while (true) {
+    std::unique_lock<std::mutex> lock(*training_data_buffer_mutex);
+    // Conditional waiting:
+    // Sleeps until a signal arrives on training_data_buffer_full
+    // Releases the lock on training_data_buffer_mutex while sleeping
+    // Lambda function with start_training checks if it was a spurious wakeup
+    // Reaquires the lock on training_data_buffer_mutex after waking up
+    // If start_training has been set to true while the thread was active, it does NOT
+    // Wait for a signal on training_data_buffer_full but starts the next round immediately.
+    training_data_buffer_full->wait(lock, [start_training] { return *start_training;});
+    
+    // Reset the  waiting predicate
+    *start_training = false;
+
+    // Get the necessary training data
+    // Initialize training data input and targets
+    std::vector<std::vector<double>> inputs(9);
+    std::vector<std::vector<double>> targets(9);
+    for (int col = 0; col < training_data_buffer->x.size(); col++) {
+      // Copy data from the front of the buffer to the training inputs
+      std::copy(training_data_buffer->x[col].begin(),
+                training_data_buffer->x[col].begin() + 2000, 
+                std::back_inserter(inputs[col]));
+      // Remove copied data from the front of the buffer
+      training_data_buffer->x[col].erase(training_data_buffer->x[col].begin(),
+                                         training_data_buffer->x[col].begin() + 2000);
+
+      // Copy data from the front of the buffer to the training targets
+      std::copy(training_data_buffer->y[col].begin(),
+                training_data_buffer->y[col].begin() + 2000, 
+                std::back_inserter(targets[col]));
+      // Remove copied data from the front of the buffer
+      training_data_buffer->y[col].erase(training_data_buffer->y[col].begin(),
+                                         training_data_buffer->y[col].begin() + 2000);
+
+    }
+    std::cout << "Training data rows: " << training_data_buffer->y[0].size() << std::endl;
+    // Unlock the training_data_buffer_mutex 
+    lock.unlock();
+
+    // TODO: Actual training
+  } 
+}
+
+
+/**
+ * @brief Starts a thread for parallel training and weight updating. This Wrapper function
+ * ensures, that the main POET program can be built without pthread support if the AI
+ * surrogate functions are disabled during compilation. 
+ * @param Eigen_model Pointer to the EigenModel struct that will be updates with new weights
+ * @param Eigen_model_mutex Mutex to ensure threadsafe access to the EigenModel struct
+ * @param training_data_buffer Pointer to the Training data struct with which the model is trained
+ * @param training_data_buffer_mutex Mutex to ensure threadsafe access to the training data struct
+ * @return 0 if function was succesful
+ */
+int Python_Keras_training_thread(EigenModel* Eigen_model,
+                                 std::mutex* Eigen_model_mutex,
+                                 TrainingData* training_data_buffer,
+                                 std::mutex* training_data_buffer_mutex,
+                                 std::condition_variable* training_data_buffer_full,
+                                 bool* start_training) {
+  std::thread training_thread(parallel_training, Eigen_model, Eigen_model_mutex,
+                              training_data_buffer, training_data_buffer_mutex,
+                              training_data_buffer_full, start_training);
+  training_thread.detach();
+  return 0;
 }
 
 /**
@@ -162,9 +254,7 @@ Eigen::MatrixXd eigen_inference_batched(const Eigen::Ref<Eigen::MatrixXd>& input
  * @brief Converts the weights and biases from the Python Keras model to Eigen matrices
  * @return A EigenModel struct containing the model weights and biases as aligned Eigen matrices 
  */
-EigenModel Python_Keras_get_weights_as_Eigen() {
-  EigenModel eigen_model;
-
+void Python_Keras_set_weights_as_Eigen(EigenModel& eigen_model) {
   PyObject* py_main_module = PyImport_AddModule("__main__");
   PyObject* py_global_dict = PyModule_GetDict(py_main_module);
   PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
@@ -179,6 +269,9 @@ EigenModel Python_Keras_get_weights_as_Eigen() {
       throw std::runtime_error("Failed to get weights from Keras model");
   }
 
+  // Clear old values
+  eigen_model.weight_matrices.clear();
+  eigen_model.biases.clear();
   Py_ssize_t num_layers = PyList_Size(py_weights_list);
   for (Py_ssize_t i = 0; i < num_layers; i += 2) {
     // Get weight matrix
@@ -240,8 +333,6 @@ EigenModel Python_Keras_get_weights_as_Eigen() {
   // Clean up
   Py_DECREF(py_weights_list);
   Py_DECREF(args);
-
-  return eigen_model;
 }
 
 /**
