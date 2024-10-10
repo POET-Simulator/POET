@@ -310,6 +310,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     chem.getField().update(diffusion.getField());
 
     MSG("Chemistry step");
+    
     if (params.use_ai_surrogate) {
       double ai_start_t = MPI_Wtime();
       // Get current values from the tug field for the ai predictions
@@ -323,27 +324,29 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       // Apply preprocessing
       MSG("AI Preprocessing");
       R.parseEval("predictors_scaled <- preprocess(predictors)");
-      R.parseEval("print(head(predictors_scaled))");
-      // Predict
+
+      /*
+      // Predict Keras
       MSG("AI: Predict");
       R["TMP"] = Python_keras_predict(R["predictors_scaled"], params.batch_size);
-      R.parseEval(std:string("predictions_scaled <-" + 
-                              "matrix(TMP, nrow=nrow(predictors), byrow = TRUE)"));
-      R.parseEval(std::string("predictions_scaled <- " +
-                  "setNames(data.frame(predictions_scaled), colnames(predictors))"));
+      R.parseEval(std::string("predictions_scaled <-") + 
+                              "matrix(TMP, nrow=nrow(predictors), byrow = TRUE)");
+      R.parseEval(std::string("predictions_scaled <- ") +
+                  "setNames(data.frame(predictions_scaled), colnames(predictors))");
       
       MSG("Keras predictions:")
-      R.parseEval("print(head(predictions_scaled))");
+      R.parseEval("print(head(predictions_scaled))");*/
 
-
-      EigenModel Eigen_model = Python_Keras_get_weights_as_Eigen();
+      static EigenModel Eigen_model;
+      Eigen_model = Python_Keras_get_weights_as_Eigen();
+      MSG("Eigen predictions")
       R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size);
-      R.parseEval(std::string("predictions_scaled <- matrix(TMP, " +
-                  "nrow=nrow(predictors), byrow = TRUE)"));
-      R.parseEval(std::string("predictions_scaled <- " +
-                  "setNames(data.frame(predictions_scaled), colnames(predictors))"));
+      MSG("Eigen scaling")
+      R.parseEval(std::string("predictions_scaled <- matrix(TMP, ") +
+                  "nrow=nrow(predictors), byrow = TRUE)");
+      R.parseEval(std::string("predictions_scaled <- ") +
+                  "setNames(data.frame(predictions_scaled), colnames(predictors))");
       
-      MSG("Eigen predictions:")
       R.parseEval("print(head(predictions_scaled))");
       
       
@@ -356,24 +359,27 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       R.parseEval("validity_vector <- validate_predictions(predictors, predictions)");
 
       MSG("AI Marking valid");
+
       chem.set_ai_surrogate_validity_vector(R.parseEval("validity_vector"));
 
       std::vector<std::vector<double>> RTempField =
-      R.parseEval("set_valid_predictions(predictors, predictions, validity_vector)");
+        R.parseEval("set_valid_predictions(predictors, predictions, validity_vector)");
 
-      std::vector<std::vector<double>> RTempField =
-      R.parseEval("set_valid_predictions(predictors, predictions, validity_vector)");
 
+      // ToDo: Set temp field for training data here
+      
       Field predictions_field =
           Field(R.parseEval("nrow(predictors)"), RTempField,
                 R.parseEval("colnames(predictors)"));
 
       MSG("AI Update field with AI predictions");
       chem.getField().update(predictions_field);
+      
       double ai_end_t = MPI_Wtime();
       R["ai_prediction_time"] = ai_end_t - ai_start_t;
     }
 
+    // Run simulation step
     chem.simulate(dt);
 
     /* AI surrogate iterative training*/
@@ -627,6 +633,10 @@ int main(int argc, char *argv[]) {
       r_vis_code = "SaveRObj(x = profiling, path = paste0(out_dir, "
                    "'/timings.', setup$out_ext));";
       R.parseEval(r_vis_code);
+
+      if (run_params.use_ai_surrogate) {
+        Python_finalize();
+      }
 
       MSG("Done! Results are stored as R objects into <" + run_params.out_dir +
           "/timings." + run_params.out_ext);

@@ -22,6 +22,8 @@ namespace poet {
 int Python_Keras_setup(std::string functions_file_path) {
   // Initialize Python functions
   Py_Initialize();
+  // Import numpy functions
+  _import_array();
   FILE* fp = fopen(functions_file_path.c_str(), "r");
   int py_functions_initialized = PyRun_SimpleFile(fp, functions_file_path.c_str());
   fclose(fp);
@@ -57,7 +59,6 @@ int Python_Keras_load_model(std::string model_file_path) {
  */
 PyObject* vector_to_numpy_array(const std::vector<std::vector<double>>& field) {
   // import numpy and numpy array API
-  PyObject* numpy = PyImport_ImportModule("numpy");
   import_array();
   npy_intp dims[2] = {static_cast<npy_intp>(field[0].size()), 
                       static_cast<npy_intp>(field.size())};
@@ -69,8 +70,6 @@ PyObject* vector_to_numpy_array(const std::vector<std::vector<double>>& field) {
       data[j * field.size() + i] = field[i][j];
     }
   }
-  // Clean up
-  Py_DECREF(numpy);
   return np_array;
 }
 
@@ -132,13 +131,9 @@ std::vector<double> Python_keras_predict(std::vector<std::vector<double>> x, int
   std::vector<double> predictions = numpy_array_to_vector(py_predictions); 
   // Clean up
   PyErr_Print(); // Ensure that python errors make it to stdout 
-  Py_DECREF(py_df_x);
-  Py_DECREF(py_main_module);
-  Py_DECREF(py_global_dict);
-  Py_DECREF(py_keras_model);
-  Py_DECREF(py_inference_function);
-  Py_DECREF(args);
-  Py_DECREF(py_predictions);
+  Py_XDECREF(py_df_x);
+  Py_XDECREF(args);
+  Py_XDECREF(py_predictions);
   return predictions;
 }
 
@@ -164,11 +159,9 @@ Eigen::MatrixXd eigen_inference_batched(const Eigen::Ref<Eigen::MatrixXd>& input
 }
 
 /**
- * @brief Converts the weights and biases from a Python Keras model to Eigen matrices
+ * @brief Converts the weights and biases from the Python Keras model to Eigen matrices
  * @return A EigenModel struct containing the model weights and biases as aligned Eigen matrices 
  */
-#include <iostream>
-
 EigenModel Python_Keras_get_weights_as_Eigen() {
   EigenModel eigen_model;
 
@@ -177,55 +170,57 @@ EigenModel Python_Keras_get_weights_as_Eigen() {
   PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
   PyObject* py_get_weights_function = PyDict_GetItemString(py_global_dict, "get_weights");
   PyObject* args = Py_BuildValue("(O)", py_keras_model);
+  
+  // Call Python function
   PyObject* py_weights_list = PyObject_CallObject(py_get_weights_function, args);
   
   if (!py_weights_list) {
-    PyErr_Print();
-    throw std::runtime_error("Failed to get weights from Keras model");
+      PyErr_Print();
+      throw std::runtime_error("Failed to get weights from Keras model");
   }
 
   Py_ssize_t num_layers = PyList_Size(py_weights_list);
   for (Py_ssize_t i = 0; i < num_layers; i += 2) {
     // Get weight matrix
-    PyErr_Print();
     PyObject* weight_array = PyList_GetItem(py_weights_list, i);
-    PyErr_Print();
-    if (!weight_array) {
-      PyErr_Print();
-      throw std::runtime_error("Failed to get layer from Keras weights");
-    }
+    if (!weight_array) throw std::runtime_error("Failed to get weight array");
+    if (!PyArray_Check(weight_array)) throw std::runtime_error("Weight array is not a NumPy array");
 
     PyArrayObject* weight_np = reinterpret_cast<PyArrayObject*>(weight_array);
     if (PyArray_NDIM(weight_np) != 2) throw std::runtime_error("Weight array is not 2-dimensional");
-    PyErr_Print();
-    // Check weight data type (corresponding to the model's precision settings)
+
+    // Check data type
     int dtype = PyArray_TYPE(weight_np);
     if (dtype != NPY_FLOAT32 && dtype != NPY_DOUBLE) {
-        throw std::runtime_error("Unsupported data type for model weights. Must be NPY_FLOAT32 or");
+        throw std::runtime_error("Unsupported data type.\nMust be NPY_FLOAT32 or NPY_DOUBLE");
     }
+
+    // Cast the data correctly depending on the type
+    void* weight_data = PyArray_DATA(weight_np);
     int num_rows = PyArray_DIM(weight_np, 0);
     int num_cols = PyArray_DIM(weight_np, 1);
-    
-    // Cast the data depending on the model's precision setting
-    void* weight_data = PyArray_DATA(weight_np);
-    Eigen::MatrixXd weight_matrix;
 
+    Eigen::MatrixXd weight_matrix;
     if (dtype == NPY_FLOAT32) {
-      float* weight_data_float = static_cast<float*>(weight_data);
-      weight_matrix = Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        weight_data_float, num_rows, num_cols).cast<double>().transpose();
+        // Handle float32 array from NumPy
+        float* weight_data_float = static_cast<float*>(weight_data);
+        weight_matrix = Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+            weight_data_float, num_rows, num_cols).cast<double>().transpose();
     } else if (dtype == NPY_DOUBLE) {
-      double* weight_data_double = static_cast<double*>(weight_data);
-      weight_matrix = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        weight_data_double, num_rows, num_cols).transpose();
+        // Handle double (float64) array from NumPy
+        double* weight_data_double = static_cast<double*>(weight_data);
+        weight_matrix = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+            weight_data_double, num_rows, num_cols).transpose();
     }
+
     // Get bias vector
     PyObject* bias_array = PyList_GetItem(py_weights_list, i + 1);
     PyArrayObject* bias_np = reinterpret_cast<PyArrayObject*>(bias_array);
-    
+    if (PyArray_NDIM(bias_np) != 1) throw std::runtime_error("Bias array is not 1-dimensional");
+
     // Check bias data type and cast accordingly
-    int bias_dtype = PyArray_TYPE(bias_np);
     void* bias_data = PyArray_DATA(bias_np);
+    int bias_dtype = PyArray_TYPE(bias_np);
     int bias_size = PyArray_DIM(bias_np, 0);
     Eigen::VectorXd bias_vector;
 
@@ -237,24 +232,20 @@ EigenModel Python_Keras_get_weights_as_Eigen() {
         bias_vector = Eigen::Map<Eigen::VectorXd>(bias_data_double, bias_size);
     }
 
-    // Add layer to Eigen model
-    eigen_model.weight_matrices.push_back(weight_matrix);
-    eigen_model.biases.push_back(bias_vector);
+    // Add to EigenModel
+    eigen_model.weight_matrices.emplace_back(weight_matrix);
+    eigen_model.biases.emplace_back(bias_vector);
   }
+
   // Clean up
-  Py_DECREF(py_main_module);
-  Py_DECREF(py_global_dict);
-  Py_DECREF(py_keras_model);
-  Py_DECREF(py_get_weights_function);
-  Py_DECREF(args);
   Py_DECREF(py_weights_list);
-  
+  Py_DECREF(args);
+
   return eigen_model;
 }
 
-
 /**
- * @brief Gets the model weights and biases of the Keras model and uses Eigen for fast inference
+ * @brief Uses the Eigen representation of the Keras model weights   for fast inference
  * @param x 2D-Matrix with the content of a Field object
  * @param batch_size size for mini-batches that are used in the Keras model.predict() method
  * @return Predictions that the neural network made from the input values x. The predictions are
@@ -275,6 +266,11 @@ std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vect
   std::vector<double> result;
   result.reserve(num_samples * num_features);
   
+  if (num_features != model.weight_matrices[0].cols()) {
+    throw std::runtime_error("Input data size " + std::to_string(num_features) + \
+      " does not match model input layer of size " + std::to_string(model.weight_matrices[0].cols()));
+  }
+
   int num_batches = std::ceil(static_cast<double>(num_samples) / batch_size);
   for (int batch = 0; batch < num_batches; ++batch) {
     int start_idx = batch * batch_size;
@@ -290,4 +286,9 @@ std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vect
   }
   return result;
 }
+
+void Python_finalize() {
+  Py_Finalize();
+}
+
 }

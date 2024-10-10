@@ -37,11 +37,17 @@ struct EigenModel {
 
 int Python_Keras_setup(std::string functions_file_path);
 
+void Python_finalize();
+
 int Python_Keras_load_model(std::string model_file_path);
 
 std::vector<double> Python_keras_predict(std::vector<std::vector<double>> x, int batch_size);  
 
 EigenModel Python_Keras_get_weights_as_Eigen();
+
+std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights();
+
+EigenModel transform_weights(const std::vector<std::vector<std::vector<double>>>& weights);
 
 Eigen::MatrixXd eigen_inference_batched(const Eigen::Ref<Eigen::MatrixXd>& input_batch, const EigenModel& model);
 
@@ -52,9 +58,12 @@ std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vect
 // Otherwise, define the necessary stubs
 #else
 inline void Python_Keras_setup(std::string functions_file_path){}
+inline void Python_finalize(){};
 inline void Python_Keras_load_model(std::string model_file_path){}
 inline std::vector<double> Python_keras_predict(std::vector<std::vector<double>>, int){return {};}
 inline EigenModel Python_Keras_get_weights_as_Eigen(){return {};}
+inline EigenModel transform_weights(const std::vector<std::vector<std::vector<double>>>){return {};}
+inline std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights(){return {};}
 inline std::vector<double> Eigen_predict(const EigenModel&, std::vector<std::vector<double>>, int){return {};}
 #endif
 
