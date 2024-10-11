@@ -428,7 +428,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       training_data_buffer_mutex.unlock();
 
       // Signal to training thread if training data buffer is full
-      if (training_data_buffer.y[0].size() > 2000) {
+      if (training_data_buffer.y[0].size() > params.training_data_size) {
         start_training = true;
         training_data_buffer_full.notify_one();
       }
