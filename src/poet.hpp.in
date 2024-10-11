@@ -68,6 +68,11 @@ struct RuntimeParameters {
   static constexpr std::uint32_t INTERP_BUCKET_ENTRIES_DEFAULT = 20;
   std::uint32_t interp_bucket_entries;
 
-  bool use_ai_surrogate = false;
-  int batch_size;
+  /*AI surriogate configuration*/
+  bool use_ai_surrogate = false; // Can be set with command line flag ---ai-surrogate
+
+  bool use_Keras_predictions; // Can be set in the R input script
+  int batch_size; // Can be set in the R input script
+  int training_epochs; // Can be set in the R input script
+  int training_data_size; // Can be set in the R input script
 };

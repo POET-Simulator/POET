@@ -15,7 +15,6 @@ using namespace std;
 
 namespace poet {
 
-
 /**
  * @brief Loads the Python interpreter and functions  
  * @param functions_file_path Path to the Python file where the AI surrogate
@@ -54,95 +53,6 @@ int Python_Keras_load_model(std::string model_file_path) {
   return py_model_loaded;
 }
 
-
-/**
- * @brief Function for threadsafe parallel training and weight updating.
- * The function waits conditionally until the training data buffer is full.
- * It then clears the buffer and starts training, after training it writes the new weights to 
- * the Eigen model.  
- * @param Eigen_model Pointer to the EigenModel struct that will be updates with new weights
- * @param Eigen_model_mutex Mutex to ensure threadsafe access to the EigenModel struct
- * @param training_data_buffer Pointer to the Training data struct with which the model is trained
- * @param training_data_buffer_mutex Mutex to ensure threadsafe access to the training data struct
- * @param training_data_buffer_full Conditional waiting variable with wich the main thread signals
- * when a training run can start
- * @param start_training Conditional waiting predicate to mitigate against spurious wakeups
- * @return 0 if function was succesful
- */
-void parallel_training(EigenModel* Eigen_model,
-                       std::mutex* Eigen_model_mutex,
-                       TrainingData* training_data_buffer,
-                       std::mutex* training_data_buffer_mutex,
-                       std::condition_variable* training_data_buffer_full,
-                       bool* start_training) {
-  while (true) {
-    std::unique_lock<std::mutex> lock(*training_data_buffer_mutex);
-    // Conditional waiting:
-    // Sleeps until a signal arrives on training_data_buffer_full
-    // Releases the lock on training_data_buffer_mutex while sleeping
-    // Lambda function with start_training checks if it was a spurious wakeup
-    // Reaquires the lock on training_data_buffer_mutex after waking up
-    // If start_training has been set to true while the thread was active, it does NOT
-    // Wait for a signal on training_data_buffer_full but starts the next round immediately.
-    training_data_buffer_full->wait(lock, [start_training] { return *start_training;});
-    
-    // Reset the  waiting predicate
-    *start_training = false;
-
-    // Get the necessary training data
-    // Initialize training data input and targets
-    std::vector<std::vector<double>> inputs(9);
-    std::vector<std::vector<double>> targets(9);
-    for (int col = 0; col < training_data_buffer->x.size(); col++) {
-      // Copy data from the front of the buffer to the training inputs
-      std::copy(training_data_buffer->x[col].begin(),
-                training_data_buffer->x[col].begin() + 2000, 
-                std::back_inserter(inputs[col]));
-      // Remove copied data from the front of the buffer
-      training_data_buffer->x[col].erase(training_data_buffer->x[col].begin(),
-                                         training_data_buffer->x[col].begin() + 2000);
-
-      // Copy data from the front of the buffer to the training targets
-      std::copy(training_data_buffer->y[col].begin(),
-                training_data_buffer->y[col].begin() + 2000, 
-                std::back_inserter(targets[col]));
-      // Remove copied data from the front of the buffer
-      training_data_buffer->y[col].erase(training_data_buffer->y[col].begin(),
-                                         training_data_buffer->y[col].begin() + 2000);
-
-    }
-    std::cout << "Training data rows: " << training_data_buffer->y[0].size() << std::endl;
-    // Unlock the training_data_buffer_mutex 
-    lock.unlock();
-
-    // TODO: Actual training
-  } 
-}
-
-
-/**
- * @brief Starts a thread for parallel training and weight updating. This Wrapper function
- * ensures, that the main POET program can be built without pthread support if the AI
- * surrogate functions are disabled during compilation. 
- * @param Eigen_model Pointer to the EigenModel struct that will be updates with new weights
- * @param Eigen_model_mutex Mutex to ensure threadsafe access to the EigenModel struct
- * @param training_data_buffer Pointer to the Training data struct with which the model is trained
- * @param training_data_buffer_mutex Mutex to ensure threadsafe access to the training data struct
- * @return 0 if function was succesful
- */
-int Python_Keras_training_thread(EigenModel* Eigen_model,
-                                 std::mutex* Eigen_model_mutex,
-                                 TrainingData* training_data_buffer,
-                                 std::mutex* training_data_buffer_mutex,
-                                 std::condition_variable* training_data_buffer_full,
-                                 bool* start_training) {
-  std::thread training_thread(parallel_training, Eigen_model, Eigen_model_mutex,
-                              training_data_buffer, training_data_buffer_mutex,
-                              training_data_buffer_full, start_training);
-  training_thread.detach();
-  return 0;
-}
-
 /**
  * @brief Converts the std::vector 2D matrix representation of a POET Field object to a numpy array
  * for use in the Python AI surrogate functions
@@ -150,10 +60,9 @@ int Python_Keras_training_thread(EigenModel* Eigen_model,
  * @return Numpy representation of the input vector
  */
 PyObject* vector_to_numpy_array(const std::vector<std::vector<double>>& field) {
-  // import numpy and numpy array API
-  import_array();
   npy_intp dims[2] = {static_cast<npy_intp>(field[0].size()), 
                       static_cast<npy_intp>(field.size())};
+  
   PyObject* np_array = PyArray_SimpleNew(2, dims, NPY_FLOAT64);
   _Float64* data = static_cast<_Float64*>(PyArray_DATA((PyArrayObject*)np_array));
   // write field data to numpy array
@@ -203,7 +112,10 @@ std::vector<double> numpy_array_to_vector(PyObject* py_array) {
  * @return Predictions that the neural network made from the input values x. The predictions are
  * represented as a vector similar to the representation from the Field.AsVector() method
  */
-std::vector<double> Python_keras_predict(std::vector<std::vector<double>> x, int batch_size) {  
+std::vector<double> Python_Keras_predict(std::vector<std::vector<double>> x, int batch_size) {
+  // Acquire the Python GIL
+  PyGILState_STATE gstate = PyGILState_Ensure();
+  
   // Prepare data for python
   PyObject* py_df_x = vector_to_numpy_array(x);
   
@@ -221,12 +133,157 @@ std::vector<double> Python_keras_predict(std::vector<std::vector<double>> x, int
 
   // Check py_rv and return as 2D vector
   std::vector<double> predictions = numpy_array_to_vector(py_predictions); 
+  
   // Clean up
   PyErr_Print(); // Ensure that python errors make it to stdout 
   Py_XDECREF(py_df_x);
   Py_XDECREF(args);
   Py_XDECREF(py_predictions);
+  
+  // Release the Python GIL
+  PyGILState_Release(gstate);
+  
   return predictions;
+}
+
+
+void Python_keras_train(std::vector<std::vector<double>> x, std::vector<std::vector<double>> y, int batch_size, int epochs) {
+  // Prepare data for python
+  PyObject* py_df_x = vector_to_numpy_array(x);
+  PyObject* py_df_y = vector_to_numpy_array(y);
+  
+  // Get the model and training function from the global python interpreter
+  PyObject* py_main_module = PyImport_AddModule("__main__");
+  PyObject* py_global_dict = PyModule_GetDict(py_main_module);
+  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
+  PyObject* py_training_function = PyDict_GetItemString(py_global_dict, "training_step");
+  
+  // Build the function arguments as four python objects and an integer
+  PyObject* args = Py_BuildValue("(OOOii)", 
+      py_keras_model, py_df_x, py_df_y, batch_size, epochs);
+  
+  // Call the Python training function
+  PyObject *py_rv = PyObject_CallObject(py_training_function, args);
+
+  // Clean up
+  PyErr_Print(); 
+  Py_DECREF(py_df_x);
+  Py_DECREF(py_df_y);
+  Py_DECREF(args);
+}
+
+
+/**
+ * @brief Function for threadsafe parallel training and weight updating.
+ * The function waits conditionally until the training data buffer is full.
+ * It then clears the buffer and starts training, after training it writes the new weights to 
+ * the Eigen model.  
+ * @param Eigen_model Pointer to the EigenModel struct that will be updates with new weights
+ * @param Eigen_model_mutex Mutex to ensure threadsafe access to the EigenModel struct
+ * @param training_data_buffer Pointer to the Training data struct with which the model is trained
+ * @param training_data_buffer_mutex Mutex to ensure threadsafe access to the training data struct
+ * @param training_data_buffer_full Conditional waiting variable with wich the main thread signals
+ * when a training run can start
+ * @param start_training Conditional waiting predicate to mitigate against spurious wakeups
+ * @param batch_size Batch size for Keras' training function
+ * @param epochs Number of training epochs
+ * @return 0 if function was succesful
+ */
+void parallel_training(EigenModel* Eigen_model,
+                       std::mutex* Eigen_model_mutex,
+                       TrainingData* training_data_buffer,
+                       std::mutex* training_data_buffer_mutex,
+                       std::condition_variable* training_data_buffer_full,
+                       bool* start_training, 
+                       int batch_size, int epochs, int training_data_size,
+                       bool use_Keras_predictions) {
+  while (true) {
+    std::unique_lock<std::mutex> lock(*training_data_buffer_mutex);
+    // Conditional waiting:
+    // Sleeps until a signal arrives on training_data_buffer_full
+    // Releases the lock on training_data_buffer_mutex while sleeping
+    // Lambda function with start_training checks if it was a spurious wakeup
+    // Reaquires the lock on training_data_buffer_mutex after waking up
+    // If start_training has been set to true while the thread was active, it does NOT
+    // Wait for a signal on training_data_buffer_full but starts the next round immediately.
+    training_data_buffer_full->wait(lock, [start_training] { return *start_training;});
+    
+    // Reset the  waiting predicate
+    *start_training = false;
+
+    // Get the necessary training data
+    std::cout << "AI: Training thread: Getting training data" << std::endl;
+    // Initialize training data input and targets
+    std::vector<std::vector<double>> inputs(9);
+    std::vector<std::vector<double>> targets(9);
+    for (int col = 0; col < training_data_buffer->x.size(); col++) {
+      // Copy data from the front of the buffer to the training inputs
+      std::copy(training_data_buffer->x[col].begin(),
+                training_data_buffer->x[col].begin() + training_data_size, 
+                std::back_inserter(inputs[col]));
+      // Remove copied data from the front of the buffer
+      training_data_buffer->x[col].erase(training_data_buffer->x[col].begin(),
+                                         training_data_buffer->x[col].begin() + training_data_size);
+
+      // Copy data from the front of the buffer to the training targets
+      std::copy(training_data_buffer->y[col].begin(),
+                training_data_buffer->y[col].begin() + training_data_size, 
+                std::back_inserter(targets[col]));
+      // Remove copied data from the front of the buffer
+      training_data_buffer->y[col].erase(training_data_buffer->y[col].begin(),
+                                         training_data_buffer->y[col].begin() + training_data_size);
+
+    }
+    // Unlock the training_data_buffer_mutex 
+    lock.unlock();
+
+    std::cout << "AI: Training thread: Start training" << std::endl;
+    // Acquire the Python GIL
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    // Start training
+    Python_keras_train(inputs, targets, batch_size, epochs);
+    
+    if (!use_Keras_predictions) {
+      std::cout << "AI: Training thread: Update shared model weights" << std::endl;
+      Eigen_model_mutex->lock();
+      Python_Keras_set_weights_as_Eigen(*Eigen_model);
+      Eigen_model_mutex->unlock();
+    }
+    
+    // Release the Python GIL
+    PyGILState_Release(gstate);
+    std::cout << "AI: Training thread: Finished training, waiting for new data" << std::endl;
+  } 
+}
+
+/**
+ * @brief Starts a thread for parallel training and weight updating. This Wrapper function
+ * ensures, that the main POET program can be built without pthread support if the AI
+ * surrogate functions are disabled during compilation. 
+ * @param Eigen_model Pointer to the EigenModel struct that will be updates with new weights
+ * @param Eigen_model_mutex Mutex to ensure threadsafe access to the EigenModel struct
+ * @param training_data_buffer Pointer to the Training data struct with which the model is trained
+ * @param training_data_buffer_mutex Mutex to ensure threadsafe access to the training data struct
+ * @param batch_size Batch size for Keras' training function
+ * @param epochs Number of training epochs
+ * @return 0 if function was succesful
+ */
+int Python_Keras_training_thread(EigenModel* Eigen_model,
+                                 std::mutex* Eigen_model_mutex,
+                                 TrainingData* training_data_buffer,
+                                 std::mutex* training_data_buffer_mutex,
+                                 std::condition_variable* training_data_buffer_full,
+                                 bool* start_training, 
+                                 int batch_size, int epochs, int training_data_size,
+                                 bool use_Keras_predictions) {
+
+  std::thread training_thread(parallel_training, Eigen_model, Eigen_model_mutex,
+                              training_data_buffer, training_data_buffer_mutex,
+                              training_data_buffer_full, start_training,
+                              batch_size, epochs, training_data_size,
+                              use_Keras_predictions);
+  training_thread.detach();
+  return 0;
 }
 
 /**

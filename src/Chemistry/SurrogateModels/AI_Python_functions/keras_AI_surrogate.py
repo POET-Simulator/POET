@@ -23,4 +23,11 @@ def get_weights(model):
     weights = model.get_weights()
     #return weights
     return [w.astype(np.float64) for w in weights]
+
+def training_step(model, x, y, batch_size, epochs):
+    history = model.fit(x, y, 
+                        epochs=epochs,
+                        batch_size=batch_size)
+    print(history, flush=True)
+    return history
     

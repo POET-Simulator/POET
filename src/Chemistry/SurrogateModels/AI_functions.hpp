@@ -28,8 +28,8 @@ template<typename T>
 using aligned_vector = std::vector<T, Eigen::aligned_allocator<T>>;
 // Define a structure to hold the weights in Eigen matrices
 struct EigenModel {
-    aligned_vector<Eigen::MatrixXd> weight_matrices;
-    aligned_vector<Eigen::VectorXd> biases;
+  aligned_vector<Eigen::MatrixXd> weight_matrices;
+  aligned_vector<Eigen::VectorXd> biases;
 };
 
 struct TrainingData {
@@ -46,36 +46,42 @@ void Python_finalize();
 
 int Python_Keras_load_model(std::string model_file_path);
 
+std::vector<double> Python_Keras_predict(std::vector<std::vector<double>> x, int batch_size);  
+
+void Python_Keras_train(std::vector<std::vector<double>> x, std::vector<std::vector<double>> y, int batch_size);
+
 int Python_Keras_training_thread(EigenModel* Eigen_model,
                                  std::mutex* Eigen_model_mutex,
                                  TrainingData* training_data_buffer,
                                  std::mutex* training_data_buffer_mutex,
                                  std::condition_variable* training_data_buffer_full,
-                                 bool* start_training);
-
-std::vector<double> Python_keras_predict(std::vector<std::vector<double>> x, int batch_size);  
+                                 bool* start_training, 
+                                 int batch_size, int epochs, int training_data_size,
+                                 bool use_Keras_predictions);
 
 void Python_Keras_set_weights_as_Eigen(EigenModel& eigen_model);
 
 Eigen::MatrixXd eigen_inference_batched(const Eigen::Ref<Eigen::MatrixXd>& input_batch, const EigenModel& model);
 
-std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>> x, int batch_size);  
-
-//int Python_keras_train(Field &x, Field &y, Field &x_val, Field &y_val, int batch_size, std::string pid)
+std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>> x, int batch_size);
 
 // Otherwise, define the necessary stubs
 #else
 inline void Python_Keras_setup(std::string functions_file_path){}
 inline void Python_finalize(){};
 inline void Python_Keras_load_model(std::string model_file_path){}
+inline std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>, int){return {};}
+inline void Python_Keras_train(vector<std::vector<double>>, vector<std::vector<double>>, int){}
 inline int Python_Keras_training_thread(EigenModel*, std::mutex*, 
                                         TrainingData*, std::mutex*,
-                                        std::condition_variable*, bool*){return {};}
-inline std::vector<double> Python_keras_predict(std::vector<std::vector<double>>, int){return {};}
+                                        std::condition_variable*, bool*, 
+                                        int, int, int, bool){return {};}
 inline void Python_Keras_set_weights_as_Eigen(EigenModel&){}
 inline EigenModel transform_weights(const std::vector<std::vector<std::vector<double>>>){return {};}
 inline std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights(){return {};}
 inline std::vector<double> Eigen_predict(const EigenModel&, std::vector<std::vector<double>>, int){return {};}
+
+
 #endif
 
 } // namespace poet

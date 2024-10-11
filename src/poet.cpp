@@ -335,28 +335,22 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       MSG("AI Preprocessing");
       R.parseEval("predictors_scaled <- preprocess(predictors)");
 
-      /*
-      // Predict Keras
-      MSG("AI: Predict");
-      R["TMP"] = Python_keras_predict(R["predictors_scaled"], params.batch_size);
-      R.parseEval(std::string("predictions_scaled <-") + 
-                              "matrix(TMP, nrow=nrow(predictors), byrow = TRUE)");
-      R.parseEval(std::string("predictions_scaled <- ") +
-                  "setNames(data.frame(predictions_scaled), colnames(predictors))");
       
-      MSG("Keras predictions:")
-      R.parseEval("print(head(predictions_scaled))");*/
+      MSG("AI: Predict");
+      if (params.use_Keras_predictions) {  // Predict with Keras default function
+        R["TMP"] = Python_Keras_predict(R["predictors_scaled"], params.batch_size);
 
-      MSG("AI: Predicting");
-      R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size);
-      R.parseEval(std::string("predictions_scaled <- matrix(TMP, ") +
-                  "nrow=nrow(predictors), byrow = TRUE)");
-      R.parseEval(std::string("predictions_scaled <- ") +
-                  "setNames(data.frame(predictions_scaled), colnames(predictors))");
+      } else {  // Predict with custom Eigen function
+        R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size);
+      }
       
       // Apply postprocessing
       MSG("AI: Postprocesing");
       R.parseEval("predictions <- postprocess(predictions_scaled)");
+      R.parseEval(std::string("predictions_scaled <- matrix(TMP, ") +
+                  "nrow=nrow(predictors), byrow = TRUE)");
+      R.parseEval(std::string("predictions_scaled <- ") +
+                  "setNames(data.frame(predictions_scaled), colnames(predictors))");
 
       // Validate prediction and write valid predictions to chem field
       MSG("AI: Validate");
@@ -640,10 +634,26 @@ int main(int argc, char *argv[]) {
         if (!Rcpp::as<bool>(R.parseEval("exists(\"model_file_path\")"))) {
           throw std::runtime_error("AI surrogate input script must contain variable model_file_path!");
         }
+
+        /* AI surrogate training and inference parameters. (Can be set by declaring a 
+        variable of the same name in one of the the R input scripts)*/
+        run_params.use_Keras_predictions = false;
         run_params.batch_size = 2560; // default value determined in tests wtih the barite benchmark 
+        run_params.training_epochs = 5; // made up value. TODO: Set to useful default
+        run_params.training_data_size = 2500; // TODO: How to set this from chemistry field size? 
         if (Rcpp::as<bool>(R.parseEval("exists(\"batch_size\")"))) {
           run_params.batch_size = R["batch_size"];
         }
+        if (Rcpp::as<bool>(R.parseEval("exists(\"training_epochs\")"))) {
+          run_params.training_epochs = R["training_epochs"];
+        }
+        if (Rcpp::as<bool>(R.parseEval("exists(\"training_data_size\")"))) {
+          run_params.training_data_size = R["training_data_size"];
+        }
+        if (Rcpp::as<bool>(R.parseEval("exists(\"use_Keras_predictions\")"))) {
+          run_params.use_Keras_predictions = R["use_Keras_predictions"];
+        }
+
 
         MSG("AI: Initialize Python for AI surrogate functions");
         std::string python_keras_file = std::string(SRC_DIR) +
@@ -652,12 +662,18 @@ int main(int argc, char *argv[]) {
         
         MSG("AI: Initialize model");
         Python_Keras_load_model(R["model_file_path"]);
-        Python_Keras_set_weights_as_Eigen(Eigen_model);
+        
+        if (!run_params.use_Keras_predictions) {
+          MSG("AI: Uses custom C++ prediction function");
+          Python_Keras_set_weights_as_Eigen(Eigen_model);
+        }
 
         MSG("AI: Initialize training thread");
         Python_Keras_training_thread(&Eigen_model, &Eigen_model_mutex,
                                      &training_data_buffer, &training_data_buffer_mutex,
-                                     &training_data_buffer_full, &start_training);
+                                     &training_data_buffer_full, &start_training,
+                                     run_params.batch_size, run_params.training_epochs,
+                                     run_params.training_data_size, run_params.use_Keras_predictions);
 
         MSG("AI: Surrogate model initialized");
       }
