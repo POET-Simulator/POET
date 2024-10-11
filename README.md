@@ -99,8 +99,9 @@ following available options:
 - **POET_PREPROCESS_BENCHS**=*boolean* - enables the preprocessing of
   predefined models/benchmarks. Defaults to *ON*.
 - **USE_AI_SURROGATE**=*boolean* - includes the functions of the AI
-  surrogate model. This relies on the presence of a Python environment
-  where Keras is installed.
+  surrogate model. When active, CMake relies on `find_package()` to find
+  an a implementation of `Threads` and a Python environment where Numpy
+  and Keras need to be installed. Defaults to _OFF_.
 
 
 ### Example: Build from scratch
@@ -235,7 +236,10 @@ mpirun -n 4 ./poet --dht --dht-snaps=2 barite_het_rt.R barite_het.rds output
 
 ### Example: Preparing Environment and Running with AI surrogate
 
-To run the AI surrogate, you need to install the R package `keras3`. The
+To run the AI surrogate, you need to have a Keras installed in your Python environment.
+The implementation in POET is agnostic to the exact Keras version, but If you use a 
+pretrained model, the model file must match your Keras version. Using Keras 3 with 
+`.keras` model files is recommended. recomenden
 compilation process of POET remains the same as shown above.
 
 In the following code block, the installation process on the Turing Cluster is

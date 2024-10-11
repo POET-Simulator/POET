@@ -14,13 +14,15 @@
 #ifndef AI_FUNCTIONS_H
 #define AI_FUNCTIONS_H
 
+#include <string>
+#include <vector>
+
 // PhreeqC definition of pi clashes with Eigen macros so we have to temporarily undef it 
 #pragma push_macro("pi")
 #undef pi
 #include <Eigen/Dense> 
 #pragma pop_macro("pi")
 
-#include <string>
 
 namespace poet {
 // Define an aligned allocator for std::vector
@@ -48,8 +50,6 @@ int Python_Keras_load_model(std::string model_file_path);
 
 std::vector<double> Python_Keras_predict(std::vector<std::vector<double>> x, int batch_size);  
 
-void Python_Keras_train(std::vector<std::vector<double>> x, std::vector<std::vector<double>> y, int batch_size);
-
 int Python_Keras_training_thread(EigenModel* Eigen_model,
                                  std::mutex* Eigen_model_mutex,
                                  TrainingData* training_data_buffer,
@@ -68,21 +68,16 @@ std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vect
 // Otherwise, define the necessary stubs
 #else
 inline void Python_Keras_setup(std::string functions_file_path){}
-inline void Python_finalize(){};
+inline void Python_finalize(){}
 inline void Python_Keras_load_model(std::string model_file_path){}
 inline std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>, int){return {};}
-inline void Python_Keras_train(vector<std::vector<double>>, vector<std::vector<double>>, int){}
 inline int Python_Keras_training_thread(EigenModel*, std::mutex*, 
                                         TrainingData*, std::mutex*,
                                         std::condition_variable*, bool*, 
                                         int, int, int, bool){return {};}
 inline void Python_Keras_set_weights_as_Eigen(EigenModel&){}
-inline EigenModel transform_weights(const std::vector<std::vector<std::vector<double>>>){return {};}
-inline std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights(){return {};}
 inline std::vector<double> Eigen_predict(const EigenModel&, std::vector<std::vector<double>>, int){return {};}
-
-
 #endif
-
 } // namespace poet
+
 #endif // AI_FUNCTIONS_HPP
