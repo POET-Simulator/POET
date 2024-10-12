@@ -610,10 +610,12 @@ int main(int argc, char *argv[]) {
 
         /* AI surrogate training and inference parameters. (Can be set by declaring a 
         variable of the same name in one of the the R input scripts)*/
+
         run_params.use_Keras_predictions = false;
-        run_params.batch_size = 2560; // default value determined in tests with the barite benchmark 
-        run_params.training_epochs = 5; // made up value. TODO: Set to useful default
-        run_params.training_data_size = 2500; // TODO: How to set this from chemistry field size?
+        run_params.batch_size = 2560; // default value determined in test on the UP Turing cluster
+        run_params.training_epochs = 20; // 
+        run_params.training_data_size = init_list.getDiffusionInit().n_rows *
+                                        init_list.getDiffusionInit().n_cols; // Default value is number of cells in field
         run_params.save_model_path = ""; // Model is only saved if a path is set in the input field
         if (Rcpp::as<bool>(R.parseEval("exists(\"batch_size\")"))) {
           run_params.batch_size = R["batch_size"];
@@ -629,6 +631,7 @@ int main(int argc, char *argv[]) {
         }
         if (Rcpp::as<bool>(R.parseEval("exists(\"save_model_path\")"))) {
           run_params.save_model_path = Rcpp::as<std::string>(R["save_model_path"]);
+          MSG("AI: Model will be saved as \"" + run_params.save_model_path + "\"");
         }
 
 
