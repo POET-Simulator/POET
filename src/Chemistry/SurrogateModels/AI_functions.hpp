@@ -50,6 +50,8 @@ int Python_Keras_load_model(std::string model_file_path);
 
 std::vector<double> Python_Keras_predict(std::vector<std::vector<double>> x, int batch_size);  
 
+void training_data_buffer_append(std::vector<std::vector<double>>& training_data_buffer, std::vector<std::vector<double>>& new_values);
+
 int Python_Keras_training_thread(EigenModel* Eigen_model,
                                  std::mutex* Eigen_model_mutex,
                                  TrainingData* training_data_buffer,
@@ -57,7 +59,7 @@ int Python_Keras_training_thread(EigenModel* Eigen_model,
                                  std::condition_variable* training_data_buffer_full,
                                  bool* start_training, 
                                  int batch_size, int epochs, int training_data_size,
-                                 bool use_Keras_predictions);
+                                 bool use_Keras_predictions, std::string save_model_path);
 
 void Python_Keras_set_weights_as_Eigen(EigenModel& eigen_model);
 
@@ -70,11 +72,12 @@ std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vect
 inline void Python_Keras_setup(std::string functions_file_path){}
 inline void Python_finalize(){}
 inline void Python_Keras_load_model(std::string model_file_path){}
+inline void training_data_buffer_append(std::vector<std::vector<double>>&, std::vector<std::vector<double>>&){}
 inline std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>, int){return {};}
 inline int Python_Keras_training_thread(EigenModel*, std::mutex*, 
                                         TrainingData*, std::mutex*,
                                         std::condition_variable*, bool*, 
-                                        int, int, int, bool){return {};}
+                                        int, int, int, bool, std::string){return {};}
 inline void Python_Keras_set_weights_as_Eigen(EigenModel&){}
 inline std::vector<double> Eigen_predict(const EigenModel&, std::vector<std::vector<double>>, int){return {};}
 #endif

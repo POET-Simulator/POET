@@ -76,8 +76,7 @@ master_iteration_end <- function(setup, state_T, state_C) {
             state_C <- data.frame(state_C, check.names = FALSE)
 
             ai_surrogate_info <- list(
-                prediction_time = if (exists("ai_prediction_time")) as.integer(ai_prediction_time) else NULL,
-                training_time = if (exists("ai_training_time")) as.integer(ai_training_time) else NULL,
+                prediction_time = if (exists("ai_prediction_time")) ai_prediction_time else NULL,
                 valid_predictions = if (exists("validity_vector")) validity_vector else NULL
             )
 

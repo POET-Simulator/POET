@@ -244,7 +244,7 @@ process of POET remains mostly the same as shown above, but the CMake
 option `-DUSE_AI_SURROGATE=ON` must be set.
 
 To use the AI surrogate, you must declare several values in the R input
-scipt. This can be either done directly in the input script or in an
+script. This can be either done directly in the input script or in an
 additional file. This file can be provided by adding the file path as the
 element `ai_surrogate_input_script` to the `chemistry_setup` list in the
 R input script.
@@ -255,7 +255,7 @@ the AI surrogate model is initialized.
 - `validate_predictions(predictors, prediction)` [*function*]: Returns a boolean
 vector of length `nrow(predictions)`. The output of this function defines
 which predictions are considered valid and which are rejected. Regular 
-siumulation will only be done for the rejected values, and the results
+simulation will only be done for the rejected values, and the results
 will be added to the training data buffer of the AI surrogate model.
 Can eg. be implemented as a mass balance threshold between the predictors
 and the prediction.
@@ -263,7 +263,7 @@ and the prediction.
 
 The following variables and functions can be declared:
 - `batch_size` [*int*]: Batch size for the inference and training functions,
-defualts to 2560.
+defaults to 2560.
 
 - `training_epochs` [*int*]: Number of training epochs with each training data
  set, defaults to 20.
@@ -274,14 +274,14 @@ data from the front of the buffer. Defaults to the size of the Field.
 
 - `use_Keras_predictions` [*bool*]: Decides if the Keras prediction function
 should be used instead of the custom C++ implementation (Keras might be faster
-for larger models, especially on GPU). Defualts to false.
+for larger models, especially on GPU). Defaults to false.
 
 - `preprocess(df, backtransform = FALSE, outputs = FALSE)` [*function*]: 
-Returns the scaled/transformed/backtransformed dataframe. The `backtransform` 
+Returns the scaled/transformed/backtransformed data frame. The `backtransform` 
 flag signals if the current processing step is applied to data that is
 assumed to be scaled and expects backtransformed values. The `outputs`
 flag signals if the current processing step is applied to the output
-or tatget of the model. This can be used to eg. skip these processing
+or target of the model. This can be used to eg. skip these processing
 steps and only scale the model input. The default implementation uses no
 transformations.
 

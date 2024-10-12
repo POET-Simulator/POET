@@ -43,6 +43,9 @@ int Python_Keras_setup(std::string functions_file_path) {
  * @return 0 if function was succesful
  */
 int Python_Keras_load_model(std::string model_file_path) {
+  // Acquire the Python GIL
+  PyGILState_STATE gstate = PyGILState_Ensure();
+
   // Initialize Keras model
   int py_model_loaded = PyRun_SimpleString(("model = initiate_model(\"" + 
                                             model_file_path + "\")").c_str());
@@ -50,6 +53,9 @@ int Python_Keras_load_model(std::string model_file_path) {
     PyErr_Print(); // Ensure that python errors make it to stdout
     throw std::runtime_error("Keras model could not be loaded from: " + model_file_path);
   }
+  // Release the Python GIL
+  PyGILState_Release(gstate);
+
   return py_model_loaded;
 }
 
@@ -147,7 +153,63 @@ std::vector<double> Python_Keras_predict(std::vector<std::vector<double>> x, int
 }
 
 
-void Python_keras_train(std::vector<std::vector<double>> x, std::vector<std::vector<double>> y, int batch_size, int epochs) {
+/**
+ * @brief Uses the Eigen representation of the Keras model weights   for fast inference
+ * @param x 2D-Matrix with the content of a Field object
+ * @param batch_size size for mini-batches that are used in the Keras model.predict() method
+ * @return Predictions that the neural network made from the input values x. The predictions are
+ * represented as a vector similar to the representation from the Field.AsVector() method
+ */
+std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>> x, int batch_size) {
+  // Convert input data to Eigen matrix
+  const int num_samples = x[0].size();
+  const int num_features = x.size();
+
+  Eigen::MatrixXd full_input_matrix(num_features, num_samples);
+  for (int i = 0; i < num_samples; ++i) {
+    for (int j = 0; j < num_features; ++j) {
+      full_input_matrix(j, i) = x[j][i];
+    }
+  }
+
+  std::vector<double> result;
+  result.reserve(num_samples * num_features);
+  
+  if (num_features != model.weight_matrices[0].cols()) {
+    throw std::runtime_error("Input data size " + std::to_string(num_features) + \
+      " does not match model input layer of size " + std::to_string(model.weight_matrices[0].cols()));
+  }
+
+  int num_batches = std::ceil(static_cast<double>(num_samples) / batch_size);
+  for (int batch = 0; batch < num_batches; ++batch) {
+    int start_idx = batch * batch_size;
+    int end_idx = std::min((batch + 1) * batch_size, num_samples);
+    int current_batch_size = end_idx - start_idx;
+    // Extract the current input data batch
+    Eigen::MatrixXd batch_data(num_features, current_batch_size); 
+    batch_data = full_input_matrix.block(0, start_idx, num_features, current_batch_size);
+    
+    // Predict
+    batch_data = eigen_inference_batched(batch_data, model);
+    result.insert(result.end(), batch_data.data(), batch_data.data() + batch_data.size());
+  }
+  return result;
+}
+
+void training_data_buffer_append(std::vector<std::vector<double>>& training_data_buffer, std::vector<std::vector<double>>& new_values) {
+  // Initialize training data buffer if empty
+  if (training_data_buffer.size() == 0) {
+    training_data_buffer = new_values;
+  } else { // otherwise append
+    for (int col = 0; col < training_data_buffer.size(); col++) {
+      training_data_buffer[col].insert(training_data_buffer[col].end(),
+                                        new_values[col].begin(), new_values[col].end());
+    }
+  }
+}
+
+void Python_keras_train(std::vector<std::vector<double>> x, std::vector<std::vector<double>> y, int batch_size, int epochs,
+                        std::string save_model_path) {
   // Prepare data for python
   PyObject* py_df_x = vector_to_numpy_array(x);
   PyObject* py_df_y = vector_to_numpy_array(y);
@@ -159,9 +221,10 @@ void Python_keras_train(std::vector<std::vector<double>> x, std::vector<std::vec
   PyObject* py_training_function = PyDict_GetItemString(py_global_dict, "training_step");
   
   // Build the function arguments as four python objects and an integer
-  PyObject* args = Py_BuildValue("(OOOii)", 
-      py_keras_model, py_df_x, py_df_y, batch_size, epochs);
+  PyObject* args = Py_BuildValue("(OOOiis)", 
+      py_keras_model, py_df_x, py_df_y, batch_size, epochs, save_model_path.c_str());
   
+
   // Call the Python training function
   PyObject *py_rv = PyObject_CallObject(py_training_function, args);
 
@@ -196,7 +259,7 @@ void parallel_training(EigenModel* Eigen_model,
                        std::condition_variable* training_data_buffer_full,
                        bool* start_training, 
                        int batch_size, int epochs, int training_data_size,
-                       bool use_Keras_predictions) {
+                       bool use_Keras_predictions, std::string save_model_path) {
   while (true) {
     std::unique_lock<std::mutex> lock(*training_data_buffer_mutex);
     // Conditional waiting:
@@ -238,10 +301,12 @@ void parallel_training(EigenModel* Eigen_model,
     lock.unlock();
 
     std::cout << "AI: Training thread: Start training" << std::endl;
+
     // Acquire the Python GIL
     PyGILState_STATE gstate = PyGILState_Ensure();
+
     // Start training
-    Python_keras_train(inputs, targets, batch_size, epochs);
+    Python_keras_train(inputs, targets, batch_size, epochs, save_model_path);
     
     if (!use_Keras_predictions) {
       std::cout << "AI: Training thread: Update shared model weights" << std::endl;
@@ -275,13 +340,15 @@ int Python_Keras_training_thread(EigenModel* Eigen_model,
                                  std::condition_variable* training_data_buffer_full,
                                  bool* start_training, 
                                  int batch_size, int epochs, int training_data_size,
-                                 bool use_Keras_predictions) {
-
+                                 bool use_Keras_predictions,
+                                 std::string save_model_path) {
+  
+  PyThreadState *_save = PyEval_SaveThread();
   std::thread training_thread(parallel_training, Eigen_model, Eigen_model_mutex,
                               training_data_buffer, training_data_buffer_mutex,
                               training_data_buffer_full, start_training,
                               batch_size, epochs, training_data_size,
-                              use_Keras_predictions);
+                              use_Keras_predictions, save_model_path);
   training_thread.detach();
   return 0;
 }
@@ -312,6 +379,9 @@ Eigen::MatrixXd eigen_inference_batched(const Eigen::Ref<Eigen::MatrixXd>& input
  * @return A EigenModel struct containing the model weights and biases as aligned Eigen matrices 
  */
 void Python_Keras_set_weights_as_Eigen(EigenModel& eigen_model) {
+  // Acquire the Python GIL
+  PyGILState_STATE gstate = PyGILState_Ensure();
+
   PyObject* py_main_module = PyImport_AddModule("__main__");
   PyObject* py_global_dict = PyModule_GetDict(py_main_module);
   PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
@@ -390,49 +460,8 @@ void Python_Keras_set_weights_as_Eigen(EigenModel& eigen_model) {
   // Clean up
   Py_DECREF(py_weights_list);
   Py_DECREF(args);
-}
-
-/**
- * @brief Uses the Eigen representation of the Keras model weights   for fast inference
- * @param x 2D-Matrix with the content of a Field object
- * @param batch_size size for mini-batches that are used in the Keras model.predict() method
- * @return Predictions that the neural network made from the input values x. The predictions are
- * represented as a vector similar to the representation from the Field.AsVector() method
- */
-std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>> x, int batch_size) {
-  // Convert input data to Eigen matrix
-  const int num_samples = x[0].size();
-  const int num_features = x.size();
-
-  Eigen::MatrixXd full_input_matrix(num_features, num_samples);
-  for (int i = 0; i < num_samples; ++i) {
-    for (int j = 0; j < num_features; ++j) {
-      full_input_matrix(j, i) = x[j][i];
-    }
-  }
-
-  std::vector<double> result;
-  result.reserve(num_samples * num_features);
-  
-  if (num_features != model.weight_matrices[0].cols()) {
-    throw std::runtime_error("Input data size " + std::to_string(num_features) + \
-      " does not match model input layer of size " + std::to_string(model.weight_matrices[0].cols()));
-  }
-
-  int num_batches = std::ceil(static_cast<double>(num_samples) / batch_size);
-  for (int batch = 0; batch < num_batches; ++batch) {
-    int start_idx = batch * batch_size;
-    int end_idx = std::min((batch + 1) * batch_size, num_samples);
-    int current_batch_size = end_idx - start_idx;
-    // Extract the current input data batch
-    Eigen::MatrixXd batch_data(num_features, current_batch_size); 
-    batch_data = full_input_matrix.block(0, start_idx, num_features, current_batch_size);
-    
-    // Predict
-    batch_data = eigen_inference_batched(batch_data, model);
-    result.insert(result.end(), batch_data.data(), batch_data.data() + batch_data.size());
-  }
-  return result;
+  // Release the Python GIL
+  PyGILState_Release(gstate);
 }
 
 void Python_finalize() {

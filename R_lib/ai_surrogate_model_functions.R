@@ -20,3 +20,11 @@ set_valid_predictions <- function(temp_field, prediction, validity) {
 get_invalid_values <- function(df, validity) {
   return(df[validity == 0, ])
 }
+
+set_field <- function(temp_field, columns, rows, column_name_limit,
+                      byrow = FALSE) {
+  temp_field <- matrix(temp_field, nrow = rows, byrow = byrow)
+  temp_field <- setNames(data.frame(temp_field), columns)
+  temp_field <- temp_field[column_name_limit]
+  return(temp_field)
+}

@@ -5,6 +5,10 @@
 model_file_path <- normalizePath(paste0(ai_surrogate_base_path,
                                         "barite_50ai_all.keras"))
 
+batch_size <- 1280
+training_epochs <- 20
+save_model_path <- "current_model.keras"
+
 scale_min_max <- function(x, min, max, backtransform) {
   if (backtransform) {
     return((x * (max - min)) + min)

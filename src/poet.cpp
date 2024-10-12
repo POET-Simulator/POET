@@ -300,12 +300,13 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     chem.setProgressBarPrintout(true);
   }
   R["TMP_PROPS"] = Rcpp::wrap(chem.getField().GetProps());
+  R["field_nrow"] = chem.getField().GetRequestedVecSize();
 
   /* SIMULATION LOOP */
   double dSimTime{0};
   for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
     double start_t = MPI_Wtime();
-
+    
     const double &dt = params.timesteps[iter - 1];
 
     //  cout << "CPP: Next time step is " << dt << "[s]" << endl;
@@ -325,17 +326,13 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       double ai_start_t = MPI_Wtime();
       // Get current values from the tug field for the ai predictions
       R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
+      R.parseEval(std::string("predictors <- ") + 
+        "set_field(TMP, TMP_PROPS, field_nrow, ai_surrogate_species)");
       
-      R.parseEval("predictors <- matrix(TMP, nrow=" + 
-                  std::to_string(chem.getField().GetRequestedVecSize()) + ")");
-      R.parseEval("predictors <- setNames(data.frame(predictors), TMP_PROPS)");
-      R.parseEval("predictors <- predictors[ai_surrogate_species]");
-
       // Apply preprocessing
       MSG("AI Preprocessing");
       R.parseEval("predictors_scaled <- preprocess(predictors)");
 
-      
       MSG("AI: Predict");
       if (params.use_Keras_predictions) {  // Predict with Keras default function
         R["TMP"] = Python_Keras_predict(R["predictors_scaled"], params.batch_size);
@@ -346,18 +343,14 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       
       // Apply postprocessing
       MSG("AI: Postprocesing");
+      R.parseEval(std::string("predictions_scaled <- ") + 
+        "set_field(TMP, ai_surrogate_species, field_nrow, ai_surrogate_species, byrow = TRUE)");
       R.parseEval("predictions <- postprocess(predictions_scaled)");
-      R.parseEval(std::string("predictions_scaled <- matrix(TMP, ") +
-                  "nrow=nrow(predictors), byrow = TRUE)");
-      R.parseEval(std::string("predictions_scaled <- ") +
-                  "setNames(data.frame(predictions_scaled), colnames(predictors))");
-
       // Validate prediction and write valid predictions to chem field
       MSG("AI: Validate");
       R.parseEval("validity_vector <- validate_predictions(predictors, predictions)");
 
       MSG("AI: Marking valid");
-
       chem.set_ai_surrogate_validity_vector(R.parseEval("validity_vector"));
 
       std::vector<std::vector<double>> RTempField =
@@ -370,27 +363,18 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       MSG("AI: Update field with AI predictions");
       chem.getField().update(predictions_field);
       
+      // store time for output file
+      double ai_end_t = MPI_Wtime();
+      R["ai_prediction_time"] = ai_end_t - ai_start_t;
+
       // Add to training data buffer:
       // Input values for which the predictions were invalid
       MSG("AI: Add invalid input data to training data buffer");
-      std::vector<std::vector<double>> R_temp_x = 
+      std::vector<std::vector<double>> invalid_x = 
         R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
       training_data_buffer_mutex.lock();
-
-      // Initialize training data buffer if empty
-      if (training_data_buffer.x.size() == 0) {
-        training_data_buffer.x = R_temp_x;
-      } else { // otherwise append
-        for (int col = 0; col < training_data_buffer.x.size(); col++) {
-          training_data_buffer.x[col].insert(training_data_buffer.x[col].end(),
-                                            R_temp_x[col].begin(), R_temp_x[col].end());
-        }
-      }
+      training_data_buffer_append(training_data_buffer.x, invalid_x);
       training_data_buffer_mutex.unlock();
-
-
-      double ai_end_t = MPI_Wtime();
-      R["ai_prediction_time"] = ai_end_t - ai_start_t;
     }
 
     // Run simulation step
@@ -405,30 +389,19 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       // True values for invalid predictions      
       MSG("AI: Add invalid target data to training data buffer");
       R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
-      R.parseEval("targets <- matrix(TMP, nrow=" + 
-                  std::to_string(chem.getField().GetRequestedVecSize()) + ")");
-      R.parseEval("targets <- setNames(data.frame(targets), TMP_PROPS)");
-      R.parseEval("targets <- predictors[ai_surrogate_species]");
+      R.parseEval(std::string("targets <- ") + 
+        "set_field(TMP, TMP_PROPS, field_nrow, ai_surrogate_species)");
+
       R.parseEval("target_scaled <- preprocess(targets)");
 
-      std::vector<std::vector<double>> R_temp_y = 
+      std::vector<std::vector<double>> invalid_y = 
         R.parseEval("get_invalid_values(target_scaled, validity_vector)");
       training_data_buffer_mutex.lock();
-      
-      // Initialize training data buffer if empty
-      if (training_data_buffer.y.size() == 0) {
-        training_data_buffer.y = R_temp_y;
-      } else { // otherwise append  
-        for (int col = 0; col < training_data_buffer.y.size(); col++) {
-          training_data_buffer.y[col].insert(training_data_buffer.y[col].end(),
-                                             R_temp_y[col].begin(), R_temp_y[col].end());
-        }
-      }
-
+      training_data_buffer_append(training_data_buffer.y, invalid_y);
       training_data_buffer_mutex.unlock();
 
       // Signal to training thread if training data buffer is full
-      if (training_data_buffer.y[0].size() > params.training_data_size) {
+      if (training_data_buffer.y[0].size() >= params.training_data_size) {
         start_training = true;
         training_data_buffer_full.notify_one();
       }
@@ -632,15 +605,16 @@ int main(int argc, char *argv[]) {
         MSG("AI: Sourcing user-provided script");
         R.parseEvalQ(ai_surrogate_input_script);
         if (!Rcpp::as<bool>(R.parseEval("exists(\"model_file_path\")"))) {
-          throw std::runtime_error("AI surrogate input script must contain variable model_file_path!");
+          throw std::runtime_error("AI surrogate input script must contain a value for model_file_path");
         }
 
         /* AI surrogate training and inference parameters. (Can be set by declaring a 
         variable of the same name in one of the the R input scripts)*/
         run_params.use_Keras_predictions = false;
-        run_params.batch_size = 2560; // default value determined in tests wtih the barite benchmark 
+        run_params.batch_size = 2560; // default value determined in tests with the barite benchmark 
         run_params.training_epochs = 5; // made up value. TODO: Set to useful default
-        run_params.training_data_size = 2500; // TODO: How to set this from chemistry field size? 
+        run_params.training_data_size = 2500; // TODO: How to set this from chemistry field size?
+        run_params.save_model_path = ""; // Model is only saved if a path is set in the input field
         if (Rcpp::as<bool>(R.parseEval("exists(\"batch_size\")"))) {
           run_params.batch_size = R["batch_size"];
         }
@@ -653,6 +627,9 @@ int main(int argc, char *argv[]) {
         if (Rcpp::as<bool>(R.parseEval("exists(\"use_Keras_predictions\")"))) {
           run_params.use_Keras_predictions = R["use_Keras_predictions"];
         }
+        if (Rcpp::as<bool>(R.parseEval("exists(\"save_model_path\")"))) {
+          run_params.save_model_path = Rcpp::as<std::string>(R["save_model_path"]);
+        }
 
 
         MSG("AI: Initialize Python for AI surrogate functions");
@@ -662,18 +639,20 @@ int main(int argc, char *argv[]) {
         
         MSG("AI: Initialize model");
         Python_Keras_load_model(R["model_file_path"]);
-        
-        if (!run_params.use_Keras_predictions) {
-          MSG("AI: Uses custom C++ prediction function");
-          Python_Keras_set_weights_as_Eigen(Eigen_model);
-        }
 
         MSG("AI: Initialize training thread");
         Python_Keras_training_thread(&Eigen_model, &Eigen_model_mutex,
                                      &training_data_buffer, &training_data_buffer_mutex,
                                      &training_data_buffer_full, &start_training,
                                      run_params.batch_size, run_params.training_epochs,
-                                     run_params.training_data_size, run_params.use_Keras_predictions);
+                                     run_params.training_data_size, run_params.use_Keras_predictions,
+                                     run_params.save_model_path);
+
+
+        if (!run_params.use_Keras_predictions) {
+          MSG("AI: Use custom C++ prediction function");
+          Python_Keras_set_weights_as_Eigen(Eigen_model);
+        }
 
         MSG("AI: Surrogate model initialized");
       }
