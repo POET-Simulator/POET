@@ -42,7 +42,6 @@
 #include <condition_variable>
 #include "Chemistry/SurrogateModels/AI_functions.hpp"
 #include <CLI/CLI.hpp>
-
 #include <poet.hpp>
 #include <vector>
 
@@ -73,19 +72,6 @@ static void init_global_functions(RInside &R) {
   SaveRObj_R = DEFunc("SaveRObj");
 }
 
-
-/* Global variables for the AI surrogate model */
-
- /* For the weights and biases of the model
-  * to use in an inference function with Eigen */
-std::mutex Eigen_model_mutex; 
-static EigenModel Eigen_model;
-
-/* For the training data */
-std::mutex training_data_buffer_mutex;
-std::condition_variable training_data_buffer_full;
-bool start_training;
-TrainingData training_data_buffer;
 
 // HACK: this is a step back as the order and also the count of fields is
 // predefined, but it will change in the future
@@ -298,7 +284,33 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   
   if (params.print_progress) {
     chem.setProgressBarPrintout(true);
+  } 
+
+  /* For the weights and biases of the AI surrogate
+   * model to use in an inference function with Eigen */
+  std::mutex Eigen_model_mutex; 
+  static EigenModel Eigen_model;
+  /* For the training data */
+  std::mutex training_data_buffer_mutex;
+  std::condition_variable training_data_buffer_full;
+  bool start_training, end_training;
+  TrainingData training_data_buffer;
+  if (params.use_ai_surrogate) {  
+    MSG("AI: Initialize model");
+    Python_Keras_load_model(R["model_file_path"]);
+    MSG("AI: Initialize training thread");
+
+    Python_Keras_training_thread(&Eigen_model, &Eigen_model_mutex,
+                                 &training_data_buffer, &training_data_buffer_mutex,
+                                 &training_data_buffer_full, &start_training, &end_training,
+                                 params);
+    if (!params.use_Keras_predictions) {
+      MSG("AI: Use custom C++ prediction function");
+      Python_Keras_set_weights_as_Eigen(Eigen_model);
+    }
+    MSG("AI: Surrogate model initialized");
   }
+
   R["TMP_PROPS"] = Rcpp::wrap(chem.getField().GetProps());
   R["field_nrow"] = chem.getField().GetRequestedVecSize();
 
@@ -338,7 +350,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
         R["TMP"] = Python_Keras_predict(R["predictors_scaled"], params.batch_size);
 
       } else {  // Predict with custom Eigen function
-        R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size);
+        R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size, &Eigen_model_mutex);
       }
       
       // Apply postprocessing
@@ -464,6 +476,12 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   profiling["diffusion"] = diffusion_profiling;
 
   chem.MasterLoopBreak();
+  
+  if (params.use_ai_surrogate) {
+    MSG("Finalize Python and wind down training thread");
+    Python_finalize(&Eigen_model_mutex, &training_data_buffer_mutex,
+                    &training_data_buffer_full, &start_training, &end_training);
+  }
 
   return profiling;
 }
@@ -607,57 +625,13 @@ int main(int argc, char *argv[]) {
         if (!Rcpp::as<bool>(R.parseEval("exists(\"model_file_path\")"))) {
           throw std::runtime_error("AI surrogate input script must contain a value for model_file_path");
         }
-
-        /* AI surrogate training and inference parameters. (Can be set by declaring a 
-        variable of the same name in one of the the R input scripts)*/
-
-        run_params.use_Keras_predictions = false;
-        run_params.batch_size = 2560; // default value determined in test on the UP Turing cluster
-        run_params.training_epochs = 20; // 
-        run_params.training_data_size = init_list.getDiffusionInit().n_rows *
-                                        init_list.getDiffusionInit().n_cols; // Default value is number of cells in field
-        run_params.save_model_path = ""; // Model is only saved if a path is set in the input field
-        if (Rcpp::as<bool>(R.parseEval("exists(\"batch_size\")"))) {
-          run_params.batch_size = R["batch_size"];
-        }
-        if (Rcpp::as<bool>(R.parseEval("exists(\"training_epochs\")"))) {
-          run_params.training_epochs = R["training_epochs"];
-        }
-        if (Rcpp::as<bool>(R.parseEval("exists(\"training_data_size\")"))) {
-          run_params.training_data_size = R["training_data_size"];
-        }
-        if (Rcpp::as<bool>(R.parseEval("exists(\"use_Keras_predictions\")"))) {
-          run_params.use_Keras_predictions = R["use_Keras_predictions"];
-        }
-        if (Rcpp::as<bool>(R.parseEval("exists(\"save_model_path\")"))) {
-          run_params.save_model_path = Rcpp::as<std::string>(R["save_model_path"]);
-          MSG("AI: Model will be saved as \"" + run_params.save_model_path + "\"");
-        }
-
-
+        
+        set_ai_surrogate_runtime_params(R, run_params, init_list);
+        
         MSG("AI: Initialize Python for AI surrogate functions");
         std::string python_keras_file = std::string(SRC_DIR) +
           "/src/Chemistry/SurrogateModels/AI_Python_functions/keras_AI_surrogate.py";
         Python_Keras_setup(python_keras_file);
-        
-        MSG("AI: Initialize model");
-        Python_Keras_load_model(R["model_file_path"]);
-
-        MSG("AI: Initialize training thread");
-        Python_Keras_training_thread(&Eigen_model, &Eigen_model_mutex,
-                                     &training_data_buffer, &training_data_buffer_mutex,
-                                     &training_data_buffer_full, &start_training,
-                                     run_params.batch_size, run_params.training_epochs,
-                                     run_params.training_data_size, run_params.use_Keras_predictions,
-                                     run_params.save_model_path);
-
-
-        if (!run_params.use_Keras_predictions) {
-          MSG("AI: Use custom C++ prediction function");
-          Python_Keras_set_weights_as_Eigen(Eigen_model);
-        }
-
-        MSG("AI: Surrogate model initialized");
       }
 
       MSG("Init done on process with rank " + std::to_string(MY_RANK));
@@ -674,10 +648,6 @@ int main(int argc, char *argv[]) {
       r_vis_code = "SaveRObj(x = profiling, path = paste0(out_dir, "
                    "'/timings.', setup$out_ext));";
       R.parseEval(r_vis_code);
-
-      if (run_params.use_ai_surrogate) {
-        Python_finalize();
-      }
 
       MSG("Done! Results are stored as R objects into <" + run_params.out_dir +
           "/timings." + run_params.out_ext);

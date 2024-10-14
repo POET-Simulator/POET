@@ -16,13 +16,15 @@
 
 #include <string>
 #include <vector>
+#include "poet.hpp"
+#include "Base/RInsidePOET.hpp"
+#include "Init/InitialList.hpp"
 
 // PhreeqC definition of pi clashes with Eigen macros so we have to temporarily undef it 
 #pragma push_macro("pi")
 #undef pi
 #include <Eigen/Dense> 
 #pragma pop_macro("pi")
-
 
 namespace poet {
 // Define an aligned allocator for std::vector
@@ -44,42 +46,47 @@ struct TrainingData {
 
 int Python_Keras_setup(std::string functions_file_path);
 
-void Python_finalize();
+void set_ai_surrogate_runtime_params(RInsidePOET& R, RuntimeParameters& params, InitialList& init_list);
+
+void Python_finalize(std::mutex* Eigen_model_mutex, std::mutex* training_data_buffer_mutex,
+                     std::condition_variable* training_data_buffer_full, bool* start_training, bool* end_training);
 
 int Python_Keras_load_model(std::string model_file_path);
 
 std::vector<double> Python_Keras_predict(std::vector<std::vector<double>> x, int batch_size);  
 
-void training_data_buffer_append(std::vector<std::vector<double>>& training_data_buffer, std::vector<std::vector<double>>& new_values);
+void training_data_buffer_append(std::vector<std::vector<double>>& training_data_buffer,
+                                 std::vector<std::vector<double>>& new_values);
 
 int Python_Keras_training_thread(EigenModel* Eigen_model,
                                  std::mutex* Eigen_model_mutex,
                                  TrainingData* training_data_buffer,
                                  std::mutex* training_data_buffer_mutex,
                                  std::condition_variable* training_data_buffer_full,
-                                 bool* start_training, 
-                                 int batch_size, int epochs, int training_data_size,
-                                 bool use_Keras_predictions, std::string save_model_path);
+                                 bool* start_training, bool* end_training,
+                                 const RuntimeParameters& params);
 
 void Python_Keras_set_weights_as_Eigen(EigenModel& eigen_model);
 
 Eigen::MatrixXd eigen_inference_batched(const Eigen::Ref<Eigen::MatrixXd>& input_batch, const EigenModel& model);
 
-std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>> x, int batch_size);
+std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>> x, int batch_size,
+                                  std::mutex* Eigen_model_mutex);
 
 // Otherwise, define the necessary stubs
 #else
 inline void Python_Keras_setup(std::string functions_file_path){}
-inline void Python_finalize(){}
+inline void set_ai_surrogate_runtime_params(RInsidePOET&, RuntimeParameters&, InitialList&){}
+inline void Python_finalize(std::mutex*, std::mutex*, std::condition_variable*, bool*, bool*){}
 inline void Python_Keras_load_model(std::string model_file_path){}
 inline void training_data_buffer_append(std::vector<std::vector<double>>&, std::vector<std::vector<double>>&){}
 inline std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>, int){return {};}
 inline int Python_Keras_training_thread(EigenModel*, std::mutex*, 
                                         TrainingData*, std::mutex*,
-                                        std::condition_variable*, bool*, 
-                                        int, int, int, bool, std::string){return {};}
+                                        std::condition_variable*, RuntimeParameters&,
+                                        bool*, bool*){return {};}
 inline void Python_Keras_set_weights_as_Eigen(EigenModel&){}
-inline std::vector<double> Eigen_predict(const EigenModel&, std::vector<std::vector<double>>, int){return {};}
+inline std::vector<double> Eigen_predict(const EigenModel&, std::vector<std::vector<double>>, int, std::mutex*){return {};}
 #endif
 } // namespace poet
 

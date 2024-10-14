@@ -77,7 +77,8 @@ master_iteration_end <- function(setup, state_T, state_C) {
 
             ai_surrogate_info <- list(
                 prediction_time = if (exists("ai_prediction_time")) ai_prediction_time else NULL,
-                valid_predictions = if (exists("validity_vector")) validity_vector else NULL
+                predictions_validity = if (exists("validity_vector")) validity_vector else NULL,
+                predictions = if (exists("predictions")) predictions else NULL
             )
 
             SaveRObj(x = list(

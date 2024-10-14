@@ -21,6 +21,7 @@ target_sources(POETLib
 target_include_directories(
  POETLib PUBLIC
  "${CMAKE_CURRENT_SOURCE_DIR}"
+ "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
 option(USE_AI_SURROGATE "Compiles the AI surrogate functions with Python.h integration" OFF)

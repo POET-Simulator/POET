@@ -142,7 +142,7 @@ mass_balance <- function(x, y) {
 }
 
 validate_predictions <- function(predictors, prediction) {
-    epsilon <- 1E-7
+    epsilon <- 1E-5
     mb <- mass_balance(predictors, prediction)
     msgm("Mass balance mean:", mean(mb))
     msgm("Mass balance variance:", var(mb))
