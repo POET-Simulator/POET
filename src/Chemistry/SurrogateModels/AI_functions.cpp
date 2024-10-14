@@ -427,6 +427,7 @@ Eigen::MatrixXd eigen_inference_batched(const Eigen::Ref<Eigen::MatrixXd>& input
   Eigen::MatrixXd current_layer = input_batch;
   // Process all hidden layers
   for (size_t layer = 0; layer < model.weight_matrices.size() - 1; ++layer) {
+    std::cout << "LAYER " << layer << std::endl;
     current_layer = (model.weight_matrices[layer] * current_layer);
     current_layer = current_layer.colwise() + model.biases[layer];
     current_layer = current_layer.array().max(0.0);
