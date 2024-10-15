@@ -1,11 +1,13 @@
 #include "InitialList.hpp"
 
-#include "PhreeqcInit.hpp"
+#include "PhreeqcMatrix.hpp"
 
 #include <RInside.h>
 #include <Rcpp/Function.h>
+#include <Rcpp/vector/Matrix.h>
 #include <Rcpp/vector/instantiation.h>
 #include <cstdint>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <regex>
@@ -15,37 +17,41 @@
 
 namespace poet {
 
-static Rcpp::NumericMatrix
-pqcScriptToGrid(std::unique_ptr<PhreeqcInit> &phreeqc, RInside &R) {
-  PhreeqcInit::PhreeqcMat phreeqc_mat = phreeqc->getPhreeqcMat();
+// static Rcpp::NumericMatrix pqcMatToR(const PhreeqcMatrix &phreeqc, RInside
+// &R) {
 
-  // add "id" to the front of the column names
+//   PhreeqcMatrix::STLExport phreeqc_mat = phreeqc.get();
 
-  const std::size_t ncols = phreeqc_mat.names.size();
-  const std::size_t nrows = phreeqc_mat.values.size();
+//   // PhreeqcInit::PhreeqcMat phreeqc_mat = phreeqc->getPhreeqcMat();
 
-  phreeqc_mat.names.insert(phreeqc_mat.names.begin(), "ID");
+//   // add "id" to the front of the column names
 
-  Rcpp::NumericMatrix mat(nrows, ncols + 1);
+//   const std::size_t ncols = phreeqc_mat.names.size();
+//   const std::size_t nrows = phreeqc_mat.values.size();
 
-  for (std::size_t i = 0; i < nrows; i++) {
-    mat(i, 0) = phreeqc_mat.ids[i];
-    for (std::size_t j = 0; j < ncols; ++j) {
-      mat(i, j + 1) = phreeqc_mat.values[i][j];
-    }
-  }
+//   phreeqc_mat.names.insert(phreeqc_mat.names.begin(), "ID");
 
-  Rcpp::colnames(mat) = Rcpp::wrap(phreeqc_mat.names);
+//   Rcpp::NumericMatrix mat(nrows, ncols + 1);
 
-  return mat;
-}
+//   for (std::size_t i = 0; i < nrows; i++) {
+//     mat(i, 0) = phreeqc_mat.ids[i];
+//     for (std::size_t j = 0; j < ncols; ++j) {
+//       mat(i, j + 1) = phreeqc_mat.values[i][j];
+//     }
+//   }
 
-static inline Rcpp::List matToGrid(RInside &R, const Rcpp::NumericMatrix &mat,
-                                   const Rcpp::NumericMatrix &grid) {
-  Rcpp::Function pqc_to_grid_R("pqc_to_grid");
+//   Rcpp::colnames(mat) = Rcpp::wrap(phreeqc_mat.names);
 
-  return pqc_to_grid_R(mat, grid);
-}
+//   return mat;
+// }
+
+// static inline Rcpp::List matToGrid(RInside &R, const Rcpp::NumericMatrix
+// &mat,
+//                                    const Rcpp::NumericMatrix &grid) {
+//   Rcpp::Function pqc_to_grid_R("pqc_to_grid");
+
+//   return pqc_to_grid_R(mat, grid);
+// }
 
 static inline std::map<int, std::string>
 replaceRawKeywordIDs(std::map<int, std::string> raws) {
@@ -60,24 +66,25 @@ replaceRawKeywordIDs(std::map<int, std::string> raws) {
   return raws;
 }
 
-static inline uint32_t getSolutionCount(std::unique_ptr<PhreeqcInit> &phreeqc,
-                                        const Rcpp::List &initial_grid) {
-  PhreeqcInit::ModulesArray mod_array;
-  Rcpp::Function unique_R("unique");
+// static inline uint32_t getSolutionCount(std::unique_ptr<PhreeqcInit>
+// &phreeqc,
+//                                         const Rcpp::List &initial_grid) {
+//   PhreeqcInit::ModulesArray mod_array;
+//   Rcpp::Function unique_R("unique");
 
-  std::vector<int> row_ids =
-      Rcpp::as<std::vector<int>>(unique_R(initial_grid["ID"]));
+//   std::vector<int> row_ids =
+//       Rcpp::as<std::vector<int>>(unique_R(initial_grid["ID"]));
 
-  // std::vector<std::uint32_t> sizes_vec(sizes.begin(), sizes.end());
+//   // std::vector<std::uint32_t> sizes_vec(sizes.begin(), sizes.end());
 
-  // Rcpp::Function modify_sizes("modify_module_sizes");
-  // sizes_vec = Rcpp::as<std::vector<std::uint32_t>>(
-  //     modify_sizes(sizes_vec, phreeqc_mat, initial_grid));
+//   // Rcpp::Function modify_sizes("modify_module_sizes");
+//   // sizes_vec = Rcpp::as<std::vector<std::uint32_t>>(
+//   //     modify_sizes(sizes_vec, phreeqc_mat, initial_grid));
 
-  // std::copy(sizes_vec.begin(), sizes_vec.end(), sizes.begin());
+//   // std::copy(sizes_vec.begin(), sizes_vec.end(), sizes.begin());
 
-  return phreeqc->getModuleSizes(row_ids)[POET_SOL];
-}
+//   return phreeqc->getModuleSizes(row_ids)[POET_SOL];
+// }
 
 static std::string readFile(const std::string &path) {
   std::string string_rpath(PATH_MAX, '\0');
@@ -98,10 +105,26 @@ static std::string readFile(const std::string &path) {
   return buffer.str();
 }
 
-void InitialList::prepareGrid(const Rcpp::List &grid_input) {
-  // parse input values
-  Rcpp::Function unique_R("unique");
+static Rcpp::List expandGrid(const PhreeqcMatrix &pqc_mat,
+                             const std::vector<int> unique_ids,
+                             const Rcpp::IntegerMatrix &grid_def) {
 
+  PhreeqcMatrix subset_pqc_mat = pqc_mat.subset(unique_ids);
+
+  PhreeqcMatrix::STLExport phreeqc_mat =
+      subset_pqc_mat.get(PhreeqcMatrix::VectorExportType::COLUMN_MAJOR);
+
+  const std::size_t ncols = phreeqc_mat.names.size();
+  const std::size_t nrows = phreeqc_mat.values.size() / ncols;
+
+  Rcpp::NumericMatrix pqc_mat_R(nrows, ncols, phreeqc_mat.values.begin());
+  Rcpp::colnames(pqc_mat_R) = Rcpp::wrap(phreeqc_mat.names);
+
+  return Rcpp::Function("pqc_to_grid")(pqc_mat_R, grid_def);
+}
+
+PhreeqcMatrix InitialList::prepareGrid(const Rcpp::List &grid_input) {
+  // parse input values
   std::string script;
   std::string database;
 
@@ -126,8 +149,9 @@ void InitialList::prepareGrid(const Rcpp::List &grid_input) {
   }
 
   this->database = database;
+  this->pqc_script = script;
 
-  Rcpp::NumericMatrix grid_def =
+  Rcpp::IntegerMatrix grid_def =
       grid_input[GRID_MEMBER_STR(GridMembers::GRID_DEF)];
   Rcpp::NumericVector grid_size =
       grid_input[GRID_MEMBER_STR(GridMembers::GRID_SIZE)];
@@ -156,35 +180,54 @@ void InitialList::prepareGrid(const Rcpp::List &grid_input) {
     throw std::runtime_error("Grid size must be positive.");
   }
 
-  this->phreeqc = std::make_unique<PhreeqcInit>(database, script);
+  PhreeqcMatrix pqc_mat = PhreeqcMatrix(database, script);
 
-  this->phreeqc_mat = pqcScriptToGrid(phreeqc, R);
-  this->initial_grid = matToGrid(R, this->phreeqc_mat, grid_def);
+  this->transport_names = pqc_mat.getSolutionNames(true);
 
-  const uint32_t solution_count = getSolutionCount(phreeqc, this->initial_grid);
+  Rcpp::Function unique_R("unique");
+  Rcpp::Function sort_R("sort");
 
-  std::vector<std::string> colnames =
-      Rcpp::as<std::vector<std::string>>(this->initial_grid.names());
+  std::vector<int> unique_ids = Rcpp::as<std::vector<int>>(
+      unique_R(Rcpp::IntegerVector(grid_def.begin(), grid_def.end())));
 
-  this->transport_names = std::vector<std::string>(
-      colnames.begin() + 1,
-      colnames.begin() + 1 + solution_count); // skip ID
+  this->initial_grid = expandGrid(pqc_mat, unique_ids, grid_def);
 
-  std::map<int, std::string> pqc_raw_dumps;
+  const auto pqc_raw_dumps = replaceRawKeywordIDs(pqc_mat.getDumpStringsPQI());
 
-  pqc_raw_dumps = replaceRawKeywordIDs(phreeqc->raw_dumps());
-
-  this->pqc_ids =
-      Rcpp::as<std::vector<int>>(unique_R(this->initial_grid["ID"]));
-
-  for (const auto &id : this->pqc_ids) {
-    this->pqc_scripts.push_back(pqc_raw_dumps[id]);
-    this->pqc_exchanger.push_back(phreeqc->getExchanger(id));
-    this->pqc_kinetics.push_back(phreeqc->getKineticsNames(id));
-    this->pqc_equilibrium.push_back(phreeqc->getEquilibriumNames(id));
-    this->pqc_surface_comps.push_back(phreeqc->getSurfaceCompNames(id));
-    this->pqc_surface_charges.push_back(phreeqc->getSurfaceChargeNames(id));
+  for (const auto &id : unique_ids) {
+    this->pqc_ids.push_back(id);
   }
+
+  return pqc_mat;
+  // this->phreeqc_mat = pqcScriptToGrid(phreeqc, R);
+  // this->initial_grid = matToGrid(R, this->phreeqc_mat, grid_def);
+
+  // const uint32_t solution_count = getSolutionCount(phreeqc,
+  // this->initial_grid);
+
+  // std::vector<std::string> colnames =
+  //     Rcpp::as<std::vector<std::string>>(this->initial_grid.names());
+
+  // this->transport_names = std::vector<std::string>(
+  //     colnames.begin() + 1,
+  //     colnames.begin() + 1 + solution_count); // skip ID
+
+  // std::map<int, std::string> pqc_raw_dumps;
+
+  // pqc_raw_dumps = replaceRawKeywordIDs(phreeqc->raw_dumps());
+
+  // this->pqc_ids =
+  //     Rcpp::as<std::vector<int>>(unique_R(this->initial_grid["ID"]));
+
+  // for (const auto &id : this->pqc_ids) {
+  //   this->pqc_scripts.push_back(pqc_raw_dumps[id]);
+  //   // this->pqc_exchanger.push_back(phreeqc->getExchanger(id));
+  //   // this->pqc_kinetics.push_back(phreeqc->getKineticsNames(id));
+  //   // this->pqc_equilibrium.push_back(phreeqc->getEquilibriumNames(id));
+  //   // this->pqc_surface_comps.push_back(phreeqc->getSurfaceCompNames(id));
+  //   //
+  //   this->pqc_surface_charges.push_back(phreeqc->getSurfaceChargeNames(id));
+  // }
 }
 
 } // namespace poet

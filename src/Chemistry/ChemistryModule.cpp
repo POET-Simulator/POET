@@ -1,6 +1,7 @@
 #include "ChemistryModule.hpp"
 
 #include "PhreeqcEngine.hpp"
+#include "PhreeqcMatrix.hpp"
 #include "SurrogateModels/DHT_Wrapper.hpp"
 #include "SurrogateModels/Interpolation.hpp"
 
@@ -167,9 +168,11 @@ poet::ChemistryModule::ChemistryModule(
   this->n_cells = chem_params.total_grid_cells;
 
   if (!is_master) {
-    for (const auto &[pqc_id, pqc_config] : chem_params.pqc_config) {
-      this->phreeqc_instances[pqc_id] =
-          std::make_unique<PhreeqcEngine>(pqc_config);
+    PhreeqcMatrix pqc_mat =
+        PhreeqcMatrix(chem_params.database, chem_params.pqc_script);
+    for (const auto &cell_id : chem_params.pqc_ids) {
+      this->phreeqc_instances[cell_id] =
+          std::make_unique<PhreeqcEngine>(pqc_mat, cell_id);
     }
     // for (std::size_t i = 0; i < chem_params.pqc_ids.size(); i++) {
     //   this->phreeqc_instances[chem_params.pqc_ids[i]] =

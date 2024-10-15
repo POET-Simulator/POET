@@ -13,6 +13,34 @@
 ### this program; if not, write to the Free Software Foundation, Inc., 51
 ### Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
+##' @param pqc_mat matrix, containing IDs and PHREEQC outputs
+##' @param grid matrix, zonation referring to pqc_mat$ID
+##' @return a data.frame
+# pqc_to_grid <- function(pqc_mat, grid) {
+#     # Convert the input DataFrame to a matrix
+#     pqc_mat <- as.matrix(pqc_mat)
+
+#     # Flatten the matrix into a vector
+#     id_vector <- as.integer(t(grid))
+
+#     # Find the matching rows in the matrix
+#     row_indices <- match(id_vector, pqc_mat[, "ID"])
+
+#     # Extract the matching rows from pqc_mat to size of grid matrix
+#     result_mat <- pqc_mat[row_indices, ]
+
+#     # Convert the result matrix to a data frame
+#     res_df <- as.data.frame(result_mat)
+
+#     # Remove all columns which only contain NaN
+#     res_df <- res_df[, colSums(is.na(res_df)) != nrow(res_df)]
+
+#     # Remove row names
+#     rownames(res_df) <- NULL
+
+#     return(res_df)
+# }
+
 ##' @param pqc_mat matrix, containing IDs and PHREEQC outputs 
 ##' @param grid matrix, zonation referring to pqc_mat$ID 
 ##' @return a data.frame
@@ -33,7 +61,7 @@ pqc_to_grid <- function(pqc_mat, grid) {
     res_df <- as.data.frame(result_mat)
 
     # Remove all columns which only contain NaN
-    res_df <- res_df[, colSums(is.na(res_df)) != nrow(res_df)]
+    # res_df <- res_df[, colSums(is.na(res_df)) != nrow(res_df)]
 
     # Remove row names
     rownames(res_df) <- NULL
