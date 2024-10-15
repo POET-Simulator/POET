@@ -365,7 +365,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
         R["TMP"] = Python_Keras_predict(R["predictors_scaled"], params.batch_size);
 
       } else {  // Predict with custom Eigen function
-        R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size, &Eigen_model_mutex);
+        R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size, Eigen_model_mutex);
       }
       
       // Apply postprocessing

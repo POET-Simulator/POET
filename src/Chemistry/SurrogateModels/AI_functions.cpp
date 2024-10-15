@@ -182,48 +182,45 @@ Eigen::MatrixXd eigen_inference_batched(const Eigen::Ref<const Eigen::MatrixXd>&
  * @return Predictions that the neural network made from the input values x. The predictions are
  * represented as a vector similar to the representation from the Field.AsVector() method
  */
-std::vector<double> Eigen_predict(const EigenModel& model, const std::vector<std::vector<double>>& x, int batch_size,
+std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>> x, int batch_size,
                                   std::mutex* Eigen_model_mutex) {
-    // Convert input data to Eigen matrix
-    const int num_samples = x[0].size();
-    const int num_features = x.size();
-    Eigen::MatrixXd full_input_matrix(num_features, num_samples);
-    for (int i = 0; i < num_samples; ++i) {
-        for (int j = 0; j < num_features; ++j) {
-            full_input_matrix(j, i) = x[j][i];
-        }
+  // Convert input data to Eigen matrix
+  const int num_samples = x[0].size();
+  const int num_features = x.size();
+  Eigen::MatrixXd full_input_matrix(num_features, num_samples);
+
+  for (int i = 0; i < num_samples; ++i) {
+    for (int j = 0; j < num_features; ++j) {
+      full_input_matrix(j, i) = x[j][i];
     }
+  }
 
-    std::vector<double> result;
-    result.reserve(num_samples);
+  std::vector<double> result;
+  result.reserve(num_samples * num_features);
+  
+  if (num_features != model.weight_matrices[0].cols()) {
+    throw std::runtime_error("Input data size " + std::to_string(num_features) + \
+      " does not match model input layer of size " + std::to_string(model.weight_matrices[0].cols()));
+  }
+  int num_batches = std::ceil(static_cast<double>(num_samples) / batch_size);
 
-    if (num_features != model.weight_matrices[0].cols()) {
-        throw std::runtime_error("Input data size " + std::to_string(num_features) +
-                                 " does not match model input layer of size " + 
-                                 std::to_string(model.weight_matrices[0].cols()));
-    }
+  Eigen_model_mutex->lock();
+  for (int batch = 0; batch < num_batches; ++batch) {
+    int start_idx = batch * batch_size;
+    int end_idx = std::min((batch + 1) * batch_size, num_samples);
+    int current_batch_size = end_idx - start_idx;
+    // Extract the current input data batch
+    Eigen::MatrixXd batch_data(num_features, current_batch_size);
+    batch_data = full_input_matrix.block(0, start_idx, num_features, current_batch_size);
+    // Predict
+    batch_data = eigen_inference_batched(batch_data, model);
 
-    int num_batches = std::ceil(static_cast<double>(num_samples) / batch_size);
-
-    std::lock_guard<std::mutex> lock(Eigen_model_mutex);
-
-    for (int batch = 0; batch < num_batches; ++batch) {
-        int start_idx = batch * batch_size;
-        int end_idx = std::min((batch + 1) * batch_size, num_samples);
-        int current_batch_size = end_idx - start_idx;
-
-        // Extract the current input data batch
-        Eigen::MatrixXd batch_data = full_input_matrix.block(0, start_idx, num_features, current_batch_size);
-
-        // Predict
-        Eigen::MatrixXd output = eigen_inference_batched(batch_data, model);
-
-        // Append the results
-        result.insert(result.end(), output.data(), output.data() + output.size());
-    }
-
-    return result;
+    result.insert(result.end(), batch_data.data(), batch_data.data() + batch_data.size());
+  }
+  Eigen_model_mutex->unlock();
+  return result;
 }
+
 
 
 

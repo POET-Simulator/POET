@@ -64,7 +64,7 @@ void update_weights(EigenModel* model, const std::vector<std::vector<std::vector
 std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights();
 
 std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>> x, int batch_size,
-                                  std::mutex* Eigen_model_mutex);
+                                  std::mutex& Eigen_model_mutex);
 
 // Otherwise, define the necessary stubs
 #else
@@ -80,7 +80,7 @@ inline int Python_Keras_training_thread(EigenModel*, std::mutex*,
 
 inline void update_weights(EigenModel*, const std::vector<std::vector<std::vector<double>>>&){return {};}
 inline std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights(){return {};}
-inline std::vector<double> Eigen_predict(const EigenModel&, std::vector<std::vector<double>>, int, std::mutex*){return {};}
+inline std::vector<double> Eigen_predict(const EigenModel&, std::vector<std::vector<double>>, int, std::mutex&){return {};}
 #endif
 } // namespace poet
 
