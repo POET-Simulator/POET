@@ -299,7 +299,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     MSG("AI: Initialize model");
     Python_Keras_load_model(R["model_file_path"]);
     MSG("AI: Initialize training thread");
-
+    MSG("end_training: " + BOOL_PRINT(end_training));
     Python_Keras_training_thread(&Eigen_model, &Eigen_model_mutex,
                                  &training_data_buffer, &training_data_buffer_mutex,
                                  &training_data_buffer_full, &start_training, &end_training,
@@ -365,7 +365,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
         R["TMP"] = Python_Keras_predict(R["predictors_scaled"], params.batch_size);
 
       } else {  // Predict with custom Eigen function
-        R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size, Eigen_model_mutex);
+        R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size, &Eigen_model_mutex);
       }
       
       // Apply postprocessing
@@ -373,8 +373,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       R.parseEval(std::string("predictions_scaled <- ") + 
         "set_field(TMP, ai_surrogate_species, field_nrow, ai_surrogate_species, byrow = TRUE)");
       R.parseEval("predictions <- postprocess(predictions_scaled)");
-
-      R.parseEval("print(head(predictions))");
 
       // Validate prediction and write valid predictions to chem field
       MSG("AI: Validate");

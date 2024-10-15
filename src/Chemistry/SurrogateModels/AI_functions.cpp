@@ -222,8 +222,6 @@ std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vect
 }
 
 
-
-
 /**
  * @brief Appends data from one matrix (column major std::vector<std::vector<double>>) to another
  * @param training_data_buffer Matrix that the values are appended to
@@ -300,23 +298,22 @@ void parallel_training(EigenModel* Eigen_model,
                        bool* start_training, bool* end_training,
                        const RuntimeParameters& params) {
   while (true) {
-    std::unique_lock<std::mutex> lock(*training_data_buffer_mutex);
     // Conditional waiting:
-    // Sleeps until a signal arrives on training_data_buffer_full
-    // Releases the lock on training_data_buffer_mutex while sleeping
-    // Lambda function with start_training checks if it was a spurious wakeup
-    // Reaquires the lock on training_data_buffer_mutex after waking up
-    // If start_training has been set to true while the thread was active, it does NOT
-    // Wait for a signal on training_data_buffer_full but starts the next round immediately.
+    // - Sleeps until a signal arrives on training_data_buffer_full
+    // - Releases the lock on training_data_buffer_mutex while sleeping
+    // - Lambda function with start_training checks if it was a spurious wakeup
+    // - Reaquires the lock on training_data_buffer_mutex after waking up
+    // - If start_training has been set to true while the thread was active, it does NOT
+    //   wait for a signal on training_data_buffer_full but starts the next round immediately.
+    std::unique_lock<std::mutex> lock(*training_data_buffer_mutex);
     training_data_buffer_full->wait(lock, [start_training] { return *start_training;});
-    
-    if (end_training) {
-        return;
+    // Return if program is about to end
+    if (*end_training) {
+      return;
     }
     
     // Reset the  waiting predicate
     *start_training = false;
-
     // Get the necessary training data
     std::cout << "AI: Training thread: Getting training data" << std::endl;
     // Initialize training data input and targets
@@ -353,8 +350,9 @@ void parallel_training(EigenModel* Eigen_model,
     
     if (!params.use_Keras_predictions) {
       std::cout << "AI: Training thread: Update shared model weights" << std::endl;
+      std::vector<std::vector<std::vector<double>>> cpp_weights = Python_Keras_get_weights();
       Eigen_model_mutex->lock();
-      //Python_Keras_set_weights_as_Eigen(Eigen_model);
+      update_weights(Eigen_model, cpp_weights);
       Eigen_model_mutex->unlock();
     }
     
@@ -387,7 +385,7 @@ int Python_Keras_training_thread(EigenModel* Eigen_model,
                                  std::condition_variable* training_data_buffer_full,
                                  bool* start_training, bool* end_training,
                                  const RuntimeParameters& params) {
-  
+
   PyThreadState *_save = PyEval_SaveThread();
   python_train_thread = std::thread(parallel_training, Eigen_model, Eigen_model_mutex,
                                     training_data_buffer, training_data_buffer_mutex,
@@ -396,6 +394,12 @@ int Python_Keras_training_thread(EigenModel* Eigen_model,
   return 0;
 }
 
+
+/**
+ * @brief Updates the EigenModels weigths and biases from the weight vector
+ * @param model Pounter to an EigenModel struct
+ * @param weights Cector of model weights from keras as returned by Python_Keras_get_weights()
+ */
 void update_weights(EigenModel* model,
                        const std::vector<std::vector<std::vector<double>>>& weights) {
   size_t num_layers = weights.size() / 2;
@@ -418,8 +422,8 @@ void update_weights(EigenModel* model,
 
 
 /**
- * @brief Converts the weights and biases from the Python Keras model to Eigen matrices
- * @return A EigenModel struct containing the model weights and biases as aligned Eigen matrices 
+ * @brief Converts the weights and biases from the Python Keras model to C++ vectors
+ * @return A vector containing the model weights and biases 
  */
 std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights() {
   // Acquire the Python GIL
@@ -445,69 +449,62 @@ std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights() {
   // Iterate through the layers (weights and biases)
   Py_ssize_t num_layers = PyList_Size(py_weights_list);
   for (Py_ssize_t i = 0; i < num_layers; ++i) {
-      PyObject* py_weight_array = PyList_GetItem(py_weights_list, i);
-      if (!PyArray_Check(py_weight_array)) {
-          throw std::runtime_error("Weight is not a NumPy array.");
-      }
+    PyObject* py_weight_array = PyList_GetItem(py_weights_list, i);
+    if (!PyArray_Check(py_weight_array)) {
+      throw std::runtime_error("Weight is not a NumPy array.");
+    }
 
-      PyArrayObject* weight_np = reinterpret_cast<PyArrayObject*>(py_weight_array);
-      int dtype = PyArray_TYPE(weight_np);
+    PyArrayObject* weight_np = reinterpret_cast<PyArrayObject*>(py_weight_array);
+    int dtype = PyArray_TYPE(weight_np);
 
-      if (PyArray_NDIM(weight_np) == 2) {
-          // Handle 2D weight matrices (e.g., Dense layer weights)
-          int num_rows = PyArray_DIM(weight_np, 0);
-          int num_cols = PyArray_DIM(weight_np, 1);
-          
-          // Create a container for the matrix
-          std::vector<std::vector<double>> weight_matrix(num_rows, std::vector<double>(num_cols));
-
-          // Handle different data types
-          if (dtype == NPY_FLOAT32) {
-              float* weight_data_float = static_cast<float*>(PyArray_DATA(weight_np));
-              for (int r = 0; r < num_rows; ++r) {
-                  for (int c = 0; c < num_cols; ++c) {
-                      weight_matrix[r][c] = static_cast<double>(weight_data_float[r * num_cols + c]);
-                  }
-              }
-          } else if (dtype == NPY_DOUBLE) {
-              double* weight_data_double = static_cast<double*>(PyArray_DATA(weight_np));
-              for (int r = 0; r < num_rows; ++r) {
-                  for (int c = 0; c < num_cols; ++c) {
-                      weight_matrix[r][c] = weight_data_double[r * num_cols + c];
-                  }
-              }
-          } else {
-              throw std::runtime_error("Unsupported data type for weights. Must be NPY_FLOAT32 or NPY_DOUBLE.");
+    if (PyArray_NDIM(weight_np) == 2) {
+      int num_rows = PyArray_DIM(weight_np, 0);
+      int num_cols = PyArray_DIM(weight_np, 1);
+      
+      std::vector<std::vector<double>> weight_matrix(num_rows, std::vector<double>(num_cols));
+      // Handle different precision settings
+      if (dtype == NPY_FLOAT32) {
+        float* weight_data_float = static_cast<float*>(PyArray_DATA(weight_np));
+        for (int r = 0; r < num_rows; ++r) {
+          for (int c = 0; c < num_cols; ++c) {
+            weight_matrix[r][c] = static_cast<double>(weight_data_float[r * num_cols + c]);
           }
-
-          cpp_weights.push_back(weight_matrix);
-
-      } else if (PyArray_NDIM(weight_np) == 1) {
-          // Handle 1D bias vectors
-          int num_elements = PyArray_DIM(weight_np, 0);
-          
-          // Create a container for the vector
-          std::vector<std::vector<double>> bias_vector(1, std::vector<double>(num_elements));
-
-          // Handle different data types
-          if (dtype == NPY_FLOAT32) {
-              float* bias_data_float = static_cast<float*>(PyArray_DATA(weight_np));
-              for (int j = 0; j < num_elements; ++j) {
-                  bias_vector[0][j] = static_cast<double>(bias_data_float[j]);
-              }
-          } else if (dtype == NPY_DOUBLE) {
-              double* bias_data_double = static_cast<double*>(PyArray_DATA(weight_np));
-              for (int j = 0; j < num_elements; ++j) {
-                  bias_vector[0][j] = bias_data_double[j];
-              }
-          } else {
-              throw std::runtime_error("Unsupported data type for biases. Must be NPY_FLOAT32 or NPY_DOUBLE.");
+        }
+      } else if (dtype == NPY_DOUBLE) {
+        double* weight_data_double = static_cast<double*>(PyArray_DATA(weight_np));
+        for (int r = 0; r < num_rows; ++r) {
+          for (int c = 0; c < num_cols; ++c) {
+            weight_matrix[r][c] = weight_data_double[r * num_cols + c];
           }
-
-          cpp_weights.push_back(bias_vector);
+        }
       } else {
-          throw std::runtime_error("Unsupported weight dimension. Only 1D and 2D arrays are supported.");
+          throw std::runtime_error("Unsupported data type for weights. Must be NPY_FLOAT32 or NPY_DOUBLE.");
       }
+      cpp_weights.push_back(weight_matrix);
+
+    } else if (PyArray_NDIM(weight_np) == 1) {
+      // 1D bias vectors
+      int num_elements = PyArray_DIM(weight_np, 0);
+      std::vector<std::vector<double>> bias_vector(1, std::vector<double>(num_elements));
+
+      // Handle different precision settings
+      if (dtype == NPY_FLOAT32) {
+        float* bias_data_float = static_cast<float*>(PyArray_DATA(weight_np));
+        for (int j = 0; j < num_elements; ++j) {
+          bias_vector[0][j] = static_cast<double>(bias_data_float[j]);
+        }
+      } else if (dtype == NPY_DOUBLE) {
+        double* bias_data_double = static_cast<double*>(PyArray_DATA(weight_np));
+        for (int j = 0; j < num_elements; ++j) {
+          bias_vector[0][j] = bias_data_double[j];
+        }
+      } else {
+        throw std::runtime_error("Unsupported data type for biases. Must be NPY_FLOAT32 or NPY_DOUBLE.");
+      }
+      cpp_weights.push_back(bias_vector);
+    } else {
+      throw std::runtime_error("Unsupported weight dimension. Only 1D and 2D arrays are supported.");
+    }
   }
   // Clean up
   Py_DECREF(py_weights_list);
