@@ -305,8 +305,23 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
                                  &training_data_buffer_full, &start_training, &end_training,
                                  params);
     if (!params.use_Keras_predictions) {
+      // Initialize Eigen model for custom inference function
       MSG("AI: Use custom C++ prediction function");
-      Python_Keras_set_weights_as_Eigen(Eigen_model);
+      // Get Keras weights from Python
+      std::vector<std::vector<std::vector<double>>> cpp_weights = Python_Keras_get_weights();
+      // Set model size
+      size_t num_layers = cpp_weights.size() / 2;
+      Eigen_model.weight_matrices.resize(num_layers); 
+      Eigen_model.biases.resize(num_layers);
+      for (size_t i = 0; i < cpp_weights.size(); i += 2) {
+          size_t rows = cpp_weights[i][0].size();
+          size_t cols = cpp_weights[i].size();
+          Eigen_model.weight_matrices[i / 2].resize(rows, cols);
+          size_t bias_size = cpp_weights[i + 1][0].size();
+          Eigen_model.biases[i / 2].resize(bias_size);
+      }
+      // Set initial model weights
+      update_weights(&Eigen_model, cpp_weights);
     }
     MSG("AI: Surrogate model initialized");
   }
@@ -358,6 +373,9 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       R.parseEval(std::string("predictions_scaled <- ") + 
         "set_field(TMP, ai_surrogate_species, field_nrow, ai_surrogate_species, byrow = TRUE)");
       R.parseEval("predictions <- postprocess(predictions_scaled)");
+
+      R.parseEval("print(head(predictions))");
+
       // Validate prediction and write valid predictions to chem field
       MSG("AI: Validate");
       R.parseEval("validity_vector <- validate_predictions(predictors, predictions)");
@@ -626,7 +644,38 @@ int main(int argc, char *argv[]) {
           throw std::runtime_error("AI surrogate input script must contain a value for model_file_path");
         }
         
-        set_ai_surrogate_runtime_params(R, run_params, init_list);
+        /* AI surrogate training and inference parameters. (Can be set by declaring a 
+        variable of the same name in one of the the R input scripts)*/
+        run_params.Keras_training_always_use_CPU = false; // Default will use GPU if detected
+        run_params.Keras_training_always_use_CPU = false; // Default will use GPU if detected
+        run_params.use_Keras_predictions = false; // Default inference function is custom C++ / Eigen implementation 
+        run_params.batch_size = 2560; // default value determined in test on the UP Turing cluster
+        run_params.training_epochs = 20; // 
+        run_params.training_data_size = init_list.getDiffusionInit().n_rows *
+                                        init_list.getDiffusionInit().n_cols; // Default value is number of cells in field
+        run_params.save_model_path = ""; // Model is only saved if a path is set in the input field
+        if (Rcpp::as<bool>(R.parseEval("exists(\"batch_size\")"))) {
+          run_params.batch_size = R["batch_size"];
+        }
+        if (Rcpp::as<bool>(R.parseEval("exists(\"training_epochs\")"))) {
+          run_params.training_epochs = R["training_epochs"];
+        }
+        if (Rcpp::as<bool>(R.parseEval("exists(\"training_data_size\")"))) {
+          run_params.training_data_size = R["training_data_size"];
+        }
+        if (Rcpp::as<bool>(R.parseEval("exists(\"use_Keras_predictions\")"))) {
+          run_params.use_Keras_predictions = R["use_Keras_predictions"];
+        }
+        if (Rcpp::as<bool>(R.parseEval("exists(\"Keras_predictions_always_use_CPU\")"))) {
+          run_params.Keras_predictions_always_use_CPU = R["Keras_predictions_always_use_CPU"];
+        }
+        if (Rcpp::as<bool>(R.parseEval("exists(\"Keras_training_always_use_CPU\")"))) {
+          run_params.Keras_training_always_use_CPU = R["Keras_training_always_use_CPU"];
+        }
+        if (Rcpp::as<bool>(R.parseEval("exists(\"save_model_path\")"))) {
+          run_params.save_model_path = Rcpp::as<std::string>(R["save_model_path"]);
+          std::cout << "AI: Model will be saved as \"" << run_params.save_model_path << "\"" << std::endl;
+        }
         
         MSG("AI: Initialize Python for AI surrogate functions");
         std::string python_keras_file = std::string(SRC_DIR) +
