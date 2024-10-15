@@ -527,25 +527,20 @@ std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights() {
 void Python_finalize(std::mutex* Eigen_model_mutex, std::mutex* training_data_buffer_mutex,
                      std::condition_variable* training_data_buffer_full,
                      bool* start_training, bool* end_training) {
-  // Acquire the Python GIL
-  PyGILState_STATE gstate = PyGILState_Ensure();
   // Define training as over
   *end_training = true;
-  Eigen_model_mutex->lock();
-  training_data_buffer_mutex->lock();
-
   // Wake up and join training thread
   *start_training = true;
   training_data_buffer_full->notify_one();
   
-  // Checking first. 
-  // Might be useful if options are added to disable training
   if (python_train_thread.joinable()) {
-        python_train_thread.join();
+    python_train_thread.join();
   }
 
+  // Acquire the Python GIL
+  PyGILState_STATE gstate = PyGILState_Ensure();
   //Finalize Python
   Py_FinalizeEx();
 }
 
-}
+} //namespace poet

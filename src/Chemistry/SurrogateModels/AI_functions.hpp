@@ -75,10 +75,10 @@ inline void training_data_buffer_append(std::vector<std::vector<double>>&, std::
 inline std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>, int){return {};}
 inline int Python_Keras_training_thread(EigenModel*, std::mutex*, 
                                         TrainingData*, std::mutex*,
-                                        std::condition_variable*, RuntimeParameters&,
-                                        bool*, bool*){return {};}
+                                        std::condition_variable*,
+                                        bool*, bool*, const RuntimeParameters&){return {};}
 
-inline void update_weights(EigenModel*, const std::vector<std::vector<std::vector<double>>>&){return {};}
+inline void update_weights(EigenModel*, const std::vector<std::vector<std::vector<double>>>&){}
 inline std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights(){return {};}
 inline std::vector<double> Eigen_predict(const EigenModel&, std::vector<std::vector<double>>, int, std::mutex*){return {};}
 #endif
