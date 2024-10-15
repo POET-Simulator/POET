@@ -276,6 +276,11 @@ data from the front of the buffer. Defaults to the size of the Field.
 should be used instead of the custom C++ implementation (Keras might be faster
 for larger models, especially on GPU). Defaults to false.
 
+- `disable_training` [*bool*]: Deactivates the training functions.
+
+- `save_model_path` [*string*]: After each training step the current model
+is saved to this path as a .keras file.
+
 - `preprocess(df, backtransform = FALSE, outputs = FALSE)` [*function*]: 
 Returns the scaled/transformed/backtransformed data frame. The `backtransform` 
 flag signals if the current processing step is applied to data that is

@@ -34,6 +34,7 @@ struct EigenModel {
 struct TrainingData {
   std::vector<std::vector<double>> x;
   std::vector<std::vector<double>> y;
+  int n_training_runs = 0;
 };
 
 // Ony declare the actual functions if flag is set 
@@ -44,7 +45,7 @@ int Python_Keras_setup(std::string functions_file_path);
 void Python_finalize(std::mutex* Eigen_model_mutex, std::mutex* training_data_buffer_mutex,
                      std::condition_variable* training_data_buffer_full, bool* start_training, bool* end_training);
 
-int Python_Keras_load_model(std::string model_file_path);
+int Python_Keras_load_model(std::string model_file_path, std::string cuda_src_dir);
 
 std::vector<double> Python_Keras_predict(std::vector<std::vector<double>> x, int batch_size);  
 
@@ -68,9 +69,9 @@ std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vect
 
 // Otherwise, define the necessary stubs
 #else
-inline void Python_Keras_setup(std::string functions_file_path){}
+inline void Python_Keras_setup(std::string){}
 inline void Python_finalize(std::mutex*, std::mutex*, std::condition_variable*, bool*, bool*){}
-inline void Python_Keras_load_model(std::string model_file_path){}
+inline void Python_Keras_load_model(std::string, std::string){}
 inline void training_data_buffer_append(std::vector<std::vector<double>>&, std::vector<std::vector<double>>&){}
 inline std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>, int){return {};}
 inline int Python_Keras_training_thread(EigenModel*, std::mutex*, 

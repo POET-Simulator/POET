@@ -42,13 +42,14 @@ int Python_Keras_setup(std::string functions_file_path) {
  * a variable "model_file_path" in the R input script
  * @return 0 if function was succesful
  */
-int Python_Keras_load_model(std::string model_file_path) {
+int Python_Keras_load_model(std::string model_file_path, std::string cuda_src_dir) {
   // Acquire the Python GIL
   PyGILState_STATE gstate = PyGILState_Ensure();
 
   // Initialize Keras model
   int py_model_loaded = PyRun_SimpleString(("model = initiate_model(\"" + 
-                                            model_file_path + "\")").c_str());
+                                            model_file_path + "\", \"" + 
+                                            cuda_src_dir + "\")").c_str());
   if (py_model_loaded != 0) {
     PyErr_Print(); // Ensure that python errors make it to stdout
     throw std::runtime_error("Keras model could not be loaded from: " + model_file_path);
@@ -261,7 +262,8 @@ void Python_keras_train(std::vector<std::vector<double>> x, std::vector<std::vec
   
   // Build the function arguments as four python objects and an integer
   PyObject* args = Py_BuildValue("(OOOiis)", 
-      py_keras_model, py_df_x, py_df_y, params.batch_size, params.training_epochs, params.save_model_path.c_str());
+      py_keras_model, py_df_x, py_df_y, params.batch_size, params.training_epochs,
+      params.save_model_path.c_str());
   
 
   // Call the Python training function
@@ -335,7 +337,8 @@ void parallel_training(EigenModel* Eigen_model,
       // Remove copied data from the front of the buffer
       training_data_buffer->y[col].erase(training_data_buffer->y[col].begin(),
                                          training_data_buffer->y[col].begin() + params.training_data_size);
-
+      //update number of training runs
+      training_data_buffer->n_training_runs += 1;
     }
     // Unlock the training_data_buffer_mutex 
     lock.unlock();

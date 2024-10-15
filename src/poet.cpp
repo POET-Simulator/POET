@@ -297,13 +297,14 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   TrainingData training_data_buffer;
   if (params.use_ai_surrogate) {  
     MSG("AI: Initialize model");
-    Python_Keras_load_model(R["model_file_path"]);
-    MSG("AI: Initialize training thread");
-    MSG("end_training: " + BOOL_PRINT(end_training));
-    Python_Keras_training_thread(&Eigen_model, &Eigen_model_mutex,
-                                 &training_data_buffer, &training_data_buffer_mutex,
-                                 &training_data_buffer_full, &start_training, &end_training,
-                                 params);
+    Python_Keras_load_model(R["model_file_path"], params.cuda_src_dir);
+    if (!params.disable_training) {
+      MSG("AI: Initialize training thread");
+      Python_Keras_training_thread(&Eigen_model, &Eigen_model_mutex,
+                                  &training_data_buffer, &training_data_buffer_mutex,
+                                  &training_data_buffer_full, &start_training, &end_training,
+                                  params);
+    }
     if (!params.use_Keras_predictions) {
       // Initialize Eigen model for custom inference function
       MSG("AI: Use custom C++ prediction function");
@@ -395,14 +396,16 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       double ai_end_t = MPI_Wtime();
       R["ai_prediction_time"] = ai_end_t - ai_start_t;
 
-      // Add to training data buffer:
-      // Input values for which the predictions were invalid
-      MSG("AI: Add invalid input data to training data buffer");
-      std::vector<std::vector<double>> invalid_x = 
-        R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
-      training_data_buffer_mutex.lock();
-      training_data_buffer_append(training_data_buffer.x, invalid_x);
-      training_data_buffer_mutex.unlock();
+      if (!params.disable_training) {
+        // Add to training data buffer:
+        // Input values for which the predictions were invalid
+        MSG("AI: Add invalid input data to training data buffer");
+        std::vector<std::vector<double>> invalid_x = 
+          R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
+        training_data_buffer_mutex.lock();
+        training_data_buffer_append(training_data_buffer.x, invalid_x);
+        training_data_buffer_mutex.unlock();
+      }
     }
 
     // Run simulation step
@@ -422,16 +425,19 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
       R.parseEval("target_scaled <- preprocess(targets)");
 
-      std::vector<std::vector<double>> invalid_y = 
-        R.parseEval("get_invalid_values(target_scaled, validity_vector)");
-      training_data_buffer_mutex.lock();
-      training_data_buffer_append(training_data_buffer.y, invalid_y);
-      training_data_buffer_mutex.unlock();
+      if (!params.disable_training) {
+        std::vector<std::vector<double>> invalid_y = 
+          R.parseEval("get_invalid_values(target_scaled, validity_vector)");
+        training_data_buffer_mutex.lock();
+        training_data_buffer_append(training_data_buffer.y, invalid_y);
+        training_data_buffer_mutex.unlock();
 
-      // Signal to training thread if training data buffer is full
-      if (training_data_buffer.y[0].size() >= params.training_data_size) {
-        start_training = true;
-        training_data_buffer_full.notify_one();
+        // Signal to training thread if training data buffer is full
+        if (training_data_buffer.y[0].size() >= params.training_data_size) {
+          start_training = true;
+          training_data_buffer_full.notify_one();
+        }
+        R["n_training_runs"] = training_data_buffer.n_training_runs;
       }
     }
 
@@ -491,13 +497,13 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   profiling["chemistry"] = chem_profiling;
   profiling["diffusion"] = diffusion_profiling;
 
-  chem.MasterLoopBreak();
-  
   if (params.use_ai_surrogate) {
     MSG("Finalize Python and wind down training thread");
     Python_finalize(&Eigen_model_mutex, &training_data_buffer_mutex,
                     &training_data_buffer_full, &start_training, &end_training);
   }
+
+  chem.MasterLoopBreak();
 
   return profiling;
 }
@@ -644,9 +650,8 @@ int main(int argc, char *argv[]) {
         
         /* AI surrogate training and inference parameters. (Can be set by declaring a 
         variable of the same name in one of the the R input scripts)*/
-        run_params.Keras_training_always_use_CPU = false; // Default will use GPU if detected
-        run_params.Keras_training_always_use_CPU = false; // Default will use GPU if detected
-        run_params.use_Keras_predictions = false; // Default inference function is custom C++ / Eigen implementation 
+        run_params.use_Keras_predictions = false; // Default inference function is custom C++ / Eigen implementation
+        run_params.disable_training = false; // Model will be trained per default
         run_params.batch_size = 2560; // default value determined in test on the UP Turing cluster
         run_params.training_epochs = 20; // 
         run_params.training_data_size = init_list.getDiffusionInit().n_rows *
@@ -664,11 +669,8 @@ int main(int argc, char *argv[]) {
         if (Rcpp::as<bool>(R.parseEval("exists(\"use_Keras_predictions\")"))) {
           run_params.use_Keras_predictions = R["use_Keras_predictions"];
         }
-        if (Rcpp::as<bool>(R.parseEval("exists(\"Keras_predictions_always_use_CPU\")"))) {
-          run_params.Keras_predictions_always_use_CPU = R["Keras_predictions_always_use_CPU"];
-        }
-        if (Rcpp::as<bool>(R.parseEval("exists(\"Keras_training_always_use_CPU\")"))) {
-          run_params.Keras_training_always_use_CPU = R["Keras_training_always_use_CPU"];
+        if (Rcpp::as<bool>(R.parseEval("exists(\"disable_training\")"))) {
+          run_params.disable_training = R["disable_training"];
         }
         if (Rcpp::as<bool>(R.parseEval("exists(\"save_model_path\")"))) {
           run_params.save_model_path = Rcpp::as<std::string>(R["save_model_path"]);
