@@ -414,8 +414,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
     /* AI surrogate iterative training*/
     if (params.use_ai_surrogate) {
-      double ai_start_t = MPI_Wtime();
-
       // Add to training data buffer targets:
       // True values for invalid predictions      
       MSG("AI: Add invalid target data to training data buffer");
