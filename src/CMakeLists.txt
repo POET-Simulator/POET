@@ -30,7 +30,7 @@ if(USE_AI_SURROGATE)
   message("Building with AI surrogate functions")
   message(" -- Needs Python (with Numpy & Keras) and Threads libraries")
 
-  find_package(CUDA REQUIRED)
+  find_package(CUDA)
   message(" -- Setting TensorFlow CUDA path to: ${CUDA_TOOLKIT_ROOT_DIR}")
 
   # make sure to use the python installation from the conda environment
