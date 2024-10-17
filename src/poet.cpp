@@ -270,6 +270,7 @@ void call_master_iter_end(RInside &R, const Field &trans, const Field &chem) {
                           std::to_string(chem.GetRequestedVecSize()) +
                           ")), TMP_PROPS)"));
   R["setup"] = *global_rt_setup;
+  R.parseEval("print(head(state_C))");
   R.parseEval("setup <- master_iteration_end(setup, state_T, state_C)");
   *global_rt_setup = R["setup"];
 }

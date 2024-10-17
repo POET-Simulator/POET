@@ -31,7 +31,11 @@ if(USE_AI_SURROGATE)
   message(" -- Needs Python (with Numpy & Keras) and Threads libraries")
 
   find_package(CUDA)
-  message(" -- Setting TensorFlow CUDA path to: ${CUDA_TOOLKIT_ROOT_DIR}")
+  IF (${CUDA_FOUND})
+    message(" -- Setting TensorFlow CUDA path to: ${CUDA_TOOLKIT_ROOT_DIR}")
+  ELSE (${CUDA_FOUND})
+  message(" -- No CUDA installation found for TensorFlow  ")
+  ENDIF (${CUDA_FOUND})
 
   # make sure to use the python installation from the conda environment
   if(DEFINED ENV{CONDA_PREFIX})
