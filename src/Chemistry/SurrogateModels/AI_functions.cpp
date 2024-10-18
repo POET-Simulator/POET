@@ -31,7 +31,8 @@ int Python_Keras_setup(std::string functions_file_path) {
   fclose(fp);
   if (py_functions_initialized != 0) {
     PyErr_Print();
-    throw std::runtime_error("Python functions could not be initialized");
+    throw std::runtime_error(std::string("AI surrogate Python functions could not be loaded." ) + 
+                             "Are tensorflow and numpy installed?");
   }
   return py_functions_initialized;
 }
@@ -309,6 +310,9 @@ void parallel_training(EigenModel* Eigen_model,
     //   wait for a signal on training_data_buffer_full but starts the next round immediately.
     std::unique_lock<std::mutex> lock(*training_data_buffer_mutex);
     training_data_buffer_full->wait(lock, [start_training] { return *start_training;});
+    
+    //hier nochmal training_data_buffer_mutex lock/lock test?
+    
     // Return if program is about to end
     if (*end_training) {
       return;
@@ -337,9 +341,9 @@ void parallel_training(EigenModel* Eigen_model,
       // Remove copied data from the front of the buffer
       training_data_buffer->y[col].erase(training_data_buffer->y[col].begin(),
                                          training_data_buffer->y[col].begin() + params.training_data_size);
-      //update number of training runs
-      training_data_buffer->n_training_runs += 1;
     }
+    //update number of training runs
+    training_data_buffer->n_training_runs += 1;
     // Unlock the training_data_buffer_mutex 
     lock.unlock();
 

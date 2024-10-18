@@ -270,7 +270,6 @@ void call_master_iter_end(RInside &R, const Field &trans, const Field &chem) {
                           std::to_string(chem.GetRequestedVecSize()) +
                           ")), TMP_PROPS)"));
   R["setup"] = *global_rt_setup;
-  R.parseEval("print(head(state_C))");
   R.parseEval("setup <- master_iteration_end(setup, state_T, state_C)");
   *global_rt_setup = R["setup"];
 }
@@ -331,7 +330,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   R["TMP_PROPS"] = Rcpp::wrap(chem.getField().GetProps());
   R["field_nrow"] = chem.getField().GetRequestedVecSize();
 
-  /* SIMULATION LOOP */
+    /* SIMULATION LOOP */
   double dSimTime{0};
   for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
     double start_t = MPI_Wtime();
@@ -353,14 +352,31 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     
     if (params.use_ai_surrogate) {
       double ai_start_t = MPI_Wtime();
+      double ai_start_steps = MPI_Wtime();
       // Get current values from the tug field for the ai predictions
       R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
       R.parseEval(std::string("predictors <- ") + 
         "set_field(TMP, TMP_PROPS, field_nrow, ai_surrogate_species)");
-      
+
+
+      double ai_end_t = MPI_Wtime();
+      R["diff_to_R"] = ai_end_t - ai_start_steps;
+      ai_start_steps = MPI_Wtime();
+
       // Apply preprocessing
       MSG("AI Preprocessing");
       R.parseEval("predictors_scaled <- preprocess(predictors)");
+
+
+      ai_end_t = MPI_Wtime();
+      R["R_preprocessing"] = ai_end_t - ai_start_steps;
+      ai_start_steps = MPI_Wtime();
+      
+
+      std::vector<std::vector<double>> x = R["predictors_scaled"];
+      ai_end_t = MPI_Wtime();
+      R["R_preprocessed_to_cxx"] = ai_end_t - ai_start_steps;
+      ai_start_steps = MPI_Wtime();
 
       MSG("AI: Predict");
       if (params.use_Keras_predictions) {  // Predict with Keras default function
@@ -369,19 +385,51 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       } else {  // Predict with custom Eigen function
         R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size, &Eigen_model_mutex);
       }
+
+      ai_end_t = MPI_Wtime();
+      R["cxx_inference"] = ai_end_t - ai_start_steps;
+      ai_start_steps = MPI_Wtime();
       
+      R["xyz_THROWAWAY"] = x;
+       ai_end_t = MPI_Wtime();
+      std::cout << "C++ predictions back to R: " << ai_end_t - ai_start_steps << std::endl;
+      R["cxx_predictions_to_R"] = ai_end_t - ai_start_steps; 
+      ai_start_steps = MPI_Wtime();
+
+
       // Apply postprocessing
       MSG("AI: Postprocesing");
       R.parseEval(std::string("predictions_scaled <- ") + 
         "set_field(TMP, ai_surrogate_species, field_nrow, ai_surrogate_species, byrow = TRUE)");
       R.parseEval("predictions <- postprocess(predictions_scaled)");
 
+      ai_end_t = MPI_Wtime();
+      R["R_postprocessing"] = ai_end_t - ai_start_steps;
+      ai_start_steps = MPI_Wtime();
+
       // Validate prediction and write valid predictions to chem field
       MSG("AI: Validate");
       R.parseEval("validity_vector <- validate_predictions(predictors, predictions)");
 
+
+
+
+      ai_end_t = MPI_Wtime();
+      R["R_validate"] = ai_end_t - ai_start_steps;
+      ai_start_steps = MPI_Wtime();
+
+
+
+
       MSG("AI: Marking valid");
       chem.set_ai_surrogate_validity_vector(R.parseEval("validity_vector"));
+
+
+
+      ai_end_t = MPI_Wtime();
+      R["validity_to_cxx"] = ai_end_t - ai_start_steps;
+      ai_start_steps = MPI_Wtime();
+
 
       std::vector<std::vector<double>> RTempField =
         R.parseEval("set_valid_predictions(predictors, predictions, validity_vector)");
@@ -392,9 +440,15 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
       MSG("AI: Update field with AI predictions");
       chem.getField().update(predictions_field);
+
+
+      ai_end_t = MPI_Wtime();
+      R["update_field"] = ai_end_t - ai_start_steps;
+      ai_start_steps = MPI_Wtime();
       
       // store time for output file
-      double ai_end_t = MPI_Wtime();
+      // double ai_end_t = MPI_Wtime();
+       ai_end_t = MPI_Wtime();
       R["ai_prediction_time"] = ai_end_t - ai_start_t;
 
       if (!params.disable_training) {
@@ -407,6 +461,9 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
         training_data_buffer_append(training_data_buffer.x, invalid_x);
         training_data_buffer_mutex.unlock();
       }
+
+      ai_end_t = MPI_Wtime();
+      R["append_to_training_buffer"] = ai_end_t - ai_start_steps;
     }
 
     // Run simulation step
@@ -414,7 +471,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     chem.simulate(dt);
 
     /* AI surrogate iterative training*/
-    if (params.use_ai_surrogate) {
+    if (params.use_ai_surrogate && !params.disable_training) {
       // Add to training data buffer targets:
       // True values for invalid predictions      
       MSG("AI: Add invalid target data to training data buffer");
@@ -423,21 +480,18 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
         "set_field(TMP, TMP_PROPS, field_nrow, ai_surrogate_species)");
 
       R.parseEval("target_scaled <- preprocess(targets)");
+      std::vector<std::vector<double>> invalid_y = 
+        R.parseEval("get_invalid_values(target_scaled, validity_vector)");
+      training_data_buffer_mutex.lock();
+      training_data_buffer_append(training_data_buffer.y, invalid_y);
 
-      if (!params.disable_training) {
-        std::vector<std::vector<double>> invalid_y = 
-          R.parseEval("get_invalid_values(target_scaled, validity_vector)");
-        training_data_buffer_mutex.lock();
-        training_data_buffer_append(training_data_buffer.y, invalid_y);
-        training_data_buffer_mutex.unlock();
-
-        // Signal to training thread if training data buffer is full
-        if (training_data_buffer.y[0].size() >= params.training_data_size) {
-          start_training = true;
-          training_data_buffer_full.notify_one();
-        }
-        R["n_training_runs"] = training_data_buffer.n_training_runs;
+      // Signal to training thread if training data buffer is full
+      if (training_data_buffer.y[0].size() >= params.training_data_size) {
+        start_training = true;
+        training_data_buffer_full.notify_one();
       }
+      training_data_buffer_mutex.unlock();
+      R["n_training_runs"] = training_data_buffer.n_training_runs;
     }
 
     // MPI_Barrier(MPI_COMM_WORLD);
