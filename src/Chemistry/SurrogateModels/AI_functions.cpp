@@ -72,7 +72,7 @@ PyObject* vector_to_numpy_array(const std::vector<std::vector<double>>& field) {
                       static_cast<npy_intp>(field.size())};
   
   PyObject* np_array = PyArray_SimpleNew(2, dims, NPY_FLOAT64);
-  _Float64* data = static_cast<_Float64*>(PyArray_DATA((PyArrayObject*)np_array));
+  double* data = static_cast<double*>(PyArray_DATA((PyArrayObject*)np_array));
   // write field data to numpy array
   for (size_t i = 0; i < field.size(); ++i) {
     for (size_t j = 0; j < field[i].size(); ++j) {

@@ -281,14 +281,13 @@ for larger models, especially on GPU). Defaults to false.
 - `save_model_path` [*string*]: After each training step the current model
 is saved to this path as a .keras file.
 
-- `preprocess(df, backtransform = FALSE, outputs = FALSE)` [*function*]: 
-Returns the scaled/transformed/backtransformed data frame. The `backtransform` 
-flag signals if the current processing step is applied to data that is
-assumed to be scaled and expects backtransformed values. The `outputs`
-flag signals if the current processing step is applied to the output
-or target of the model. This can be used to eg. skip these processing
-steps and only scale the model input. The default implementation uses no
-transformations.
+- `preprocess(df)` [*function*]: 
+Returns the scaled/transformed data frame. The default implementation uses no
+scaling or transformations.
+
+- `postprocess(df)` [*function*]: 
+Returns the rescaled/backtransformed data frame. The combination of preprocess() and postprocess() is expected to be idempotent. The default implementation uses no
+scaling or transformations.
 
 
 ```sh

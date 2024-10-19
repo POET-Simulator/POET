@@ -20,6 +20,7 @@ def prediction_step(model, x, batch_size):
     prediction = model.predict(x, batch_size)
     return np.array(prediction, dtype=np.float64)
 
+
 def get_weights(model):
     weights = model.get_weights()
     return weights

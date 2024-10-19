@@ -367,7 +367,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       MSG("AI Preprocessing");
       R.parseEval("predictors_scaled <- preprocess(predictors)");
 
-
       ai_end_t = MPI_Wtime();
       R["R_preprocessing"] = ai_end_t - ai_start_steps;
       ai_start_steps = MPI_Wtime();
@@ -395,7 +394,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       std::cout << "C++ predictions back to R: " << ai_end_t - ai_start_steps << std::endl;
       R["cxx_predictions_to_R"] = ai_end_t - ai_start_steps; 
       ai_start_steps = MPI_Wtime();
-
 
       // Apply postprocessing
       MSG("AI: Postprocesing");
@@ -481,13 +479,11 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     // store_result is TRUE)
     call_master_iter_end(R, diffusion.getField(), chem.getField());
 
-
     /* AI surrogate iterative training*/
     if (params.use_ai_surrogate && !params.disable_training) {
       // Add to training data buffer targets:
       // True values for invalid predictions      
       MSG("AI: Add invalid target data to training data buffer");
-
       R.parseEval("target_scaled <- preprocess(state_C[ai_surrogate_species])");
       std::vector<std::vector<double>> invalid_y = 
         R.parseEval("get_invalid_values(target_scaled, validity_vector)");

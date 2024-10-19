@@ -4,11 +4,11 @@
 ## See the barite_50.R file as an example and the general README for more
 ## information.
 
-preprocess <- function(df, backtransform = FALSE, outputs = FALSE) {
+preprocess <- function(df) {
   return(df)
 }
 
-postprocess <- function(df, backtransform = TRUE, outputs = TRUE) {
+postprocess <- function(df) {
   return(df)
 }
 
