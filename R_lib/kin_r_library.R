@@ -79,16 +79,7 @@ master_iteration_end <- function(setup, state_T, state_C) {
                 prediction_time = if (exists("ai_prediction_time")) ai_prediction_time else NULL,
                 predictions_validity = if (exists("validity_vector")) validity_vector else NULL,
                 predictions = if (exists("predictions")) predictions else NULL,
-                n_training_runs = if(exists("n_training_runs")) n_training_runs else NULL,
-                diff_to_R = diff_to_R,
-                R_preprocessing = R_preprocessing,
-                R_preprocessed_to_cxx = R_preprocessed_to_cxx,
-                cxx_inference = cxx_inference,
-                cxx_predictions_to_R = cxx_predictions_to_R,
-                R_postprocessing = R_postprocessing,
-                R_validate = R_validate,
-                validity_to_cxx = validity_to_cxx,
-                append_to_training_buffer = append_to_training_buffer
+                n_training_runs = if(exists("n_training_runs")) n_training_runs else NULL
             )
 
             SaveRObj(x = list(

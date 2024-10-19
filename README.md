@@ -252,13 +252,15 @@ R input script.
 The following variables and functions must be declared:
 - `model_file_path` [*string*]: Path to the Keras model file with which 
 the AI surrogate model is initialized. 
-- `validate_predictions(predictors, prediction)` [*function*]: Returns a boolean
-vector of length `nrow(predictions)`. The output of this function defines
-which predictions are considered valid and which are rejected. Regular 
-simulation will only be done for the rejected values, and the results
-will be added to the training data buffer of the AI surrogate model.
-Can eg. be implemented as a mass balance threshold between the predictors
-and the prediction.
+- `validate_predictions(predictors, prediction)` [*function*]: Returns a
+boolean vector of length `nrow(predictions)`. The output of this function
+defines which predictions are considered valid and which are rejected. 
+the predictors and predictions are passed in their original original (not
+transformed) scale. Regular simulation will only be done for the rejected
+values. The input data of the rejected rows and the respective true results
+from simulation will be added to the training data buffer of the AI surrogate
+model. Can eg. be implemented as a mass balance threshold between the
+predictors and the prediction.
 
 
 The following variables and functions can be declared:
