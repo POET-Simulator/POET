@@ -470,16 +470,25 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     MSG("Simulate chemistry");
     chem.simulate(dt);
 
+    // MPI_Barrier(MPI_COMM_WORLD);
+    double end_t = MPI_Wtime();
+    dSimTime += end_t - start_t;
+    R["totaltime"] = dSimTime;
+
+    // MDL master_iteration_end just writes on disk state_T and
+    // state_C after every iteration if the cmdline option
+    // --ignore-results is not given (and thus the R variable
+    // store_result is TRUE)
+    call_master_iter_end(R, diffusion.getField(), chem.getField());
+
+
     /* AI surrogate iterative training*/
     if (params.use_ai_surrogate && !params.disable_training) {
       // Add to training data buffer targets:
       // True values for invalid predictions      
       MSG("AI: Add invalid target data to training data buffer");
-      R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
-      R.parseEval(std::string("targets <- ") + 
-        "set_field(TMP, TMP_PROPS, field_nrow, ai_surrogate_species)");
 
-      R.parseEval("target_scaled <- preprocess(targets)");
+      R.parseEval("target_scaled <- preprocess(state_C[ai_surrogate_species])");
       std::vector<std::vector<double>> invalid_y = 
         R.parseEval("get_invalid_values(target_scaled, validity_vector)");
       training_data_buffer_mutex.lock();
@@ -494,16 +503,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       R["n_training_runs"] = training_data_buffer.n_training_runs;
     }
 
-    // MPI_Barrier(MPI_COMM_WORLD);
-    double end_t = MPI_Wtime();
-    dSimTime += end_t - start_t;
-    R["totaltime"] = dSimTime;
-
-    // MDL master_iteration_end just writes on disk state_T and
-    // state_C after every iteration if the cmdline option
-    // --ignore-results is not given (and thus the R variable
-    // store_result is TRUE)
-    call_master_iter_end(R, diffusion.getField(), chem.getField());
 
     diffusion.getField().update(chem.getField());
 
