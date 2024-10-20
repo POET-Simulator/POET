@@ -5,6 +5,7 @@ import os
 def initiate_model(model_file_path, cuda_dir):
     os.environ["TF_XLA_FLAGS"] = "--tf_xla_cpu_global_jit"
     os.environ["XLA_FLAGS"] = "--xla_gpu_cuda_data_dir=" + cuda_dir
+    print("AI: Model loaded from: " + model_file_path, flush=True)
     model = tf.keras.models.load_model(model_file_path)
     return model
     
