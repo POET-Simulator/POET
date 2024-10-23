@@ -531,10 +531,12 @@ std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights() {
 void Python_finalize(std::mutex* Eigen_model_mutex, std::mutex* training_data_buffer_mutex,
                      std::condition_variable* training_data_buffer_full,
                      bool* start_training, bool* end_training) {
+  training_data_buffer_mutex->lock();
   // Define training as over
   *end_training = true;
   // Wake up and join training thread
   *start_training = true;
+  training_data_buffer_mutex->unlock();
   training_data_buffer_full->notify_one();
   
   if (python_train_thread.joinable()) {

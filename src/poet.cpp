@@ -395,17 +395,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       // store time for output file
       double ai_end_t = MPI_Wtime();
       R["ai_prediction_time"] = ai_end_t - ai_start_t;
-
-      if (!params.disable_training) {
-        // Add to training data buffer:
-        // Input values for which the predictions were invalid
-        MSG("AI: Add invalid input data to training data buffer");
-        std::vector<std::vector<double>> invalid_x = 
-          R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
-        training_data_buffer_mutex.lock();
-        training_data_buffer_append(training_data_buffer.x, invalid_x);
-        training_data_buffer_mutex.unlock();
-      }
     }
 
     // Run simulation step
@@ -425,16 +414,22 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
     /* AI surrogate iterative training*/
     if (params.use_ai_surrogate && !params.disable_training) {
-      // Add to training data buffer targets:
-      // True values for invalid predictions      
-      MSG("AI: Add invalid target data to training data buffer");
+      // Add values for which the predictions were invalid
+      // to training data buffer      
+      MSG("AI: Add invalid predictions to training data buffer");
+      
+      std::vector<std::vector<double>> invalid_x = 
+        R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
+
       R.parseEval("target_scaled <- preprocess(state_C[ai_surrogate_species])");
       std::vector<std::vector<double>> invalid_y = 
         R.parseEval("get_invalid_values(target_scaled, validity_vector)");
+      
       training_data_buffer_mutex.lock();
+      training_data_buffer_append(training_data_buffer.x, invalid_x);
       training_data_buffer_append(training_data_buffer.y, invalid_y);
-
       // Signal to training thread if training data buffer is full
+      
       if (training_data_buffer.y[0].size() >= params.training_data_size) {
         start_training = true;
         training_data_buffer_full.notify_one();
