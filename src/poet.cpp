@@ -297,7 +297,9 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   TrainingData training_data_buffer;
   if (params.use_ai_surrogate) {  
     MSG("AI: Initialize model");
-    Python_Keras_load_model(R["model_file_path"], params.cuda_src_dir);
+
+    // Initiate two models from one file TODO: Expand this for two input files
+    Python_Keras_load_model(R["model_file_path"], R["model_file_path"]);
     if (!params.disable_training) {
       MSG("AI: Initialize training thread");
       Python_Keras_training_thread(&Eigen_model, &Eigen_model_mutex,
@@ -352,6 +354,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     
     if (params.use_ai_surrogate) {
       double ai_start_t = MPI_Wtime();
+
       // Get current values from the tug field for the ai predictions
       R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
       R.parseEval(std::string("predictors <- ") + 
@@ -360,13 +363,32 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       // Apply preprocessing
       MSG("AI Preprocessing");
       R.parseEval("predictors_scaled <- preprocess(predictors)");
+      std::vector<std::vector<double>> predictors_scaled = R["predictors_scaled"];
+
+
+
+
+      // get k means
+      MSG("KMEANSSSSS:");
+      std::vector<int> labels = kMeans(predictors_scaled, 2, 300);
+      int size = (int)(std::sqrt(chem.getField().GetRequestedVecSize()));
+      
+      MSG("SIZE: " + std::to_string(size));
+      
+      for (int row = size; row > 0; row--) {
+        for (int column = 0; column < size; column++) {
+          std::cout << labels[((row - 1) * size) + column];
+        }
+        std::cout << std::endl;
+      }
+      
 
       MSG("AI: Predict");
       if (params.use_Keras_predictions) {  // Predict with Keras default function
-        R["TMP"] = Python_Keras_predict(R["predictors_scaled"], params.batch_size);
+        R["TMP"] = Python_Keras_predict(predictors_scaled, params.batch_size);
 
       } else {  // Predict with custom Eigen function
-        R["TMP"] = Eigen_predict(Eigen_model, R["predictors_scaled"], params.batch_size, &Eigen_model_mutex);
+        R["TMP"] = Eigen_predict(Eigen_model, predictors_scaled, params.batch_size, &Eigen_model_mutex);
       }
 
       // Apply postprocessing
@@ -666,7 +688,7 @@ int main(int argc, char *argv[]) {
         MSG("AI: Initialize Python for AI surrogate functions");
         std::string python_keras_file = std::string(SRC_DIR) +
           "/src/Chemistry/SurrogateModels/AI_Python_functions/keras_AI_surrogate.py";
-        Python_Keras_setup(python_keras_file);
+        Python_Keras_setup(python_keras_file, run_params.cuda_src_dir);
       }
 
       MSG("Init done on process with rank " + std::to_string(MY_RANK));

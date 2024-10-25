@@ -21,11 +21,12 @@ namespace poet {
  * functions are defined
  * @return 0 if function was succesful
  */
-int Python_Keras_setup(std::string functions_file_path) {
+int Python_Keras_setup(std::string functions_file_path, std::string cuda_src_dir) {
   // Initialize Python functions
   Py_Initialize();
   // Import numpy functions
   _import_array();
+  PyRun_SimpleString(("cuda_dir = \"" + cuda_src_dir + "\"").c_str()) ;
   FILE* fp = fopen(functions_file_path.c_str(), "r");
   int py_functions_initialized = PyRun_SimpleFile(fp, functions_file_path.c_str());
   fclose(fp);
@@ -43,23 +44,141 @@ int Python_Keras_setup(std::string functions_file_path) {
  * a variable "model_file_path" in the R input script
  * @return 0 if function was succesful
  */
-int Python_Keras_load_model(std::string model_file_path, std::string cuda_src_dir) {
+int Python_Keras_load_model(std::string model_reaction, std::string model_no_reaction) {
   // Acquire the Python GIL
   PyGILState_STATE gstate = PyGILState_Ensure();
 
-  // Initialize Keras model
-  int py_model_loaded = PyRun_SimpleString(("model = initiate_model(\"" + 
-                                            model_file_path + "\", \"" + 
-                                            cuda_src_dir + "\")").c_str());
+  // Initialize Keras model for the reaction cluster
+  int py_model_loaded = PyRun_SimpleString(("model_reaction = initiate_model(\"" + 
+                                             model_reaction + "\")").c_str());
   if (py_model_loaded != 0) {
     PyErr_Print(); // Ensure that python errors make it to stdout
-    throw std::runtime_error("Keras model could not be loaded from: " + model_file_path);
+    throw std::runtime_error("Keras model could not be loaded from: " + model_reaction);
+  }
+  // Initialize Keras model for the no reaction cluster
+  py_model_loaded = PyRun_SimpleString(("model_no_reaction = initiate_model(\"" + 
+                                         model_no_reaction + "\")").c_str());
+  if (py_model_loaded != 0) {
+    PyErr_Print(); // Ensure that python errors make it to stdout
+    throw std::runtime_error("Keras model could not be loaded from: " + model_no_reaction);
   }
   // Release the Python GIL
   PyGILState_Release(gstate);
-
   return py_model_loaded;
 }
+
+
+/**
+ * @brief Calculates the euclidian distance between two points in n dimensional space
+ * @param a Point a
+ * @param b Point b
+ * @return The distance
+ */
+double distance(const std::vector<double>& a, const std::vector<double>& b) {
+    double sum = 0.0;
+    for (size_t i = 0; i < a.size(); ++i) {
+        sum += (a[i] - b[i]) * (a[i] - b[i]);
+    }
+    return sqrt(sum);
+}
+
+/**
+ * @brief Assigns all elements of a 2D-Matrix to the nearest cluster center point
+ * @param field 2D-Matrix with the content of a Field object
+ * @param clusters The vector of clusters represented by their center points
+ * @return A vector that contains the assigned cluster for each of the rows in field
+ */
+std::vector<int> assign_clusters(const std::vector<vector<double>>& field, const std::vector<vector<double>>& clusters) {
+  // Initiate a vector that holds the cluster labels of each row
+  std::vector<int> labels(field[0].size());
+ 
+ for (size_t row = 0; row < labels.size(); row++) {
+    // Get the coordinates of the current row
+    std::vector<double> row_data(field.size()); 
+    for (int column = 0; column < row_data.size(); column++) {
+      row_data[column] = field[column][row];
+    }
+    // Iterate over the clusters and check which cluster center is the closest
+    double current_min_distance = numeric_limits<double>::max();
+    int current_closest_cluster;
+    for (size_t cluster = 0; cluster < clusters.size(); cluster++) {
+      double cluster_distance = distance(row_data, clusters[cluster]);
+      if (cluster_distance < current_min_distance) {
+        current_min_distance = cluster_distance;
+        current_closest_cluster = cluster;
+      }
+    }
+    labels[row] = current_closest_cluster;
+  }
+  return labels;
+}
+
+/**
+ * @brief Calculates new center points for each given cluster by averaging the coordinates
+ * of all points that are assigen to it
+ * @param field 2D-Matrix with the content of a Field object
+ * @param labels The vector that contains the assigned cluster for each of the rows in field
+ * @param k The number of clusters
+ * @return The new cluster center points
+ */
+std::vector<vector<double>> calculate_new_clusters(const std::vector<std::vector<double>>& field,
+                                                   const vector<int>& labels, int k) {
+  int columns = field.size();
+  int rows = field[0].size();
+  std::vector<std::vector<double>> clusters(k, std::vector<double>(columns, 0.0));
+  vector<int> count(k, 0);
+
+  // Sum the coordinates of all points that are assigned to each cluster 
+  for (int row = 0; row < rows; row++) {
+    int assigned_cluster = labels[row];
+    for (int column = 0; column < columns; column++) {
+      clusters[assigned_cluster][column] += field[column][row];
+    }
+    count[assigned_cluster]++;
+    }
+
+  // Take the average of the summed coordinates
+  for (int cluster = 0; cluster < k; cluster++) {
+    if (count[cluster] == 0) continue;
+    for (int column = 0; column < columns; column++) {
+      clusters[cluster][column] /= count[cluster];
+    }
+  }
+  return clusters;
+}
+
+/**
+ * @brief Performs KMeans clustering for the elements of a 2D-Matrix
+ * @param field 2D-Matrix with the content of a Field object
+ * @param k The number of different clusters
+ * @param iterations The number of cluster update steps
+ * @return A vector that contains the assigned cluster for each of the rows in field
+ */
+std::vector<int> kMeans(std::vector<std::vector<double>>& field, int k, int iterations) {
+  // Initialize cluster centers by selecting random points from the field 
+  srand(time(0));
+  std::vector<vector<double>> clusters;
+  for (int i = 0; i < k; ++i) {
+    std::vector<double> cluster_center(field.size());
+    int row = rand() % field.size();
+    for (int column = 0; column < cluster_center.size(); column++) {
+      cluster_center[column] = field[column][row];
+    }
+    clusters.push_back(cluster_center);
+  } 
+
+  std::vector<int> labels;
+  
+  for (int iter = 0; iter < iterations; ++iter) {
+    // Get the nearest cluster for each row
+    labels = assign_clusters(field, clusters);
+    // Update each cluster center as the average location of each point assigned to it
+    std::vector<vector<double>> new_clusters = calculate_new_clusters(field, labels, k);
+    clusters = new_clusters;
+  }
+  return labels;
+}
+
 
 /**
  * @brief Converts the std::vector 2D matrix representation of a POET Field object to a numpy array
@@ -120,7 +239,7 @@ std::vector<double> numpy_array_to_vector(PyObject* py_array) {
  * @return Predictions that the neural network made from the input values x. The predictions are
  * represented as a vector similar to the representation from the Field.AsVector() method
  */
-std::vector<double> Python_Keras_predict(std::vector<std::vector<double>> x, int batch_size) {
+std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>& x, int batch_size) {
   // Acquire the Python GIL
   PyGILState_STATE gstate = PyGILState_Ensure();
   
@@ -130,7 +249,7 @@ std::vector<double> Python_Keras_predict(std::vector<std::vector<double>> x, int
   // Get the model and training function from the global python interpreter
   PyObject* py_main_module = PyImport_AddModule("__main__");
   PyObject* py_global_dict = PyModule_GetDict(py_main_module);
-  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
+  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model_no_reaction");
   PyObject* py_inference_function = PyDict_GetItemString(py_global_dict, "prediction_step");
    // Build the function arguments as four python objects and an integer
   PyObject* args = Py_BuildValue("(OOi)",
@@ -184,7 +303,7 @@ Eigen::MatrixXd eigen_inference_batched(const Eigen::Ref<const Eigen::MatrixXd>&
  * @return Predictions that the neural network made from the input values x. The predictions are
  * represented as a vector similar to the representation from the Field.AsVector() method
  */
-std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>> x, int batch_size,
+std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>>& x, int batch_size,
                                   std::mutex* Eigen_model_mutex) {
   // Convert input data to Eigen matrix
   const int num_samples = x[0].size();
@@ -249,7 +368,7 @@ void training_data_buffer_append(std::vector<std::vector<double>>& training_data
  * @param y Training data targets
  * @param params Global runtime paramters
  */
-void Python_keras_train(std::vector<std::vector<double>> x, std::vector<std::vector<double>> y,
+void Python_Keras_train(std::vector<std::vector<double>>& x, std::vector<std::vector<double>>& y,
                         const RuntimeParameters& params) {
   // Prepare data for python
   PyObject* py_df_x = vector_to_numpy_array(x);
@@ -258,7 +377,7 @@ void Python_keras_train(std::vector<std::vector<double>> x, std::vector<std::vec
   // Get the model and training function from the global python interpreter
   PyObject* py_main_module = PyImport_AddModule("__main__");
   PyObject* py_global_dict = PyModule_GetDict(py_main_module);
-  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
+  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model_no_reaction");
   PyObject* py_training_function = PyDict_GetItemString(py_global_dict, "training_step");
   
   // Build the function arguments as four python objects and an integer
@@ -350,7 +469,7 @@ void parallel_training(EigenModel* Eigen_model,
     PyGILState_STATE gstate = PyGILState_Ensure();
 
     // Start training
-    Python_keras_train(inputs, targets, params);
+    Python_Keras_train(inputs, targets, params);
     
     if (!params.use_Keras_predictions) {
       std::cout << "AI: Training thread: Update shared model weights" << std::endl;
@@ -435,7 +554,7 @@ std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights() {
 
   PyObject* py_main_module = PyImport_AddModule("__main__");
   PyObject* py_global_dict = PyModule_GetDict(py_main_module);
-  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
+  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model_no_reaction");
   PyObject* py_get_weights_function = PyDict_GetItemString(py_global_dict, "get_weights");
   PyObject* args = Py_BuildValue("(O)", py_keras_model);
   
