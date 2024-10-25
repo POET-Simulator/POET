@@ -154,7 +154,7 @@ std::vector<vector<double>> calculate_new_clusters(const std::vector<std::vector
  * @param iterations The number of cluster update steps
  * @return A vector that contains the assigned cluster for each of the rows in field
  */
-std::vector<int> kMeans(std::vector<std::vector<double>>& field, int k, int iterations) {
+std::vector<int> K_Means(std::vector<std::vector<double>>& field, int k, int iterations) {
   // Initialize cluster centers by selecting random points from the field 
   srand(time(0));
   std::vector<vector<double>> clusters;
@@ -239,12 +239,19 @@ std::vector<double> numpy_array_to_vector(PyObject* py_array) {
  * @return Predictions that the neural network made from the input values x. The predictions are
  * represented as a vector similar to the representation from the Field.AsVector() method
  */
-std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>& x, int batch_size) {
+std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>& x, int batch_size,
+                                         std::vector<int>& cluster_labels) {
   // Acquire the Python GIL
   PyGILState_STATE gstate = PyGILState_Ensure();
-  
-  // Prepare data for python
+  // Prepare data for Python
   PyObject* py_df_x = vector_to_numpy_array(x);
+
+  // Prepare cluster label vector for Python
+  PyObject* py_cluster_list = PyList_New(cluster_labels.size());
+  for (size_t i = 0; i < cluster_labels.size(); i++) {
+    PyObject* py_int = PyLong_FromLong(cluster_labels[i]);
+    PyList_SET_ITEM(py_cluster_list, i, py_int);
+  }
   
   // Get the model and training function from the global python interpreter
   PyObject* py_main_module = PyImport_AddModule("__main__");
@@ -252,8 +259,8 @@ std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>& x, in
   PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model_no_reaction");
   PyObject* py_inference_function = PyDict_GetItemString(py_global_dict, "prediction_step");
    // Build the function arguments as four python objects and an integer
-  PyObject* args = Py_BuildValue("(OOi)",
-      py_keras_model, py_df_x, batch_size);
+  PyObject* args = Py_BuildValue("(OOiO)",
+      py_keras_model, py_df_x, batch_size, py_cluster_list);
   
   // Call the Python training function
   PyObject *py_predictions = PyObject_CallObject(py_inference_function, args);
@@ -264,6 +271,7 @@ std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>& x, in
   // Clean up
   PyErr_Print(); // Ensure that python errors make it to stdout 
   Py_XDECREF(py_df_x);
+  Py_XDECREF(py_cluster_list);
   Py_XDECREF(args);
   Py_XDECREF(py_predictions);
   
@@ -304,7 +312,7 @@ Eigen::MatrixXd eigen_inference_batched(const Eigen::Ref<const Eigen::MatrixXd>&
  * represented as a vector similar to the representation from the Field.AsVector() method
  */
 std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>>& x, int batch_size,
-                                  std::mutex* Eigen_model_mutex) {
+                                  std::mutex* Eigen_model_mutex, std::vector<int>& cluster_labels) {
   // Convert input data to Eigen matrix
   const int num_samples = x[0].size();
   const int num_features = x.size();
@@ -361,6 +369,42 @@ void training_data_buffer_append(std::vector<std::vector<double>>& training_data
   }
 }
 
+/**
+ * @brief Appends data from one int vector to another based on a mask vector
+ * @param labels Vector that the values are appended to
+ * @param new_labels Values that are appended
+ * @param validity Mask vector that defines how many and which values are appended
+ */
+void cluster_labels_append(std::vector<int>& labels_buffer, std::vector<int>& new_labels,
+                           std::vector<int> validity) {
+  // Calculate new buffer size from number of valid elements in mask
+  int n_invalid = validity.size();
+  for (int i = 0; i < validity.size(); i++) {
+    n_invalid -= validity[i];
+  }
+
+  // Interprete the reactive cluster as the one on the origin of the field
+  // TODO: Is that always correct?  
+  int reactive_cluster = new_labels[0];
+  // Resize label vector to hold non valid elements
+  // Iterate over mask to transfer cluster labels
+  int end_index = labels_buffer.size(); 
+  int new_size = end_index + n_invalid;
+  labels_buffer.resize(new_size);
+  for (int i = 0; i < validity.size(); ++i) {
+    // Append only the labels of invalid rows 
+    if (!validity[i]) {
+      int label = new_labels[i];
+      //Always define the reactive cluster as cluster 1
+      if (reactive_cluster == 0) {
+        label = 1 - label;
+      }
+      labels_buffer[end_index] = label; 
+      end_index++;
+    }
+  }
+}
+
 
 /**
  * @brief Uses the Python environment with Keras' default functions to train the model
@@ -369,10 +413,17 @@ void training_data_buffer_append(std::vector<std::vector<double>>& training_data
  * @param params Global runtime paramters
  */
 void Python_Keras_train(std::vector<std::vector<double>>& x, std::vector<std::vector<double>>& y,
-                        const RuntimeParameters& params) {
+                        std::vector<int>& cluster_labels, const RuntimeParameters& params) {
   // Prepare data for python
   PyObject* py_df_x = vector_to_numpy_array(x);
   PyObject* py_df_y = vector_to_numpy_array(y);
+
+  // Prepare cluster label vector for Python
+  PyObject* py_cluster_list = PyList_New(cluster_labels.size());
+  for (size_t i = 0; i < cluster_labels.size(); i++) {
+    PyObject* py_int = PyLong_FromLong(cluster_labels[i]);
+    PyList_SET_ITEM(py_cluster_list, i, py_int);
+  }
 
   // Get the model and training function from the global python interpreter
   PyObject* py_main_module = PyImport_AddModule("__main__");
@@ -381,9 +432,9 @@ void Python_Keras_train(std::vector<std::vector<double>>& x, std::vector<std::ve
   PyObject* py_training_function = PyDict_GetItemString(py_global_dict, "training_step");
   
   // Build the function arguments as four python objects and an integer
-  PyObject* args = Py_BuildValue("(OOOiis)", 
-      py_keras_model, py_df_x, py_df_y, params.batch_size, params.training_epochs,
-      params.save_model_path.c_str());
+  PyObject* args = Py_BuildValue("(OOOOiis)", 
+      py_keras_model, py_df_x, py_df_y, py_cluster_list, params.batch_size,
+      params.training_epochs, params.save_model_path.c_str());
   
 
   // Call the Python training function
@@ -433,7 +484,6 @@ void parallel_training(EigenModel* Eigen_model,
     if (*end_training) {
       return;
     }
-    
     // Get the necessary training data
     std::cout << "AI: Training thread: Getting training data" << std::endl;
     // Initialize training data input and targets
@@ -456,7 +506,16 @@ void parallel_training(EigenModel* Eigen_model,
       training_data_buffer->y[col].erase(training_data_buffer->y[col].begin(),
                                          training_data_buffer->y[col].begin() + params.training_data_size);
     }
-    // Set the  waiting predicate to false if buffer is below threshold
+    // Initialize training data buffer labels
+    std::vector<int> cluster_labels(training_data_buffer->cluster_labels.begin(),
+                                    training_data_buffer->cluster_labels.begin() + 
+                                    params.training_data_size);
+    // Remove copied values from the front of the buffer
+    training_data_buffer->cluster_labels.erase(training_data_buffer->cluster_labels.begin(),
+                                               training_data_buffer->cluster_labels.begin() +
+                                               params.training_data_size);
+    
+    // Set the waiting predicate to false if buffer is below threshold
     *start_training = training_data_buffer->y[0].size() >= params.training_data_size;
     //update number of training runs
     training_data_buffer->n_training_runs += 1;
@@ -467,9 +526,8 @@ void parallel_training(EigenModel* Eigen_model,
 
     // Acquire the Python GIL
     PyGILState_STATE gstate = PyGILState_Ensure();
-
     // Start training
-    Python_Keras_train(inputs, targets, params);
+    Python_Keras_train(inputs, targets, cluster_labels, params);
     
     if (!params.use_Keras_predictions) {
       std::cout << "AI: Training thread: Update shared model weights" << std::endl;
@@ -508,7 +566,6 @@ int Python_Keras_training_thread(EigenModel* Eigen_model,
                                  std::condition_variable* training_data_buffer_full,
                                  bool* start_training, bool* end_training,
                                  const RuntimeParameters& params) {
-
   PyThreadState *_save = PyEval_SaveThread();
   python_train_thread = std::thread(parallel_training, Eigen_model, Eigen_model_mutex,
                                     training_data_buffer, training_data_buffer_mutex,
@@ -580,6 +637,7 @@ std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights() {
     PyArrayObject* weight_np = reinterpret_cast<PyArrayObject*>(py_weight_array);
     int dtype = PyArray_TYPE(weight_np);
 
+    // If array is 2D it's a weight matrix
     if (PyArray_NDIM(weight_np) == 2) {
       int num_rows = PyArray_DIM(weight_np, 0);
       int num_cols = PyArray_DIM(weight_np, 1);
@@ -605,8 +663,8 @@ std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights() {
       }
       cpp_weights.push_back(weight_matrix);
 
+    // If array is 1D it's a bias vector 
     } else if (PyArray_NDIM(weight_np) == 1) {
-      // 1D bias vectors
       int num_elements = PyArray_DIM(weight_np, 0);
       std::vector<std::vector<double>> bias_vector(1, std::vector<double>(num_elements));
 
@@ -625,8 +683,6 @@ std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights() {
         throw std::runtime_error("Unsupported data type for biases. Must be NPY_FLOAT32 or NPY_DOUBLE.");
       }
       cpp_weights.push_back(bias_vector);
-    } else {
-      throw std::runtime_error("Unsupported weight dimension. Only 1D and 2D arrays are supported.");
     }
   }
   // Clean up

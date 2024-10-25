@@ -295,6 +295,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   std::condition_variable training_data_buffer_full;
   bool start_training, end_training;
   TrainingData training_data_buffer;
+  std::vector<int> cluster_labels(chem.getField().GetRequestedVecSize());
   if (params.use_ai_surrogate) {  
     MSG("AI: Initialize model");
 
@@ -365,30 +366,28 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       R.parseEval("predictors_scaled <- preprocess(predictors)");
       std::vector<std::vector<double>> predictors_scaled = R["predictors_scaled"];
 
-
-
-
-      // get k means
-      MSG("KMEANSSSSS:");
-      std::vector<int> labels = kMeans(predictors_scaled, 2, 300);
+      // Get K-Means cluster assignements based on the preprocessed data
+      cluster_labels = K_Means(predictors_scaled, 2, 300);
+      /*
       int size = (int)(std::sqrt(chem.getField().GetRequestedVecSize()));
       
       MSG("SIZE: " + std::to_string(size));
       
       for (int row = size; row > 0; row--) {
         for (int column = 0; column < size; column++) {
-          std::cout << labels[((row - 1) * size) + column];
+          std::cout << cluster_labels[((row - 1) * size) + column];
         }
         std::cout << std::endl;
       }
-      
+      */
 
       MSG("AI: Predict");
       if (params.use_Keras_predictions) {  // Predict with Keras default function
-        R["TMP"] = Python_Keras_predict(predictors_scaled, params.batch_size);
+        R["TMP"] = Python_Keras_predict(predictors_scaled, params.batch_size, cluster_labels);
 
       } else {  // Predict with custom Eigen function
-        R["TMP"] = Eigen_predict(Eigen_model, predictors_scaled, params.batch_size, &Eigen_model_mutex);
+        R["TMP"] = Eigen_predict(Eigen_model, predictors_scaled, params.batch_size,
+                                 &Eigen_model_mutex, cluster_labels);
       }
 
       // Apply postprocessing
@@ -438,8 +437,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     if (params.use_ai_surrogate && !params.disable_training) {
       // Add values for which the predictions were invalid
       // to training data buffer      
-      MSG("AI: Add invalid predictions to training data buffer");
-      
+      MSG("AI: Add invalid predictions to training data buffer");      
       std::vector<std::vector<double>> invalid_x = 
         R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
 
@@ -450,8 +448,9 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       training_data_buffer_mutex.lock();
       training_data_buffer_append(training_data_buffer.x, invalid_x);
       training_data_buffer_append(training_data_buffer.y, invalid_y);
+      cluster_labels_append(training_data_buffer.cluster_labels, cluster_labels,
+                            R["validity_vector"]);
       // Signal to training thread if training data buffer is full
-      
       if (training_data_buffer.y[0].size() >= params.training_data_size) {
         start_training = true;
         training_data_buffer_full.notify_one();
