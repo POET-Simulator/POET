@@ -295,12 +295,13 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   std::condition_variable training_data_buffer_full;
   bool start_training, end_training;
   TrainingData training_data_buffer;
-  std::vector<int> cluster_labels(chem.getField().GetRequestedVecSize());
+  std::vector<int> cluster_labels(chem.getField().GetRequestedVecSize(), -1);
   if (params.use_ai_surrogate) {  
     MSG("AI: Initialize model");
 
     // Initiate two models from one file TODO: Expand this for two input files
-    Python_Keras_load_model(R["model_file_path"], R["model_file_path"]);
+    Python_Keras_load_model(R["model_file_path"], R["model_file_path"],
+                            params.use_k_means_clustering);
     if (!params.disable_training) {
       MSG("AI: Initialize training thread");
       Python_Keras_training_thread(&Eigen_model, &Eigen_model_mutex,
@@ -367,7 +368,9 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       std::vector<std::vector<double>> predictors_scaled = R["predictors_scaled"];
 
       // Get K-Means cluster assignements based on the preprocessed data
-      cluster_labels = K_Means(predictors_scaled, 2, 300);
+      if (params.use_k_means_clustering) {
+        cluster_labels = K_Means(predictors_scaled, 2, 300);
+      }
       /*
       int size = (int)(std::sqrt(chem.getField().GetRequestedVecSize()));
       
@@ -437,7 +440,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     if (params.use_ai_surrogate && !params.disable_training) {
       // Add values for which the predictions were invalid
       // to training data buffer      
-      MSG("AI: Add invalid predictions to training data buffer");      
+      MSG("AI: Add invalid predictions to training data buffer");
       std::vector<std::vector<double>> invalid_x = 
         R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
 
@@ -448,15 +451,25 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       training_data_buffer_mutex.lock();
       training_data_buffer_append(training_data_buffer.x, invalid_x);
       training_data_buffer_append(training_data_buffer.y, invalid_y);
-      cluster_labels_append(training_data_buffer.cluster_labels, cluster_labels,
+            
+      // If clustering is used, count the size of the buffer according
+      // to the cluster assignements
+      int n_cluster_reactive = 0;
+      int buffer_size = training_data_buffer.x[0].size();
+      if (params.use_k_means_clustering) {
+        cluster_labels_append(training_data_buffer.cluster_labels, cluster_labels,
                             R["validity_vector"]);
-      // Signal to training thread if training data buffer is full
-      if (training_data_buffer.y[0].size() >= params.training_data_size) {
+        for (int i = 0; i < buffer_size; i++) {
+          n_cluster_reactive += training_data_buffer.cluster_labels[i];
+        }
+      }
+      // Signal to the training thread if enough training data is present
+      if ((n_cluster_reactive >= params.training_data_size) ||
+         (buffer_size - n_cluster_reactive >= params.training_data_size)) {
         start_training = true;
         training_data_buffer_full.notify_one();
       }
       training_data_buffer_mutex.unlock();
-      R["n_training_runs"] = training_data_buffer.n_training_runs;
     }
 
     diffusion.getField().update(chem.getField());
@@ -682,6 +695,9 @@ int main(int argc, char *argv[]) {
         if (Rcpp::as<bool>(R.parseEval("exists(\"save_model_path\")"))) {
           run_params.save_model_path = Rcpp::as<std::string>(R["save_model_path"]);
           std::cout << "AI: Model will be saved as \"" << run_params.save_model_path << "\"" << std::endl;
+        }
+        if (Rcpp::as<bool>(R.parseEval("exists(\"use_k_means_clustering\")"))) {
+          run_params.use_k_means_clustering = R["use_k_means_clustering"];
         }
         
         MSG("AI: Initialize Python for AI surrogate functions");

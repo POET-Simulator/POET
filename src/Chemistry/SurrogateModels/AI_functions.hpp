@@ -5,10 +5,13 @@
  * @version 0.1
  * @date 01 Nov 2024
  *
- * This file implements the creation of a DHT by using the MPI
- * one-sided-communication. There is also the possibility to write or read data
- * from or to the DHT. In addition, the current state of the DHT can be written
- * to a file and read in again later.
+ * This file implements functions to train and predict with a neural network.
+ * All functions are based on a user supplied Keras model. Pyhton.h is used for model
+ * training with Keras and can be used for inference. The default inference funtion 
+ * is implemented with Eigen matrices in C++. All functions use 2 different models
+ * to process data separately according to a K-means cluster assignement. This file
+ * alo contains the functions for the K-means algorithm.
+ *  
  */
 
 #ifndef AI_FUNCTIONS_H
@@ -18,7 +21,8 @@
 #include <vector>
 #include "poet.hpp"
 
-// PhreeqC definition of pi clashes with Eigen macros so we have to temporarily undef it 
+// PhreeqC definition of pi clashes with Eigen macros
+// so we have to temporarily undef it 
 #pragma push_macro("pi")
 #undef pi
 #include <Eigen/Dense> 
@@ -27,8 +31,15 @@
 namespace poet {
 
 struct EigenModel {
-    std::vector<Eigen::MatrixXd> weight_matrices;
-    std::vector<Eigen::VectorXd> biases;
+  // The first model will be used for all values if clustering is disabled
+  // or for the reactive part of the field if clustering is enabled
+  std::vector<Eigen::MatrixXd> weight_matrices;
+  std::vector<Eigen::VectorXd> biases;
+
+  // The other model will be used for the non-reactive cluster
+  // (if clustering is enabled)
+  std::vector<Eigen::MatrixXd> weight_matrices_no_reaction;
+  std::vector<Eigen::VectorXd> biases_no_reaction;
 };
 
 struct TrainingData {
@@ -47,7 +58,8 @@ void Python_finalize(std::mutex* Eigen_model_mutex, std::mutex* training_data_bu
                      std::condition_variable* training_data_buffer_full, bool* start_training, 
                      bool* end_training);
 
-int Python_Keras_load_model(std::string model_reaction, std::string model_no_reaction);
+int Python_Keras_load_model(std::string model_reaction, std::string model_no_reaction,
+                            bool use_clustering);
 
 std::vector<int> K_Means(std::vector<std::vector<double>>& field, int k, int maxIterations = 100);
 
@@ -80,7 +92,7 @@ std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vect
 #else
 inline void Python_Keras_setup(std::string, std::string){}
 inline void Python_finalize(std::mutex*, std::mutex*, std::condition_variable*, bool*, bool*){}
-inline void Python_Keras_load_model(std::string, std::string){}
+inline void Python_Keras_load_model(std::string, std::string, bool){}
 inline std::vector<int> K_Means(std::vector<std::vector<double>>&, int, int) {return {};}
 inline std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>&, int,
                                                 std::vector<int>&){return {};}

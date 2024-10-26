@@ -72,6 +72,7 @@ struct RuntimeParameters {
   /*AI surriogate configuration*/
   bool use_ai_surrogate = false; // Can be set with command line flag ---ai-surrogate
   bool disable_training; // Can be set in the R input script
+  bool use_k_means_clustering; // Can be set in the R input script
   bool use_Keras_predictions; // Can be set in the R input script
   int batch_size; // Can be set in the R input script
   int training_epochs; // Can be set in the R input script

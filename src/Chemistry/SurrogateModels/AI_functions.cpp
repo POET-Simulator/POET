@@ -44,23 +44,26 @@ int Python_Keras_setup(std::string functions_file_path, std::string cuda_src_dir
  * a variable "model_file_path" in the R input script
  * @return 0 if function was succesful
  */
-int Python_Keras_load_model(std::string model_reaction, std::string model_no_reaction) {
+int Python_Keras_load_model(std::string model_reaction, std::string model_no_reaction, bool use_clustering) {
   // Acquire the Python GIL
   PyGILState_STATE gstate = PyGILState_Ensure();
 
-  // Initialize Keras model for the reaction cluster
-  int py_model_loaded = PyRun_SimpleString(("model_reaction = initiate_model(\"" + 
+  // Initialize Keras default model
+  int py_model_loaded = PyRun_SimpleString(("model = initiate_model(\"" + 
                                              model_reaction + "\")").c_str());
   if (py_model_loaded != 0) {
     PyErr_Print(); // Ensure that python errors make it to stdout
     throw std::runtime_error("Keras model could not be loaded from: " + model_reaction);
   }
-  // Initialize Keras model for the no reaction cluster
-  py_model_loaded = PyRun_SimpleString(("model_no_reaction = initiate_model(\"" + 
-                                         model_no_reaction + "\")").c_str());
-  if (py_model_loaded != 0) {
-    PyErr_Print(); // Ensure that python errors make it to stdout
-    throw std::runtime_error("Keras model could not be loaded from: " + model_no_reaction);
+
+  if (use_clustering) {
+    // Initialize second Keras model that will be used for the no-reaction cluster
+    py_model_loaded = PyRun_SimpleString(("model_no_reaction = initiate_model(\"" + 
+                                          model_no_reaction + "\")").c_str());
+    if (py_model_loaded != 0) {
+      PyErr_Print();
+      throw std::runtime_error("Keras model could not be loaded from: " + model_no_reaction);
+    }
   }
   // Release the Python GIL
   PyGILState_Release(gstate);
@@ -256,14 +259,14 @@ std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>& x, in
   // Get the model and training function from the global python interpreter
   PyObject* py_main_module = PyImport_AddModule("__main__");
   PyObject* py_global_dict = PyModule_GetDict(py_main_module);
-  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model_no_reaction");
+  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
   PyObject* py_inference_function = PyDict_GetItemString(py_global_dict, "prediction_step");
    // Build the function arguments as four python objects and an integer
   PyObject* args = Py_BuildValue("(OOiO)",
       py_keras_model, py_df_x, batch_size, py_cluster_list);
   
   // Call the Python training function
-  PyObject *py_predictions = PyObject_CallObject(py_inference_function, args);
+  PyObject* py_predictions = PyObject_CallObject(py_inference_function, args);
 
   // Check py_rv and return as 2D vector
   std::vector<double> predictions = numpy_array_to_vector(py_predictions); 
@@ -277,7 +280,6 @@ std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>& x, in
   
   // Release the Python GIL
   PyGILState_Release(gstate);
-  
   return predictions;
 }
 
@@ -413,28 +415,21 @@ void cluster_labels_append(std::vector<int>& labels_buffer, std::vector<int>& ne
  * @param params Global runtime paramters
  */
 void Python_Keras_train(std::vector<std::vector<double>>& x, std::vector<std::vector<double>>& y,
-                        std::vector<int>& cluster_labels, const RuntimeParameters& params) {
+                        int train_cluster, const RuntimeParameters& params) {
   // Prepare data for python
   PyObject* py_df_x = vector_to_numpy_array(x);
   PyObject* py_df_y = vector_to_numpy_array(y);
 
-  // Prepare cluster label vector for Python
-  PyObject* py_cluster_list = PyList_New(cluster_labels.size());
-  for (size_t i = 0; i < cluster_labels.size(); i++) {
-    PyObject* py_int = PyLong_FromLong(cluster_labels[i]);
-    PyList_SET_ITEM(py_cluster_list, i, py_int);
-  }
-
   // Get the model and training function from the global python interpreter
   PyObject* py_main_module = PyImport_AddModule("__main__");
   PyObject* py_global_dict = PyModule_GetDict(py_main_module);
-  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model_no_reaction");
+  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
   PyObject* py_training_function = PyDict_GetItemString(py_global_dict, "training_step");
   
   // Build the function arguments as four python objects and an integer
-  PyObject* args = Py_BuildValue("(OOOOiis)", 
-      py_keras_model, py_df_x, py_df_y, py_cluster_list, params.batch_size,
-      params.training_epochs, params.save_model_path.c_str());
+  PyObject* args = Py_BuildValue("(OOOiiis)", 
+      py_keras_model, py_df_x, py_df_y, params.batch_size, params.training_epochs,
+      train_cluster, params.save_model_path.c_str());
   
 
   // Call the Python training function
@@ -487,36 +482,48 @@ void parallel_training(EigenModel* Eigen_model,
     // Get the necessary training data
     std::cout << "AI: Training thread: Getting training data" << std::endl;
     // Initialize training data input and targets
-    std::vector<std::vector<double>> inputs(9);
-    std::vector<std::vector<double>> targets(9);
-    for (int col = 0; col < training_data_buffer->x.size(); col++) {
-      // Copy data from the front of the buffer to the training inputs
-      std::copy(training_data_buffer->x[col].begin(),
-                training_data_buffer->x[col].begin() + params.training_data_size, 
-                std::back_inserter(inputs[col]));
-      // Remove copied data from the front of the buffer
-      training_data_buffer->x[col].erase(training_data_buffer->x[col].begin(),
-                                         training_data_buffer->x[col].begin() + params.training_data_size);
+    std::vector<std::vector<double>> inputs(9, std::vector<double>(params.training_data_size));
+    std::vector<std::vector<double>> targets(9, std::vector<double>(params.training_data_size));
 
-      // Copy data from the front of the buffer to the training targets
-      std::copy(training_data_buffer->y[col].begin(),
-                training_data_buffer->y[col].begin() + params.training_data_size, 
-                std::back_inserter(targets[col]));
-      // Remove copied data from the front of the buffer
-      training_data_buffer->y[col].erase(training_data_buffer->y[col].begin(),
-                                         training_data_buffer->y[col].begin() + params.training_data_size);
+    int buffer_size = training_data_buffer->x[0].size();
+    // If clustering is used, check the current cluster
+    int n_cluster_reactive;
+    int train_cluster = -1; // Default value for non clustered training where all data is used
+    if (params.use_k_means_clustering) {
+      for (int i = 0; i < buffer_size; i++) {
+          n_cluster_reactive += training_data_buffer->cluster_labels[i];
+      }
+      train_cluster = n_cluster_reactive >= params.training_data_size;
     }
-    // Initialize training data buffer labels
-    std::vector<int> cluster_labels(training_data_buffer->cluster_labels.begin(),
-                                    training_data_buffer->cluster_labels.begin() + 
-                                    params.training_data_size);
-    // Remove copied values from the front of the buffer
-    training_data_buffer->cluster_labels.erase(training_data_buffer->cluster_labels.begin(),
-                                               training_data_buffer->cluster_labels.begin() +
-                                               params.training_data_size);
-    
+    for (int col = 0; col < training_data_buffer->x.size(); col++) {
+      int buffer_row = 0;
+      int copied_row = 0;
+      while (copied_row < params.training_data_size && 
+            buffer_row < training_data_buffer->x[col].size()) {
+        if ((train_cluster == -1) ||
+          (train_cluster == training_data_buffer->cluster_labels[buffer_row])) {
+          // Copy and remove from training data buffer
+          inputs[col][copied_row] = training_data_buffer->x[col][buffer_row];
+          targets[col][copied_row] = training_data_buffer->y[col][buffer_row];
+          training_data_buffer->x[col].erase(training_data_buffer->x[col].begin() + 
+                                            buffer_row);
+          training_data_buffer->y[col].erase(training_data_buffer->y[col].begin() +
+                                            buffer_row);
+          // Copy and remove from cluster label buffer
+          if (params.use_k_means_clustering && col == 0) {
+              training_data_buffer->cluster_labels.erase(
+                training_data_buffer->cluster_labels.begin() + buffer_row);
+          }
+          copied_row++;
+        } else {
+          buffer_row++;
+        }
+      }
+    }
+
     // Set the waiting predicate to false if buffer is below threshold
-    *start_training = training_data_buffer->y[0].size() >= params.training_data_size;
+    *start_training = (n_cluster_reactive >= params.training_data_size) ||
+                      (buffer_size - n_cluster_reactive >= params.training_data_size);
     //update number of training runs
     training_data_buffer->n_training_runs += 1;
     // Unlock the training_data_buffer_mutex 
@@ -527,7 +534,7 @@ void parallel_training(EigenModel* Eigen_model,
     // Acquire the Python GIL
     PyGILState_STATE gstate = PyGILState_Ensure();
     // Start training
-    Python_Keras_train(inputs, targets, cluster_labels, params);
+    Python_Keras_train(inputs, targets, train_cluster, params);
     
     if (!params.use_Keras_predictions) {
       std::cout << "AI: Training thread: Update shared model weights" << std::endl;
@@ -611,7 +618,7 @@ std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights() {
 
   PyObject* py_main_module = PyImport_AddModule("__main__");
   PyObject* py_global_dict = PyModule_GetDict(py_main_module);
-  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model_no_reaction");
+  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
   PyObject* py_get_weights_function = PyDict_GetItemString(py_global_dict, "get_weights");
   PyObject* args = Py_BuildValue("(O)", py_keras_model);
   
