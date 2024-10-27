@@ -44,25 +44,25 @@ int Python_Keras_setup(std::string functions_file_path, std::string cuda_src_dir
  * a variable "model_file_path" in the R input script
  * @return 0 if function was succesful
  */
-int Python_Keras_load_model(std::string model_reaction, std::string model_no_reaction, bool use_clustering) {
+int Python_Keras_load_model(std::string model, std::string model_reactive, bool use_clustering) {
   // Acquire the Python GIL
   PyGILState_STATE gstate = PyGILState_Ensure();
 
   // Initialize Keras default model
   int py_model_loaded = PyRun_SimpleString(("model = initiate_model(\"" + 
-                                             model_reaction + "\")").c_str());
+                                             model + "\")").c_str());
   if (py_model_loaded != 0) {
-    PyErr_Print(); // Ensure that python errors make it to stdout
-    throw std::runtime_error("Keras model could not be loaded from: " + model_reaction);
+    PyErr_Print();
+    throw std::runtime_error("Keras model could not be loaded from: " + model);
   }
 
   if (use_clustering) {
-    // Initialize second Keras model that will be used for the no-reaction cluster
-    py_model_loaded = PyRun_SimpleString(("model_no_reaction = initiate_model(\"" + 
-                                          model_no_reaction + "\")").c_str());
+    // Initialize second Keras model that will be used for the "reaction" cluster
+    py_model_loaded = PyRun_SimpleString(("model_reactive = initiate_model(\"" + 
+                                          model_reactive + "\")").c_str());
     if (py_model_loaded != 0) {
       PyErr_Print();
-      throw std::runtime_error("Keras model could not be loaded from: " + model_no_reaction);
+      throw std::runtime_error("Keras model could not be loaded from: " + model_reactive);
     }
   }
   // Release the Python GIL
@@ -179,6 +179,17 @@ std::vector<int> K_Means(std::vector<std::vector<double>>& field, int k, int ite
     std::vector<vector<double>> new_clusters = calculate_new_clusters(field, labels, k);
     clusters = new_clusters;
   }
+
+
+  //Always define the reactive cluster as cluster 1
+  // Interprete the reactive cluster as the one on the origin of the field
+  // TODO: Is that always correct?  
+  int reactive_cluster = labels[0];
+  if (reactive_cluster == 0) {
+    for (int i; i < labels.size(); i++) {
+          labels[i] = 1 - labels[i];
+    }
+  }
   return labels;
 }
 
@@ -256,23 +267,30 @@ std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>& x, in
     PyList_SET_ITEM(py_cluster_list, i, py_int);
   }
   
-  // Get the model and training function from the global python interpreter
+  // Get the model and inference function from the global python interpreter
   PyObject* py_main_module = PyImport_AddModule("__main__");
   PyObject* py_global_dict = PyModule_GetDict(py_main_module);
   PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
   PyObject* py_inference_function = PyDict_GetItemString(py_global_dict, "prediction_step");
-   // Build the function arguments as four python objects and an integer
-  PyObject* args = Py_BuildValue("(OOiO)",
-      py_keras_model, py_df_x, batch_size, py_cluster_list);
   
-  // Call the Python training function
+  // Get secod model if clustering is used
+  PyObject* py_keras_model_reactive = Py_None;;
+  if (cluster_labels.size() > 0) {
+    py_keras_model_reactive = PyDict_GetItemString(py_global_dict, "model_reactive");
+  }
+
+  // Build the function arguments as four python objects and an integer
+  PyObject* args = Py_BuildValue("(OOOOi)",
+      py_keras_model, py_keras_model_reactive, py_df_x, py_cluster_list, batch_size);
+
+  // Call the Python inference function
   PyObject* py_predictions = PyObject_CallObject(py_inference_function, args);
 
   // Check py_rv and return as 2D vector
   std::vector<double> predictions = numpy_array_to_vector(py_predictions); 
   
   // Clean up
-  PyErr_Print(); // Ensure that python errors make it to stdout 
+  PyErr_Print(); 
   Py_XDECREF(py_df_x);
   Py_XDECREF(py_cluster_list);
   Py_XDECREF(args);
@@ -307,14 +325,118 @@ Eigen::MatrixXd eigen_inference_batched(const Eigen::Ref<const Eigen::MatrixXd>&
 }
 
 /**
- * @brief Uses the Eigen representation of the Keras model weights   for fast inference
+ * @brief Uses the Eigen representation of the two different Keras model weights for fast inference
+ * @param model The model for the non reactive cluster of the field (label 0)
+ * @param model_reactive The model for the non reactive cluster of the field (label 1)
  * @param x 2D-Matrix with the content of a Field object
  * @param batch_size size for mini-batches that are used in the Keras model.predict() method
+ * @param Eigen_model_mutex Mutex that locks the model during inference and prevents updaties from
+ * the training thread
+ * @param cluster_labels K-Means cluster label dor each row in the field
  * @return Predictions that the neural network made from the input values x. The predictions are
  * represented as a vector similar to the representation from the Field.AsVector() method
  */
-std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>>& x, int batch_size,
-                                  std::mutex* Eigen_model_mutex, std::vector<int>& cluster_labels) {
+std::vector<double> Eigen_predict_clustered(const EigenModel& model, const EigenModel& model_reactive,
+                                            std::vector<std::vector<double>>& x, int batch_size,
+                                            std::mutex* Eigen_model_mutex, std::vector<int>& cluster_labels) {
+    const int num_samples = x[0].size();
+    const int num_features = x.size();
+    if (num_features != model.weight_matrices[0].cols() || 
+        num_features != model_reactive.weight_matrices[0].cols()) {
+        throw std::runtime_error("Input data size " + std::to_string(num_features) + 
+            " does not match model input layer sizes");
+    }
+
+    // Convert input data to Eigen matrix
+    Eigen::MatrixXd full_input_matrix(num_features, num_samples);
+    for (int i = 0; i < num_samples; ++i) {
+        for (int j = 0; j < num_features; ++j) {
+            full_input_matrix(j, i) = x[j][i];
+        }
+    }
+
+    // Create indices for each cluster
+    std::vector<int> cluster_0_indices, cluster_1_indices;
+    for (int i = 0; i < cluster_labels.size(); ++i) {
+        if (cluster_labels[i] == 0) {
+            cluster_0_indices.push_back(i);
+        } else {
+            cluster_1_indices.push_back(i);
+        }
+    }
+
+    // Prepare matrices for each cluster
+    Eigen::MatrixXd input_matrix(num_features, cluster_0_indices.size());
+    Eigen::MatrixXd input_matrix_reactive(num_features, cluster_1_indices.size());
+
+    // Split data according to cluster labels
+    for (size_t i = 0; i < cluster_0_indices.size(); ++i) {
+        input_matrix.col(i) = full_input_matrix.col(cluster_0_indices[i]);
+    }
+    for (size_t i = 0; i < cluster_1_indices.size(); ++i) {
+        input_matrix_reactive.col(i) = full_input_matrix.col(cluster_1_indices[i]);
+    }
+    // Process each cluster
+    std::vector<double> result(num_samples * model.weight_matrices.back().rows());
+    Eigen_model_mutex->lock();
+
+    if (!cluster_0_indices.empty()) {
+        int num_batches_0 = std::ceil(static_cast<double>(cluster_0_indices.size()) / batch_size);
+        for (int batch = 0; batch < num_batches_0; ++batch) {
+            int start_idx = batch * batch_size;
+            int end_idx = std::min((batch + 1) * batch_size, static_cast<int>(cluster_0_indices.size()));
+            int current_batch_size = end_idx - start_idx;
+
+            Eigen::MatrixXd batch_data = input_matrix.block(0, start_idx, num_features, current_batch_size);
+            Eigen::MatrixXd batch_result = eigen_inference_batched(batch_data, model);
+
+            // Store results in their original positions
+            for (int i = 0; i < current_batch_size; ++i) {
+                int original_idx = cluster_0_indices[start_idx + i];
+                for (int j = 0; j < batch_result.rows(); ++j) {
+                    result[original_idx * batch_result.rows() + j] = batch_result(j, i);
+                }
+            }
+        }
+    }
+
+    // Process cluster 1
+    if (!cluster_1_indices.empty()) {
+        int num_batches_1 = std::ceil(static_cast<double>(cluster_1_indices.size()) / batch_size);
+        for (int batch = 0; batch < num_batches_1; ++batch) {
+            int start_idx = batch * batch_size;
+            int end_idx = std::min((batch + 1) * batch_size, static_cast<int>(cluster_1_indices.size()));
+            int current_batch_size = end_idx - start_idx;
+
+            Eigen::MatrixXd batch_data = input_matrix_reactive.block(0, start_idx, num_features, current_batch_size);
+            Eigen::MatrixXd batch_result = eigen_inference_batched(batch_data, model_reactive);
+
+            // Store results in their original positions
+            for (int i = 0; i < current_batch_size; ++i) {
+                int original_idx = cluster_1_indices[start_idx + i];
+                for (int j = 0; j < batch_result.rows(); ++j) {
+                    result[original_idx * batch_result.rows() + j] = batch_result(j, i);
+                }
+            }
+        }
+    }
+
+    Eigen_model_mutex->unlock();
+    return result;
+}
+
+/**
+ * @brief Uses the Eigen representation of the tKeras model weights for fast inference
+ * @param model The model weights and biases
+ * @param x 2D-Matrix with the content of a Field object
+ * @param batch_size size for mini-batches that are used in the Keras model.predict() method
+ * @param Eigen_model_mutex Mutex that locks the model during inference and prevents updaties from
+ * the training thread
+ * @return Predictions that the neural network made from the input values x. The predictions are
+ * represented as a vector similar to the representation from the Field.AsVector() method
+ */
+std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>> x, int batch_size,
+                                  std::mutex* Eigen_model_mutex) {
   // Convert input data to Eigen matrix
   const int num_samples = x[0].size();
   const int num_features = x.size();
@@ -353,6 +475,7 @@ std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vect
 }
 
 
+
 /**
  * @brief Appends data from one matrix (column major std::vector<std::vector<double>>) to another
  * @param training_data_buffer Matrix that the values are appended to
@@ -385,9 +508,6 @@ void cluster_labels_append(std::vector<int>& labels_buffer, std::vector<int>& ne
     n_invalid -= validity[i];
   }
 
-  // Interprete the reactive cluster as the one on the origin of the field
-  // TODO: Is that always correct?  
-  int reactive_cluster = new_labels[0];
   // Resize label vector to hold non valid elements
   // Iterate over mask to transfer cluster labels
   int end_index = labels_buffer.size(); 
@@ -396,12 +516,7 @@ void cluster_labels_append(std::vector<int>& labels_buffer, std::vector<int>& ne
   for (int i = 0; i < validity.size(); ++i) {
     // Append only the labels of invalid rows 
     if (!validity[i]) {
-      int label = new_labels[i];
-      //Always define the reactive cluster as cluster 1
-      if (reactive_cluster == 0) {
-        label = 1 - label;
-      }
-      labels_buffer[end_index] = label; 
+      labels_buffer[end_index] = new_labels[i]; 
       end_index++;
     }
   }
@@ -415,22 +530,37 @@ void cluster_labels_append(std::vector<int>& labels_buffer, std::vector<int>& ne
  * @param params Global runtime paramters
  */
 void Python_Keras_train(std::vector<std::vector<double>>& x, std::vector<std::vector<double>>& y,
-                        int train_cluster, const RuntimeParameters& params) {
+                        int train_cluster, std::string model_name, const RuntimeParameters& params) {
   // Prepare data for python
   PyObject* py_df_x = vector_to_numpy_array(x);
   PyObject* py_df_y = vector_to_numpy_array(y);
 
+  // Make sure that model output file name .keras file
+  std::string model_path = params.save_model_path; 
+  if (!model_path.empty()) {
+    if (model_path.length() >= 6 && model_path.substr(model_path.length() - 6) != ".keras") {
+        model_path += ".keras";
+    }
+  }
+
+  // Choose the correct model to train if clustering is used
+  if (train_cluster == 1) {
+    if (!model_path.empty()) {
+      model_path.insert(model_path.length() - 6, "_reaction");
+      std::cout << "MODEL SAVED AS:" << model_path << std::endl;
+    }
+  }
+
   // Get the model and training function from the global python interpreter
   PyObject* py_main_module = PyImport_AddModule("__main__");
   PyObject* py_global_dict = PyModule_GetDict(py_main_module);
-  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
+  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, model_name.c_str());
   PyObject* py_training_function = PyDict_GetItemString(py_global_dict, "training_step");
   
   // Build the function arguments as four python objects and an integer
-  PyObject* args = Py_BuildValue("(OOOiiis)", 
+  PyObject* args = Py_BuildValue("(OOOiis)", 
       py_keras_model, py_df_x, py_df_y, params.batch_size, params.training_epochs,
-      train_cluster, params.save_model_path.c_str());
-  
+      model_path.c_str());
 
   // Call the Python training function
   PyObject *py_rv = PyObject_CallObject(py_training_function, args);
@@ -458,7 +588,7 @@ void Python_Keras_train(std::vector<std::vector<double>>& x, std::vector<std::ve
  * @param params Global runtime paramters
  * @return 0 if function was succesful
  */
-void parallel_training(EigenModel* Eigen_model,
+void parallel_training(EigenModel* Eigen_model, EigenModel* Eigen_model_reactive,
                        std::mutex* Eigen_model_mutex,
                        TrainingData* training_data_buffer,
                        std::mutex* training_data_buffer_mutex,
@@ -487,21 +617,20 @@ void parallel_training(EigenModel* Eigen_model,
 
     int buffer_size = training_data_buffer->x[0].size();
     // If clustering is used, check the current cluster
-    int n_cluster_reactive;
-    int train_cluster = -1; // Default value for non clustered training where all data is used
+    int n_cluster_reactive = 0;
+    int train_cluster = -1; // Default value for non clustered training (all data is used)
     if (params.use_k_means_clustering) {
       for (int i = 0; i < buffer_size; i++) {
           n_cluster_reactive += training_data_buffer->cluster_labels[i];
       }
       train_cluster = n_cluster_reactive >= params.training_data_size;
     }
-    for (int col = 0; col < training_data_buffer->x.size(); col++) {
-      int buffer_row = 0;
-      int copied_row = 0;
-      while (copied_row < params.training_data_size && 
-            buffer_row < training_data_buffer->x[col].size()) {
-        if ((train_cluster == -1) ||
+    int buffer_row = 0;
+    int copied_row = 0;
+    while (copied_row < params.training_data_size) {
+      if ((train_cluster == -1) ||
           (train_cluster == training_data_buffer->cluster_labels[buffer_row])) {
+        for (int col = 0; col < training_data_buffer->x.size(); col++) {
           // Copy and remove from training data buffer
           inputs[col][copied_row] = training_data_buffer->x[col][buffer_row];
           targets[col][copied_row] = training_data_buffer->y[col][buffer_row];
@@ -509,38 +638,53 @@ void parallel_training(EigenModel* Eigen_model,
                                             buffer_row);
           training_data_buffer->y[col].erase(training_data_buffer->y[col].begin() +
                                             buffer_row);
-          // Copy and remove from cluster label buffer
-          if (params.use_k_means_clustering && col == 0) {
-              training_data_buffer->cluster_labels.erase(
-                training_data_buffer->cluster_labels.begin() + buffer_row);
-          }
-          copied_row++;
-        } else {
-          buffer_row++;
         }
+        // Remove from cluster label buffer
+        if (params.use_k_means_clustering) {
+          training_data_buffer->cluster_labels.erase(
+            training_data_buffer->cluster_labels.begin() + buffer_row);
+        }
+        copied_row++;
+      } else {
+        buffer_row++;
       }
     }
 
-    // Set the waiting predicate to false if buffer is below threshold
-    *start_training = (n_cluster_reactive >= params.training_data_size) ||
-                      (buffer_size - n_cluster_reactive >= params.training_data_size);
+    // Set the waiting predicate to immediately continue training if enough elements of any cluster remain
+    if (train_cluster == 1) {
+      *start_training = ((n_cluster_reactive - params.training_data_size) >= params.training_data_size) ||
+                        ((buffer_size - n_cluster_reactive) >= params.training_data_size);
+    } else {
+      *start_training = (buffer_size - n_cluster_reactive - params.training_data_size)
+                        >= params.training_data_size;
+    }
+    
     //update number of training runs
     training_data_buffer->n_training_runs += 1;
     // Unlock the training_data_buffer_mutex 
     lock.unlock();
 
-    std::cout << "AI: Training thread: Start training" << std::endl;
+    std::string model_name = "model";
+    if (train_cluster == 1) {
+      model_name = "model_reactive";
+    }
+    std::cout << "AI: Training thread: Start training " << model_name << std::endl;
 
     // Acquire the Python GIL
     PyGILState_STATE gstate = PyGILState_Ensure();
     // Start training
-    Python_Keras_train(inputs, targets, train_cluster, params);
+    Python_Keras_train(inputs, targets, train_cluster, model_name, params);
     
     if (!params.use_Keras_predictions) {
+      // TODO UPDATE EIGEN MODEL CLUSTER SPECIFIC
       std::cout << "AI: Training thread: Update shared model weights" << std::endl;
-      std::vector<std::vector<std::vector<double>>> cpp_weights = Python_Keras_get_weights();
+      std::vector<std::vector<std::vector<double>>> cpp_weights = Python_Keras_get_weights(model_name);
       Eigen_model_mutex->lock();
-      update_weights(Eigen_model, cpp_weights);
+      if (train_cluster == 1) {
+        update_weights(Eigen_model_reactive, cpp_weights);
+      } else {
+        update_weights(Eigen_model, cpp_weights);
+      }
       Eigen_model_mutex->unlock();
     }
     
@@ -566,7 +710,7 @@ std::thread python_train_thread;
  * @param params Global runtime paramters
  * @return 0 if function was succesful
  */
-int Python_Keras_training_thread(EigenModel* Eigen_model,
+int Python_Keras_training_thread(EigenModel* Eigen_model, EigenModel* Eigen_model_reactive,
                                  std::mutex* Eigen_model_mutex,
                                  TrainingData* training_data_buffer,
                                  std::mutex* training_data_buffer_mutex,
@@ -574,10 +718,10 @@ int Python_Keras_training_thread(EigenModel* Eigen_model,
                                  bool* start_training, bool* end_training,
                                  const RuntimeParameters& params) {
   PyThreadState *_save = PyEval_SaveThread();
-  python_train_thread = std::thread(parallel_training, Eigen_model, Eigen_model_mutex,
-                                    training_data_buffer, training_data_buffer_mutex,
-                                    training_data_buffer_full, start_training, end_training,
-                                    params);
+  python_train_thread = std::thread(parallel_training, Eigen_model, Eigen_model_reactive,
+                                    Eigen_model_mutex, training_data_buffer,
+                                    training_data_buffer_mutex, training_data_buffer_full,
+                                    start_training, end_training, params);
   return 0;
 }
 
@@ -588,7 +732,7 @@ int Python_Keras_training_thread(EigenModel* Eigen_model,
  * @param weights Cector of model weights from keras as returned by Python_Keras_get_weights()
  */
 void update_weights(EigenModel* model,
-                       const std::vector<std::vector<std::vector<double>>>& weights) {
+                    const std::vector<std::vector<std::vector<double>>>& weights) {
   size_t num_layers = weights.size() / 2;
   for (size_t i = 0; i < weights.size(); i += 2) {
       // Fill current weight matrix
@@ -612,13 +756,13 @@ void update_weights(EigenModel* model,
  * @brief Converts the weights and biases from the Python Keras model to C++ vectors
  * @return A vector containing the model weights and biases 
  */
-std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights() {
+std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights(std::string model_name) {
   // Acquire the Python GIL
   PyGILState_STATE gstate = PyGILState_Ensure();
 
   PyObject* py_main_module = PyImport_AddModule("__main__");
   PyObject* py_global_dict = PyModule_GetDict(py_main_module);
-  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, "model");
+  PyObject* py_keras_model = PyDict_GetItemString(py_global_dict, model_name.c_str());
   PyObject* py_get_weights_function = PyDict_GetItemString(py_global_dict, "get_weights");
   PyObject* args = Py_BuildValue("(O)", py_keras_model);
   

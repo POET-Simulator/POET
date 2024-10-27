@@ -290,30 +290,38 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
    * model to use in an inference function with Eigen */
   std::mutex Eigen_model_mutex; 
   static EigenModel Eigen_model;
+  
+  /* With K Means clustering, a second model will be used 
+   * only for the reactive part of the field (and the first
+   * model only for the non-reactive part) */
+  static EigenModel Eigen_model_reactive;
+  
+
   /* For the training data */
   std::mutex training_data_buffer_mutex;
   std::condition_variable training_data_buffer_full;
   bool start_training, end_training;
   TrainingData training_data_buffer;
-  std::vector<int> cluster_labels(chem.getField().GetRequestedVecSize(), -1);
+  std::vector<int> cluster_labels;
   if (params.use_ai_surrogate) {  
     MSG("AI: Initialize model");
 
     // Initiate two models from one file TODO: Expand this for two input files
-    Python_Keras_load_model(R["model_file_path"], R["model_file_path"],
+    Python_Keras_load_model(R["model_file_path"], R["model_reactive_file_path"],
                             params.use_k_means_clustering);
     if (!params.disable_training) {
       MSG("AI: Initialize training thread");
-      Python_Keras_training_thread(&Eigen_model, &Eigen_model_mutex,
-                                  &training_data_buffer, &training_data_buffer_mutex,
-                                  &training_data_buffer_full, &start_training, &end_training,
-                                  params);
+      Python_Keras_training_thread(&Eigen_model, &Eigen_model_reactive, 
+                                   &Eigen_model_mutex, &training_data_buffer, 
+                                   &training_data_buffer_mutex,
+                                   &training_data_buffer_full, &start_training,
+                                   &end_training, params);
     }
     if (!params.use_Keras_predictions) {
       // Initialize Eigen model for custom inference function
       MSG("AI: Use custom C++ prediction function");
       // Get Keras weights from Python
-      std::vector<std::vector<std::vector<double>>> cpp_weights = Python_Keras_get_weights();
+      std::vector<std::vector<std::vector<double>>> cpp_weights = Python_Keras_get_weights("model");
       // Set model size
       size_t num_layers = cpp_weights.size() / 2;
       Eigen_model.weight_matrices.resize(num_layers); 
@@ -327,6 +335,21 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       }
       // Set initial model weights
       update_weights(&Eigen_model, cpp_weights);
+      if (params.use_k_means_clustering) {
+        // Initialize Eigen model for reactive part of the field
+        cpp_weights = Python_Keras_get_weights("model_reactive");
+        num_layers = cpp_weights.size() / 2;
+        Eigen_model_reactive.weight_matrices.resize(num_layers); 
+        Eigen_model_reactive.biases.resize(num_layers);
+        for (size_t i = 0; i < cpp_weights.size(); i += 2) {
+            size_t rows = cpp_weights[i][0].size();
+            size_t cols = cpp_weights[i].size();
+            Eigen_model_reactive.weight_matrices[i / 2].resize(rows, cols);
+            size_t bias_size = cpp_weights[i + 1][0].size();
+            Eigen_model_reactive.biases[i / 2].resize(bias_size);
+        }
+        update_weights(&Eigen_model_reactive, cpp_weights);
+      }
     }
     MSG("AI: Surrogate model initialized");
   }
@@ -371,26 +394,19 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       if (params.use_k_means_clustering) {
         cluster_labels = K_Means(predictors_scaled, 2, 300);
       }
-      /*
-      int size = (int)(std::sqrt(chem.getField().GetRequestedVecSize()));
       
-      MSG("SIZE: " + std::to_string(size));
-      
-      for (int row = size; row > 0; row--) {
-        for (int column = 0; column < size; column++) {
-          std::cout << cluster_labels[((row - 1) * size) + column];
-        }
-        std::cout << std::endl;
-      }
-      */
-
       MSG("AI: Predict");
       if (params.use_Keras_predictions) {  // Predict with Keras default function
         R["TMP"] = Python_Keras_predict(predictors_scaled, params.batch_size, cluster_labels);
-
       } else {  // Predict with custom Eigen function
-        R["TMP"] = Eigen_predict(Eigen_model, predictors_scaled, params.batch_size,
-                                 &Eigen_model_mutex, cluster_labels);
+        if (params.use_k_means_clustering) {
+          R["TMP"] = Eigen_predict_clustered(Eigen_model, Eigen_model_reactive, 
+                                             predictors_scaled, params.batch_size,
+                                             &Eigen_model_mutex, cluster_labels);
+        } else {
+          R["TMP"] = Eigen_predict(Eigen_model, predictors_scaled, params.batch_size, 
+                                   &Eigen_model_mutex);
+        }
       }
 
       // Apply postprocessing
@@ -452,13 +468,13 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       training_data_buffer_append(training_data_buffer.x, invalid_x);
       training_data_buffer_append(training_data_buffer.y, invalid_y);
             
-      // If clustering is used, count the size of the buffer according
-      // to the cluster assignements
+      // If clustering is used, Add cluster labels to buffer and
+      // count buffer size according to the cluster assignements
       int n_cluster_reactive = 0;
       int buffer_size = training_data_buffer.x[0].size();
       if (params.use_k_means_clustering) {
         cluster_labels_append(training_data_buffer.cluster_labels, cluster_labels,
-                            R["validity_vector"]);
+                              R["validity_vector"]);
         for (int i = 0; i < buffer_size; i++) {
           n_cluster_reactive += training_data_buffer.cluster_labels[i];
         }
@@ -694,13 +710,16 @@ int main(int argc, char *argv[]) {
         }
         if (Rcpp::as<bool>(R.parseEval("exists(\"save_model_path\")"))) {
           run_params.save_model_path = Rcpp::as<std::string>(R["save_model_path"]);
-          std::cout << "AI: Model will be saved as \"" << run_params.save_model_path << "\"" << std::endl;
+          MSG("AI: Model will be saved as \"" + run_params.save_model_path + "\"");
         }
         if (Rcpp::as<bool>(R.parseEval("exists(\"use_k_means_clustering\")"))) {
           run_params.use_k_means_clustering = R["use_k_means_clustering"];
+          MSG("K-Means clustering will be used for the AI surrogate")
         }
-        
-        MSG("AI: Initialize Python for AI surrogate functions");
+        if (!Rcpp::as<bool>(R.parseEval("exists(\"model_reactive_file_path\")"))) {
+          R.parseEval("model_reactive_file_path <- model_file_path");
+        }        
+        MSG("AI: Initialize Python for the AI surrogate functions");
         std::string python_keras_file = std::string(SRC_DIR) +
           "/src/Chemistry/SurrogateModels/AI_Python_functions/keras_AI_surrogate.py";
         Python_Keras_setup(python_keras_file, run_params.cuda_src_dir);

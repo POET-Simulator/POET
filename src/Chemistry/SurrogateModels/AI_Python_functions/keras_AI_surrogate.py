@@ -16,10 +16,16 @@ def initiate_model(model_file_path):
     model = tf.keras.models.load_model(model_file_path)
     return model
 
-def prediction_step(model, x, batch_size, cluster_labels):
-    # TODO PREDICT ACCORDING TO CLUSTER
-
-    prediction = model.predict(x, batch_size)
+def prediction_step(model, model_reactive, x, cluster_labels, batch_size):
+    # Predict separately if clustering is used
+    if cluster_labels:
+        cluster_labels = np.asarray(cluster_labels, dtype=bool)
+        # Combine results
+        prediction = np.zeros_like(x)
+        prediction[cluster_labels] = model_reactive.predict(x[cluster_labels], batch_size)
+        prediction[~cluster_labels] = model.predict(x[~cluster_labels], batch_size)
+    else:
+        prediction = model.predict(x, batch_size)
     return np.array(prediction, dtype=np.float64)
 
 
@@ -28,19 +34,10 @@ def get_weights(model):
     return weights
 
 def training_step(model, x, y, batch_size, epochs, 
-                  train_cluster, output_file_path):
-    # Check clustering of input data
-    # and only train for the cluster where nothing is happening
-    
-    # TODO TRAIN ACCORDING TO CLUSTER
-    print("Training cluster: " + str(train_cluster), flush=True)
-    print("Training data size is: " + str(len(x)), flush=True)
-
+                  output_file_path):
     history = model.fit(x, y, 
                         epochs=epochs,
                         batch_size=batch_size)
     if output_file_path:
-        if output_file_path[-6:] != ".keras":
-            output_file_path += ".keras"
         model.save(output_file_path)
     return history

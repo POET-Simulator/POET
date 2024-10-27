@@ -58,7 +58,7 @@ void Python_finalize(std::mutex* Eigen_model_mutex, std::mutex* training_data_bu
                      std::condition_variable* training_data_buffer_full, bool* start_training, 
                      bool* end_training);
 
-int Python_Keras_load_model(std::string model_reaction, std::string model_no_reaction,
+int Python_Keras_load_model(std::string model, std::string model_reactive,
                             bool use_clustering);
 
 std::vector<int> K_Means(std::vector<std::vector<double>>& field, int k, int maxIterations = 100);
@@ -72,7 +72,7 @@ void training_data_buffer_append(std::vector<std::vector<double>>& training_data
 void cluster_labels_append(std::vector<int>& labels, std::vector<int>& new_labels,
                            std::vector<int> validity);
 
-int Python_Keras_training_thread(EigenModel* Eigen_model,
+int Python_Keras_training_thread(EigenModel* Eigen_model, EigenModel* Eigen_model_reactive,
                                  std::mutex* Eigen_model_mutex,
                                  TrainingData* training_data_buffer,
                                  std::mutex* training_data_buffer_mutex,
@@ -82,11 +82,15 @@ int Python_Keras_training_thread(EigenModel* Eigen_model,
 
 void update_weights(EigenModel* model, const std::vector<std::vector<std::vector<double>>>& weights);
 
-std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights();
+std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights(std::string model_name);
 
-std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>>& x, 
-                                  int batch_size, std::mutex* Eigen_model_mutex,
-                                  std::vector<int>& cluster_labels);
+std::vector<double> Eigen_predict_clustered(const EigenModel& model, const EigenModel& model_reactive,
+                                            std::vector<std::vector<double>>& x, 
+                                            int batch_size, std::mutex* Eigen_model_mutex,
+                                            std::vector<int>& cluster_labels);
+std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>> x, int batch_size,
+                                  std::mutex* Eigen_model_mutex);
+
 
 // Otherwise, define the necessary stubs
 #else
@@ -99,15 +103,17 @@ inline std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>
 inline void training_data_buffer_append(std::vector<std::vector<double>>&,
                                         std::vector<std::vector<double>>&){}
 inline void cluster_labels_append(std::vector<int>&, std::vector<int>&, std::vector<int>){}
-inline int Python_Keras_training_thread(EigenModel*, std::mutex*, 
-                                        TrainingData*, std::mutex*,
-                                        std::condition_variable*,
+inline int Python_Keras_training_thread(EigenModel*, , EigenModel*, std::mutex*, 
+                                        TrainingData*, std::mutex*, std::condition_variable*,
                                         bool*, bool*, const RuntimeParameters&){return {};}
 
 inline void update_weights(EigenModel*, const std::vector<std::vector<std::vector<double>>>&){}
-inline std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights(){return {};}
-inline std::vector<double> Eigen_predict(const EigenModel&, std::vector<std::vector<double>>&, int,
-                                         std::mutex*, std::vector<int>&){return {};}
+inline std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights(std::string){return {};}
+inline std::vector<double> Eigen_predict_clustered(const EigenModel&, const EigenModel&,
+                                                   std::vector<std::vector<double>>&, int,
+                                                   std::mutex*, std::vector<int>&){return {};}
+inline std::vector<double> Eigen_predict(const EigenModel&, std::vector<std::vector<double>>, int,
+                                         std::mutex*){return {};}
 #endif
 } // namespace poet
 
