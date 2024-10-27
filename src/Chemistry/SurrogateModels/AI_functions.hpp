@@ -103,7 +103,7 @@ inline std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>
 inline void training_data_buffer_append(std::vector<std::vector<double>>&,
                                         std::vector<std::vector<double>>&){}
 inline void cluster_labels_append(std::vector<int>&, std::vector<int>&, std::vector<int>){}
-inline int Python_Keras_training_thread(EigenModel*, , EigenModel*, std::mutex*, 
+inline int Python_Keras_training_thread(EigenModel*, EigenModel*, std::mutex*, 
                                         TrainingData*, std::mutex*, std::condition_variable*,
                                         bool*, bool*, const RuntimeParameters&){return {};}
 
