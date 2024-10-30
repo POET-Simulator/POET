@@ -509,10 +509,10 @@ void cluster_labels_append(std::vector<int>& labels_buffer, std::vector<int>& ne
   }
 
   // Resize label vector to hold non valid elements
-  // Iterate over mask to transfer cluster labels
   int end_index = labels_buffer.size(); 
   int new_size = end_index + n_invalid;
   labels_buffer.resize(new_size);
+  // Iterate over mask to transfer cluster labels
   for (int i = 0; i < validity.size(); ++i) {
     // Append only the labels of invalid rows 
     if (!validity[i]) {

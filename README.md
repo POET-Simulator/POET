@@ -252,6 +252,7 @@ R input script.
 The following variables and functions must be declared:
 - `model_file_path` [*string*]: Path to the Keras model file with which 
 the AI surrogate model is initialized. 
+
 - `validate_predictions(predictors, prediction)` [*function*]: Returns a
 boolean vector of length `nrow(predictions)`. The output of this function
 defines which predictions are considered valid and which are rejected. 
@@ -270,13 +271,22 @@ defaults to 2560.
 - `training_epochs` [*int*]: Number of training epochs with each training data
  set, defaults to 20.
  
-- `training_data_size` [*int*]: Size of the training data buffer. After the
-buffer has been filled, the model starts training and removes this amount of
-data from the front of the buffer. Defaults to the size of the Field.
+- `training_data_size` [*int*]: Size of the training data buffer. After
+the buffer has been filled, the model starts training and removes this amount
+of data from the front of the buffer. Defaults to the size of the Field.
 
 - `use_Keras_predictions` [*bool*]: Decides if the Keras prediction function
 should be used instead of the custom C++ implementation (Keras might be faster
 for larger models, especially on GPU). Defaults to false.
+
+- `use_k_means_clustering` [*bool*]: Decides if the K-Means clustering function
+will be used to separate the field in a reactive and a non-reactive cluster.
+Training and inference will be done with separate models for each cluster.
+
+- `- model_reactive_file_path` [*string*]: Path to the Keras model file with
+ which the AI surrogate model for the reactive cluster is initialized. If 
+ ommitted, the models for both clusters will be initialized from
+ `model_file_path`
 
 - `disable_training` [*bool*]: Deactivates the training functions.
 
@@ -288,8 +298,9 @@ Returns the scaled/transformed data frame. The default implementation uses no
 scaling or transformations.
 
 - `postprocess(df)` [*function*]: 
-Returns the rescaled/backtransformed data frame. The combination of preprocess() and postprocess() is expected to be idempotent. The default implementation uses no
-scaling or transformations.
+Returns the rescaled/backtransformed data frame. The combination of preprocess()
+and postprocess() is expected to be idempotent. The default implementation uses
+no scaling or transformations.
 
 
 ```sh

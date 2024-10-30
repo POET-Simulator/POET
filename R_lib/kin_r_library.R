@@ -78,6 +78,7 @@ master_iteration_end <- function(setup, state_T, state_C) {
             ai_surrogate_info <- list(
                 prediction_time = if (exists("ai_prediction_time")) ai_prediction_time else NULL,
                 predictions_validity = if (exists("validity_vector")) validity_vector else NULL,
+                cluster_labels = if (exists("cluster_labels")) cluster_labels else NULL,
                 predictions = if (exists("predictions")) predictions else NULL
             )
 

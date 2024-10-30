@@ -393,6 +393,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       // Get K-Means cluster assignements based on the preprocessed data
       if (params.use_k_means_clustering) {
         cluster_labels = K_Means(predictors_scaled, 2, 300);
+        R["cluster_labels"] = cluster_labels;
       }
       
       MSG("AI: Predict");
@@ -717,7 +718,7 @@ int main(int argc, char *argv[]) {
           MSG("K-Means clustering will be used for the AI surrogate")
         }
         if (!Rcpp::as<bool>(R.parseEval("exists(\"model_reactive_file_path\")"))) {
-          R.parseEval("model_reactive_file_path <- model_file_path");
+          R.parseEval("model_reactive_file_path <- model_reactive_file_path");
         }        
         MSG("AI: Initialize Python for the AI surrogate functions");
         std::string python_keras_file = std::string(SRC_DIR) +
