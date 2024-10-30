@@ -283,7 +283,7 @@ for larger models, especially on GPU). Defaults to false.
 will be used to separate the field in a reactive and a non-reactive cluster.
 Training and inference will be done with separate models for each cluster.
 
-- `- model_reactive_file_path` [*string*]: Path to the Keras model file with
+- `model_reactive_file_path` [*string*]: Path to the Keras model file with
  which the AI surrogate model for the reactive cluster is initialized. If 
  ommitted, the models for both clusters will be initialized from
  `model_file_path`
