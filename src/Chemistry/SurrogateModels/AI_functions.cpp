@@ -98,7 +98,7 @@ std::vector<int> assign_clusters(const std::vector<vector<double>>& field, const
  for (size_t row = 0; row < labels.size(); row++) {
     // Get the coordinates of the current row
     std::vector<double> row_data(field.size()); 
-    for (int column = 0; column < row_data.size(); column++) {
+    for (size_t column = 0; column < row_data.size(); column++) {
       row_data[column] = field[column][row];
     }
     // Iterate over the clusters and check which cluster center is the closest
@@ -126,24 +126,24 @@ std::vector<int> assign_clusters(const std::vector<vector<double>>& field, const
  */
 std::vector<vector<double>> calculate_new_clusters(const std::vector<std::vector<double>>& field,
                                                    const vector<int>& labels, int k) {
-  int columns = field.size();
-  int rows = field[0].size();
+  size_t columns = field.size();
+  size_t rows = field[0].size();
   std::vector<std::vector<double>> clusters(k, std::vector<double>(columns, 0.0));
   vector<int> count(k, 0);
 
   // Sum the coordinates of all points that are assigned to each cluster 
-  for (int row = 0; row < rows; row++) {
+  for (size_t row = 0; row < rows; row++) {
     int assigned_cluster = labels[row];
-    for (int column = 0; column < columns; column++) {
+    for (size_t column = 0; column < columns; column++) {
       clusters[assigned_cluster][column] += field[column][row];
     }
     count[assigned_cluster]++;
     }
 
   // Take the average of the summed coordinates
-  for (int cluster = 0; cluster < k; cluster++) {
+  for (size_t cluster = 0; cluster < k; cluster++) {
     if (count[cluster] == 0) continue;
-    for (int column = 0; column < columns; column++) {
+    for (size_t column = 0; column < columns; column++) {
       clusters[cluster][column] /= count[cluster];
     }
   }
@@ -161,10 +161,10 @@ std::vector<int> K_Means(std::vector<std::vector<double>>& field, int k, int ite
   // Initialize cluster centers by selecting random points from the field 
   srand(time(0));
   std::vector<vector<double>> clusters;
-  for (int i = 0; i < k; ++i) {
+  for (size_t i = 0; i < k; ++i) {
     std::vector<double> cluster_center(field.size());
     int row = rand() % field.size();
-    for (int column = 0; column < cluster_center.size(); column++) {
+    for (size_t column = 0; column < cluster_center.size(); column++) {
       cluster_center[column] = field[column][row];
     }
     clusters.push_back(cluster_center);
@@ -172,7 +172,7 @@ std::vector<int> K_Means(std::vector<std::vector<double>>& field, int k, int ite
 
   std::vector<int> labels;
   
-  for (int iter = 0; iter < iterations; ++iter) {
+  for (size_t iter = 0; iter < iterations; ++iter) {
     // Get the nearest cluster for each row
     labels = assign_clusters(field, clusters);
     // Update each cluster center as the average location of each point assigned to it
@@ -181,12 +181,12 @@ std::vector<int> K_Means(std::vector<std::vector<double>>& field, int k, int ite
   }
 
 
-  //Always define the reactive cluster as cluster 1
+  // Always define the reactive cluster as cluster 1
   // Interprete the reactive cluster as the one on the origin of the field
   // TODO: Is that always correct?  
   int reactive_cluster = labels[0];
   if (reactive_cluster == 0) {
-    for (int i; i < labels.size(); i++) {
+    for (size_t i; i < labels.size(); i++) {
           labels[i] = 1 - labels[i];
     }
   }
@@ -349,15 +349,15 @@ std::vector<double> Eigen_predict_clustered(const EigenModel& model, const Eigen
 
     // Convert input data to Eigen matrix
     Eigen::MatrixXd full_input_matrix(num_features, num_samples);
-    for (int i = 0; i < num_samples; ++i) {
-        for (int j = 0; j < num_features; ++j) {
+    for (size_t i = 0; i < num_samples; ++i) {
+        for (size_t j = 0; j < num_features; ++j) {
             full_input_matrix(j, i) = x[j][i];
         }
     }
 
     // Create indices for each cluster
     std::vector<int> cluster_0_indices, cluster_1_indices;
-    for (int i = 0; i < cluster_labels.size(); ++i) {
+    for (size_t i = 0; i < cluster_labels.size(); ++i) {
         if (cluster_labels[i] == 0) {
             cluster_0_indices.push_back(i);
         } else {
@@ -391,9 +391,9 @@ std::vector<double> Eigen_predict_clustered(const EigenModel& model, const Eigen
             Eigen::MatrixXd batch_result = eigen_inference_batched(batch_data, model);
 
             // Store results in their original positions
-            for (int i = 0; i < current_batch_size; ++i) {
+            for (size_t i = 0; i < current_batch_size; ++i) {
                 int original_idx = cluster_0_indices[start_idx + i];
-                for (int j = 0; j < batch_result.rows(); ++j) {
+                for (size_t j = 0; j < batch_result.rows(); ++j) {
                     result[original_idx * batch_result.rows() + j] = batch_result(j, i);
                 }
             }
@@ -412,9 +412,9 @@ std::vector<double> Eigen_predict_clustered(const EigenModel& model, const Eigen
             Eigen::MatrixXd batch_result = eigen_inference_batched(batch_data, model_reactive);
 
             // Store results in their original positions
-            for (int i = 0; i < current_batch_size; ++i) {
+            for (size_t i = 0; i < current_batch_size; ++i) {
                 int original_idx = cluster_1_indices[start_idx + i];
-                for (int j = 0; j < batch_result.rows(); ++j) {
+                for (size_t j = 0; j < batch_result.rows(); ++j) {
                     result[original_idx * batch_result.rows() + j] = batch_result(j, i);
                 }
             }
@@ -442,8 +442,8 @@ std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vect
   const int num_features = x.size();
   Eigen::MatrixXd full_input_matrix(num_features, num_samples);
 
-  for (int i = 0; i < num_samples; ++i) {
-    for (int j = 0; j < num_features; ++j) {
+  for (size_t i = 0; i < num_samples; ++i) {
+    for (size_t j = 0; j < num_features; ++j) {
       full_input_matrix(j, i) = x[j][i];
     }
   }
@@ -487,7 +487,7 @@ void training_data_buffer_append(std::vector<std::vector<double>>& training_data
   if (training_data_buffer.size() == 0) {
     training_data_buffer = new_values;
   } else { // otherwise append
-    for (int col = 0; col < training_data_buffer.size(); col++) {
+    for (size_t col = 0; col < training_data_buffer.size(); col++) {
       training_data_buffer[col].insert(training_data_buffer[col].end(),
                                         new_values[col].begin(), new_values[col].end());
     }
@@ -504,7 +504,7 @@ void cluster_labels_append(std::vector<int>& labels_buffer, std::vector<int>& ne
                            std::vector<int> validity) {
   // Calculate new buffer size from number of valid elements in mask
   int n_invalid = validity.size();
-  for (int i = 0; i < validity.size(); i++) {
+  for (size_t i = 0; i < validity.size(); i++) {
     n_invalid -= validity[i];
   }
 
@@ -513,7 +513,7 @@ void cluster_labels_append(std::vector<int>& labels_buffer, std::vector<int>& ne
   int new_size = end_index + n_invalid;
   labels_buffer.resize(new_size);
   // Iterate over mask to transfer cluster labels
-  for (int i = 0; i < validity.size(); ++i) {
+  for (size_t i = 0; i < validity.size(); ++i) {
     // Append only the labels of invalid rows 
     if (!validity[i]) {
       labels_buffer[end_index] = new_labels[i]; 
@@ -620,7 +620,7 @@ void parallel_training(EigenModel* Eigen_model, EigenModel* Eigen_model_reactive
     int n_cluster_reactive = 0;
     int train_cluster = -1; // Default value for non clustered training (all data is used)
     if (params.use_k_means_clustering) {
-      for (int i = 0; i < buffer_size; i++) {
+      for (size_t i = 0; i < buffer_size; i++) {
           n_cluster_reactive += training_data_buffer->cluster_labels[i];
       }
       train_cluster = n_cluster_reactive >= params.training_data_size;
@@ -630,7 +630,7 @@ void parallel_training(EigenModel* Eigen_model, EigenModel* Eigen_model_reactive
     while (copied_row < params.training_data_size) {
       if ((train_cluster == -1) ||
           (train_cluster == training_data_buffer->cluster_labels[buffer_row])) {
-        for (int col = 0; col < training_data_buffer->x.size(); col++) {
+        for (size_t col = 0; col < training_data_buffer->x.size(); col++) {
           // Copy and remove from training data buffer
           inputs[col][copied_row] = training_data_buffer->x[col][buffer_row];
           targets[col][copied_row] = training_data_buffer->y[col][buffer_row];
@@ -797,15 +797,15 @@ std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights(std::stri
       // Handle different precision settings
       if (dtype == NPY_FLOAT32) {
         float* weight_data_float = static_cast<float*>(PyArray_DATA(weight_np));
-        for (int r = 0; r < num_rows; ++r) {
-          for (int c = 0; c < num_cols; ++c) {
+        for (size_t r = 0; r < num_rows; ++r) {
+          for (size_t c = 0; c < num_cols; ++c) {
             weight_matrix[r][c] = static_cast<double>(weight_data_float[r * num_cols + c]);
           }
         }
       } else if (dtype == NPY_DOUBLE) {
         double* weight_data_double = static_cast<double*>(PyArray_DATA(weight_np));
-        for (int r = 0; r < num_rows; ++r) {
-          for (int c = 0; c < num_cols; ++c) {
+        for (size_t r = 0; r < num_rows; ++r) {
+          for (size_t c = 0; c < num_cols; ++c) {
             weight_matrix[r][c] = weight_data_double[r * num_cols + c];
           }
         }
@@ -822,12 +822,12 @@ std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights(std::stri
       // Handle different precision settings
       if (dtype == NPY_FLOAT32) {
         float* bias_data_float = static_cast<float*>(PyArray_DATA(weight_np));
-        for (int j = 0; j < num_elements; ++j) {
+        for (size_t j = 0; j < num_elements; ++j) {
           bias_vector[0][j] = static_cast<double>(bias_data_float[j]);
         }
       } else if (dtype == NPY_DOUBLE) {
         double* bias_data_double = static_cast<double*>(PyArray_DATA(weight_np));
-        for (int j = 0; j < num_elements; ++j) {
+        for (size_t j = 0; j < num_elements; ++j) {
           bias_vector[0][j] = bias_data_double[j];
         }
       } else {
