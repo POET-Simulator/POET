@@ -306,7 +306,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   if (params.use_ai_surrogate) {  
     MSG("AI: Initialize model");
 
-    // Initiate two models from one file TODO: Expand this for two input files
+    // Initiate two models from one file
     Python_Keras_load_model(R["model_file_path"], R["model_reactive_file_path"],
                             params.use_k_means_clustering);
     if (!params.disable_training) {
@@ -464,7 +464,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       R.parseEval("target_scaled <- preprocess(state_C[ai_surrogate_species])");
       std::vector<std::vector<double>> invalid_y = 
         R.parseEval("get_invalid_values(target_scaled, validity_vector)");
-      
+
       training_data_buffer_mutex.lock();
       training_data_buffer_append(training_data_buffer.x, invalid_x);
       training_data_buffer_append(training_data_buffer.y, invalid_y);
@@ -718,7 +718,7 @@ int main(int argc, char *argv[]) {
           MSG("K-Means clustering will be used for the AI surrogate")
         }
         if (!Rcpp::as<bool>(R.parseEval("exists(\"model_reactive_file_path\")"))) {
-          R.parseEval("model_reactive_file_path <- model_reactive_file_path");
+          R.parseEval("model_reactive_file_path <- model_file_path");
         }        
         MSG("AI: Initialize Python for the AI surrogate functions");
         std::string python_keras_file = std::string(SRC_DIR) +
