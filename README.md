@@ -282,13 +282,19 @@ for larger models, especially on GPU). Defaults to false.
 - `use_k_means_clustering` [*bool*]: Decides if the K-Means clustering function
 will be used to separate the field in a reactive and a non-reactive cluster.
 Training and inference will be done with separate models for each cluster.
+Defaults to false.
 
 - `model_reactive_file_path` [*string*]: Path to the Keras model file with
  which the AI surrogate model for the reactive cluster is initialized. If 
  ommitted, the models for both clusters will be initialized from
  `model_file_path`
 
-- `disable_training` [*bool*]: Deactivates the training functions.
+- `disable_training` [*bool*]: Deactivates the training functions. Defaults to
+false.
+
+- `train_only_invalid` [*bool*]: Use only the data from PHREEQC for training
+instead of the whole field (which might contain the models own predictions).
+Defaults to false. 
 
 - `save_model_path` [*string*]: After each training step the current model
 is saved to this path as a .keras file.

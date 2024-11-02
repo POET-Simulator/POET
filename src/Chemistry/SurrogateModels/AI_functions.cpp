@@ -9,7 +9,7 @@
 #include <mutex>
 #include <condition_variable>
 #include "AI_functions.hpp"
-
+#include "poet.hpp"
 
 using namespace std;
 
@@ -344,7 +344,8 @@ std::vector<double> Eigen_predict_clustered(const EigenModel& model, const Eigen
     if (num_features != model.weight_matrices[0].cols() || 
         num_features != model_reactive.weight_matrices[0].cols()) {
         throw std::runtime_error("Input data size " + std::to_string(num_features) + 
-            " does not match model input layer sizes");
+            " does not match model input layer sizes" + std::to_string(model.weight_matrices[0].cols()) + 
+            " / " + std::to_string(model_reactive.weight_matrices[0].cols()));
     }
 
     // Convert input data to Eigen matrix

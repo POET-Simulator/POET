@@ -71,12 +71,13 @@ struct RuntimeParameters {
 
   /*AI surriogate configuration*/
   bool use_ai_surrogate = false; // Can be set with command line flag ---ai-surrogate
-  bool disable_training; // Can be set in the R input script
-  bool use_k_means_clustering; // Can be set in the R input script
-  bool use_Keras_predictions; // Can be set in the R input script
-  int batch_size; // Can be set in the R input script
-  int training_epochs; // Can be set in the R input script
+  bool disable_training = false; // Can be set in the R input script
+  bool use_k_means_clustering = false; // Can be set in the R input script
+  bool use_Keras_predictions = false; // Can be set in the R input script
+  bool train_only_invalid = false; // Can be set in the R input script
+  int batch_size = 2560; // default value determined in test on the UP Turing cluster
+  int training_epochs = 20;; // Can be set in the R input script
   int training_data_size; // Can be set in the R input script
-  std::string save_model_path; // Can be set in the R input script
+  std::string save_model_path = ""; // Can be set in the R input script
   std::string cuda_src_dir = CUDA_SRC_DIR; // From CMake
 };

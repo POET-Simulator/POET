@@ -427,8 +427,8 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
         R.parseEval("set_valid_predictions(predictors, predictions, validity_vector)");
 
       Field predictions_field =
-          Field(R.parseEval("nrow(predictors)"), RTempField,
-                R.parseEval("colnames(predictors)"));
+          Field(R.parseEval("nrow(predictions)"), RTempField,
+                R.parseEval("colnames(predictions)"));
 
       MSG("AI: Update field with AI predictions");
       chem.getField().update(predictions_field);
@@ -455,9 +455,11 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
     /* AI surrogate iterative training*/
     if (params.use_ai_surrogate && !params.disable_training) {
-      // Add values for which the predictions were invalid
-      // to training data buffer      
-      MSG("AI: Add invalid predictions to training data buffer");
+      MSG("AI: Add to training data buffer");
+      if (!params.train_only_invalid) {
+        // Use all values if not specified otherwise 
+        R.parseEval("validity_vector <- rep(0, length(validity_vector))");
+      }
       std::vector<std::vector<double>> invalid_x = 
         R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
 
@@ -591,7 +593,11 @@ std::vector<std::string> getSpeciesNames(const Field &&field, int root,
 int main(int argc, char *argv[]) {
   int world_size;
 
-  MPI_Init(&argc, &argv);
+  // Threadsafe MPI is necessary for the AI surrogate
+  // training thread
+  int provided;
+  int required = MPI_THREAD_FUNNELED;
+  MPI_Init_thread(&argc, &argv, required, &provided);
 
   {
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
@@ -684,16 +690,11 @@ int main(int argc, char *argv[]) {
         if (!Rcpp::as<bool>(R.parseEval("exists(\"model_file_path\")"))) {
           throw std::runtime_error("AI surrogate input script must contain a value for model_file_path");
         }
-        
+
         /* AI surrogate training and inference parameters. (Can be set by declaring a 
         variable of the same name in one of the the R input scripts)*/
-        run_params.use_Keras_predictions = false; // Default inference function is custom C++ / Eigen implementation
-        run_params.disable_training = false; // Model will be trained per default
-        run_params.batch_size = 2560; // default value determined in test on the UP Turing cluster
-        run_params.training_epochs = 20; // 
         run_params.training_data_size = init_list.getDiffusionInit().n_rows *
                                         init_list.getDiffusionInit().n_cols; // Default value is number of cells in field
-        run_params.save_model_path = ""; // Model is only saved if a path is set in the input field
         if (Rcpp::as<bool>(R.parseEval("exists(\"batch_size\")"))) {
           run_params.batch_size = R["batch_size"];
         }
@@ -717,9 +718,12 @@ int main(int argc, char *argv[]) {
           run_params.use_k_means_clustering = R["use_k_means_clustering"];
           MSG("K-Means clustering will be used for the AI surrogate")
         }
+        if (Rcpp::as<bool>(R.parseEval("exists(\"train_only_invalid\")"))) {
+          run_params.train_only_invalid = R["train_only_invalid"];
+        }
         if (!Rcpp::as<bool>(R.parseEval("exists(\"model_reactive_file_path\")"))) {
           R.parseEval("model_reactive_file_path <- model_file_path");
-        }        
+        }
         MSG("AI: Initialize Python for the AI surrogate functions");
         std::string python_keras_file = std::string(SRC_DIR) +
           "/src/Chemistry/SurrogateModels/AI_Python_functions/keras_AI_surrogate.py";
