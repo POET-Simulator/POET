@@ -61,8 +61,6 @@ void Python_finalize(std::mutex* Eigen_model_mutex, std::mutex* training_data_bu
 int Python_Keras_load_model(std::string model, std::string model_reactive,
                             bool use_clustering);
 
-std::vector<int> K_Means(std::vector<std::vector<double>>& field, int k, int maxIterations = 100);
-
 std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>& x, int batch_size,
                                          std::vector<int>& cluster_labels);  
 
@@ -97,7 +95,6 @@ std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vect
 inline void Python_Keras_setup(std::string, std::string){}
 inline void Python_finalize(std::mutex*, std::mutex*, std::condition_variable*, bool*, bool*){}
 inline void Python_Keras_load_model(std::string, std::string, bool){}
-inline std::vector<int> K_Means(std::vector<std::vector<double>>&, int, int) {return {};}
 inline std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>&, int,
                                                 std::vector<int>&){return {};}
 inline void training_data_buffer_append(std::vector<std::vector<double>>&,

@@ -253,7 +253,7 @@ The following variables and functions must be declared:
 - `model_file_path` [*string*]: Path to the Keras model file with which 
 the AI surrogate model is initialized. 
 
-- `validate_predictions(predictors, prediction)` [*function*]: Returns a
+- `validate_predictions(predictors, prediction)` [*function*]: Must return a
 boolean vector of length `nrow(predictions)`. The output of this function
 defines which predictions are considered valid and which are rejected. 
 the predictors and predictions are passed in their original original (not
@@ -279,16 +279,6 @@ of data from the front of the buffer. Defaults to the size of the Field.
 should be used instead of the custom C++ implementation (Keras might be faster
 for larger models, especially on GPU). Defaults to false.
 
-- `use_k_means_clustering` [*bool*]: Decides if the K-Means clustering function
-will be used to separate the field in a reactive and a non-reactive cluster.
-Training and inference will be done with separate models for each cluster.
-Defaults to false.
-
-- `model_reactive_file_path` [*string*]: Path to the Keras model file with
- which the AI surrogate model for the reactive cluster is initialized. If 
- ommitted, the models for both clusters will be initialized from
- `model_file_path`
-
 - `disable_training` [*bool*]: Deactivates the training functions. Defaults to
 false.
 
@@ -303,11 +293,20 @@ is saved to this path as a .keras file.
 Returns the scaled/transformed data frame. The default implementation uses no
 scaling or transformations.
 
-- `postprocess(df)` [*function*]: 
-Returns the rescaled/backtransformed data frame. The combination of preprocess()
-and postprocess() is expected to be idempotent. The default implementation uses
-no scaling or transformations.
+- `postprocess(df)` [*function*]: Returns the rescaled/backtransformed data frame. 
+The combination of preprocess() and postprocess() is expected to be idempotent.
+The default implementation uses no scaling or transformations.
 
+- `assign_clusters(df)` [*function*]: Must return a vector of length 
+`nrow(predictions)` that contains cluster labels as 0/1. According to these
+labels, two separate models will be used for inference and training. Cluster 
+assignemnts can e.g. be done for the reactive and non reactive parts of the
+field.
+
+- `model_reactive_file_path` [*string*]: Path to the Keras model file with
+ which the AI surrogate model for the reactive cluster is initialized. If 
+ ommitted, the models for both clusters will be initialized from
+ `model_file_path`
 
 ```sh
 cd <installation_dir>/bin

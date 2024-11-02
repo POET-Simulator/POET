@@ -308,7 +308,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
     // Initiate two models from one file
     Python_Keras_load_model(R["model_file_path"], R["model_reactive_file_path"],
-                            params.use_k_means_clustering);
+                            params.use_clustering);
     if (!params.disable_training) {
       MSG("AI: Initialize training thread");
       Python_Keras_training_thread(&Eigen_model, &Eigen_model_reactive, 
@@ -335,7 +335,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       }
       // Set initial model weights
       update_weights(&Eigen_model, cpp_weights);
-      if (params.use_k_means_clustering) {
+      if (params.use_clustering) {
         // Initialize Eigen model for reactive part of the field
         cpp_weights = Python_Keras_get_weights("model_reactive");
         num_layers = cpp_weights.size() / 2;
@@ -391,16 +391,16 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       std::vector<std::vector<double>> predictors_scaled = R["predictors_scaled"];
 
       // Get K-Means cluster assignements based on the preprocessed data
-      if (params.use_k_means_clustering) {
-        cluster_labels = K_Means(predictors_scaled, 2, 300);
-        R["cluster_labels"] = cluster_labels;
+      if (params.use_clustering) {
+        R.parseEval("cluster_labels <- assign_clusters(predictors_scaled)");
+        cluster_labels = Rcpp::as<std::vector<int>>(R["cluster_labels"]);
       }
       
       MSG("AI: Predict");
       if (params.use_Keras_predictions) {  // Predict with Keras default function
         R["TMP"] = Python_Keras_predict(predictors_scaled, params.batch_size, cluster_labels);
       } else {  // Predict with custom Eigen function
-        if (params.use_k_means_clustering) {
+        if (params.use_clustering) {
           R["TMP"] = Eigen_predict_clustered(Eigen_model, Eigen_model_reactive, 
                                              predictors_scaled, params.batch_size,
                                              &Eigen_model_mutex, cluster_labels);
@@ -475,7 +475,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       // count buffer size according to the cluster assignements
       int n_cluster_reactive = 0;
       size_t  buffer_size = training_data_buffer.x[0].size();
-      if (params.use_k_means_clustering) {
+      if (params.use_clustering) {
         cluster_labels_append(training_data_buffer.cluster_labels, cluster_labels,
                               R["validity_vector"]);
         for (size_t i = 0; i < buffer_size; i++) {
@@ -714,9 +714,9 @@ int main(int argc, char *argv[]) {
           run_params.save_model_path = Rcpp::as<std::string>(R["save_model_path"]);
           MSG("AI: Model will be saved as \"" + run_params.save_model_path + "\"");
         }
-        if (Rcpp::as<bool>(R.parseEval("exists(\"use_k_means_clustering\")"))) {
-          run_params.use_k_means_clustering = R["use_k_means_clustering"];
-          MSG("K-Means clustering will be used for the AI surrogate")
+        if (Rcpp::as<bool>(R.parseEval("exists(\"assign_clusters\")"))) {
+          run_params.use_clustering = true;
+          MSG("Clustering will be used for the AI surrogate")
         }
         if (Rcpp::as<bool>(R.parseEval("exists(\"train_only_invalid\")"))) {
           run_params.train_only_invalid = R["train_only_invalid"];

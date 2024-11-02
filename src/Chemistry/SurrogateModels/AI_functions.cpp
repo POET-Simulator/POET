@@ -70,130 +70,6 @@ int Python_Keras_load_model(std::string model, std::string model_reactive, bool 
   return py_model_loaded;
 }
 
-
-/**
- * @brief Calculates the euclidian distance between two points in n dimensional space
- * @param a Point a
- * @param b Point b
- * @return The distance
- */
-double distance(const std::vector<double>& a, const std::vector<double>& b) {
-    double sum = 0.0;
-    for (size_t i = 0; i < a.size(); ++i) {
-        sum += (a[i] - b[i]) * (a[i] - b[i]);
-    }
-    return sqrt(sum);
-}
-
-/**
- * @brief Assigns all elements of a 2D-Matrix to the nearest cluster center point
- * @param field 2D-Matrix with the content of a Field object
- * @param clusters The vector of clusters represented by their center points
- * @return A vector that contains the assigned cluster for each of the rows in field
- */
-std::vector<int> assign_clusters(const std::vector<vector<double>>& field, const std::vector<vector<double>>& clusters) {
-  // Initiate a vector that holds the cluster labels of each row
-  std::vector<int> labels(field[0].size());
- 
- for (size_t row = 0; row < labels.size(); row++) {
-    // Get the coordinates of the current row
-    std::vector<double> row_data(field.size()); 
-    for (size_t column = 0; column < row_data.size(); column++) {
-      row_data[column] = field[column][row];
-    }
-    // Iterate over the clusters and check which cluster center is the closest
-    double current_min_distance = numeric_limits<double>::max();
-    int current_closest_cluster;
-    for (size_t cluster = 0; cluster < clusters.size(); cluster++) {
-      double cluster_distance = distance(row_data, clusters[cluster]);
-      if (cluster_distance < current_min_distance) {
-        current_min_distance = cluster_distance;
-        current_closest_cluster = cluster;
-      }
-    }
-    labels[row] = current_closest_cluster;
-  }
-  return labels;
-}
-
-/**
- * @brief Calculates new center points for each given cluster by averaging the coordinates
- * of all points that are assigen to it
- * @param field 2D-Matrix with the content of a Field object
- * @param labels The vector that contains the assigned cluster for each of the rows in field
- * @param k The number of clusters
- * @return The new cluster center points
- */
-std::vector<vector<double>> calculate_new_clusters(const std::vector<std::vector<double>>& field,
-                                                   const vector<int>& labels, int k) {
-  size_t columns = field.size();
-  size_t rows = field[0].size();
-  std::vector<std::vector<double>> clusters(k, std::vector<double>(columns, 0.0));
-  vector<int> count(k, 0);
-
-  // Sum the coordinates of all points that are assigned to each cluster 
-  for (size_t row = 0; row < rows; row++) {
-    int assigned_cluster = labels[row];
-    for (size_t column = 0; column < columns; column++) {
-      clusters[assigned_cluster][column] += field[column][row];
-    }
-    count[assigned_cluster]++;
-    }
-
-  // Take the average of the summed coordinates
-  for (size_t cluster = 0; cluster < k; cluster++) {
-    if (count[cluster] == 0) continue;
-    for (size_t column = 0; column < columns; column++) {
-      clusters[cluster][column] /= count[cluster];
-    }
-  }
-  return clusters;
-}
-
-/**
- * @brief Performs KMeans clustering for the elements of a 2D-Matrix
- * @param field 2D-Matrix with the content of a Field object
- * @param k The number of different clusters
- * @param iterations The number of cluster update steps
- * @return A vector that contains the assigned cluster for each of the rows in field
- */
-std::vector<int> K_Means(std::vector<std::vector<double>>& field, int k, int iterations) {
-  // Initialize cluster centers by selecting random points from the field 
-  srand(time(0));
-  std::vector<vector<double>> clusters;
-  for (size_t i = 0; i < k; ++i) {
-    std::vector<double> cluster_center(field.size());
-    int row = rand() % field.size();
-    for (size_t column = 0; column < cluster_center.size(); column++) {
-      cluster_center[column] = field[column][row];
-    }
-    clusters.push_back(cluster_center);
-  } 
-
-  std::vector<int> labels;
-  
-  for (size_t iter = 0; iter < iterations; ++iter) {
-    // Get the nearest cluster for each row
-    labels = assign_clusters(field, clusters);
-    // Update each cluster center as the average location of each point assigned to it
-    std::vector<vector<double>> new_clusters = calculate_new_clusters(field, labels, k);
-    clusters = new_clusters;
-  }
-
-
-  // Always define the reactive cluster as cluster 1
-  // Interprete the reactive cluster as the one on the origin of the field
-  // TODO: Is that always correct?  
-  int reactive_cluster = labels[0];
-  if (reactive_cluster == 0) {
-    for (size_t i; i < labels.size(); i++) {
-          labels[i] = 1 - labels[i];
-    }
-  }
-  return labels;
-}
-
-
 /**
  * @brief Converts the std::vector 2D matrix representation of a POET Field object to a numpy array
  * for use in the Python AI surrogate functions
@@ -622,7 +498,7 @@ void parallel_training(EigenModel* Eigen_model, EigenModel* Eigen_model_reactive
     // If clustering is used, check the current cluster
     int n_cluster_reactive = 0;
     int train_cluster = -1; // Default value for non clustered training (all data is used)
-    if (params.use_k_means_clustering) {
+    if (params.use_clustering) {
       for (size_t i = 0; i < buffer_size; i++) {
           n_cluster_reactive += training_data_buffer->cluster_labels[i];
       }
@@ -643,7 +519,7 @@ void parallel_training(EigenModel* Eigen_model, EigenModel* Eigen_model_reactive
                                             buffer_row);
         }
         // Remove from cluster label buffer
-        if (params.use_k_means_clustering) {
+        if (params.use_clustering) {
           training_data_buffer->cluster_labels.erase(
             training_data_buffer->cluster_labels.begin() + buffer_row);
         }
