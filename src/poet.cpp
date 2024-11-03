@@ -675,7 +675,7 @@ int main(int argc, char *argv[]) {
         /* Use dht species for model input and output */
         R["ai_surrogate_species"] =
             init_list.getChemistryInit().dht_species.getNames();
-
+R.parseEval("ai_surrogate_species <- ai_surrogate_species[ai_surrogate_species != \"Charge\"]");
         const std::string ai_surrogate_input_script =
             init_list.getChemistryInit().ai_surrogate_input_script;
 
@@ -718,7 +718,7 @@ int main(int argc, char *argv[]) {
           MSG("K-Means clustering will be used for the AI surrogate")
         }
         if (!Rcpp::as<bool>(R.parseEval("exists(\"model_reactive_file_path\")"))) {
-          R.parseEval("model_reactive_file_path <- model_reactive_file_path");
+          R.parseEval("model_reactive_file_path <- model_file_path");
         }        
         MSG("AI: Initialize Python for the AI surrogate functions");
         std::string python_keras_file = std::string(SRC_DIR) +

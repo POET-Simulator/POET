@@ -612,8 +612,10 @@ void parallel_training(EigenModel* Eigen_model, EigenModel* Eigen_model_reactive
     // Get the necessary training data
     std::cout << "AI: Training thread: Getting training data" << std::endl;
     // Initialize training data input and targets
-    std::vector<std::vector<double>> inputs(9, std::vector<double>(params.training_data_size));
-    std::vector<std::vector<double>> targets(9, std::vector<double>(params.training_data_size));
+    std::vector<std::vector<double>> inputs(training_data_buffer->x.size(),
+                                            std::vector<double>(params.training_data_size));
+    std::vector<std::vector<double>> targets(training_data_buffer->x.size(),
+                                             std::vector<double>(params.training_data_size));
 
     int buffer_size = training_data_buffer->x[0].size();
     // If clustering is used, check the current cluster
@@ -676,7 +678,6 @@ void parallel_training(EigenModel* Eigen_model, EigenModel* Eigen_model_reactive
     Python_Keras_train(inputs, targets, train_cluster, model_name, params);
     
     if (!params.use_Keras_predictions) {
-      // TODO UPDATE EIGEN MODEL CLUSTER SPECIFIC
       std::cout << "AI: Training thread: Update shared model weights" << std::endl;
       std::vector<std::vector<std::vector<double>>> cpp_weights = Python_Keras_get_weights(model_name);
       Eigen_model_mutex->lock();
