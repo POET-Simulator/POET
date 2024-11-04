@@ -455,17 +455,16 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
     /* AI surrogate iterative training*/
     if (params.use_ai_surrogate && !params.disable_training) {
-      // Add values for which the predictions were invalid
-      // to training data buffer      
+      // Add values to training data buffer      
       MSG("AI: Add to training data buffer");
-      std::vector<std::vector<double>> invalid_x = 
-        R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
-      
       if (!params.train_only_invalid) {
         // Use all values if not specified otherwise
         R.parseEval("validity_vector[] <- 0");
       }
-
+      
+      std::vector<std::vector<double>> invalid_x = 
+        R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
+      
       R.parseEval("target_scaled <- preprocess(state_C[ai_surrogate_species])");
       std::vector<std::vector<double>> invalid_y = 
         R.parseEval("get_invalid_values(target_scaled, validity_vector)");
