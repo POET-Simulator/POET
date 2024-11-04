@@ -724,9 +724,6 @@ int main(int argc, char *argv[]) {
           run_params.use_clustering = true;
           MSG("Clustering will be used for the AI surrogate")
         }
-        if (Rcpp::as<bool>(R.parseEval("exists(\"train_only_invalid\")"))) {
-          run_params.train_only_invalid = R["train_only_invalid"];
-        }
         if (!Rcpp::as<bool>(R.parseEval("exists(\"model_reactive_file_path\")"))) {
           R.parseEval("model_reactive_file_path <- model_file_path");
         }        
