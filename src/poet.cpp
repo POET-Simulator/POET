@@ -685,8 +685,6 @@ int main(int argc, char *argv[]) {
         R["ai_surrogate_species"] =
             init_list.getChemistryInit().dht_species.getNames();
 
-// TODO REMOVE!!
-R.parseEval("ai_surrogate_species <- ai_surrogate_species[ai_surrogate_species != \"Charge\"]");
         const std::string ai_surrogate_input_script =
             init_list.getChemistryInit().ai_surrogate_input_script;
 
