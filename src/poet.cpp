@@ -457,9 +457,14 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     if (params.use_ai_surrogate && !params.disable_training) {
       // Add values for which the predictions were invalid
       // to training data buffer      
-      MSG("AI: Add invalid predictions to training data buffer");
+      MSG("AI: Add to training data buffer");
       std::vector<std::vector<double>> invalid_x = 
         R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
+      
+      if (!params.train_only_invalid) {
+        // Use all values if not specified otherwise
+        R.parseEval("validity_vector[] <- 0");
+      }
 
       R.parseEval("target_scaled <- preprocess(state_C[ai_surrogate_species])");
       std::vector<std::vector<double>> invalid_y = 
@@ -675,6 +680,8 @@ int main(int argc, char *argv[]) {
         /* Use dht species for model input and output */
         R["ai_surrogate_species"] =
             init_list.getChemistryInit().dht_species.getNames();
+
+// TODO REMOVE!!
 R.parseEval("ai_surrogate_species <- ai_surrogate_species[ai_surrogate_species != \"Charge\"]");
         const std::string ai_surrogate_input_script =
             init_list.getChemistryInit().ai_surrogate_input_script;
@@ -708,6 +715,9 @@ R.parseEval("ai_surrogate_species <- ai_surrogate_species[ai_surrogate_species !
         }
         if (Rcpp::as<bool>(R.parseEval("exists(\"disable_training\")"))) {
           run_params.disable_training = R["disable_training"];
+        }
+        if (Rcpp::as<bool>(R.parseEval("exists(\"train_only_invalid\")"))) {
+          run_params.train_only_invalid = R["train_only_invalid"];
         }
         if (Rcpp::as<bool>(R.parseEval("exists(\"save_model_path\")"))) {
           run_params.save_model_path = Rcpp::as<std::string>(R["save_model_path"]);

@@ -16,7 +16,13 @@ def initiate_model(model_file_path):
     model = tf.keras.models.load_model(model_file_path)
     return model
 
-def prediction_step(model, model_reactive, x, cluster_labels, batch_size):
+def prediction_step(model, model_reactive, x, cluster_labels, batch_size)
+    # Catch input size mismatches
+    model_input_shape = model.input_shape[1:]
+    if model_input_shape != x.shape[1:]:
+        print(f"Input data size {x.shape[1:]} does not match model input size {model_input_shape}",
+              flush=True)        
+
     # Predict separately if clustering is used
     if cluster_labels:
         cluster_labels = np.asarray(cluster_labels, dtype=bool)

@@ -74,6 +74,7 @@ struct RuntimeParameters {
   bool disable_training; // Can be set in the R input script
   bool use_k_means_clustering; // Can be set in the R input script
   bool use_Keras_predictions; // Can be set in the R input script
+  bool train_only_invalid; // Can be set in the R input script
   int batch_size; // Can be set in the R input script
   int training_epochs; // Can be set in the R input script
   int training_data_size; // Can be set in the R input script

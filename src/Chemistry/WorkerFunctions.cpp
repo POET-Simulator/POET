@@ -161,6 +161,15 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
                             mpi_buffer.begin() + this->prop_count * (wp_i + 1));
   }
 
+  if (this->ai_surrogate_enabled) {
+    // Map valid predictions from the ai surrogate in the workpackage
+    for (int i = 0; i < s_curr_wp.size; i++) {
+      if (this->ai_surrogate_validity_vector[wp_start_index + i] == 1) {
+        s_curr_wp.mapping[i] = CHEM_AISURR;
+      }
+    }
+  }
+
   // std::cout << this->comm_rank << ":" << counter++ << std::endl;
   if (dht_enabled || interp_enabled) {
     dht->prepareKeys(s_curr_wp.input, dt);
@@ -176,15 +185,6 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
 
   if (interp_enabled) {
     interp->tryInterpolation(s_curr_wp);
-  }
-
-  if (this->ai_surrogate_enabled) {
-    // Map valid predictions from the ai surrogate in the workpackage
-    for (int i = 0; i < s_curr_wp.size; i++) {
-      if (this->ai_surrogate_validity_vector[wp_start_index + i] == 1) {
-        s_curr_wp.mapping[i] = CHEM_AISURR;
-      }
-    }
   }
 
 
