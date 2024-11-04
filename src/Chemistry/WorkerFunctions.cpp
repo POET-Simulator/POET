@@ -170,6 +170,10 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
     }
   }
 
+<<<<<<< HEAD
+=======
+  // std::cout << this->comm_rank << ":" << counter++ << std::endl;
+>>>>>>> segfault_find_reason
   if (dht_enabled || interp_enabled) {
     dht->prepareKeys(s_curr_wp.input, dt);
   }
@@ -186,6 +190,10 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
     interp->tryInterpolation(s_curr_wp);
   }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> segfault_find_reason
   phreeqc_time_start = MPI_Wtime();
 
   WorkerRunWorkPackage(s_curr_wp, current_sim_time, dt);

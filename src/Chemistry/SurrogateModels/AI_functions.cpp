@@ -491,7 +491,7 @@ void parallel_training(EigenModel* Eigen_model, EigenModel* Eigen_model_reactive
     // Initialize training data input and targets
     std::vector<std::vector<double>> inputs(training_data_buffer->x.size(),
                                             std::vector<double>(params.training_data_size));
-    std::vector<std::vector<double>> targets(training_data_buffer->y.size(),
+    std::vector<std::vector<double>> targets(training_data_buffer->x.size(),
                                              std::vector<double>(params.training_data_size));
 
     int buffer_size = training_data_buffer->x[0].size();

@@ -455,13 +455,16 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
     /* AI surrogate iterative training*/
     if (params.use_ai_surrogate && !params.disable_training) {
+      // Add values for which the predictions were invalid
+      // to training data buffer      
       MSG("AI: Add to training data buffer");
-      if (!params.train_only_invalid) {
-        // Use all values if not specified otherwise 
-        R.parseEval("validity_vector <- rep(0, length(validity_vector))");
-      }
       std::vector<std::vector<double>> invalid_x = 
         R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
+      
+      if (!params.train_only_invalid) {
+        // Use all values if not specified otherwise
+        R.parseEval("validity_vector[] <- 0");
+      }
 
       R.parseEval("target_scaled <- preprocess(state_C[ai_surrogate_species])");
       std::vector<std::vector<double>> invalid_y = 
@@ -682,6 +685,8 @@ int main(int argc, char *argv[]) {
         R["ai_surrogate_species"] =
             init_list.getChemistryInit().dht_species.getNames();
 
+// TODO REMOVE!!
+R.parseEval("ai_surrogate_species <- ai_surrogate_species[ai_surrogate_species != \"Charge\"]");
         const std::string ai_surrogate_input_script =
             init_list.getChemistryInit().ai_surrogate_input_script;
 
@@ -710,6 +715,9 @@ int main(int argc, char *argv[]) {
         if (Rcpp::as<bool>(R.parseEval("exists(\"disable_training\")"))) {
           run_params.disable_training = R["disable_training"];
         }
+        if (Rcpp::as<bool>(R.parseEval("exists(\"train_only_invalid\")"))) {
+          run_params.train_only_invalid = R["train_only_invalid"];
+        }
         if (Rcpp::as<bool>(R.parseEval("exists(\"save_model_path\")"))) {
           run_params.save_model_path = Rcpp::as<std::string>(R["save_model_path"]);
           MSG("AI: Model will be saved as \"" + run_params.save_model_path + "\"");
@@ -723,7 +731,7 @@ int main(int argc, char *argv[]) {
         }
         if (!Rcpp::as<bool>(R.parseEval("exists(\"model_reactive_file_path\")"))) {
           R.parseEval("model_reactive_file_path <- model_file_path");
-        }
+        }        
         MSG("AI: Initialize Python for the AI surrogate functions");
         std::string python_keras_file = std::string(SRC_DIR) +
           "/src/Chemistry/SurrogateModels/AI_Python_functions/keras_AI_surrogate.py";
