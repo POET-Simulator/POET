@@ -2,7 +2,7 @@
 
 #include "Base/RInsidePOET.hpp"
 #include "DataStructures/NamedVector.hpp"
-#include "POETInit.hpp"
+#include "PhreeqcMatrix.hpp"
 #include <Rcpp/vector/instantiation.h>
 #include <set>
 #include <tug/Boundary.hpp>
@@ -13,7 +13,6 @@
 #include <cstddef>
 #include <cstdint>
 
-#include <PhreeqcInit.hpp>
 #include <map>
 #include <memory>
 #include <string>
@@ -53,22 +52,23 @@ private:
     DIFFU_ALPHA_X,
     DIFFU_ALPHA_Y,
     CHEM_DATABASE,
-    CHEM_FIELD_HEADER,
-    CHEM_PQC_SCRIPTS,
+    CHEM_PQC_SCRIPT,
     CHEM_PQC_IDS,
-    CHEM_PQC_SOLUTIONS,
-    CHEM_PQC_SOLUTION_PRIMARY,
-    CHEM_PQC_EXCHANGER,
-    CHEM_PQC_KINETICS,
-    CHEM_PQC_EQUILIBRIUM,
-    CHEM_PQC_SURFACE_COMPS,
-    CHEM_PQC_SURFACE_CHARGES,
+    CHEM_FIELD_HEADER,
+    // CHEM_PQC_SCRIPTS,
+    // CHEM_PQC_SOLUTIONS,
+    // CHEM_PQC_SOLUTION_PRIMARY,
+    // CHEM_PQC_EXCHANGER,
+    // CHEM_PQC_KINETICS,
+    // CHEM_PQC_EQUILIBRIUM,
+    // CHEM_PQC_SURFACE_COMPS,
+    // CHEM_PQC_SURFACE_CHARGES,
     CHEM_DHT_SPECIES,
     CHEM_INTERP_SPECIES,
     CHEM_HOOKS,
     AI_SURROGATE_INPUT_SCRIPT,
     ENUM_SIZE // Hack: Last element of the enum to show enum size
-    };
+  };
 
   // Grid members
   static constexpr const char *grid_key = "Grid";
@@ -97,9 +97,9 @@ private:
     return GridMembersString[static_cast<std::size_t>(member)];
   }
 
-  std::unique_ptr<PhreeqcInit> phreeqc;
+  // std::unique_ptr<PhreeqcMatrix> pqc_mat;
 
-  void prepareGrid(const Rcpp::List &grid_input);
+  PhreeqcMatrix prepareGrid(const Rcpp::List &grid_input);
 
   std::uint8_t dim{0};
 
@@ -113,9 +113,6 @@ private:
   std::vector<double> porosity;
 
   Rcpp::List initial_grid;
-
-  // No export
-  Rcpp::NumericMatrix phreeqc_mat;
 
 public:
   struct DiffusionInit {
@@ -169,10 +166,12 @@ private:
     return DiffusionMembersString[static_cast<std::size_t>(member)];
   }
 
-  void initDiffusion(const Rcpp::List &diffusion_input);
+  void initDiffusion(const Rcpp::List &diffusion_input,
+                     const PhreeqcMatrix &phreeqc);
   std::pair<Rcpp::List, Rcpp::List>
   resolveBoundaries(const Rcpp::List &boundaries_list,
-                    const Rcpp::List &inner_boundaries);
+                    const Rcpp::List &inner_boundaries,
+                    const PhreeqcMatrix &phreeqc_mat);
 
   Rcpp::List boundaries;
   Rcpp::List inner_boundaries;
@@ -190,16 +189,9 @@ private:
   std::vector<std::string> field_header;
 
   std::string database;
-  std::vector<std::string> pqc_scripts;
+  std::string pqc_script;
+  // std::vector<std::string> pqc_scripts;
   std::vector<int> pqc_ids;
-
-  std::vector<std::string> pqc_solutions;
-  std::vector<std::string> pqc_solution_primaries;
-  Rcpp::List pqc_exchanger;
-  Rcpp::List pqc_kinetics;
-  Rcpp::List pqc_equilibrium;
-  Rcpp::List pqc_surface_comps;
-  Rcpp::List pqc_surface_charges;
 
   NamedVector<std::uint32_t> dht_species;
 
@@ -227,10 +219,10 @@ public:
     // std::vector<std::string> field_header;
 
     std::string database;
-    // std::vector<std::string> pqc_scripts;
-    // std::vector<int> pqc_ids;
+    std::string pqc_script;
+    std::vector<int> pqc_ids;
 
-    std::map<int, POETConfig> pqc_config;
+    // std::map<int, std::string> pqc_input;
 
     // std::vector<std::string> pqc_sol_order;
 
