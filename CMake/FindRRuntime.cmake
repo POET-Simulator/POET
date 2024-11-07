@@ -1,28 +1,27 @@
 # prepare R environment (Rcpp + RInside)
-find_program(R_EXE "R")
+find_program(R_EXE "R"
+  REQUIRED
+)
 
 # search for R executable, R header file and library path
-if(R_EXE)
-  execute_process(
-    COMMAND ${R_EXE} RHOME
-    OUTPUT_VARIABLE R_ROOT_DIR
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
+execute_process(
+  COMMAND ${R_EXE} RHOME
+  OUTPUT_VARIABLE R_ROOT_DIR
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 
-  find_path(
-    R_INCLUDE_DIR R.h
-    HINTS ${R_ROOT_DIR}
-    PATHS /usr/include /usr/local/include /usr/share
-    PATH_SUFFIXES include/R R/include
-  )
+find_path(
+  R_INCLUDE_DIR R.h
+  HINTS /usr/include /usr/local/include /usr/share ${R_ROOT_DIR}/include
+  PATH_SUFFIXES R/include R
+  REQUIRED
+)
 
-  find_library(
-    R_LIBRARY libR.so
-    HINTS ${R_ROOT_DIR}/lib
-  )
-else()
-  message(FATAL_ERROR "No R runtime found!")
-endif()
+find_library(
+  R_LIBRARY libR.so
+  HINTS ${R_ROOT_DIR}/lib
+  REQUIRED
+)
 
 set(R_LIBRARIES ${R_LIBRARY})
 set(R_INCLUDE_DIRS ${R_INCLUDE_DIR})
@@ -71,11 +70,8 @@ list(APPEND R_INCLUDE_DIRS ${R_RInside_INCLUDE_DIR})
 # putting all together into interface library
 
 add_library(RRuntime INTERFACE IMPORTED)
-set_target_properties(
-  RRuntime PROPERTIES
-  INTERFACE_LINK_LIBRARIES "${R_LIBRARIES}"
-  INTERFACE_INCLUDE_DIRECTORIES "${R_INCLUDE_DIRS}"
-)
+target_link_libraries(RRuntime INTERFACE ${R_LIBRARIES})
+target_include_directories(RRuntime INTERFACE ${R_INCLUDE_DIRS})
 
 unset(R_LIBRARIES)
 unset(R_INCLUDE_DIRS)
