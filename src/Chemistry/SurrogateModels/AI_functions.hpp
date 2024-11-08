@@ -31,15 +31,10 @@
 namespace poet {
 
 struct EigenModel {
-  // The first model will be used for all values if clustering is disabled
-  // or for the reactive part of the field if clustering is enabled
+  // Custom struct for the Keras weight matrices and
+  // bias vectors
   std::vector<Eigen::MatrixXd> weight_matrices;
   std::vector<Eigen::VectorXd> biases;
-
-  // The other model will be used for the non-reactive cluster
-  // (if clustering is enabled)
-  std::vector<Eigen::MatrixXd> weight_matrices_no_reaction;
-  std::vector<Eigen::VectorXd> biases_no_reaction;
 };
 
 struct TrainingData {
