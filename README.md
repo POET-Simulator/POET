@@ -276,8 +276,12 @@ the buffer has been filled, the model starts training and removes this amount
 of data from the front of the buffer. Defaults to the size of the Field.
 
 - `use_Keras_predictions` [*bool*]: Decides if the Keras prediction function
-should be used instead of the custom C++ implementation (Keras might be faster
-for larger models, especially on GPU). Defaults to false.
+should be used instead of the custom C++ implementation. Keras might be faster
+for larger models, especially on GPU. The C++ inference function assumes that
+the Keras model is a standrad feed forward network with either 32 or 64 bit 
+precision and ReLU activation. Any model that deviates from this architecture 
+should activate the Keras prediction function to ensure correct calculation.
+Defaults to false.
 
 - `disable_training` [*bool*]: Deactivates the training functions. Defaults to
 false.

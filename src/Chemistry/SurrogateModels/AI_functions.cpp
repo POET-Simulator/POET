@@ -178,7 +178,8 @@ std::vector<double> Python_Keras_predict(std::vector<std::vector<double>>& x, in
 }
 
 /**
- * @brief Uses Eigen for fast inference with the weights and biases of a neural network 
+ * @brief Uses Eigen for fast inference with the weights and biases of a neural network. 
+ * This function assumes ReLU activation for each layer.
  * @param input_batch Batch of input data that must fit the size of the neural networks input layer
  * @param model Struct of aligned Eigen vectors that hold the neural networks weights and biases.
  * Only supports simple fully connected feed forward networks.
@@ -607,7 +608,7 @@ int Python_Keras_training_thread(EigenModel* Eigen_model, EigenModel* Eigen_mode
 /**
  * @brief Updates the EigenModels weigths and biases from the weight vector
  * @param model Pounter to an EigenModel struct
- * @param weights Cector of model weights from keras as returned by Python_Keras_get_weights()
+ * @param weights Vector of model weights from keras as returned by Python_Keras_get_weights()
  */
 void update_weights(EigenModel* model,
                     const std::vector<std::vector<std::vector<double>>>& weights) {
