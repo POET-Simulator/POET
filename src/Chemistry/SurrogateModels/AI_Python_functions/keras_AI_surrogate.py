@@ -1,15 +1,9 @@
 import tensorflow as tf
 import numpy as np
-from sklearn.cluster import KMeans
 import os
 
 os.environ["TF_XLA_FLAGS"] = "--tf_xla_cpu_global_jit"
 os.environ["XLA_FLAGS"] = "--xla_gpu_cuda_data_dir=" + cuda_dir
-
-def k_means(data, k=2, tol=1e-6):
-    kmeans = KMeans(n_clusters=k, tol=tol)
-    labels = kmeans.fit_predict(data)
-    return labels
 
 def initiate_model(model_file_path):
     print("AI: Model loaded from: " + model_file_path, flush=True)
