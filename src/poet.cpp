@@ -474,7 +474,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       training_data_buffer_append(training_data_buffer.y, invalid_y);
             
       // If clustering is used, Add cluster labels to buffer and
-      // count buffer size according to the cluster assignements
+      // count buffer size according to the cluster assignments
       int n_cluster_reactive = 0;
       size_t  buffer_size = training_data_buffer.x[0].size();
       if (params.use_clustering) {
