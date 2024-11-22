@@ -304,7 +304,7 @@ The default implementation uses no scaling or transformations.
 - `assign_clusters(df)` [*function*]: Must return a vector of length 
 `nrow(predictions)` that contains cluster labels as 0/1. According to these
 labels, two separate models will be used for inference and training. Cluster 
-assignemnts can e.g. be done for the reactive and non reactive parts of the
+assignments can e.g. be done for the reactive and non reactive parts of the
 field.
 
 - `model_reactive_file_path` [*string*]: Path to the Keras model file with
