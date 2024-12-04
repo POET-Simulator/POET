@@ -48,13 +48,15 @@ void poet::ChemistryModule::WorkerLoop() {
     case CHEM_FIELD_INIT: {
       ChemBCast(&this->prop_count, 1, MPI_UINT32_T);
       if (this->ai_surrogate_enabled) {
-        this->ai_surrogate_validity_vector.resize(this->n_cells); // resize statt reserve?
+        this->ai_surrogate_validity_vector.resize(
+            this->n_cells); // resize statt reserve?
       }
       break;
     }
     case CHEM_AI_BCAST_VALIDITY: {
       // Receive the index vector of valid ai surrogate predictions
-      MPI_Bcast(&this->ai_surrogate_validity_vector.front(), this->n_cells, MPI_INT, 0, this->group_comm);
+      MPI_Bcast(&this->ai_surrogate_validity_vector.front(), this->n_cells,
+                MPI_INT, 0, this->group_comm);
       break;
     }
     case CHEM_WORK_LOOP: {
@@ -187,7 +189,6 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
     }
   }
 
-
   phreeqc_time_start = MPI_Wtime();
 
   WorkerRunWorkPackage(s_curr_wp, current_sim_time, dt);
@@ -300,28 +301,19 @@ void poet::ChemistryModule::WorkerRunWorkPackage(WorkPackage &work_package,
                                                  double dSimTime,
                                                  double dTimestep) {
 
+  std::vector<std::vector<double>> inout_chem = work_package.input;
+  std::vector<std::size_t> to_ignore;
+
   for (std::size_t wp_id = 0; wp_id < work_package.size; wp_id++) {
     if (work_package.mapping[wp_id] != CHEM_PQC) {
-      continue;
+      to_ignore.push_back(wp_id);
     }
+  }
+  this->pqc_runner->run(inout_chem, dTimestep, to_ignore);
 
-    auto curr_input = work_package.input[wp_id];
-    const auto pqc_id = static_cast<int>(curr_input[0]);
-
-    auto &phreeqc_instance = this->phreeqc_instances[pqc_id];
-    work_package.output[wp_id] = work_package.input[wp_id];
-
-    curr_input.erase(std::remove_if(curr_input.begin(), curr_input.end(),
-                                    [](double d) { return std::isnan(d); }),
-                     curr_input.end());
-
-    phreeqc_instance->runCell(curr_input, dTimestep);
-
-    std::size_t output_index = 0;
-    for (std::size_t i = 0; i < work_package.output[wp_id].size(); i++) {
-      if (!std::isnan(work_package.output[wp_id][i])) {
-        work_package.output[wp_id][i] = curr_input[output_index++];
-      }
+  for (std::size_t wp_id = 0; wp_id < work_package.size; wp_id++) {
+    if (work_package.mapping[wp_id] == CHEM_PQC) {
+      work_package.output[wp_id] = inout_chem[wp_id];
     }
   }
 }
