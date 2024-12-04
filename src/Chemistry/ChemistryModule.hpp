@@ -8,10 +8,11 @@
 #include "ChemistryDefs.hpp"
 
 #include "Init/InitialList.hpp"
+#include "NameDouble.h"
 #include "SurrogateModels/DHT_Wrapper.hpp"
 #include "SurrogateModels/Interpolation.hpp"
 
-#include "PhreeqcEngine.hpp"
+#include "PhreeqcRunner.hpp"
 #include <array>
 #include <cstdint>
 #include <map>
@@ -390,7 +391,7 @@ protected:
 
   const InitialList::ChemistryInit params;
 
-  std::map<int, std::unique_ptr<PhreeqcEngine>> phreeqc_instances;
+  std::unique_ptr<PhreeqcRunner> pqc_runner;
 };
 } // namespace poet
 
