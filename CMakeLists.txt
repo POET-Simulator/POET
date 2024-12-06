@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-
+include(ExternalProject)
 project(POET
   LANGUAGES CXX C
   DESCRIPTION "A coupled reactive transport simulator")
@@ -8,15 +8,30 @@ project(POET
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 include("CMake/POET_Scripts.cmake")
+include(FetchContent)
+
 list(APPEND CMAKE_MODULE_PATH "${POET_SOURCE_DIR}/CMake")
 
 get_poet_version()
 
 find_package(MPI REQUIRED)
 find_package(RRuntime REQUIRED)
+
+set(USE_NAA "USE_NAA" ON)
+FetchContent_Declare(naa-communication-prototype
+  GIT_REPOSITORY gfz:naaice/naa-communication-prototype
+  GIT_TAG        cmake-version)
+
+if(USE_NAA)
+  FetchContent_MakeAvailable(naa-communication-prototype)
+  set(SOURCE_IP "10.3.10.41")
+  set(TARGET_IP "10.3.10.42")
+endif()
 
 add_subdirectory(src)
 

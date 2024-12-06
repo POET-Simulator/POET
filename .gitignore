@@ -144,3 +144,6 @@ build/
 
 .vscode
 .codechecker
+
+# conda env folder
+.ai/*
