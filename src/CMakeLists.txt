@@ -39,6 +39,7 @@ if(USE_AI_SURROGATE)
 
   # make sure to use the python installation from the conda environment
   if(DEFINED ENV{CONDA_PREFIX})
+    message(STATUS "-- conda prefix used ${CONDA_PREFIX}")
     set(Python3_EXECUTABLE "$ENV{CONDA_PREFIX}/bin/python3")
   endif()
   find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
@@ -138,7 +139,7 @@ configure_file(poet.hpp.in poet.hpp @ONLY)
 
 
 add_executable(poet poet.cpp)
-target_link_libraries(poet PRIVATE POETLib MPI::MPI_C RRuntime CLI11::CLI11)
+target_link_libraries(poet PRIVATE POETLib MPI::MPI_C RRuntime CLI11::CLI11 naaice::middleware)
 target_include_directories(poet PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_executable(poet_init initializer.cpp)
