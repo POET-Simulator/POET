@@ -4,7 +4,7 @@
 transport simulator implementing a parallel architecture and a fast,
 original MPI-based Distributed Hash Table.
 
-![POET's Coupling Scheme](./docs/Scheme_POET_en.svg)
+![POET's Coupling Scheme](./docs/POET_scheme.svg)
 
 ## Parsed code documentiation
 
