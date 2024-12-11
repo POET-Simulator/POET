@@ -1,0 +1,49 @@
+SOLUTION 1
+  units	mol/kgw
+  water	1
+  temperature	25
+  pH     7.008 
+  pe    10.798
+  S      6.205e-04
+  Sr     6.205e-04
+END
+
+SOLUTION 2
+  units	mol/kgw
+  water	1
+  temperature	25
+  pH     7.008 
+  pe    10.798
+  S      6.205e-04
+  Sr     6.205e-04
+KINETICS 2
+  Barite
+    -m 0.00
+    -parms 50.  # reactive surface area
+    -tol 1e-9
+  Celestite
+    -m 1
+    -parms 10.0  # reactive surface area
+    -tol 1e-9
+END
+
+SOLUTION 3
+  units mol/kgw
+  water 1
+  temperature 25
+  Ba 0.1
+  Cl 0.2
+END
+
+SOLUTION 4
+  units mol/kgw
+  water 1
+  temperature 25
+  Ba 0.2
+  Cl 0.4
+END
+
+
+RUN_CELLS
+  -cells 1 2 3 4
+END

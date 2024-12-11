@@ -1,0 +1,102 @@
+% Created 2024-12-11 mer 23:24
+% Intended LaTeX compiler: pdflatex
+\documentclass[a4paper, 9pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usepackage{fullpage}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{charter}
+\usepackage{listings}
+\lstloadlanguages{R}
+\author{MDL <delucia@gfz.de>}
+\date{2024-12-11}
+\title{A \texttt{barite}-based benchmark for FGCS interpolation paper}
+
+
+
+\begin{document}
+
+\maketitle
+
+\section{Description}
+\label{sec:org739879a}
+
+\begin{itemize}
+\item \texttt{barite\_fgcs\_2.R}: POET input script with circular
+  "crystals" on a 200x200 nodes grid
+
+\item \(\alpha\): isotropic 10\textsuperscript{-5}
+  m\textsuperscript{2}/s outside of the crystals,
+  10\textsuperscript{-7} inside
+\item 200 iterations, dt = 1000 
+\item \texttt{barite\_fgcs\_2.pqi}: PHREEQC input, 4 SOLUTIONS
+  (basically the same as in \texttt{barite} benchmark):
+  \begin{enumerate}
+  \item Equilibrium with Celestite, no mineral \(Rightarrow\)
+  \item Equilibrium with Celestite, KINETICS Celestite (1 mol) and
+    Barite (0 mol)
+  \item Injection of 0.1 BaCl2 from NW corner
+  \item Injection of 0.2 BaCl2 from SE corner
+\end{enumerate}
+
+\item \texttt{db\_barite.dat}: PHREEQC database containing the kinetic
+  expressions for barite and celestite, stripped down from
+  \texttt{phreeqc.dat}
+\end{itemize}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.48\textwidth]{./fgcs_Celestite_init.pdf}
+  \includegraphics[width=0.48\textwidth]{./fgcs_Barite_200.pdf}
+  \caption{\textbf{Left:} Initial distribution of Celestite
+    "crystals". \textbf{Right:} precipitated Barite}
+\end{figure}
+
+\section{Interpolation}
+\label{sec:org2a09431}
+
+Using the following parametrization:
+
+\begin{lstlisting}
+dht_species <- c("H"         = 7,
+                 "O"         = 7,
+                 "Ba"        = 7,
+                 "Cl"        = 7,
+                 "S(6)"      = 7,
+                 "Sr"        = 7,
+                 "Barite"    = 4,
+                 "Celestite" = 4)
+
+pht_species <- c("Ba"        = 4,
+                 "Cl"        = 3,
+                 "S(6)"      = 3,
+                 "Sr"        = 3,
+                 "Barite"    = 2,
+                 "Celestite" = 2 )
+\end{lstlisting}
+
+Runtime goes from 1800 to 600 s (21 CPUs) but there are "suspect"
+errors especially in O and H, where "suspect" means some values appear
+to be multiplied by 2:
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\textwidth]{./fgcs_interp_1.pdf}
+  \caption{Scatterplots reference vs interpolated after 1 coupling
+    iteration}
+\end{figure}
+\end{document}
+
+%%% Local Variables:
+%%% mode: LaTeX
+%%% TeX-master: t
+%%% End:
