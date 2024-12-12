@@ -76,6 +76,7 @@ public:
 
   struct SurrogateSetup {
     std::vector<std::string> prop_names;
+    std::array<double, 2> base_totals;
 
     bool dht_enabled;
     std::uint32_t dht_size_mb;
@@ -95,6 +96,8 @@ public:
     this->dht_enabled = setup.dht_enabled;
     this->interp_enabled = setup.interp_enabled;
     this->ai_surrogate_enabled = setup.ai_surrogate_enabled;
+
+    this->base_totals = setup.base_totals;
 
     if (this->dht_enabled || this->interp_enabled) {
       this->initializeDHT(setup.dht_size_mb, this->params.dht_species);
@@ -223,8 +226,8 @@ public:
   };
 
   /**
-  *  **Master only** Set the ai surrogate validity vector from R
-  */
+   *  **Master only** Set the ai surrogate validity vector from R
+   */
   void set_ai_surrogate_validity_vector(std::vector<int> r_vector);
 
   std::vector<uint32_t> GetWorkerInterpolationCalls() const;

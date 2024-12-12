@@ -309,9 +309,10 @@ void poet::ChemistryModule::initializeInterp(
       map_copy = this->dht->getKeySpecies();
       for (auto i = 0; i < map_copy.size(); i++) {
         const std::uint32_t signif =
-            static_cast<std::uint32_t>(map_copy[i]) - (map_copy[i] > InterpolationModule::COARSE_DIFF
-                               ? InterpolationModule::COARSE_DIFF
-                               : 0);
+            static_cast<std::uint32_t>(map_copy[i]) -
+            (map_copy[i] > InterpolationModule::COARSE_DIFF
+                 ? InterpolationModule::COARSE_DIFF
+                 : 0);
         map_copy[i] = signif;
       }
     }
@@ -368,7 +369,8 @@ void poet::ChemistryModule::unshuffleField(const std::vector<double> &in_buffer,
     }
   }
 }
-  
-void poet::ChemistryModule::set_ai_surrogate_validity_vector(std::vector<int> r_vector) {
+
+void poet::ChemistryModule::set_ai_surrogate_validity_vector(
+    std::vector<int> r_vector) {
   this->ai_surrogate_validity_vector = r_vector;
 }
