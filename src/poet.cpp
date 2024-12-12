@@ -39,7 +39,6 @@
 #include <memory>
 #include <mpi.h>
 #include <string>
-#include <format>
 
 #include <CLI/CLI.hpp>
 
@@ -294,11 +293,12 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     const double &dt = params.timesteps[iter - 1];
 
     std::cout << std::endl;
+    
     /* displaying iteration number, with C++ and R iterator */
     MSG("Going through iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
 
-    MSG("Current time step is " + std::format("{:.2f}", dt));
+    MSG("Current time step is " + std::to_string(dt));
 
     /* run transport */
     diffusion.simulate(dt);
