@@ -45,8 +45,10 @@ struct RuntimeParameters {
 
   Rcpp::List init_params;
 
+  // MDL added to accomodate for qs::qsave/qread
   bool as_rds = false;
-  std::string out_ext; // MDL added to accomodate for qs::qsave/qread
+  bool as_qs  = false;
+  std::string out_ext; 
 
   bool print_progress = false;
 
