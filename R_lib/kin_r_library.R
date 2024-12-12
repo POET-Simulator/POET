@@ -94,7 +94,7 @@ master_iteration_end <- function(setup, state_T, state_C) {
     ## Add last time step to simulation time
     setup$simulation_time <- setup$simulation_time + setup$timesteps[iter]
 
-    msgm("done iteration", iter, "/", length(setup$timesteps))
+    ## msgm("done iteration", iter, "/", length(setup$timesteps))
     setup$iter <- setup$iter + 1
     return(setup)
 }
@@ -132,7 +132,7 @@ ReadRObj <- function(path) {
 ## Handler to store R objs to binary files using either builtin
 ## saveRDS() or qs::qsave() based on file extension
 SaveRObj <- function(x, path) {
-    msgm("Storing to", path)
+    ## msgm("Storing to", path)
     ## code borrowed from tools::file_ext()
     pos <- regexpr("\\.([[:alnum:]]+)$", path)
     extension <- ifelse(pos > -1L, substring(path, pos + 1L), "")
