@@ -9,7 +9,7 @@ original MPI-based Distributed Hash Table.
 ## Parsed code documentiation
 
 A parsed version of POET's documentation can be found at [Gitlab
-pages](https://naaice.git-pages.gfz-potsdam.de/poet).
+pages](https://naaice.git-pages.gfz.de/poet).
 
 ## External Libraries
 
@@ -18,8 +18,8 @@ The following external libraries are shipped with POET:
 - **CLI11** - <https://github.com/CLIUtils/CLI11>
 - **IPhreeqc** with patches from GFZ/UP -
   <https://github.com/usgs-coupled/iphreeqc> -
-  <https://git.gfz-potsdam.de/naaice/iphreeqc>
-- **tug** - <https://git.gfz-potsdam.de/naaice/tug>
+  <https://git.gfz.de/naaice/iphreeqc>
+- **tug** - <https://git.gfz.de/naaice/tug>
 
 ## Installation
 
@@ -41,7 +41,7 @@ installed:
 - [Rcpp](https://cran.r-project.org/web/packages/Rcpp/index.html)
 - [RInside](https://cran.r-project.org/web/packages/RInside/index.html)
 - [qs](https://cran.r-project.org/web/packages/qs/index.html)
-
+- [qs2](https://cran.r-project.org/web/packages/qs2/index.html)
 This can be simply achieved by issuing the following commands:
 
 ```sh
@@ -49,7 +49,7 @@ This can be simply achieved by issuing the following commands:
 $ R
 
 # install R dependencies (case sensitive!)
-> install.packages(c("Rcpp", "RInside","qs"))
+> install.packages(c("Rcpp", "RInside","qs","qs2"))
 > q(save="no")
 ```
 
@@ -59,7 +59,7 @@ POET can be anonimously cloned from this repo over https. Make sure to
 also download the submodules:
 
 ```sh
-git clone --recurse-submodules https://git.gfz-potsdam.de/naaice/poet.git
+git clone --recurse-submodules https://git.gfz.de/naaice/poet.git
 ```
 The `--recurse-submodules` option is a shorthand for:
 ```sh
@@ -110,7 +110,7 @@ follows:
 $ R
 
 # install R dependencies
-> install.packages(c("Rcpp", "RInside","qs"))
+> install.packages(c("Rcpp", "RInside","qs","qs2"))
 > q(save="no")
 
 # cd into POET project root
@@ -138,17 +138,17 @@ poet
 └── share
     └── poet
         ├── barite
-        │   ├── barite_200.rds
+        │   ├── barite_200.qs2
         │   ├── barite_200_rt.R
-        │   ├── barite_het.rds
+        │   ├── barite_het.qs2
         │   └── barite_het_rt.R
         ├── dolo
-        │   ├── dolo_inner_large.rds
+        │   ├── dolo_inner_large.qs2
         │   ├── dolo_inner_large_rt.R
-        │   ├── dolo_interp.rds
+        │   ├── dolo_interp.qs2
         │   └── dolo_interp_rt.R
         └── surfex
-            ├── PoetEGU_surfex_500.rds
+            ├── PoetEGU_surfex_500.qs2
             └── PoetEGU_surfex_500_rt.R
 ```
 
@@ -182,7 +182,8 @@ The following parameters can be set:
 | **-P, --progress**          |              | show progress bar                                                                |
 | **--ai-surrogate**          |              | activates the AI surrogate chemistry model (defaults to _OFF_)                   |
 | **--dht**                   |              | enabling DHT usage (defaults to _OFF_)                                           |
-| **--qs**                    |              | store results using qs::qsave() (.qs extension) instead of default RDS (.rds)    |
+| **--qs**                    |              | store results using qs::qsave() (.qs extension) instead of default qs2 (.qs2)    |
+| **--rds**                   |              | store results using saveRDS() (.rds extension) instead of default qs2 (.qs2)    |
 | **--dht-strategy=**         | _0-1_        | change DHT strategy. **NOT IMPLEMENTED YET** (Defaults to _0_)                   |
 | **--dht-size=**             | _1-n_        | size of DHT per process involved in megabyte (defaults to _1000 MByte_)          |
 | **--dht-snaps=**            | _0-2_        | disable or enable storage of DHT snapshots                                       |
@@ -284,7 +285,7 @@ produce any valid predictions.
 In order to provide a model to POET, you need to setup a R script
 which can then be used by `poet_init` to generate the simulation
 input. Which parameters are required can be found in the
-[Wiki](https://git.gfz-potsdam.de/naaice/poet/-/wikis/Initialization).
+[Wiki](https://git.gfz.de/naaice/poet/-/wikis/Initialization).
 We try to keep the document up-to-date. However, if you encounter
 missing information or need help, please get in touch with us via the
 issue tracker or E-Mail.
@@ -298,7 +299,7 @@ issue tracker or E-Mail.
 where: 
 
 - **output** - name of the output file (defaults to the input file
-  name with the extension `.rds`)
+  name with the extension `.qs2`)
 - **setwd** - set the working directory to the directory of the input
   file (e.g. to allow relative paths in the input script). However,
   the output file will be stored in the directory from which
