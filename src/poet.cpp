@@ -57,7 +57,7 @@ static std::unique_ptr<Rcpp::List> global_rt_setup;
 // before the R runtime is initialized
 static poet::DEFunc master_init_R;
 static poet::DEFunc master_iteration_end_R;
-static poet::DEFunc store_setup_R;
+// MDL: unused -> static poet::DEFunc store_setup_R;
 static poet::DEFunc ReadRObj_R;
 static poet::DEFunc SaveRObj_R;
 static poet::DEFunc source_R;
@@ -66,7 +66,7 @@ static void init_global_functions(RInside &R) {
   R.parseEval(kin_r_library);
   master_init_R = DEFunc("master_init");
   master_iteration_end_R = DEFunc("master_iteration_end");
-  store_setup_R = DEFunc("StoreSetup");
+  // MDL: unused -> store_setup_R = DEFunc("StoreSetup");
   source_R = DEFunc("source");
   ReadRObj_R = DEFunc("ReadRObj");
   SaveRObj_R = DEFunc("SaveRObj");
@@ -146,8 +146,11 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
                "Enable AI surrogate for chemistry module");
 
   app.add_flag("--rds", params.as_rds,
-               "Save output as .rds file instead of .qs");
+               "Save output as .rds file instead of default .qs2");
 
+  app.add_flag("--qs", params.as_qs,
+               "Save output as .qs file instead of default .qs2");
+	       
   std::string init_file;
   std::string runtime_file;
 
@@ -174,7 +177,9 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
   }
 
   // set the output extension
-  params.out_ext = params.as_rds ? "rds" : "qs";
+  params.out_ext = "qs2";
+  if (params.as_rds) params.out_ext = "rds";
+  if (params.as_qs)  params.out_ext = "qs";
 
   if (MY_RANK == 0) {
     // MSG("Complete results storage is " + BOOL_PRINT(simparams.store_result));
