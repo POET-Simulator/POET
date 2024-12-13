@@ -94,7 +94,7 @@ master_iteration_end <- function(setup, state_T, state_C) {
     ## Add last time step to simulation time
     setup$simulation_time <- setup$simulation_time + setup$timesteps[iter]
 
-    msgm("done iteration", iter, "/", length(setup$timesteps))
+    ## msgm("done iteration", iter, "/", length(setup$timesteps))
     setup$iter <- setup$iter + 1
     return(setup)
 }
@@ -109,69 +109,6 @@ msgm <- function(...) {
 }
 
 
-## Function called by master R process to store on disk all relevant
-## parameters for the simulation
-StoreSetup <- function(setup, filesim, out_dir) {
-    to_store <- vector(mode = "list", length = 4)
-    ## names(to_store) <- c("Sim", "Flow", "Transport", "Chemistry", "DHT")
-    names(to_store) <- c("Sim", "Transport", "DHT", "Cmdline")
-
-    ## read the setup R file, which is sourced in kin.cpp
-    tmpbuff <- file(filesim, "r")
-    setupfile <- readLines(tmpbuff)
-    close.connection(tmpbuff)
-
-    to_store$Sim <- setupfile
-
-    ## to_store$Flow <- list(
-    ##     snapshots  = setup$snapshots,
-    ##     gridfile   = setup$gridfile,
-    ##     phase      = setup$phase,
-    ##     density    = setup$density,
-    ##     dt_differ  = setup$dt_differ,
-    ##     prolong    = setup$prolong,
-    ##     maxiter    = setup$maxiter,
-    ##     saved_iter = setup$iter_output,
-    ##     out_save   = setup$out_save )
-
-    to_store$Transport <- setup$diffusion
-
-    ## to_store$Chemistry <- list(
-    ##    nprocs   = n_procs,
-    ##    wp_size  = work_package_size,
-    ##    base     = setup$base,
-    ##    first    = setup$first,
-    ##    init     = setup$initsim,
-    ##    db       = db,
-    ##    kin      = setup$kin,
-    ##    ann      = setup$ann)
-
-    if (dht_enabled) {
-        to_store$DHT <- list(
-            enabled   = dht_enabled,
-            log       = dht_log
-            ## signif    = dht_final_signif,
-            ## proptype  = dht_final_proptype
-        )
-    } else {
-        to_store$DHT <- FALSE
-    }
-
-    if (dht_enabled) {
-        to_store$DHT <- list(
-            enabled   = dht_enabled,
-            log       = dht_log
-            # signif    = dht_final_signif,
-            # proptype  = dht_final_proptype
-        )
-    } else {
-        to_store$DHT <- FALSE
-    }
-
-    saveRDS(to_store, file = paste0(fileout, "/setup.rds"))
-    msgm("initialization stored in ", paste0(fileout, "/setup.rds"))
-}
-
 GetWorkPackageSizesVector <- function(n_packages, package_size, len) {
     ids <- rep(1:n_packages, times = package_size, each = 1)[1:len]
     return(as.integer(table(ids)))
@@ -179,7 +116,7 @@ GetWorkPackageSizesVector <- function(n_packages, package_size, len) {
 
 
 ## Handler to read R objs from binary files using either builtin
-## readRDS() or qs::qread() based on file extension
+## readRDS(), qs::qread() or qs2::qs_read() based on file extension
 ReadRObj <- function(path) {
     ## code borrowed from tools::file_ext()
     pos <- regexpr("\\.([[:alnum:]]+)$", path)
@@ -187,20 +124,88 @@ ReadRObj <- function(path) {
 
     switch(extension,
         rds = readRDS(path),
-        qs  = qs::qread(path)
+        qs  = qs::qread(path),
+        qs2 = qs2::qs_read(path)
     )
 }
 
 ## Handler to store R objs to binary files using either builtin
 ## saveRDS() or qs::qsave() based on file extension
 SaveRObj <- function(x, path) {
-    msgm("Storing to", path)
+    ## msgm("Storing to", path)
     ## code borrowed from tools::file_ext()
     pos <- regexpr("\\.([[:alnum:]]+)$", path)
     extension <- ifelse(pos > -1L, substring(path, pos + 1L), "")
 
     switch(extension,
         rds = saveRDS(object = x, file = path),
-        qs  = qs::qsave(x = x, file = path)
+        qs  = qs::qsave(x = x, file = path),
+        qs2 = qs2::qs_save(object = x, file = path)
     )
 }
+
+
+######## Old relic code
+
+## ## Function called by master R process to store on disk all relevant
+## ## parameters for the simulation
+## StoreSetup <- function(setup, filesim, out_dir) {
+##     to_store <- vector(mode = "list", length = 4)
+##     ## names(to_store) <- c("Sim", "Flow", "Transport", "Chemistry", "DHT")
+##     names(to_store) <- c("Sim", "Transport", "DHT", "Cmdline")
+
+##     ## read the setup R file, which is sourced in kin.cpp
+##     tmpbuff <- file(filesim, "r")
+##     setupfile <- readLines(tmpbuff)
+##     close.connection(tmpbuff)
+
+##     to_store$Sim <- setupfile
+
+##     ## to_store$Flow <- list(
+##     ##     snapshots  = setup$snapshots,
+##     ##     gridfile   = setup$gridfile,
+##     ##     phase      = setup$phase,
+##     ##     density    = setup$density,
+##     ##     dt_differ  = setup$dt_differ,
+##     ##     prolong    = setup$prolong,
+##     ##     maxiter    = setup$maxiter,
+##     ##     saved_iter = setup$iter_output,
+##     ##     out_save   = setup$out_save )
+
+##     to_store$Transport <- setup$diffusion
+
+##     ## to_store$Chemistry <- list(
+##     ##    nprocs   = n_procs,
+##     ##    wp_size  = work_package_size,
+##     ##    base     = setup$base,
+##     ##    first    = setup$first,
+##     ##    init     = setup$initsim,
+##     ##    db       = db,
+##     ##    kin      = setup$kin,
+##     ##    ann      = setup$ann)
+
+##     if (dht_enabled) {
+##         to_store$DHT <- list(
+##             enabled   = dht_enabled,
+##             log       = dht_log
+##             ## signif    = dht_final_signif,
+##             ## proptype  = dht_final_proptype
+##         )
+##     } else {
+##         to_store$DHT <- FALSE
+##     }
+
+##     if (dht_enabled) {
+##         to_store$DHT <- list(
+##             enabled   = dht_enabled,
+##             log       = dht_log
+##             # signif    = dht_final_signif,
+##             # proptype  = dht_final_proptype
+##         )
+##     } else {
+##         to_store$DHT <- FALSE
+##     }
+
+##     saveRDS(to_store, file = paste0(fileout, "/setup.rds"))
+##     msgm("initialization stored in ", paste0(fileout, "/setup.rds"))
+## }

@@ -35,7 +35,11 @@ int main(int argc, char **argv) {
       ->default_val(false);
 
   bool asRDS;
-  app.add_flag("-r, --rds", asRDS, "Save output as .rds file instead of .qs")
+  app.add_flag("-r, --rds", asRDS, "Save output as .rds")
+      ->default_val(false);
+
+  bool asQS;
+  app.add_flag("-q, --qs", asQS, "Save output as .qs")
       ->default_val(false);
 
   CLI11_PARSE(app, argc, argv);
@@ -69,8 +73,14 @@ int main(int argc, char **argv) {
   }
 
   // append the correct file extension
-  output_file += asRDS ? ".rds" : ".qs";
-
+  if (asRDS) {
+      output_file += ".rds";
+  } else if (asQS) {
+      output_file += ".qs";
+  } else {
+      output_file += ".qs2";
+  }
+  
   // set working directory to the directory of the input script
   if (setwd) {
     const std::string dir_path = Rcpp::as<std::string>(

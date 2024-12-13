@@ -70,7 +70,7 @@ VecToMatrix(const std::vector<TugType> &vec, std::uint32_t n_rows,
 // static constexpr double ZERO_MULTIPLICATOR = 10E-14;
 
 void DiffusionModule::simulate(double requested_dt) {
-  MSG("Starting diffusion ...");
+  // MSG("Starting diffusion ...");
   const auto start_diffusion_t = std::chrono::high_resolution_clock::now();
 
   const auto &n_rows = this->param_list.n_rows;

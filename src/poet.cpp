@@ -45,7 +45,7 @@
 #include <poet.hpp>
 #include <vector>
 
-using namespace std;
+// using namespace std;
 using namespace poet;
 using namespace Rcpp;
 
@@ -57,7 +57,7 @@ static std::unique_ptr<Rcpp::List> global_rt_setup;
 // before the R runtime is initialized
 static poet::DEFunc master_init_R;
 static poet::DEFunc master_iteration_end_R;
-static poet::DEFunc store_setup_R;
+// MDL: unused -> static poet::DEFunc store_setup_R;
 static poet::DEFunc ReadRObj_R;
 static poet::DEFunc SaveRObj_R;
 static poet::DEFunc source_R;
@@ -66,7 +66,7 @@ static void init_global_functions(RInside &R) {
   R.parseEval(kin_r_library);
   master_init_R = DEFunc("master_init");
   master_iteration_end_R = DEFunc("master_iteration_end");
-  store_setup_R = DEFunc("StoreSetup");
+  // MDL: unused -> store_setup_R = DEFunc("StoreSetup");
   source_R = DEFunc("source");
   ReadRObj_R = DEFunc("ReadRObj");
   SaveRObj_R = DEFunc("SaveRObj");
@@ -146,8 +146,11 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
                "Enable AI surrogate for chemistry module");
 
   app.add_flag("--rds", params.as_rds,
-               "Save output as .rds file instead of .qs");
+               "Save output as .rds file instead of default .qs2");
 
+  app.add_flag("--qs", params.as_qs,
+               "Save output as .qs file instead of default .qs2");
+	       
   std::string init_file;
   std::string runtime_file;
 
@@ -174,7 +177,9 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
   }
 
   // set the output extension
-  params.out_ext = params.as_rds ? "rds" : "qs";
+  params.out_ext = "qs2";
+  if (params.as_rds) params.out_ext = "rds";
+  if (params.as_qs)  params.out_ext = "qs";
 
   if (MY_RANK == 0) {
     // MSG("Complete results storage is " + BOOL_PRINT(simparams.store_result));
@@ -287,18 +292,20 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
     const double &dt = params.timesteps[iter - 1];
 
-    //  cout << "CPP: Next time step is " << dt << "[s]" << endl;
-    MSG("Next time step is " + std::to_string(dt) + " [s]");
-
+    std::cout << std::endl;
+    
     /* displaying iteration number, with C++ and R iterator */
-    MSG("Going through iteration " + std::to_string(iter));
+    MSG("Going through iteration " + std::to_string(iter) + "/" +
+        std::to_string(maxiter));
+
+    MSG("Current time step is " + std::to_string(dt));
 
     /* run transport */
     diffusion.simulate(dt);
 
     chem.getField().update(diffusion.getField());
 
-    MSG("Chemistry step");
+    // MSG("Chemistry start");
     if (params.use_ai_surrogate) {
       double ai_start_t = MPI_Wtime();
       // Save current values from the tug field as predictor for the ai step
@@ -314,16 +321,16 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       R.parseEval("predictors_scaled <- preprocess(predictors)");
 
       // Predict
-      MSG("AI Predict");
+      MSG("AI Prediction");
       R.parseEval(
           "aipreds_scaled <- prediction_step(model, predictors_scaled)");
 
       // Apply postprocessing
-      MSG("AI Postprocesing");
+      MSG("AI Postprocessing");
       R.parseEval("aipreds <- postprocess(aipreds_scaled)");
 
       // Validate prediction and write valid predictions to chem field
-      MSG("AI Validate");
+      MSG("AI Validation");
       R.parseEval(
           "validity_vector <- validate_predictions(predictors, aipreds)");
 
@@ -333,8 +340,8 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       MSG("AI TempField");
       std::vector<std::vector<double>> RTempField =
           R.parseEval("set_valid_predictions(predictors,\
-                                                                                       aipreds,\
-                                                                                       validity_vector)");
+                       aipreds,\
+                       validity_vector)");
 
       MSG("AI Set Field");
       Field predictions_field =
@@ -385,9 +392,11 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
     MSG("End of *coupling* iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
-    MSG();
+    // MSG();
   } // END SIMULATION LOOP
 
+  std::cout << std::endl;
+  
   Rcpp::List chem_profiling;
   chem_profiling["simtime"] = chem.GetChemistryTime();
   chem_profiling["loop"] = chem.GetMasterLoopTime();
@@ -583,7 +592,7 @@ int main(int argc, char *argv[]) {
       R["setup"] = *global_rt_setup;
       R["setup$out_ext"] = run_params.out_ext;
 
-      string r_vis_code;
+      std::string r_vis_code;
       r_vis_code = "SaveRObj(x = profiling, path = paste0(out_dir, "
                    "'/timings.', setup$out_ext));";
       R.parseEval(r_vis_code);
