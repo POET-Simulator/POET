@@ -261,6 +261,8 @@ private:
   const InitialList::ChemistryHookFunctions &hooks;
   const std::vector<std::string> &out_names;
   const std::vector<std::string> dht_names;
+
+  std::unordered_map<int, std::vector<std::int32_t>> to_calc_cache;
 };
 } // namespace poet
 

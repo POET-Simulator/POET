@@ -10,9 +10,21 @@
 
 namespace poet {
 
+constexpr std::int8_t SC_NOTATION_EXPONENT_MASK = -128;
+constexpr std::int64_t SC_NOTATION_SIGNIFICANT_MASK = 0xFFFFFFFFFFFF;
+
 struct Lookup_SC_notation {
   std::int8_t exp : 8;
   std::int64_t significant : 56;
+
+  constexpr static Lookup_SC_notation nan() {
+    return {SC_NOTATION_EXPONENT_MASK, SC_NOTATION_SIGNIFICANT_MASK};
+  }
+
+  constexpr bool isnan() {
+    return !!(exp == SC_NOTATION_EXPONENT_MASK &&
+              significant == SC_NOTATION_SIGNIFICANT_MASK);
+  }
 };
 
 union Lookup_Keyelement {

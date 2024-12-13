@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -116,10 +117,25 @@ void InterpolationModule::tryInterpolation(WorkPackage &work_package) {
     this->pht->incrementReadCounter(roundKey(rounded_key));
 #endif
 
+    const int cell_id = static_cast<int>(work_package.input[wp_i][0]);
+
+    if (!to_calc_cache.contains(cell_id)) {
+      std::vector<std::int32_t> to_calc = dht_instance.getKeyElements();
+      std::vector<std::int32_t> keep_indices;
+
+      for (std::size_t i = 0; i < to_calc.size(); i++) {
+        if (!std::isnan(work_package.input[wp_i][to_calc[i]])) {
+          keep_indices.push_back(to_calc[i]);
+        }
+      }
+
+      to_calc_cache[cell_id] = keep_indices;
+    }
+
     double start_fc = MPI_Wtime();
 
     work_package.output[wp_i] =
-        f_interpolate(dht_instance.getKeyElements(), work_package.input[wp_i],
+        f_interpolate(to_calc_cache[cell_id], work_package.input[wp_i],
                       pht_result.in_values, pht_result.out_values);
 
     if (hooks.interp_post.isValid()) {
