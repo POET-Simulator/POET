@@ -188,8 +188,6 @@ void poet::ChemistryModule::initializeDHT(
     uint32_t size_mb, const NamedVector<std::uint32_t> &key_species) {
   constexpr uint32_t MB_FACTOR = 1E6;
 
-  this->dht_enabled = true;
-
   MPI_Comm dht_comm;
 
   if (this->is_master) {
