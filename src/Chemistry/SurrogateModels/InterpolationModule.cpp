@@ -120,7 +120,7 @@ void InterpolationModule::tryInterpolation(WorkPackage &work_package) {
     const int cell_id = static_cast<int>(work_package.input[wp_i][0]);
 
     if (!to_calc_cache.contains(cell_id)) {
-      std::vector<std::int32_t> to_calc = dht_instance.getKeyElements();
+      const std::vector<std::int32_t> &to_calc = dht_instance.getKeyElements();
       std::vector<std::int32_t> keep_indices;
 
       for (std::size_t i = 0; i < to_calc.size(); i++) {
