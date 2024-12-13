@@ -185,7 +185,8 @@ poet::ChemistryModule::~ChemistryModule() {
 }
 
 void poet::ChemistryModule::initializeDHT(
-    uint32_t size_mb, const NamedVector<std::uint32_t> &key_species) {
+    uint32_t size_mb, const NamedVector<std::uint32_t> &key_species,
+    bool has_het_ids) {
   constexpr uint32_t MB_FACTOR = 1E6;
 
   MPI_Comm dht_comm;
@@ -217,7 +218,7 @@ void poet::ChemistryModule::initializeDHT(
 
     this->dht = new DHT_Wrapper(dht_comm, dht_size, map_copy, key_indices,
                                 this->prop_names, params.hooks,
-                                this->prop_count, interp_enabled);
+                                this->prop_count, interp_enabled, has_het_ids);
     this->dht->setBaseTotals(base_totals.at(0), base_totals.at(1));
   }
 }

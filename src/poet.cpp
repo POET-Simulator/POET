@@ -40,6 +40,7 @@
 #include <cstdlib>
 #include <memory>
 #include <mpi.h>
+#include <set>
 #include <string>
 
 #include <CLI/CLI.hpp>
@@ -510,6 +511,31 @@ std::array<double, 2> getBaseTotals(Field &&field, int root, MPI_Comm comm) {
   return base_totals;
 }
 
+bool getHasID(Field &&field, int root, MPI_Comm comm) {
+  bool has_id;
+
+  int rank;
+  MPI_Comm_rank(comm, &rank);
+
+  const bool is_master = root == rank;
+
+  if (is_master) {
+    const auto ID_field = field["ID"];
+
+    std::set<double> unique_IDs(ID_field.begin(), ID_field.end());
+
+    has_id = unique_IDs.size() > 1;
+
+    MPI_Bcast(&has_id, 1, MPI_C_BOOL, root, MPI_COMM_WORLD);
+
+    return has_id;
+  }
+
+  MPI_Bcast(&has_id, 1, MPI_C_BOOL, root, comm);
+
+  return has_id;
+}
+
 int main(int argc, char *argv[]) {
   int world_size;
 
@@ -558,6 +584,7 @@ int main(int argc, char *argv[]) {
     const ChemistryModule::SurrogateSetup surr_setup = {
         getSpeciesNames(init_list.getInitialGrid(), 0, MPI_COMM_WORLD),
         getBaseTotals(init_list.getInitialGrid(), 0, MPI_COMM_WORLD),
+        getHasID(init_list.getInitialGrid(), 0, MPI_COMM_WORLD),
         run_params.use_dht,
         run_params.dht_size,
         run_params.use_interp,

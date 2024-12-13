@@ -77,6 +77,7 @@ public:
   struct SurrogateSetup {
     std::vector<std::string> prop_names;
     std::array<double, 2> base_totals;
+    bool has_het_ids;
 
     bool dht_enabled;
     std::uint32_t dht_size_mb;
@@ -100,7 +101,8 @@ public:
     this->base_totals = setup.base_totals;
 
     if (this->dht_enabled || this->interp_enabled) {
-      this->initializeDHT(setup.dht_size_mb, this->params.dht_species);
+      this->initializeDHT(setup.dht_size_mb, this->params.dht_species,
+                          setup.has_het_ids);
     }
 
     if (this->interp_enabled) {
@@ -243,7 +245,8 @@ public:
 
 protected:
   void initializeDHT(uint32_t size_mb,
-                     const NamedVector<std::uint32_t> &key_species);
+                     const NamedVector<std::uint32_t> &key_species,
+                     bool has_het_ids);
   void setDHTSnapshots(int type, const std::string &out_dir);
   void setDHTReadFile(const std::string &input_file);
 
