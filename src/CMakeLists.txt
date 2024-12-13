@@ -28,6 +28,7 @@ target_link_libraries(
 )
 
 include(FetchContent)
+
 FetchContent_Declare(
   cli11
   QUIET 
@@ -36,6 +37,19 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(cli11)
+
+## MDL: adding fmtlib
+find_package(FMT QUIET)
+
+if (NOT ${FMT_FOUND}) 
+  FetchContent_Declare(
+    FMT
+    QUIET
+    GIT_REPOSITORY https://github.com/fmtlib/fmt
+    GIT_TAG        0c9fce2ffefecfdce794e1859584e25877b7b592 # 11.0.2
+  )
+  FetchContent_MakeAvailable(fmt)
+endif()
 
 # add_library(poetlib
 #   Base/Grid.cpp
@@ -85,11 +99,11 @@ file(READ "${PROJECT_SOURCE_DIR}/R_lib/ai_surrogate_model.R" R_AI_SURROGATE_LIB)
 configure_file(poet.hpp.in poet.hpp @ONLY)
 
 add_executable(poet poet.cpp)
-target_link_libraries(poet PRIVATE POETLib MPI::MPI_C RRuntime CLI11::CLI11)
+target_link_libraries(poet PRIVATE POETLib MPI::MPI_C RRuntime CLI11::CLI11 fmt::fmt)
 target_include_directories(poet PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_executable(poet_init initializer.cpp)
-target_link_libraries(poet_init PRIVATE POETLib RRuntime CLI11::CLI11)
+target_link_libraries(poet_init PRIVATE POETLib RRuntime CLI11::CLI11 fmt::fmt)
 target_include_directories(poet_init PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 install(TARGETS poet poet_init DESTINATION bin)

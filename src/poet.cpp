@@ -44,6 +44,7 @@
 
 #include <poet.hpp>
 #include <vector>
+#include <fmt/core.h>
 
 // using namespace std;
 using namespace poet;
@@ -298,7 +299,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     MSG("Going through iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
 
-    MSG("Current time step is " + std::to_string(dt));
+    MSG("Current time step is " + fmt::format("{:.2f}", dt));
 
     /* run transport */
     diffusion.simulate(dt);
