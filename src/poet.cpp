@@ -45,6 +45,7 @@
 #include <poet.hpp>
 #include <vector>
 #include <fmt/core.h>
+#include <fmt/color.h>
 
 // using namespace std;
 using namespace poet;
@@ -184,23 +185,17 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
 
   if (MY_RANK == 0) {
     // MSG("Complete results storage is " + BOOL_PRINT(simparams.store_result));
-    MSG("Output format/extension is " + params.out_ext);
-    MSG("Work Package Size: " + std::to_string(params.work_package_size));
-    MSG("DHT is " + BOOL_PRINT(params.use_dht));
-    MSG("AI Surrogate is " + BOOL_PRINT(params.use_ai_surrogate));
+    fmt::print(fmt::emphasis::bold, "Output format/extension:     {}\n", fmt::format(fmt::fg(fmt::color::light_sea_green), fmt::runtime(params.out_ext)));
+    fmt::print(fmt::emphasis::bold, "Work Package Size:           {}\n", fmt::format(fmt::fg(fmt::color::light_sea_green), fmt::runtime(std::to_string(params.work_package_size))));
+    fmt::print(fmt::emphasis::bold, "DHT Active:                  {}\n", fmt::format(fmt::fg(fmt::color::light_sea_green), fmt::runtime(BOOL_PRINT(params.use_dht))));
+    fmt::print(fmt::emphasis::bold, "AI Surrogate:                {}\n", fmt::format(fmt::fg(fmt::color::light_sea_green), fmt::runtime(BOOL_PRINT(params.use_ai_surrogate))));
+
+    // fmt::print(fmt::emphasis::bold, "Second: Output format/extension:     {}\n", fmt::runtime(params.out_ext));
 
     if (params.use_dht) {
-      // MSG("DHT strategy is " + std::to_string(simparams.dht_strategy));
-      // MDL: these should be outdated (?)
-      // MSG("DHT key default digits (ignored if 'signif_vector' is "
-      // 	"defined) = "
-      // 	 << simparams.dht_significant_digits);
-      // MSG("DHT logarithm before rounding: "
-      // 	 << (simparams.dht_log ? "ON" : "OFF"));
       MSG("DHT size per process (Megabyte) = " +
           std::to_string(params.dht_size));
       MSG("DHT save snapshots is " + BOOL_PRINT(params.dht_snaps));
-      // MSG("DHT load file is " + chem_params.dht_file);
     }
 
     if (params.use_interp) {
@@ -299,7 +294,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     MSG("Going through iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
 
-    MSG("Current time step is " + fmt::format("{:.2f}", dt));
+    MSG("Current time step: " + fmt::format("{:.2f}", dt));
 
     /* run transport */
     diffusion.simulate(dt);

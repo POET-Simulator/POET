@@ -4,6 +4,9 @@
 #include <iostream>
 #include <string>
 
+#include <fmt/core.h>
+#include <fmt/color.h>
+
 // Prepend "msg" with name of calling function 
 #define MSG(msg)    std::cout << "CPP: " << __func__ << ": " << std::string(msg) << std::endl;
 
