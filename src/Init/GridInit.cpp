@@ -6,10 +6,8 @@
 #include <Rcpp/Function.h>
 #include <Rcpp/vector/Matrix.h>
 #include <Rcpp/vector/instantiation.h>
-#include <cstdint>
 #include <fstream>
 #include <map>
-#include <memory>
 #include <regex>
 #include <sstream>
 #include <string>
@@ -123,7 +121,8 @@ static Rcpp::List expandGrid(const PhreeqcMatrix &pqc_mat,
   return Rcpp::Function("pqc_to_grid")(pqc_mat_R, grid_def);
 }
 
-PhreeqcMatrix InitialList::prepareGrid(const Rcpp::List &grid_input) {
+PhreeqcMatrix InitialList::prepareGrid(const Rcpp::List &grid_input,
+                                       bool include_h0_o0) {
   // parse input values
   std::string script;
   std::string database;
@@ -180,7 +179,7 @@ PhreeqcMatrix InitialList::prepareGrid(const Rcpp::List &grid_input) {
     throw std::runtime_error("Grid size must be positive.");
   }
 
-  PhreeqcMatrix pqc_mat = PhreeqcMatrix(database, script);
+  PhreeqcMatrix pqc_mat = PhreeqcMatrix(database, script, include_h0_o0);
 
   this->transport_names = pqc_mat.getSolutionNames();
 

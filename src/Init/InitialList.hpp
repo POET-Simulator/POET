@@ -14,7 +14,6 @@
 #include <cstdint>
 
 #include <map>
-#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -27,14 +26,14 @@ using TugType = double;
 
 class InitialList {
 public:
-  InitialList(RInside &R) : R(R){};
+  InitialList(RInside &R) : R(R) {};
 
-  void initializeFromList(const Rcpp::List &setup);
+  void initializeFromList(const Rcpp::List &setup, bool include_h0_o0 = false);
 
   void importList(const Rcpp::List &setup, bool minimal = false);
   Rcpp::List exportList();
 
-  Field getInitialGrid() const { return Field(this->initial_grid); }  
+  Field getInitialGrid() const { return Field(this->initial_grid); }
 
 private:
   RInside &R;
@@ -99,7 +98,7 @@ private:
 
   // std::unique_ptr<PhreeqcMatrix> pqc_mat;
 
-  PhreeqcMatrix prepareGrid(const Rcpp::List &grid_input);
+  PhreeqcMatrix prepareGrid(const Rcpp::List &grid_input, bool include_h0_o0);
 
   std::uint8_t dim{0};
 
@@ -196,7 +195,7 @@ private:
   NamedVector<std::uint32_t> dht_species;
 
   NamedVector<std::uint32_t> interp_species;
-  
+
   // Path to R script that the user defines in the input file
   std::string ai_surrogate_input_script;
 

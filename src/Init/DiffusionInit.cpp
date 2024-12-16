@@ -3,7 +3,6 @@
 // Rcpp include
 
 #include <map>
-#include <set>
 
 #include "DataStructures/Field.hpp"
 #include "InitialList.hpp"
@@ -15,7 +14,6 @@
 #include <Rinternals.h>
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -26,9 +24,9 @@ namespace poet {
 enum SEXP_TYPE { SEXP_IS_LIST, SEXP_IS_VEC };
 
 const std::map<std::uint8_t, std::string> tug_side_mapping = {
-    {tug::BC_SIDE_RIGHT	, "E"},
-    {tug::BC_SIDE_LEFT	, "W"},
-    {tug::BC_SIDE_TOP	, "N"},
+    {tug::BC_SIDE_RIGHT, "E"},
+    {tug::BC_SIDE_LEFT, "W"},
+    {tug::BC_SIDE_TOP, "N"},
     {tug::BC_SIDE_BOTTOM, "S"}};
 
 static std::vector<TugType> colMajToRowMaj(const Rcpp::NumericVector &vec,
@@ -166,8 +164,8 @@ InitialList::resolveBoundaries(const Rcpp::List &boundaries_list,
       if (boundaries_list.containsElementNamed(side.second.c_str())) {
         const Rcpp::List mapping = boundaries_list[side.second];
 
-        const Rcpp::IntegerVector cells  = mapping["cell"];   // MDL 2024-06-13 
-        const Rcpp::IntegerVector values = mapping["sol_id"]; // MDL 
+        const Rcpp::IntegerVector cells = mapping["cell"];    // MDL 2024-06-13
+        const Rcpp::IntegerVector values = mapping["sol_id"]; // MDL
         const Rcpp::CharacterVector type_str = mapping["type"];
 
         if (cells.size() != values.size()) {
