@@ -81,6 +81,8 @@ public:
 
     bool dht_enabled;
     std::uint32_t dht_size_mb;
+    int dht_snaps;
+    std::string dht_out_dir;
 
     bool interp_enabled;
     std::uint32_t interp_bucket_size;
@@ -103,6 +105,10 @@ public:
     if (this->dht_enabled || this->interp_enabled) {
       this->initializeDHT(setup.dht_size_mb, this->params.dht_species,
                           setup.has_het_ids);
+
+      if (setup.dht_snaps != DHT_SNAPS_DISABLED) {
+        this->setDHTSnapshots(setup.dht_snaps, setup.dht_out_dir);
+      }
     }
 
     if (this->interp_enabled) {

@@ -587,6 +587,8 @@ int main(int argc, char *argv[]) {
         getHasID(init_list.getInitialGrid(), 0, MPI_COMM_WORLD),
         run_params.use_dht,
         run_params.dht_size,
+        run_params.dht_snaps,
+        run_params.out_dir,
         run_params.use_interp,
         run_params.interp_bucket_entries,
         run_params.interp_size,
