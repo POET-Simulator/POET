@@ -21,7 +21,7 @@ struct Lookup_SC_notation {
     return {SC_NOTATION_EXPONENT_MASK, SC_NOTATION_SIGNIFICANT_MASK};
   }
 
-  constexpr bool isnan() {
+  constexpr bool isnan() const {
     return !!(exp == SC_NOTATION_EXPONENT_MASK &&
               significant == SC_NOTATION_SIGNIFICANT_MASK);
   }
@@ -34,6 +34,10 @@ union Lookup_Keyelement {
   bool operator==(const Lookup_Keyelement &other) const {
     return std::memcmp(this, &other, sizeof(Lookup_Keyelement)) == 0 ? true
                                                                      : false;
+  }
+
+  template <typename T> bool operator>(const T &other) const {
+    return this->sc_notation.significant > other;
   }
 };
 
