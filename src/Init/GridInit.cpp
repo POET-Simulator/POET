@@ -179,7 +179,15 @@ PhreeqcMatrix InitialList::prepareGrid(const Rcpp::List &grid_input,
     throw std::runtime_error("Grid size must be positive.");
   }
 
-  PhreeqcMatrix pqc_mat = PhreeqcMatrix(database, script, include_h0_o0);
+  bool with_redox =
+      grid_input.containsElementNamed(
+          GRID_MEMBER_STR(GridMembers::PQC_WITH_REDOX))
+          ? Rcpp::as<bool>(
+                grid_input[GRID_MEMBER_STR(GridMembers::PQC_WITH_REDOX)])
+          : false;
+
+  PhreeqcMatrix pqc_mat =
+      PhreeqcMatrix(database, script, include_h0_o0, with_redox);
 
   this->transport_names = pqc_mat.getSolutionNames();
 

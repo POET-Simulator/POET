@@ -75,6 +75,7 @@ private:
   enum class GridMembers {
     PQC_SCRIPT_STRING,
     PQC_SCRIPT_FILE,
+    PQC_WITH_REDOX,
     PQC_DB_STRING,
     PQC_DB_FILE,
     GRID_DEF,
@@ -88,9 +89,9 @@ private:
       static_cast<std::size_t>(InitialList::GridMembers::ENUM_SIZE);
 
   static constexpr std::array<const char *, size_GridMembers>
-      GridMembersString = {"pqc_in_string",  "pqc_in_file", "pqc_db_string",
-                           "pqc_db_file",    "grid_def",    "grid_size",
-                           "constant_cells", "porosity"};
+      GridMembersString = {"pqc_in_string", "pqc_in_file",    "pqc_with_redox",
+                           "pqc_db_string", "pqc_db_file",    "grid_def",
+                           "grid_size",     "constant_cells", "porosity"};
 
   constexpr const char *GRID_MEMBER_STR(GridMembers member) const {
     return GridMembersString[static_cast<std::size_t>(member)];
