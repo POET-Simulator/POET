@@ -57,6 +57,10 @@ void InitialList::importList(const Rcpp::List &setup, bool minimal) {
       Rcpp::as<std::string>(setup[static_cast<int>(ExportList::CHEM_DATABASE)]);
   this->pqc_script = Rcpp::as<std::string>(
       setup[static_cast<int>(ExportList::CHEM_PQC_SCRIPT)]);
+  this->with_h0_o0 =
+      Rcpp::as<bool>(setup[static_cast<int>(ExportList::CHEM_PQC_WITH_H0_O0)]);
+  this->with_redox =
+      Rcpp::as<bool>(setup[static_cast<int>(ExportList::CHEM_PQC_WITH_REDOX)]);
   this->field_header = Rcpp::as<std::vector<std::string>>(
       setup[static_cast<int>(ExportList::CHEM_FIELD_HEADER)]);
   this->pqc_ids = Rcpp::as<std::vector<int>>(
@@ -113,6 +117,10 @@ Rcpp::List InitialList::exportList() {
   out[static_cast<int>(ExportList::CHEM_DATABASE)] = Rcpp::wrap(this->database);
   out[static_cast<int>(ExportList::CHEM_PQC_SCRIPT)] =
       Rcpp::wrap(this->pqc_script);
+  out[static_cast<int>(ExportList::CHEM_PQC_WITH_H0_O0)] =
+      Rcpp::wrap(this->with_h0_o0);
+  out[static_cast<int>(ExportList::CHEM_PQC_WITH_REDOX)] =
+      Rcpp::wrap(this->with_redox);
   out[static_cast<int>(ExportList::CHEM_FIELD_HEADER)] =
       Rcpp::wrap(this->field_header);
   out[static_cast<int>(ExportList::CHEM_PQC_IDS)] = Rcpp::wrap(this->pqc_ids);

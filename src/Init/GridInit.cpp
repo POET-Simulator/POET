@@ -186,6 +186,9 @@ PhreeqcMatrix InitialList::prepareGrid(const Rcpp::List &grid_input,
                 grid_input[GRID_MEMBER_STR(GridMembers::PQC_WITH_REDOX)])
           : false;
 
+  this->with_h0_o0 = include_h0_o0;
+  this->with_redox = with_redox;
+
   PhreeqcMatrix pqc_mat =
       PhreeqcMatrix(database, script, include_h0_o0, with_redox);
 

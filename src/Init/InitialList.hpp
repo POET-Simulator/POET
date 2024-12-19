@@ -52,6 +52,8 @@ private:
     DIFFU_ALPHA_Y,
     CHEM_DATABASE,
     CHEM_PQC_SCRIPT,
+    CHEM_PQC_WITH_H0_O0,
+    CHEM_PQC_WITH_REDOX,
     CHEM_PQC_IDS,
     CHEM_FIELD_HEADER,
     // CHEM_PQC_SCRIPTS,
@@ -190,6 +192,8 @@ private:
 
   std::string database;
   std::string pqc_script;
+  bool with_h0_o0{false};
+  bool with_redox{false};
   // std::vector<std::string> pqc_scripts;
   std::vector<int> pqc_ids;
 
@@ -220,6 +224,8 @@ public:
 
     std::string database;
     std::string pqc_script;
+    bool with_h0_o0;
+    bool with_redox;
     std::vector<int> pqc_ids;
 
     // std::map<int, std::string> pqc_input;

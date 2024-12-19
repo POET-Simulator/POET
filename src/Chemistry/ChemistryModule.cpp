@@ -171,7 +171,8 @@ poet::ChemistryModule::ChemistryModule(
 
   if (!is_master) {
     PhreeqcMatrix pqc_mat =
-        PhreeqcMatrix(chem_params.database, chem_params.pqc_script);
+        PhreeqcMatrix(chem_params.database, chem_params.pqc_script,
+                      chem_params.with_h0_o0, chem_params.with_redox);
 
     this->pqc_runner =
         std::make_unique<PhreeqcRunner>(pqc_mat.subset(chem_params.pqc_ids));
