@@ -1,28 +1,28 @@
 ## Time-stamp: "Last modified 2024-12-11 16:08:11 delucia"
 
-cols <- 200
-rows <- 200
+cols <- 1000
+rows <- 1000
 
-dim_cols <- 10
-dim_rows <- 10
+dim_cols <- 50
+dim_rows <- 50
 
 ncirc <- 20 ## number of crystals
-rmax  <- cols/10 ## max radius (in nodes)
+rmax <- cols / 10 ## max radius (in nodes)
 
 set.seed(22933)
 
 centers <- cbind(sample(seq_len(cols), ncirc), sample(seq_len(rows), ncirc))
-radii    <- sample(seq_len(rmax), ncirc, replace=TRUE)
+radii <- sample(seq_len(rmax), ncirc, replace = TRUE)
 mi <- matrix(rep(seq_len(cols), rows), byrow = TRUE, nrow = rows)
 mj <- matrix(rep(seq_len(cols), each = rows), byrow = TRUE, nrow = rows)
 
-tmpl <- lapply(seq_len(ncirc), function(x) which((mi-centers[x, 1])^2 + (mj-centers[x, 2])^2 < radii[x]^2, arr.ind = TRUE))
+tmpl <- lapply(seq_len(ncirc), function(x) which((mi - centers[x, 1])^2 + (mj - centers[x, 2])^2 < radii[x]^2, arr.ind = TRUE))
 
-inds <-  do.call(rbind, tmpl)
+inds <- do.call(rbind, tmpl)
 grid <- matrix(1, nrow = rows, ncol = cols)
 grid[inds] <- 2
 
-alpha <- matrix( 1e-5, ncol = cols, nrow = rows)
+alpha <- matrix(1e-5, ncol = cols, nrow = rows)
 alpha[inds] <- 1e-7
 
 ## image(grid, asp=1)
@@ -30,13 +30,13 @@ alpha[inds] <- 1e-7
 ## Define grid configuration for POET model
 grid_setup <- list(
   pqc_in_file    = "./barite_fgcs_2.pqi",
-  pqc_db_file    = "./db_barite.dat",     ## database file
-  grid_def       = grid,                  ## grid definition, IDs according to the Phreeqc input 
+  pqc_db_file    = "../barite/db_barite.dat", ## database file
+  grid_def       = grid, ## grid definition, IDs according to the Phreeqc input
   grid_size      = c(dim_cols, dim_rows), ## grid size in meters
-  constant_cells = c()                    ## IDs of cells with constant concentration
+  constant_cells = c() ## IDs of cells with constant concentration
 )
 
-bound_length <- cols/10
+bound_length <- cols / 10
 
 bound_N <- list(
   "type"   = rep("constant", bound_length),
@@ -52,13 +52,13 @@ bound_W <- list(
 bound_E <- list(
   "type"   = rep("constant", bound_length),
   "sol_id" = rep(4, bound_length),
-  "cell"   = seq(rows-bound_length+1, rows)
+  "cell"   = seq(rows - bound_length + 1, rows)
 )
 
 bound_S <- list(
   "type"   = rep("constant", bound_length),
   "sol_id" = rep(4, bound_length),
-  "cell"   = seq(cols-bound_length+1, cols)
+  "cell"   = seq(cols - bound_length + 1, cols)
 )
 
 diffusion_setup <- list(
@@ -77,7 +77,7 @@ dht_species <- c(
   "O"         = 7,
   "Ba"        = 7,
   "Cl"        = 7,
-  "S(6)"      = 7,
+  "S"         = 7,
   "Sr"        = 7,
   "Barite"    = 4,
   "Celestite" = 4
@@ -86,10 +86,10 @@ dht_species <- c(
 pht_species <- c(
   "Ba"        = 4,
   "Cl"        = 3,
-  "S(6)"      = 3,
+  "S"         = 3,
   "Sr"        = 3,
-  "Barite"    = 2,
-  "Celestite" = 2
+  "Barite"    = 0,
+  "Celestite" = 0
 )
 
 chemistry_setup <- list(
