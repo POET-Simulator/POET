@@ -35,15 +35,15 @@ diffusion_setup <- list(
 )
 
 dht_species <- c(
-  "H"         = 7,
-  "O"         = 7,
-  "Charge"    = 4,
-  "Ba"        = 7,
-  "Cl"        = 7,
-  "S(6)"      = 7,
-  "Sr"        = 7,
-  "Barite"    = 4,
-  "Celestite" = 4
+  "H"         = 3,
+  "O"         = 3,
+  "Charge"    = 6,
+  "Ba"        = 6,
+  "Cl"        = 6,
+  "S"         = 6,
+  "Sr"        = 6,
+  "Barite"    = 5,
+  "Celestite" = 5
 )
 
 chemistry_setup <- list(

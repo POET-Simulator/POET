@@ -11,9 +11,9 @@ grid_def <- matrix(2, nrow = rows, ncol = cols)
 grid_setup <- list(
   pqc_in_file = "./barite.pqi",
   pqc_db_file = "./db_barite.dat", ## Path to the database file for Phreeqc
-  grid_def = grid_def,             ## Definition of the grid, containing IDs according to the Phreeqc input script
-  grid_size = c(s_rows, s_cols),   ## Size of the grid in meters
-  constant_cells = c()             ## IDs of cells with constant concentration
+  grid_def = grid_def, ## Definition of the grid, containing IDs according to the Phreeqc input script
+  grid_size = c(s_rows, s_cols), ## Size of the grid in meters
+  constant_cells = c() ## IDs of cells with constant concentration
 )
 
 bound_length <- 2
@@ -36,15 +36,15 @@ diffusion_setup <- list(
 )
 
 dht_species <- c(
-  "H"         = 4,
-  "O"         = 10,
-  "Charge"    = 4,
-  "Ba"        = 7,
-  "Cl"        = 4,
-  "S(6)"      = 7,
-  "Sr"        = 4,
-  "Barite"    = 2,
-  "Celestite" = 2
+  "H"         = 3,
+  "O"         = 3,
+  "Charge"    = 3,
+  "Ba"        = 6,
+  "Cl"        = 6,
+  "S"         = 6,
+  "Sr"        = 6,
+  "Barite"    = 5,
+  "Celestite" = 5
 )
 
 chemistry_setup <- list(
