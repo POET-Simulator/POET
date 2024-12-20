@@ -66,7 +66,8 @@ inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
       distance += std::pow(
           rescaled[key_comp_i][point_i] - rescaled[key_comp_i][data_set_n], 2);
     }
-    weights[point_i] = 1 / std::sqrt(distance);
+
+    weights[point_i] = distance != 0 ? 1 / std::sqrt(distance) : 0;
     assert(!std::isnan(weights[point_i]));
     inv_sum += weights[point_i];
   }
@@ -97,62 +98,8 @@ inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
     key_delta /= inv_sum;
 
     results[output_comp_i] = from[output_comp_i] + key_delta;
+    assert(!std::isnan(results[output_comp_i]));
   }
-
-  // if (!has_h) {
-  //   double new_val = 0;
-  //   for (int j = 0; j < data_set_n; j++) {
-  //     new_val += weights[j] * output[j][0];
-  //   }
-  //   results[0] = new_val / inv_sum;
-  // }
-
-  // if (!has_h) {
-  //   double new_val = 0;
-  //   for (int j = 0; j < data_set_n; j++) {
-  //     new_val += weights[j] * output[j][1];
-  //   }
-  //   results[1] = new_val / inv_sum;
-  // }
-
-  // for (std::uint32_t i = 0; i < to_calc.size(); i++) {
-  //   const std::uint32_t interp_i = to_calc[i];
-
-  //   // rescale input between 0 and 1
-  //   for (int j = 0; j < input.size(); j++) {
-  //     buffer[j] = input[j].at(i);
-  //   }
-
-  //   buffer[buffer_size - 1] = from[interp_i];
-
-  //   const double min = *std::min_element(buffer, buffer + buffer_size);
-  //   const double max = *std::max_element(buffer, buffer + buffer_size);
-
-  //   for (int j = 0; j < input.size(); j++) {
-  //     buffer[j] = ((max - min) != 0 ? (buffer[j] - min) / (max - min) : 1);
-  //   }
-  //   from_rescaled =
-  //       ((max - min) != 0 ? (from[interp_i] - min) / (max - min) : 0);
-
-  //   double inv_sum = 0;
-
-  //   // calculate distances for each point
-  //   for (int i = 0; i < input.size(); i++) {
-  //     const double distance = std::pow(buffer[i] - from_rescaled, 2);
-
-  //     buffer[i] = distance > 0 ? (1 / std::sqrt(distance)) : 0;
-  //     inv_sum += buffer[i];
-  //   }
-  //   // calculate new values
-  //   double new_val = 0;
-  //   for (int i = 0; i < output.size(); i++) {
-  //     new_val += buffer[i] * output[i][interp_i];
-  //   }
-  //   results[interp_i] = new_val / inv_sum;
-  //   if (std::isnan(results[interp_i])) {
-  //     std::cout << "nan with new_val = " << output[0][i] << std::endl;
-  //   }
-  // }
 
   return results;
 }
