@@ -34,10 +34,13 @@
 #include <Rcpp/DataFrame.h>
 #include <Rcpp/Function.h>
 #include <Rcpp/vector/instantiation.h>
+#include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
 #include <mpi.h>
+#include <set>
 #include <string>
 
 #include <CLI/CLI.hpp>
@@ -150,6 +153,9 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
 
   app.add_flag("--qs", params.as_qs,
                "Save output as .qs file instead of default .qs2");
+
+  app.add_flag("--qs", params.as_qs,
+               "Save output as .qs file instead of default .qs2");
 	       
   std::string init_file;
   std::string runtime_file;
@@ -178,8 +184,10 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
 
   // set the output extension
   params.out_ext = "qs2";
-  if (params.as_rds) params.out_ext = "rds";
-  if (params.as_qs)  params.out_ext = "qs";
+  if (params.as_rds)
+    params.out_ext = "rds";
+  if (params.as_qs)
+    params.out_ext = "qs";
 
   if (MY_RANK == 0) {
     // MSG("Complete results storage is " + BOOL_PRINT(simparams.store_result));
@@ -293,7 +301,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     const double &dt = params.timesteps[iter - 1];
 
     std::cout << std::endl;
-    
+
     /* displaying iteration number, with C++ and R iterator */
     MSG("Going through iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
@@ -396,7 +404,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   } // END SIMULATION LOOP
 
   std::cout << std::endl;
-  
+
   Rcpp::List chem_profiling;
   chem_profiling["simtime"] = chem.GetChemistryTime();
   chem_profiling["loop"] = chem.GetMasterLoopTime();
@@ -483,6 +491,54 @@ std::vector<std::string> getSpeciesNames(const Field &&field, int root,
   return species_names_out;
 }
 
+std::array<double, 2> getBaseTotals(Field &&field, int root, MPI_Comm comm) {
+  std::array<double, 2> base_totals;
+
+  int rank;
+  MPI_Comm_rank(comm, &rank);
+
+  const bool is_master = root == rank;
+
+  if (is_master) {
+    const auto h_col = field["H"];
+    const auto o_col = field["O"];
+
+    base_totals[0] = *std::min_element(h_col.begin(), h_col.end());
+    base_totals[1] = *std::min_element(o_col.begin(), o_col.end());
+    MPI_Bcast(base_totals.data(), 2, MPI_DOUBLE, root, MPI_COMM_WORLD);
+    return base_totals;
+  }
+
+  MPI_Bcast(base_totals.data(), 2, MPI_DOUBLE, root, comm);
+
+  return base_totals;
+}
+
+bool getHasID(Field &&field, int root, MPI_Comm comm) {
+  bool has_id;
+
+  int rank;
+  MPI_Comm_rank(comm, &rank);
+
+  const bool is_master = root == rank;
+
+  if (is_master) {
+    const auto ID_field = field["ID"];
+
+    std::set<double> unique_IDs(ID_field.begin(), ID_field.end());
+
+    has_id = unique_IDs.size() > 1;
+
+    MPI_Bcast(&has_id, 1, MPI_C_BOOL, root, MPI_COMM_WORLD);
+
+    return has_id;
+  }
+
+  MPI_Bcast(&has_id, 1, MPI_C_BOOL, root, comm);
+
+  return has_id;
+}
+
 int main(int argc, char *argv[]) {
   int world_size;
 
@@ -529,10 +585,13 @@ int main(int argc, char *argv[]) {
                               init_list.getChemistryInit(), MPI_COMM_WORLD);
 
     const ChemistryModule::SurrogateSetup surr_setup = {
-
         getSpeciesNames(init_list.getInitialGrid(), 0, MPI_COMM_WORLD),
+        getBaseTotals(init_list.getInitialGrid(), 0, MPI_COMM_WORLD),
+        getHasID(init_list.getInitialGrid(), 0, MPI_COMM_WORLD),
         run_params.use_dht,
         run_params.dht_size,
+        run_params.dht_snaps,
+        run_params.out_dir,
         run_params.use_interp,
         run_params.interp_bucket_entries,
         run_params.interp_size,

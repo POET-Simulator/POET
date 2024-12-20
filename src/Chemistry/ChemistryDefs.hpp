@@ -14,10 +14,7 @@ struct WorkPackage {
   std::vector<std::vector<double>> output;
   std::vector<std::uint8_t> mapping;
 
-  WorkPackage(std::size_t _size) : size(_size) {
-    input.resize(size);
-    output.resize(size);
-    mapping.resize(size, CHEM_PQC);
-  }
+  WorkPackage(std::size_t _size)
+      : size(_size), input(size), output(size), mapping(size, CHEM_PQC) {}
 };
 } // namespace poet

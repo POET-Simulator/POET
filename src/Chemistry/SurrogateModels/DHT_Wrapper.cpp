@@ -43,11 +43,12 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
                          const std::vector<std::int32_t> &key_indices,
                          const std::vector<std::string> &_output_names,
                          const InitialList::ChemistryHookFunctions &_hooks,
-                         uint32_t data_count, bool _with_interp)
+                         uint32_t data_count, bool _with_interp,
+                         bool _has_het_ids)
     : key_count(key_indices.size()), data_count(data_count),
       input_key_elements(key_indices), communicator(dht_comm),
       key_species(key_species), output_names(_output_names), hooks(_hooks),
-      with_interp(_with_interp) {
+      with_interp(_with_interp), has_het_ids(_has_het_ids) {
   // initialize DHT object
   // key size = count of key elements + timestep
   uint32_t key_size = (key_count + 1) * sizeof(Lookup_Keyelement);
@@ -128,42 +129,43 @@ void DHT_Wrapper::fillDHT(const WorkPackage &work_package) {
   dht_results.filledDHT = std::vector<bool>(length, false);
   for (int i = 0; i < length; i++) {
     // If true grid cell was simulated, needs to be inserted into dht
-    if (work_package.mapping[i] == CHEM_PQC) {
-
-      // check if calcite or dolomite is absent and present, resp.n and vice
-      // versa in input/output. If this is the case -> Do not write to DHT!
-      // HACK: hardcoded, should be fixed!
-      if (hooks.dht_fill.isValid()) {
-        NamedVector<double> old_values(output_names, work_package.input[i]);
-        NamedVector<double> new_values(output_names, work_package.output[i]);
-
-        if (hooks.dht_fill(old_values, new_values)) {
-          continue;
-        }
-      }
-
-      uint32_t proc, index;
-      auto &key = dht_results.keys[i];
-      const auto data =
-          (with_interp ? outputToInputAndRates(work_package.input[i],
-                                               work_package.output[i])
-                       : work_package.output[i]);
-      // void *data = (void *)&(work_package[i * this->data_count]);
-      // fuzz data (round, logarithm etc.)
-
-      // insert simulated data with fuzzed key into DHT
-      int res = DHT_write(this->dht_object, key.data(),
-                          const_cast<double *>(data.data()), &proc, &index);
-
-      dht_results.locations[i] = {proc, index};
-
-      // if data was successfully written ...
-      if ((res != DHT_SUCCESS) && (res == DHT_WRITE_SUCCESS_WITH_EVICTION)) {
-        dht_evictions++;
-      }
-
-      dht_results.filledDHT[i] = true;
+    if (work_package.mapping[i] != CHEM_PQC) {
+      continue;
     }
+
+    // check if calcite or dolomite is absent and present, resp.n and vice
+    // versa in input/output. If this is the case -> Do not write to DHT!
+    // HACK: hardcoded, should be fixed!
+    if (hooks.dht_fill.isValid()) {
+      NamedVector<double> old_values(output_names, work_package.input[i]);
+      NamedVector<double> new_values(output_names, work_package.output[i]);
+
+      if (hooks.dht_fill(old_values, new_values)) {
+        continue;
+      }
+    }
+
+    uint32_t proc, index;
+    auto &key = dht_results.keys[i];
+    const auto data =
+        (with_interp ? outputToInputAndRates(work_package.input[i],
+                                             work_package.output[i])
+                     : work_package.output[i]);
+    // void *data = (void *)&(work_package[i * this->data_count]);
+    // fuzz data (round, logarithm etc.)
+
+    // insert simulated data with fuzzed key into DHT
+    int res = DHT_write(this->dht_object, key.data(),
+                        const_cast<double *>(data.data()), &proc, &index);
+
+    dht_results.locations[i] = {proc, index};
+
+    // if data was successfully written ...
+    if ((res != DHT_SUCCESS) && (res == DHT_WRITE_SUCCESS_WITH_EVICTION)) {
+      dht_evictions++;
+    }
+
+    dht_results.filledDHT[i] = true;
   }
 }
 
@@ -270,7 +272,7 @@ LookupKey DHT_Wrapper::fuzzForDHT_R(const std::vector<double> &cell,
   const std::vector<double> eval_vec =
       Rcpp::as<std::vector<double>>(hooks.dht_fuzz(input_nv));
   assert(eval_vec.size() == this->key_count);
-  LookupKey vecFuzz(this->key_count + 1, {.0});
+  LookupKey vecFuzz(this->key_count + 1 + has_het_ids, {.0});
 
   DHT_Rounder rounder;
 
@@ -290,6 +292,9 @@ LookupKey DHT_Wrapper::fuzzForDHT_R(const std::vector<double> &cell,
   }
   // add timestep to the end of the key as double value
   vecFuzz[this->key_count].fp_element = dt;
+  if (has_het_ids) {
+    vecFuzz[this->key_count + 1].fp_element = cell[0];
+  }
 
   return vecFuzz;
 }
@@ -297,7 +302,7 @@ LookupKey DHT_Wrapper::fuzzForDHT_R(const std::vector<double> &cell,
 LookupKey DHT_Wrapper::fuzzForDHT(const std::vector<double> &cell, double dt) {
   const auto c_zero_val = std::pow(10, AQUEOUS_EXP);
 
-  LookupKey vecFuzz(this->key_count + 1, {.0});
+  LookupKey vecFuzz(this->key_count + 1 + has_het_ids, {.0});
   DHT_Rounder rounder;
 
   int totals_i = 0;
@@ -323,6 +328,9 @@ LookupKey DHT_Wrapper::fuzzForDHT(const std::vector<double> &cell, double dt) {
   }
   // add timestep to the end of the key as double value
   vecFuzz[this->key_count].fp_element = dt;
+  if (has_het_ids) {
+    vecFuzz[this->key_count + 1].fp_element = cell[0];
+  }
 
   return vecFuzz;
 }

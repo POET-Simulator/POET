@@ -87,7 +87,7 @@ public:
               const std::vector<std::int32_t> &key_indices,
               const std::vector<std::string> &output_names,
               const InitialList::ChemistryHookFunctions &hooks,
-              uint32_t data_count, bool with_interp);
+              uint32_t data_count, bool with_interp, bool has_het_ids);
   /**
    * @brief Destroy the dht wrapper object
    *
@@ -264,6 +264,7 @@ private:
   DHT_ResultObject dht_results;
 
   std::array<double, 2> base_totals{0};
+  bool has_het_ids{false};
 };
 } // namespace poet
 

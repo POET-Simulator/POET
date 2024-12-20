@@ -69,6 +69,8 @@ InitialList::ChemistryInit InitialList::getChemistryInit() const {
   chem_init.database = database;
   chem_init.pqc_script = pqc_script;
   chem_init.pqc_ids = pqc_ids;
+  chem_init.with_h0_o0 = with_h0_o0;
+  chem_init.with_redox = with_redox;
   // chem_init.pqc_scripts = pqc_scripts;
   // chem_init.pqc_ids = pqc_ids;
 

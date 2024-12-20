@@ -20,6 +20,11 @@ class DHT_Rounder {
 public:
   Lookup_Keyelement round(const double &value, std::uint32_t signif,
                           bool is_ho) {
+
+    if (std::isnan(value)) {
+      return {.sc_notation = Lookup_SC_notation::nan()};
+    }
+
     std::int8_t exp =
         static_cast<std::int8_t>(std::floor(std::log10(std::fabs(value))));
 
@@ -59,6 +64,14 @@ public:
   Lookup_Keyelement round(const Lookup_Keyelement &value,
                           std::uint32_t signif) {
     Lookup_Keyelement new_val = value;
+
+    if (value.sc_notation.isnan()) {
+      return {.sc_notation = Lookup_SC_notation::nan()};
+    }
+
+    if (signif == 0) {
+      return {.sc_notation = {0, value > 0}};
+    }
 
     std::uint32_t diff_signif =
         static_cast<std::uint32_t>(

@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <mpi.h>
@@ -65,7 +66,8 @@ inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
       distance += std::pow(
           rescaled[key_comp_i][point_i] - rescaled[key_comp_i][data_set_n], 2);
     }
-    weights[point_i] = 1 / std::sqrt(distance);
+
+    weights[point_i] = distance != 0 ? 1 / std::sqrt(distance) : 0;
     assert(!std::isnan(weights[point_i]));
     inv_sum += weights[point_i];
   }
@@ -96,62 +98,8 @@ inverseDistanceWeighting(const std::vector<std::int32_t> &to_calc,
     key_delta /= inv_sum;
 
     results[output_comp_i] = from[output_comp_i] + key_delta;
+    assert(!std::isnan(results[output_comp_i]));
   }
-
-  // if (!has_h) {
-  //   double new_val = 0;
-  //   for (int j = 0; j < data_set_n; j++) {
-  //     new_val += weights[j] * output[j][0];
-  //   }
-  //   results[0] = new_val / inv_sum;
-  // }
-
-  // if (!has_h) {
-  //   double new_val = 0;
-  //   for (int j = 0; j < data_set_n; j++) {
-  //     new_val += weights[j] * output[j][1];
-  //   }
-  //   results[1] = new_val / inv_sum;
-  // }
-
-  // for (std::uint32_t i = 0; i < to_calc.size(); i++) {
-  //   const std::uint32_t interp_i = to_calc[i];
-
-  //   // rescale input between 0 and 1
-  //   for (int j = 0; j < input.size(); j++) {
-  //     buffer[j] = input[j].at(i);
-  //   }
-
-  //   buffer[buffer_size - 1] = from[interp_i];
-
-  //   const double min = *std::min_element(buffer, buffer + buffer_size);
-  //   const double max = *std::max_element(buffer, buffer + buffer_size);
-
-  //   for (int j = 0; j < input.size(); j++) {
-  //     buffer[j] = ((max - min) != 0 ? (buffer[j] - min) / (max - min) : 1);
-  //   }
-  //   from_rescaled =
-  //       ((max - min) != 0 ? (from[interp_i] - min) / (max - min) : 0);
-
-  //   double inv_sum = 0;
-
-  //   // calculate distances for each point
-  //   for (int i = 0; i < input.size(); i++) {
-  //     const double distance = std::pow(buffer[i] - from_rescaled, 2);
-
-  //     buffer[i] = distance > 0 ? (1 / std::sqrt(distance)) : 0;
-  //     inv_sum += buffer[i];
-  //   }
-  //   // calculate new values
-  //   double new_val = 0;
-  //   for (int i = 0; i < output.size(); i++) {
-  //     new_val += buffer[i] * output[i][interp_i];
-  //   }
-  //   results[interp_i] = new_val / inv_sum;
-  //   if (std::isnan(results[interp_i])) {
-  //     std::cout << "nan with new_val = " << output[0][i] << std::endl;
-  //   }
-  // }
 
   return results;
 }
@@ -170,7 +118,8 @@ poet::ChemistryModule::ChemistryModule(
 
   if (!is_master) {
     PhreeqcMatrix pqc_mat =
-        PhreeqcMatrix(chem_params.database, chem_params.pqc_script);
+        PhreeqcMatrix(chem_params.database, chem_params.pqc_script,
+                      chem_params.with_h0_o0, chem_params.with_redox);
 
     this->pqc_runner =
         std::make_unique<PhreeqcRunner>(pqc_mat.subset(chem_params.pqc_ids));
@@ -184,10 +133,9 @@ poet::ChemistryModule::~ChemistryModule() {
 }
 
 void poet::ChemistryModule::initializeDHT(
-    uint32_t size_mb, const NamedVector<std::uint32_t> &key_species) {
+    uint32_t size_mb, const NamedVector<std::uint32_t> &key_species,
+    bool has_het_ids) {
   constexpr uint32_t MB_FACTOR = 1E6;
-
-  this->dht_enabled = true;
 
   MPI_Comm dht_comm;
 
@@ -218,7 +166,7 @@ void poet::ChemistryModule::initializeDHT(
 
     this->dht = new DHT_Wrapper(dht_comm, dht_size, map_copy, key_indices,
                                 this->prop_names, params.hooks,
-                                this->prop_count, interp_enabled);
+                                this->prop_count, interp_enabled, has_het_ids);
     this->dht->setBaseTotals(base_totals.at(0), base_totals.at(1));
   }
 }
@@ -309,9 +257,10 @@ void poet::ChemistryModule::initializeInterp(
       map_copy = this->dht->getKeySpecies();
       for (auto i = 0; i < map_copy.size(); i++) {
         const std::uint32_t signif =
-            static_cast<std::uint32_t>(map_copy[i]) - (map_copy[i] > InterpolationModule::COARSE_DIFF
-                               ? InterpolationModule::COARSE_DIFF
-                               : 0);
+            static_cast<std::uint32_t>(map_copy[i]) -
+            (map_copy[i] > InterpolationModule::COARSE_DIFF
+                 ? InterpolationModule::COARSE_DIFF
+                 : 0);
         map_copy[i] = signif;
       }
     }
@@ -368,7 +317,8 @@ void poet::ChemistryModule::unshuffleField(const std::vector<double> &in_buffer,
     }
   }
 }
-  
-void poet::ChemistryModule::set_ai_surrogate_validity_vector(std::vector<int> r_vector) {
+
+void poet::ChemistryModule::set_ai_surrogate_validity_vector(
+    std::vector<int> r_vector) {
   this->ai_surrogate_validity_vector = r_vector;
 }

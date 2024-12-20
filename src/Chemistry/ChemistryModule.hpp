@@ -76,9 +76,13 @@ public:
 
   struct SurrogateSetup {
     std::vector<std::string> prop_names;
+    std::array<double, 2> base_totals;
+    bool has_het_ids;
 
     bool dht_enabled;
     std::uint32_t dht_size_mb;
+    int dht_snaps;
+    std::string dht_out_dir;
 
     bool interp_enabled;
     std::uint32_t interp_bucket_size;
@@ -96,8 +100,15 @@ public:
     this->interp_enabled = setup.interp_enabled;
     this->ai_surrogate_enabled = setup.ai_surrogate_enabled;
 
+    this->base_totals = setup.base_totals;
+
     if (this->dht_enabled || this->interp_enabled) {
-      this->initializeDHT(setup.dht_size_mb, this->params.dht_species);
+      this->initializeDHT(setup.dht_size_mb, this->params.dht_species,
+                          setup.has_het_ids);
+
+      if (setup.dht_snaps != DHT_SNAPS_DISABLED) {
+        this->setDHTSnapshots(setup.dht_snaps, setup.dht_out_dir);
+      }
     }
 
     if (this->interp_enabled) {
@@ -223,8 +234,8 @@ public:
   };
 
   /**
-  *  **Master only** Set the ai surrogate validity vector from R
-  */
+   *  **Master only** Set the ai surrogate validity vector from R
+   */
   void set_ai_surrogate_validity_vector(std::vector<int> r_vector);
 
   std::vector<uint32_t> GetWorkerInterpolationCalls() const;
@@ -240,7 +251,8 @@ public:
 
 protected:
   void initializeDHT(uint32_t size_mb,
-                     const NamedVector<std::uint32_t> &key_species);
+                     const NamedVector<std::uint32_t> &key_species,
+                     bool has_het_ids);
   void setDHTSnapshots(int type, const std::string &out_dir);
   void setDHTReadFile(const std::string &input_file);
 

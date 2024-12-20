@@ -6,52 +6,14 @@
 #include <Rcpp/Function.h>
 #include <Rcpp/vector/Matrix.h>
 #include <Rcpp/vector/instantiation.h>
-#include <cstdint>
 #include <fstream>
 #include <map>
-#include <memory>
 #include <regex>
 #include <sstream>
 #include <string>
 #include <vector>
 
 namespace poet {
-
-// static Rcpp::NumericMatrix pqcMatToR(const PhreeqcMatrix &phreeqc, RInside
-// &R) {
-
-//   PhreeqcMatrix::STLExport phreeqc_mat = phreeqc.get();
-
-//   // PhreeqcInit::PhreeqcMat phreeqc_mat = phreeqc->getPhreeqcMat();
-
-//   // add "id" to the front of the column names
-
-//   const std::size_t ncols = phreeqc_mat.names.size();
-//   const std::size_t nrows = phreeqc_mat.values.size();
-
-//   phreeqc_mat.names.insert(phreeqc_mat.names.begin(), "ID");
-
-//   Rcpp::NumericMatrix mat(nrows, ncols + 1);
-
-//   for (std::size_t i = 0; i < nrows; i++) {
-//     mat(i, 0) = phreeqc_mat.ids[i];
-//     for (std::size_t j = 0; j < ncols; ++j) {
-//       mat(i, j + 1) = phreeqc_mat.values[i][j];
-//     }
-//   }
-
-//   Rcpp::colnames(mat) = Rcpp::wrap(phreeqc_mat.names);
-
-//   return mat;
-// }
-
-// static inline Rcpp::List matToGrid(RInside &R, const Rcpp::NumericMatrix
-// &mat,
-//                                    const Rcpp::NumericMatrix &grid) {
-//   Rcpp::Function pqc_to_grid_R("pqc_to_grid");
-
-//   return pqc_to_grid_R(mat, grid);
-// }
 
 static inline std::map<int, std::string>
 replaceRawKeywordIDs(std::map<int, std::string> raws) {
@@ -65,26 +27,6 @@ replaceRawKeywordIDs(std::map<int, std::string> raws) {
 
   return raws;
 }
-
-// static inline uint32_t getSolutionCount(std::unique_ptr<PhreeqcInit>
-// &phreeqc,
-//                                         const Rcpp::List &initial_grid) {
-//   PhreeqcInit::ModulesArray mod_array;
-//   Rcpp::Function unique_R("unique");
-
-//   std::vector<int> row_ids =
-//       Rcpp::as<std::vector<int>>(unique_R(initial_grid["ID"]));
-
-//   // std::vector<std::uint32_t> sizes_vec(sizes.begin(), sizes.end());
-
-//   // Rcpp::Function modify_sizes("modify_module_sizes");
-//   // sizes_vec = Rcpp::as<std::vector<std::uint32_t>>(
-//   //     modify_sizes(sizes_vec, phreeqc_mat, initial_grid));
-
-//   // std::copy(sizes_vec.begin(), sizes_vec.end(), sizes.begin());
-
-//   return phreeqc->getModuleSizes(row_ids)[POET_SOL];
-// }
 
 static std::string readFile(const std::string &path) {
   std::string string_rpath(PATH_MAX, '\0');
@@ -180,7 +122,30 @@ PhreeqcMatrix InitialList::prepareGrid(const Rcpp::List &grid_input) {
     throw std::runtime_error("Grid size must be positive.");
   }
 
-  PhreeqcMatrix pqc_mat = PhreeqcMatrix(database, script);
+  bool with_redox =
+      grid_input.containsElementNamed(
+          GRID_MEMBER_STR(GridMembers::PQC_WITH_REDOX))
+          ? Rcpp::as<bool>(
+                grid_input[GRID_MEMBER_STR(GridMembers::PQC_WITH_REDOX)])
+          : false;
+
+  bool with_h0_o0 =
+      grid_input.containsElementNamed(
+          GRID_MEMBER_STR(GridMembers::PQC_WITH_H0_O0))
+          ? Rcpp::as<bool>(
+                grid_input[GRID_MEMBER_STR(GridMembers::PQC_WITH_H0_O0)])
+          : false;
+
+  if (with_h0_o0 && !with_redox) {
+    throw std::runtime_error(
+        "Output of H(0) and O(0) can only be used with redox.");
+  }
+
+  this->with_h0_o0 = with_h0_o0;
+  this->with_redox = with_redox;
+
+  PhreeqcMatrix pqc_mat =
+      PhreeqcMatrix(database, script, with_h0_o0, with_redox);
 
   this->transport_names = pqc_mat.getSolutionNames();
 
