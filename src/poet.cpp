@@ -154,6 +154,9 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
   app.add_flag("--qs", params.as_qs,
                "Save output as .qs file instead of default .qs2");
 
+  app.add_flag("--qs", params.as_qs,
+               "Save output as .qs file instead of default .qs2");
+	       
   std::string init_file;
   std::string runtime_file;
 
