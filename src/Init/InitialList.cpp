@@ -10,9 +10,8 @@
 #include <vector>
 
 namespace poet {
-void InitialList::initializeFromList(const Rcpp::List &setup,
-                                     bool include_h0_o0) {
-  PhreeqcMatrix phreeqc = prepareGrid(setup[grid_key], include_h0_o0);
+void InitialList::initializeFromList(const Rcpp::List &setup) {
+  PhreeqcMatrix phreeqc = prepareGrid(setup[grid_key]);
   initDiffusion(setup[diffusion_key], phreeqc);
   initChemistry(setup[chemistry_key]);
 }
@@ -89,8 +88,7 @@ void InitialList::importList(const Rcpp::List &setup, bool minimal) {
   this->chem_hooks =
       Rcpp::as<Rcpp::List>(setup[static_cast<int>(ExportList::CHEM_HOOKS)]);
 
-  this->ai_surrogate_input_script = Rcpp::as<std::string>(
-      setup[static_cast<int>(ExportList::AI_SURROGATE_INPUT_SCRIPT)]);
+  this->ai_surrogate_input_script = Rcpp::as<std::string>(setup[static_cast<int>(ExportList::AI_SURROGATE_INPUT_SCRIPT)]);
 }
 
 Rcpp::List InitialList::exportList() {
@@ -142,8 +140,7 @@ Rcpp::List InitialList::exportList() {
   out[static_cast<int>(ExportList::CHEM_INTERP_SPECIES)] =
       Rcpp::wrap(this->interp_species);
   out[static_cast<int>(ExportList::CHEM_HOOKS)] = this->chem_hooks;
-  out[static_cast<int>(ExportList::AI_SURROGATE_INPUT_SCRIPT)] =
-      this->ai_surrogate_input_script;
+  out[static_cast<int>(ExportList::AI_SURROGATE_INPUT_SCRIPT)] = this->ai_surrogate_input_script;
 
   return out;
 }

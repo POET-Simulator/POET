@@ -26,9 +26,9 @@ using TugType = double;
 
 class InitialList {
 public:
-  InitialList(RInside &R) : R(R) {};
+  InitialList(RInside &R) : R(R){};
 
-  void initializeFromList(const Rcpp::List &setup, bool include_h0_o0 = false);
+  void initializeFromList(const Rcpp::List &setup);
 
   void importList(const Rcpp::List &setup, bool minimal = false);
   Rcpp::List exportList();
@@ -56,14 +56,6 @@ private:
     CHEM_PQC_WITH_REDOX,
     CHEM_PQC_IDS,
     CHEM_FIELD_HEADER,
-    // CHEM_PQC_SCRIPTS,
-    // CHEM_PQC_SOLUTIONS,
-    // CHEM_PQC_SOLUTION_PRIMARY,
-    // CHEM_PQC_EXCHANGER,
-    // CHEM_PQC_KINETICS,
-    // CHEM_PQC_EQUILIBRIUM,
-    // CHEM_PQC_SURFACE_COMPS,
-    // CHEM_PQC_SURFACE_CHARGES,
     CHEM_DHT_SPECIES,
     CHEM_INTERP_SPECIES,
     CHEM_HOOKS,
@@ -78,6 +70,7 @@ private:
     PQC_SCRIPT_STRING,
     PQC_SCRIPT_FILE,
     PQC_WITH_REDOX,
+    PQC_WITH_H0_O0,
     PQC_DB_STRING,
     PQC_DB_FILE,
     GRID_DEF,
@@ -91,9 +84,10 @@ private:
       static_cast<std::size_t>(InitialList::GridMembers::ENUM_SIZE);
 
   static constexpr std::array<const char *, size_GridMembers>
-      GridMembersString = {"pqc_in_string", "pqc_in_file",    "pqc_with_redox",
-                           "pqc_db_string", "pqc_db_file",    "grid_def",
-                           "grid_size",     "constant_cells", "porosity"};
+      GridMembersString = {"pqc_in_string", "pqc_in_file",   "pqc_with_redox",
+                           "pqc_wth_h0_o0", "pqc_db_string", "pqc_db_file",
+                           "grid_def",      "grid_size",     "constant_cells",
+                           "porosity"};
 
   constexpr const char *GRID_MEMBER_STR(GridMembers member) const {
     return GridMembersString[static_cast<std::size_t>(member)];
@@ -101,7 +95,7 @@ private:
 
   // std::unique_ptr<PhreeqcMatrix> pqc_mat;
 
-  PhreeqcMatrix prepareGrid(const Rcpp::List &grid_input, bool include_h0_o0);
+  PhreeqcMatrix prepareGrid(const Rcpp::List &grid_input);
 
   std::uint8_t dim{0};
 

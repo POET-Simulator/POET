@@ -40,11 +40,6 @@ int main(int argc, char **argv) {
   bool asQS{false};
   app.add_flag("-q, --qs", asQS, "Save output as .qs")->default_val(false);
 
-  bool includeH0O0{false};
-  app.add_flag("--include-h0-o0", includeH0O0,
-               "Include H(0) and O(0) in the output")
-      ->default_val(false);
-
   CLI11_PARSE(app, argc, argv);
 
   // source the input script
