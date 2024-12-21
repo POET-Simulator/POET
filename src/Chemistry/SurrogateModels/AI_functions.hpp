@@ -17,9 +17,14 @@
 #ifndef AI_FUNCTIONS_H
 #define AI_FUNCTIONS_H
 
+#include <condition_variable>
+#include <mutex>
 #include <string>
 #include <vector>
 #include "poet.hpp"
+extern "C"{
+#include <naaice_ap2.h>
+}
 
 // PhreeqC definition of pi clashes with Eigen macros
 // so we have to temporarily undef it 
@@ -44,7 +49,7 @@ struct TrainingData {
   int n_training_runs = 0;
 };
 
-// Ony declare the actual functions if flag is set 
+// Only declare the actual functions if flag is set 
 #ifdef USE_AI_SURROGATE
 
 int Python_Keras_setup(std::string functions_file_path, std::string cuda_src_dir);
@@ -71,7 +76,7 @@ int Python_Keras_training_thread(EigenModel* Eigen_model, EigenModel* Eigen_mode
                                  std::mutex* training_data_buffer_mutex,
                                  std::condition_variable* training_data_buffer_full,
                                  bool* start_training, bool* end_training,
-                                 const RuntimeParameters& params);
+                                 const RuntimeParameters& params, naa_handle *handle);
 
 void update_weights(EigenModel* model, const std::vector<std::vector<std::vector<double>>>& weights);
 
@@ -83,7 +88,6 @@ std::vector<double> Eigen_predict_clustered(const EigenModel& model, const Eigen
                                             std::vector<int>& cluster_labels);
 std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>> x, int batch_size,
                                   std::mutex* Eigen_model_mutex);
-
 
 // Otherwise, define the necessary stubs
 #else
@@ -97,7 +101,7 @@ inline void training_data_buffer_append(std::vector<std::vector<double>>&,
 inline void cluster_labels_append(std::vector<int>&, std::vector<int>&, std::vector<int>){}
 inline int Python_Keras_training_thread(EigenModel*, EigenModel*, std::mutex*, 
                                         TrainingData*, std::mutex*, std::condition_variable*,
-                                        bool*, bool*, const RuntimeParameters&){return {};}
+                                        bool*, bool*, const RuntimeParameters&, naa_handle*){return {};}
 
 inline void update_weights(EigenModel*, const std::vector<std::vector<std::vector<double>>>&){}
 inline std::vector<std::vector<std::vector<double>>> Python_Keras_get_weights(std::string){return {};}
