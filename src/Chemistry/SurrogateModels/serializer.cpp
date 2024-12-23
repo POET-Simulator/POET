@@ -3,6 +3,8 @@
 #include <Eigen/src/Core/Matrix.h>
 #include <cstddef>
 #include <cstdio>
+#include <cstring>
+#include <vector>
 
 using namespace std;
 namespace poet{
@@ -32,6 +34,12 @@ size_t calculateStructSize(void *struct_pointer, char type){
 
       }
     } else if (type == 'T') {
+        struct_size += sizeof(size_t); // number of vectors
+        struct_size += sizeof(size_t); // length of vector
+        for (const std::vector<double> &vector:
+            *static_cast<std::vector<std::vector<double>>*>(struct_pointer)){
+                struct_size += vector.size() * sizeof(double);
+            }
     }
 
 return struct_size;
@@ -78,60 +86,6 @@ int serializeModelWeights(const EigenModel *model, char *memory){
     return 0;
 }
 
-// EigenModel deserializeModelWeights(char *memory, size_t buffer_size){
-
-//     EigenModel deserializedModel;
-
-    
-//     size_t num_matrices; 
-//     size_t size_counter = 0;
-//     std::memcpy(&num_matrices, memory, sizeof(size_t));
-//     fprintf(stdout, "number of matrices: %zu\n", num_matrices);
-
-//     memory += sizeof(size_t);
-//     size_counter += sizeof(size_t);
-//     deserializedModel.weight_matrices.resize(num_matrices);
-//     for (Eigen::MatrixXd &matrix : deserializedModel.weight_matrices) {
-//         size_t rows, cols;
-//         std::memcpy(&rows, memory, sizeof(size_t));
-//         memory += sizeof(size_t);
-//         size_counter += sizeof(size_t);
-//         std::memcpy(&cols, memory, sizeof(size_t));
-//         fprintf(stdout, "rows: %zu, cols: %zu\n", rows, cols);
-//         memory += sizeof(size_t);
-//         size_counter += sizeof(size_t);
-//         fprintf(stdout, "rows before: %td, cols before: %td\n", matrix.rows(), matrix.cols());
-//         matrix.resize(rows, cols);
-//         std::memcpy(matrix.data(), memory, rows * cols * sizeof(double));
-        
-//         memory += rows * cols * sizeof(double);
-//         size_counter += rows * cols * sizeof(double);
-//     }
-//     fprintf(stdout, "deserialized size of matrices: %zu\n", size_counter);
-//     size_t num_biases;
-//     std::memcpy(&num_biases, memory, sizeof(size_t));
-//     memory += sizeof(size_t);
-//     size_counter += sizeof(size_t);
-
-//     fprintf(stdout, "number of biases: %zu\n", num_biases);
-//     deserializedModel.biases.resize(num_biases);
-//     for (Eigen::VectorXd &bias : deserializedModel.biases) {
-//         size_t size;
-//         std::memcpy(&size, memory, sizeof(size_t));
-//         fprintf(stdout, "bias length: %zu\n", size);
-//         memory += sizeof(size_t);
-//         size_counter += sizeof(size_t);
-//         bias.resize(size);
-//         std::memcpy(bias.data(), memory, size * sizeof(double));
-//         memory += size * sizeof(double);
-//         size_counter += size * sizeof(double);
-//     }
-//     fprintf(stdout, "deserialized size: %zu\n", size_counter);
-//     if(size_counter > buffer_size){
-//       fprintf(stderr, "buffer corrupted!\n");
-//     }
-//     return deserializedModel;
-// }
 EigenModel deserializeModelWeights(char *memory, size_t buffer_size) {
     EigenModel deserializedModel;
     size_t size_counter = 0;
@@ -147,11 +101,11 @@ EigenModel deserializeModelWeights(char *memory, size_t buffer_size) {
     size_counter += sizeof(size_t);
     deserializedModel.weight_matrices.resize(num_matrices);
 
-    // Matrizen deserialisieren
+    // matrix deserialization
     for (Eigen::MatrixXd &matrix : deserializedModel.weight_matrices) {
         size_t rows, cols;
 
-        // Buffer-Check
+        // buffer check
         if (size_counter + 2 * sizeof(size_t) > buffer_size) {
             fprintf(stderr, "Buffer too small for matrix dimensions.\n");
             return deserializedModel;
@@ -170,15 +124,15 @@ EigenModel deserializeModelWeights(char *memory, size_t buffer_size) {
             return deserializedModel;
         }
 
-        // Kopiere Daten in neue Matrix
+        // interpret memory as Eigen::MatrixXd (more efficient than memcpy?)
         Eigen::MatrixXd temp = Eigen::Map<Eigen::MatrixXd>(
             reinterpret_cast<double*>(memory), rows, cols);
-        matrix = temp;  // Kopieren der Daten
+        matrix = temp;  // copy data to matrix
         memory += rows * cols * sizeof(double);
         size_counter += rows * cols * sizeof(double);
     }
 
-    // Anzahl Biases
+    // number of bias vectors
     size_t num_biases;
     if (size_counter + sizeof(size_t) > buffer_size) {
         fprintf(stderr, "Buffer too small for biases.\n");
@@ -189,7 +143,7 @@ EigenModel deserializeModelWeights(char *memory, size_t buffer_size) {
     size_counter += sizeof(size_t);
     deserializedModel.biases.resize(num_biases);
 
-    // Biases deserialisieren
+    // deserialization of bias vectors
     for (Eigen::VectorXd &bias : deserializedModel.biases) {
         size_t size;
         if (size_counter + sizeof(size_t) > buffer_size) {
@@ -206,7 +160,8 @@ EigenModel deserializeModelWeights(char *memory, size_t buffer_size) {
             return deserializedModel;
         }
 
-        // Kopiere Daten in neuen Vektor
+        // same procedure as for the matrices
+        // TODO: delete temp variable
         Eigen::VectorXd temp = Eigen::Map<Eigen::VectorXd>(
             reinterpret_cast<double*>(memory), size);
         bias = temp;  // Kopieren der Daten
@@ -217,5 +172,46 @@ EigenModel deserializeModelWeights(char *memory, size_t buffer_size) {
     return deserializedModel;
 }
 
+
+int serializeTrainingData(std::vector<std::vector<double>> data, char *memory){
+
+    size_t num_vectors = data.size();
+
+    std::memcpy(memory, &num_vectors, sizeof(size_t));
+    memory += sizeof(size_t);
+
+    for (const std::vector<double> &vector : data) {
+        size_t size = vector.size();
+        std::memcpy(memory, &size, sizeof(size_t));
+        memory += sizeof(size_t);
+        std::memcpy(memory, vector.data(), size * sizeof(double));
+        memory += size * sizeof(double);
+    }
+
+    return 0;
+}
+
+std::vector<std::vector<double>> deserializeTrainingData(char* data){
+
+    std::vector<std::vector<double>> deserialized_data;
+    size_t num_vectors;
+    std::memcpy(&num_vectors, data, sizeof(size_t));
+    data += sizeof(size_t);
+
+    for (size_t i = 0; i < num_vectors; i++) {
+        size_t size;
+        std::memcpy(&size, data, sizeof(size_t));
+        data += sizeof(size_t);
+
+        std::vector<double> vector(size);
+        std::memcpy(vector.data(), data, size * sizeof(double));
+        data += size * sizeof(double);
+
+        deserialized_data.push_back(vector);
+    }
+
+    return deserialized_data;
+
+}
 
 }
