@@ -6,6 +6,7 @@
 #include <Eigen/Dense>
 #include <Eigen/src/Core/Matrix.h>
 #include <Python.h>
+#include <Rmath.h>
 #include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
@@ -477,7 +478,7 @@ void Python_Keras_train(std::vector<std::vector<double>> &x,
     }
   }
 
-  // Choose the correct model to train if clustering is used
+  // Choose the correct model to traimn if clustering is used
   if (train_cluster == 1) {
     if (!model_path.empty()) {
       model_path.insert(model_path.length() - 6, "_reaction");
@@ -547,6 +548,9 @@ void parallel_training(EigenModel *Eigen_model,
     // does NOT
     //   wait for a signal on training_data_buffer_full but starts the next
     //   round immediately.
+    // n_cluster_reactive: number of elements in the reactive cluster
+    // buffer_size: size of the whole buffer of training data
+    // params.training_data_size: number of elements required to start online training
     std::unique_lock<std::mutex> lock(*training_data_buffer_mutex);
     training_data_buffer_full->wait(
         lock, [start_training] { return *start_training; });
@@ -564,12 +568,7 @@ void parallel_training(EigenModel *Eigen_model,
         training_data_buffer->x.size(),
         std::vector<double>(params.training_data_size));
 
-    fprintf(stdout, "x.size: %zu\n", training_data_buffer->x.size());
-    fprintf(stdout, "params.training_data_size: %d\n", params.training_data_size);
-
     int buffer_size = training_data_buffer->x[0].size();
-    fprintf(stdout, "training_data_buffer->x[0].size: %zu\n", training_data_buffer->x[0].size());
-    sleep(10);
 
     // If clustering is used, check the current cluster
     int n_cluster_reactive = 0;
@@ -579,8 +578,7 @@ void parallel_training(EigenModel *Eigen_model,
       for (size_t i = 0; i < buffer_size; i++) {
         n_cluster_reactive += training_data_buffer->cluster_labels[i];
       }
-      // ? set train_cluster to true only if all labels in training_data_buffer
-      // have the corresponding cluster_label?
+
       train_cluster = n_cluster_reactive >= params.training_data_size;
     }
     int buffer_row = 0;
@@ -609,14 +607,18 @@ void parallel_training(EigenModel *Eigen_model,
     }
 
     // Set the waiting predicate to immediately continue training if enough
-    // elements of any cluster remain
+    // elements of any cluster remain 
     if (train_cluster == 1) {
       *start_training =
+          // if clustering is active, check if after one training run still
+          // enough enough data of at least one cluster is left
           ((n_cluster_reactive - params.training_data_size) >=
            params.training_data_size) ||
           ((buffer_size - n_cluster_reactive) >= params.training_data_size);
     } else {
-      *start_training =
+      *start_training = 
+                        // if no clustering is active, check if there are still
+                        // enough data for another training run
           (buffer_size - n_cluster_reactive - params.training_data_size) >=
           params.training_data_size;
     }
@@ -666,80 +668,197 @@ void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
                   std::condition_variable *training_data_buffer_full,
                   bool *start_training, bool *end_training,
                   const RuntimeParameters &params, naa_handle *handle){
-    Eigen_model_mutex->lock();
-    training_data_buffer_mutex->lock();
-    size_t model_size = calculateStructSize(Eigen_model, 'E');
-    // TODO: initialize models with weights from keras model
-    std::string model_name = "model";
-    std::vector<std::vector<std::vector<double>>> model_weight =
-        Python_Keras_get_weights(model_name);
-    update_weights(Eigen_model, model_weight);
-    fprintf(stdout, "example weight: %f\n",
-            Eigen_model->weight_matrices[0](0, 0));
-    model_size = calculateStructSize(Eigen_model, 'E');
+  
+  // initialize models with weights from pretrained keras model
+  // declare memory regions for model weights, training and target data
 
-    
-    fprintf(stdout, "size after: %zu\n", model_size);
-    char *serializedData = (char *)calloc(model_size, sizeof(char));
-    if (serializedData == NULL) {
-      exit(EXIT_FAILURE);
-    }
-   int res = serializeModelWeights(Eigen_model, serializedData);
-  
-   struct naa_param_t weight_region[] = {(void*) serializedData, model_size};
-  
-   printf("-- Setting Up Connection --\n");
-    if (naa_create(1, weight_region, 1,
-      weight_region, 0, handle)) {
+  // Initialize training data input and targets
+  std::vector<std::vector<double>> inputs(
+      training_data_buffer->x.size(),
+      std::vector<double>(params.training_data_size));
+  std::vector<std::vector<double>> targets(
+      training_data_buffer->x.size(),
+      std::vector<double>(params.training_data_size));
+
+  PyGILState_STATE gstate = PyGILState_Ensure();
+  Eigen_model_mutex->lock();
+
+  std::vector<std::vector<std::vector<double>>> modelWeight =
+      Python_Keras_get_weights("model");
+  std::vector<std::vector<std::vector<double>>> modelWeightReactive;
+  update_weights(Eigen_model, modelWeight);
+
+  if(params.use_clustering == true){
+    modelWeightReactive = Python_Keras_get_weights("model_reactive"); // ? correct
+    update_weights(Eigen_model_reactive, modelWeightReactive);
+  }
+
+  Eigen_model_mutex->unlock();
+  PyGILState_Release(gstate);
+
+  // determine size for reuired memory regions
+  size_t modelSize = calculateStructSize(Eigen_model, 'E');
+  size_t modelSizeReactive = calculateStructSize(Eigen_model_reactive, 'E');
+
+  modelSize = modelSize > modelSizeReactive ? modelSize : modelSizeReactive;
+
+  size_t trainingDataSize = calculateStructSize(&inputs, 'T');
+  size_t targetDataSize = calculateStructSize(&targets, 'T');
+
+  std::cout << "model size: " << modelSize << std::endl;
+  std::cout << "training data size: " << trainingDataSize << std::endl;
+  std::cout << "target data size: " << targetDataSize << std::endl;
+
+  char *serializedModel = (char *)calloc(modelSize, sizeof(char));
+  if (serializedModel == NULL) {
+    exit(EXIT_FAILURE);
+  }
+  char *serializedTrainingData = (char *)calloc(trainingDataSize, sizeof(char));
+  if (serializedTrainingData == NULL) {
+    exit(EXIT_FAILURE);
+  }
+  char *serializedTargetData = (char *)calloc(targetDataSize, sizeof(char));
+  if (serializedTargetData == NULL) {
+    exit(EXIT_FAILURE);
+  }
+
+  // create memory regions
+  struct naa_param_t weight_region[] = {
+      {(void *)serializedModel, modelSize},
+      {(void *)serializedTrainingData, trainingDataSize},
+      {(void *)serializedTargetData, targetDataSize}};
+
+  printf("-- Setting Up Connection --\n");
+  // function code encode the used ai model
+  if (naa_create(1, weight_region, 1, weight_region, 0, handle)) {
     fprintf(stderr, "Error during naa_create. Exiting.\n");
     exit(EXIT_FAILURE);
+  }
+
+  while(true){
+    std::unique_lock<std::mutex> lock(*training_data_buffer_mutex);
+    training_data_buffer_full->wait(
+        lock, [start_training] { return *start_training; });
+    // Return if program is about to end
+    if (*end_training) {
+      return;
     }
 
-    printf("-- RPC Invocation --\n");
-    if (naa_invoke(handle)) {
-      fprintf(stderr, "Error during naa_invoke. Exiting.\n");
-      exit(EXIT_FAILURE);
+    // Get the necessary training data
+    std::cout << "AI: Training thread: Getting training data" << std::endl;
+    int buffer_size = training_data_buffer->x[0].size();
+
+    // If clustering is used, check the current cluster
+    int n_cluster_reactive = 0;
+    int train_cluster =
+        -1; // Default value for non clustered training (all data is used)
+    if (params.use_clustering) {
+      for (size_t i = 0; i < buffer_size; i++) {
+        n_cluster_reactive += training_data_buffer->cluster_labels[i];
+      }
+
+      train_cluster = n_cluster_reactive >= params.training_data_size;
+    }
+    int buffer_row = 0;
+    int copied_row = 0;
+    while (copied_row < params.training_data_size) {
+      if ((train_cluster == -1) ||
+          (train_cluster == training_data_buffer->cluster_labels[buffer_row])) {
+        for (size_t col = 0; col < training_data_buffer->x.size(); col++) {
+          // Copy and remove from training data buffer
+          inputs[col][copied_row] = training_data_buffer->x[col][buffer_row];
+          targets[col][copied_row] = training_data_buffer->y[col][buffer_row];
+          training_data_buffer->x[col].erase(
+              training_data_buffer->x[col].begin() + buffer_row);
+          training_data_buffer->y[col].erase(
+              training_data_buffer->y[col].begin() + buffer_row);
+        }
+        // Remove from cluster label buffer
+        if (params.use_clustering) {
+          training_data_buffer->cluster_labels.erase(
+              training_data_buffer->cluster_labels.begin() + buffer_row);
+        }
+        copied_row++;
+      } else {
+        buffer_row++;
+      }
     }
 
-    // TODO: naa_wait with new weights
-    
-   
-
-
-   EigenModel deserializedModel = deserializeModelWeights(serializedData, model_size);
-   fprintf(stdout, "After deserialization: %f\n", deserializedModel.weight_matrices[0](0,0));
-   
-   for(int i=0;i<Eigen_model->weight_matrices[0].rows();i++){
-    for (int j=0;j<Eigen_model->weight_matrices[0].cols();j++){
-      fprintf(stdout, "model: %f, deserializedModel: %f\n",
-              Eigen_model->weight_matrices[0](i, j), deserializedModel.weight_matrices[0](i,j));
+    // Set the waiting predicate to immediately continue training if enough
+    // elements of any cluster remain 
+    if (train_cluster == 1) {
+      *start_training =
+          // if clustering is active, check if after one training run still
+          // enough enough data of at least one cluster is left
+          ((n_cluster_reactive - params.training_data_size) >=
+           params.training_data_size) ||
+          ((buffer_size - n_cluster_reactive) >= params.training_data_size);
+    } else {
+      *start_training =
+                        // if no clustering is active, check if there are still
+                        // enough data for another training run
+          (buffer_size - n_cluster_reactive - params.training_data_size) >=
+          params.training_data_size;
     }
-   }
 
-   free(serializedData);
-   serializedData = nullptr;
-     // naa_finalize: clean up connection.
-    printf("-- Cleaning Up --\n");
-    naa_finalize(handle);
-  //  fprintf(stdout, "after free\n");
-    // TODO: determine the struct sizes of EigenModel and TrainData
-    // TODO: initialize RDMA memory regions (two sections: model weights and training data)
+    // update number of training runs
+    training_data_buffer->n_training_runs += 1;
+    // Unlock the training_data_buffer_mutex
+    lock.unlock();
 
-    // TODO: establish connection to NAA server
 
-    // TODO: if training buffer is full
+    // initialize models with weights from pretrained keras model
+    std::string model_name = "model";
+    if (train_cluster == 1) {
+      model_name = "model_reactive";
+    }
+    std::cout << "AI: Training thread: Start training " << model_name
+              << std::endl;
+
     
+
+    // data serializatoin
+    // three memory regions: model weights, predicted data, true data
+    // model weight region is an input and output memory region
     
-            // TODO: serialize EigenModel and TrainData
-            // TODO: run invoke call from naaice API
-            // TODO: wait for results
-            // TODO: update model weights (dont forget locking)
-            // TODO: wait for next training buffer iteration
-            
-    Eigen_model_mutex->unlock();
-    training_data_buffer_mutex->unlock();
+    if(train_cluster == 1){
+      int res = serializeModelWeights(Eigen_model_reactive, serializedModel);
+    } else {
+      int res = serializeModelWeights(Eigen_model, serializedModel);
+    }
+    int res1 = serializeTrainingData(&inputs, serializedTrainingData);
+    int res2 = serializeTrainingData(&targets, serializedTargetData);
 
+     printf("-- RPC Invocation --\n");
+     if (naa_invoke(handle)) {
+       fprintf(stderr, "Error during naa_invoke. Exiting.\n");
+       exit(EXIT_FAILURE);
+     }
 
+     // TODO: naa_wait with new weights
+
+     // TODO: update model weights with received weights
+
+     EigenModel deserializedModel =
+         deserializeModelWeights(serializedModel, modelSize);
+     fprintf(stdout, "After deserialization: %f\n",
+             deserializedModel.weight_matrices[0](0, 0));
+
+     for (int i = 0; i < Eigen_model->weight_matrices[0].rows(); i++) {
+       for (int j = 0; j < Eigen_model->weight_matrices[0].cols(); j++) {
+         fprintf(stdout, "model: %f, deserializedModel: %f\n",
+                 Eigen_model->weight_matrices[0](i, j),
+                 deserializedModel.weight_matrices[0](i, j));
+       }
+     }
+  }
+
+  printf("-- Cleaning Up --\n");
+  naa_finalize(handle);
+
+  free(serializedModel);
+  free(serializedTrainingData);
+  free(serializedTargetData);
 }
 
 std::thread python_train_thread;
