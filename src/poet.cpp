@@ -33,6 +33,7 @@
 #include <Rcpp/DataFrame.h>
 #include <Rcpp/Function.h>
 #include <Rcpp/vector/instantiation.h>
+#include <csignal>
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
@@ -46,9 +47,7 @@
 #include <vector>
 #include <stdio.h>
 
-extern "C"{
-#include <naaice.h>
-}
+
 
 using namespace std;
 using namespace poet;
@@ -75,6 +74,11 @@ static void init_global_functions(RInside &R) {
   source_R = DEFunc("source");
   ReadRObj_R = DEFunc("ReadRObj");
   SaveRObj_R = DEFunc("SaveRObj");
+}
+
+void signalHandler(int signum) {
+    fprintf(stderr, "Terminate program by user.\n");
+    exit(signum);
 }
 
 
@@ -310,18 +314,30 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   std::vector<int> cluster_labels;
   if (params.use_ai_surrogate) {  
     MSG("AI: Initialize model");
+    struct naa_handle *handle = NULL;
+    if(params.use_naa){
+           handle = (naa_handle*) calloc(1, sizeof(struct naa_handle));
+          if(!handle){
+            throw std::runtime_error("Could not allocate memory for NAA handle");
+          }
+
+          // TODO: create regions here (size could be determined from run_params (size of trainings buffer))
+          struct naa_param_t *model_weights;
+        }
 
     // Initiate two models from one file
     Python_Keras_load_model(R["model_file_path"], R["model_reactive_file_path"],
                             params.use_clustering);
+  
     if (!params.disable_training) {
       MSG("AI: Initialize training thread");
       // TODO add naa_handle as optional parameter which is NULL per default
+
       Python_Keras_training_thread(&Eigen_model, &Eigen_model_reactive, 
                                    &Eigen_model_mutex, &training_data_buffer, 
                                    &training_data_buffer_mutex,
                                    &training_data_buffer_full, &start_training,
-                                   &end_training, params);
+                                   &end_training, params, handle);
     }
     if (!params.use_Keras_predictions) {
       // Initialize Eigen model for custom inference function
@@ -390,12 +406,11 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
       R.parseEval(std::string("predictors <- ") + 
         "set_field(TMP, TMP_PROPS, field_nrow, ai_surrogate_species)");
-
       // Apply preprocessing
       MSG("AI Preprocessing");
       R.parseEval("predictors_scaled <- preprocess(predictors)");
       std::vector<std::vector<double>> predictors_scaled = R["predictors_scaled"];
-
+      
       // Get K-Means cluster assignements based on the preprocessed data
       if (params.use_clustering) {
         R.parseEval("cluster_labels <- assign_clusters(predictors_scaled)");
@@ -425,6 +440,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       // Validate prediction and write valid predictions to chem field
       MSG("AI: Validate");
       R.parseEval("validity_vector <- validate_predictions(predictors, predictions)");
+      // R.parseEval("print(head(predictors, 30))");
 
       MSG("AI: Marking valid");
       chem.set_ai_surrogate_validity_vector(R.parseEval("validity_vector"));
@@ -470,8 +486,9 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       
       std::vector<std::vector<double>> invalid_x = 
         R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
-      
+
       R.parseEval("target_scaled <- preprocess(state_C[ai_surrogate_species])");
+      // R.parseEval("print(head(state_C[ai_surrogate_species], 30))");
       std::vector<std::vector<double>> invalid_y = 
         R.parseEval("get_invalid_values(target_scaled, validity_vector)");
 
@@ -599,6 +616,8 @@ std::vector<std::string> getSpeciesNames(const Field &&field, int root,
 }
 
 int main(int argc, char *argv[]) {
+  signal(SIGINT, signalHandler);
+  
   int world_size;
 
   // Threadsafe MPI is necessary for the AI surrogate
@@ -656,8 +675,10 @@ int main(int argc, char *argv[]) {
         run_params.interp_bucket_entries,
         run_params.interp_size,
         run_params.interp_min_entries,
-        run_params.use_ai_surrogate};
+        run_params.use_ai_surrogate,
+        run_params.use_naa};
         // TODO add option for naa training
+
 
     chemistry.masterEnableSurrogates(surr_setup);
 
@@ -685,6 +706,7 @@ int main(int argc, char *argv[]) {
       chemistry.masterSetField(init_list.getInitialGrid());
 
       if (run_params.use_ai_surrogate) {
+
         // Load default function implementations 
         R.parseEvalQ(ai_surrogate_r_library);
         /* Use dht species for model input and output */
@@ -704,7 +726,6 @@ int main(int argc, char *argv[]) {
         variable of the same name in one of the the R input scripts)*/
         run_params.training_data_size = init_list.getDiffusionInit().n_rows *
                                         init_list.getDiffusionInit().n_cols; // Default value is number of cells in field
-        // ? error handling for all if statements
         if (Rcpp::as<bool>(R.parseEval("exists(\"batch_size\")"))) {
           run_params.batch_size = R["batch_size"];
         }

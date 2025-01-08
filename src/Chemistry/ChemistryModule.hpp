@@ -83,7 +83,9 @@ public:
     std::uint32_t interp_bucket_size;
     std::uint32_t interp_size_mb;
     std::uint32_t interp_min_entries;
+    // ? extra struct for AI surrogate options?
     bool ai_surrogate_enabled;
+    bool naa_enabled;
   };
 
   void masterEnableSurrogates(const SurrogateSetup &setup) {

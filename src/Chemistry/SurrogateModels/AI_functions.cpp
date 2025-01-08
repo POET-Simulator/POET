@@ -478,7 +478,7 @@ void Python_Keras_train(std::vector<std::vector<double>> &x,
     }
   }
 
-  // Choose the correct model to traimn if clustering is used
+  // Choose the correct model to train if clustering is used
   if (train_cluster == 1) {
     if (!model_path.empty()) {
       model_path.insert(model_path.length() - 6, "_reaction");
@@ -637,6 +637,7 @@ void parallel_training(EigenModel *Eigen_model,
 
     // Acquire the Python GIL
     PyGILState_STATE gstate = PyGILState_Ensure();
+    
     // Start training
     Python_Keras_train(inputs, targets, train_cluster, model_name, params);
 
@@ -669,16 +670,11 @@ void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
                   bool *start_training, bool *end_training,
                   const RuntimeParameters &params, naa_handle *handle){
   
+  fprintf(stdout, "In naa_training\n");
+
+
   // initialize models with weights from pretrained keras model
   // declare memory regions for model weights, training and target data
-
-  // Initialize training data input and targets
-  std::vector<std::vector<double>> inputs(
-      training_data_buffer->x.size(),
-      std::vector<double>(params.training_data_size));
-  std::vector<std::vector<double>> targets(
-      training_data_buffer->x.size(),
-      std::vector<double>(params.training_data_size));
 
   PyGILState_STATE gstate = PyGILState_Ensure();
   Eigen_model_mutex->lock();
@@ -696,7 +692,15 @@ void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
   Eigen_model_mutex->unlock();
   PyGILState_Release(gstate);
 
-  // determine size for reuired memory regions
+    // Initialize training data input and targets
+  std::vector<std::vector<double>> inputs(
+      Eigen_model->biases[Eigen_model->biases.size()-1].size(), // number of species
+      std::vector<double>(params.training_data_size));
+  std::vector<std::vector<double>> targets(
+      Eigen_model->biases[Eigen_model->biases.size()-1].size(),
+      std::vector<double>(params.training_data_size));
+
+  // determine size for required memory regions
   size_t modelSize = calculateStructSize(Eigen_model, 'E');
   size_t modelSizeReactive = calculateStructSize(Eigen_model_reactive, 'E');
 
@@ -723,14 +727,16 @@ void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
   }
 
   // create memory regions
-  struct naa_param_t weight_region[] = {
+  struct naa_param_t input_regions[] = {
       {(void *)serializedModel, modelSize},
       {(void *)serializedTrainingData, trainingDataSize},
       {(void *)serializedTargetData, targetDataSize}};
 
+  struct naa_param_t output_regions[] = {{(void *)serializedModel, modelSize}};
+
   printf("-- Setting Up Connection --\n");
   // function code encode the used ai model
-  if (naa_create(1, weight_region, 1, weight_region, 0, handle)) {
+  if (naa_create(1, input_regions, 3, output_regions, 1, handle)) {
     fprintf(stderr, "Error during naa_create. Exiting.\n");
     exit(EXIT_FAILURE);
   }
@@ -826,31 +832,101 @@ void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
     } else {
       int res = serializeModelWeights(Eigen_model, serializedModel);
     }
+
+    // checksum serializeModel
+    double checksum_model = 0;
+    for(size_t i = 0; i < Eigen_model->weight_matrices.size(); i++){
+        checksum_model += Eigen_model->weight_matrices[i].sum();
+    }
+    for(size_t j=0; j<Eigen_model->biases.size(); j++){
+      checksum_model += Eigen_model->biases[j].sum();
+    }
+
+    fprintf(stdout, "Checksum model: %f\n", checksum_model);
+
     int res1 = serializeTrainingData(&inputs, serializedTrainingData);
     int res2 = serializeTrainingData(&targets, serializedTargetData);
+    // std::vector<std::vector<double>> deserializedTrainingData = deserializeTrainingData(serializedTrainingData);
+    // std::vector<std::vector<double>> deserializedTargetData = deserializeTrainingData(serializedTargetData);
+  
+    
+    // calculate checksum of inputs
+    // double checksum_inputs = 0;
+    // for (size_t i = 0; i < inputs.size(); i++) {
+    //   for (size_t j = 0; j < inputs[i].size(); j++) {
+    //     checksum_inputs += inputs[i][j];
+    //     // fprintf(stdout, "inputs: %f\n", inputs[i][j]);
+    //   }
+    // }
 
-     printf("-- RPC Invocation --\n");
-     if (naa_invoke(handle)) {
-       fprintf(stderr, "Error during naa_invoke. Exiting.\n");
+    // // calculate checksum of inputs
+    // double checksum_targets = 0;
+    // for (size_t i = 0; i < targets.size(); i++) {
+    //   for (size_t j = 0; j < targets[i].size(); j++) {
+    //     checksum_targets += targets[i][j];
+    //     // fprintf(stdout, "inputs: %f\n", inputs[i][j]);
+    //   }
+    // }
+
+    // double checksum_training = 0;
+    // for (size_t i = 0; i < deserializedTrainingData.size(); i++) {
+    //   for (size_t j = 0; j < deserializedTrainingData[i].size(); j++) {
+    //     checksum_training += deserializedTrainingData[i][j];
+    //     // fprintf(stdout, "inputs: %f\n", deserializedTrainingData[i][j]);
+    //   }
+    // }
+
+    // double checksum_testing = 0;
+    // for (size_t i = 0; i < deserializedTargetData.size(); i++) {
+    //   for (size_t j = 0; j < deserializedTargetData[i].size(); j++) {
+    //     checksum_testing += deserializedTargetData[i][j];
+    //     // fprintf(stdout, "inputs: %f\n", deserializedTrainingData[i][j]);
+    //   }
+    // }
+
+    // fprintf(stdout, "Checksum inputs: %f\n", checksum_inputs);
+    // fprintf(stdout, "Checksum training: %f\n", checksum_training);
+    // fprintf(stdout, "Checksum targets: %f\n", checksum_targets);
+    // fprintf(stdout, "Checksum testing: %f\n", checksum_testing);
+
+    printf("-- RPC Invocation --\n");
+    if (naa_invoke(handle)) {
+      fprintf(stderr, "Error during naa_invoke. Exiting.\n");
+      exit(EXIT_FAILURE);
+     }
+
+     // naa_wait with new weights
+     naa_status status;
+     if (naa_wait(handle, &status)) {
+       fprintf(stderr, "Error occurred during naa_wait. Exiting.\n");
        exit(EXIT_FAILURE);
      }
 
-     // TODO: naa_wait with new weights
+     printf("Bytes received: %d, RPC Return code: %d\n",
+           status.bytes_received, status.naa_error);
 
-     // TODO: update model weights with received weights
-
+     // update model weights with received weights
      EigenModel deserializedModel =
          deserializeModelWeights(serializedModel, modelSize);
      fprintf(stdout, "After deserialization: %f\n",
              deserializedModel.weight_matrices[0](0, 0));
 
-     for (int i = 0; i < Eigen_model->weight_matrices[0].rows(); i++) {
-       for (int j = 0; j < Eigen_model->weight_matrices[0].cols(); j++) {
-         fprintf(stdout, "model: %f, deserializedModel: %f\n",
-                 Eigen_model->weight_matrices[0](i, j),
-                 deserializedModel.weight_matrices[0](i, j));
-       }
-     }
+      Eigen_model_mutex->lock();
+
+      Eigen_model->weight_matrices = deserializedModel.weight_matrices; 
+      Eigen_model->biases = deserializedModel.biases;
+
+      Eigen_model_mutex->unlock();
+
+      
+
+    //  for (int i = 0; i < Eigen_model->weight_matrices[0].rows(); i++) {
+    //    for (int j = 0; j < Eigen_model->weight_matrices[0].cols(); j++) {
+    //      fprintf(stdout, "model: %f, deserializedModel: %f\n",
+    //              Eigen_model->weight_matrices[0](i, j),
+    //              deserializedModel.weight_matrices[0](i, j));
+    //    }
+    //  }
   }
 
   printf("-- Cleaning Up --\n");
@@ -917,7 +993,7 @@ int Python_Keras_training_thread(
  * @param weights Vector of model weights from keras as returned by
  * Python_Keras_get_weights()
  */
- // ? check if updating was succesful -> hash about values?
+ // ? check if updating was successful -> hash about values?
 void update_weights(
     EigenModel *model,
     const std::vector<std::vector<std::vector<double>>> &weights) {

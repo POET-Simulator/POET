@@ -31,6 +31,13 @@
 
 #define SRC_DIR "@CMAKE_SOURCE_DIR@"
 #define CUDA_SRC_DIR "@CUDA_TOOLKIT_ROOT_DIR@"
+#define USE_NAA "@USE_NAA@"
+
+// target and source IP address for NAA support
+// #ifdef USE_NAA
+#define SOURCE_IP "@SOURCE_IP@"
+#define TARGET_IP "@TARGET_IP@"
+// #endif
 
 static const char *poet_version = "@POET_VERSION@";
 
@@ -78,6 +85,7 @@ struct RuntimeParameters {
   int batch_size = 2560; // default value determined in test on the UP Turing cluster
   int training_epochs = 20;; // Can be set in the R input script
   int training_data_size; // Can be set in the R input script
+  bool use_naa = false;
   std::string save_model_path = ""; // Can be set in the R input script
   std::string cuda_src_dir = CUDA_SRC_DIR; // From CMake
 };

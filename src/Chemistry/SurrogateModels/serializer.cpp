@@ -35,7 +35,7 @@ size_t calculateStructSize(void *struct_pointer, char type){
       }
     } else if (type == 'T') {
         struct_size += sizeof(size_t); // number of vectors
-        struct_size += sizeof(size_t); // length of vector
+        struct_size += static_cast<std::vector<std::vector<double>>*>(struct_pointer)->size() * sizeof(size_t); // length of vector
         for (const std::vector<double> &vector:
             *static_cast<std::vector<std::vector<double>>*>(struct_pointer)){
                 struct_size += vector.size() * sizeof(double);
@@ -56,7 +56,6 @@ int serializeModelWeights(const EigenModel *model, char *memory){
     size_counter += sizeof(size_t);
     for (const Eigen::MatrixXd &matrix : model->weight_matrices) {
       size_t rows = matrix.rows(), cols = matrix.cols();
-      fprintf(stdout, "rows: %zu, cols: %zu\n", rows, cols);
       std::memcpy(memory, &rows, sizeof(size_t));
       memory += sizeof(size_t);
       size_counter += sizeof(size_t);
@@ -125,9 +124,8 @@ EigenModel deserializeModelWeights(char *memory, size_t buffer_size) {
         }
 
         // interpret memory as Eigen::MatrixXd (more efficient than memcpy?)
-        Eigen::MatrixXd temp = Eigen::Map<Eigen::MatrixXd>(
+        matrix = Eigen::Map<Eigen::MatrixXd>(
             reinterpret_cast<double*>(memory), rows, cols);
-        matrix = temp;  // copy data to matrix
         memory += rows * cols * sizeof(double);
         size_counter += rows * cols * sizeof(double);
     }
@@ -161,7 +159,6 @@ EigenModel deserializeModelWeights(char *memory, size_t buffer_size) {
         }
 
         // same procedure as for the matrices
-        // TODO: delete temp variable
         Eigen::VectorXd temp = Eigen::Map<Eigen::VectorXd>(
             reinterpret_cast<double*>(memory), size);
         bias = temp;  // Kopieren der Daten
@@ -173,14 +170,14 @@ EigenModel deserializeModelWeights(char *memory, size_t buffer_size) {
 }
 
 
-int serializeTrainingData(std::vector<std::vector<double>> data, char *memory){
+int serializeTrainingData(std::vector<std::vector<double>> *data, char *memory){
 
-    size_t num_vectors = data.size();
+    size_t num_vectors = data->size();
 
     std::memcpy(memory, &num_vectors, sizeof(size_t));
     memory += sizeof(size_t);
 
-    for (const std::vector<double> &vector : data) {
+    for (const std::vector<double> &vector : *data) {
         size_t size = vector.size();
         std::memcpy(memory, &size, sizeof(size_t));
         memory += sizeof(size_t);
@@ -196,6 +193,7 @@ std::vector<std::vector<double>> deserializeTrainingData(char* data){
     std::vector<std::vector<double>> deserialized_data;
     size_t num_vectors;
     std::memcpy(&num_vectors, data, sizeof(size_t));
+    fprintf(stdout, "num_vectors: %zu\n", num_vectors);
     data += sizeof(size_t);
 
     for (size_t i = 0; i < num_vectors; i++) {
@@ -205,6 +203,7 @@ std::vector<std::vector<double>> deserializeTrainingData(char* data){
 
         std::vector<double> vector(size);
         std::memcpy(vector.data(), data, size * sizeof(double));
+        
         data += size * sizeof(double);
 
         deserialized_data.push_back(vector);

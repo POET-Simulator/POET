@@ -18,6 +18,9 @@ target_sources(POETLib
   Chemistry/SurrogateModels/ProximityHashTable.cpp
 ) 
 
+# add_compile_options(-fsanitize=address)
+# add_link_options(-fsanitize=address)
+
 target_include_directories(
  POETLib PUBLIC
  "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -45,14 +48,10 @@ if(USE_AI_SURROGATE)
   find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
   
   find_package(Threads REQUIRED)
-  
-  set_source_files_properties(
-    Chemistry/SurrogateModels/AI_functions.cpp
-    PROPERTIES COMPILE_FLAGS "-O3 -march=native -mtune=native"
-  )
 
   target_sources(POETLib
    PRIVATE
+   Chemistry/SurrogateModels/serializer.cpp
    Chemistry/SurrogateModels/AI_functions.cpp
   )
   
@@ -64,6 +63,7 @@ if(USE_AI_SURROGATE)
   target_link_libraries(POETLib
    PUBLIC "${Python3_LIBRARIES}"
    PUBLIC Threads::Threads pthread
+   PUBLIC naaice::middleware
   )
 endif() # USE_AI_SURROGATE
 
@@ -139,7 +139,7 @@ configure_file(poet.hpp.in poet.hpp @ONLY)
 
 
 add_executable(poet poet.cpp)
-target_link_libraries(poet PRIVATE POETLib MPI::MPI_C RRuntime CLI11::CLI11 naaice::middleware)
+target_link_libraries(poet PRIVATE POETLib MPI::MPI_C RRuntime CLI11::CLI11)
 target_include_directories(poet PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_executable(poet_init initializer.cpp)
