@@ -117,6 +117,9 @@ typedef struct {
   unsigned int index_count;
 
   int (*accumulate_callback)(int, void *, int, void *);
+
+  size_t sum_idx;
+  size_t cnt_idx;
 #ifdef DHT_STATISTICS
   /** Detailed statistics of the usage of the DHT. */
   DHT_stats *stats;
@@ -125,10 +128,11 @@ typedef struct {
 
 extern void DHT_set_accumulate_callback(DHT *table,
                                         int (*callback_func)(int, void *, int,
-                                                              void *));
+                                                             void *));
 
 extern int DHT_write_accumulate(DHT *table, const void *key, int send_size,
-                                void *data, uint32_t *proc, uint32_t *index, int *callback_ret);
+                                void *data, uint32_t *proc, uint32_t *index,
+                                int *callback_ret);
 
 /**
  * @brief Create a DHT.
@@ -284,44 +288,8 @@ extern int DHT_free(DHT *table, int *eviction_counter, int *readerror_counter);
  */
 extern int DHT_print_statistics(DHT *table);
 
-/**
- * @brief Determine destination rank and index.
- *
- * This is done by looping over all possbile indices. First of all, set a
- * temporary index to zero and copy count of bytes for each index into the
- * memory area of the temporary index. After that the current index is
- * calculated by the temporary index modulo the table size. The destination rank
- * of the process is simply determined by hash modulo the communicator size.
- *
- * @param hash Calculated 64 bit hash.
- * @param comm_size Communicator size.
- * @param table_size Count of buckets per process.
- * @param dest_rank Reference to the destination rank variable.
- * @param index Pointer to the array index.
- * @param index_count Count of possible indeces.
- */
-static void determine_dest(uint64_t hash, int comm_size,
-                           unsigned int table_size, unsigned int *dest_rank,
-                           uint64_t *index, unsigned int index_count);
+extern float DHT_get_used_idx_factor(DHT *table, int with_reset);
 
-/**
- * @brief Set the occupied flag.
- *
- * This will set the first bit of a bucket to 1.
- *
- * @param flag_byte First byte of a bucket.
- */
-static void set_flag(char *flag_byte);
-
-/**
- * @brief Get the occupied flag.
- *
- * This function determines whether the occupied flag of a bucket was set or
- * not.
- *
- * @param flag_byte First byte of a bucket.
- * @return int Returns 1 for true or 0 for false.
- */
-static int read_flag(char flag_byte);
+extern int DHT_flush(DHT *table);
 
 #endif /* DHT_H */
