@@ -91,20 +91,23 @@ int Python_Keras_load_model(std::string model, std::string model_reactive,
  * @param field 2D-Matrix with the content of a Field object
  * @return Numpy representation of the input vector
  */
-PyObject *vector_to_numpy_array(const std::vector<std::vector<double>> &field) {
-  npy_intp dims[2] = {static_cast<npy_intp>(field[0].size()),
-                      static_cast<npy_intp>(field.size())};
+PyObject* vector_to_numpy_array(const std::vector<std::vector<double>>& field) {
+    npy_intp dims[2] = {static_cast<npy_intp>(field.size()),  // Zeilenanzahl
+                        static_cast<npy_intp>(field[0].size())};  // Spaltenanzahl
 
-  PyObject *np_array = PyArray_SimpleNew(2, dims, NPY_FLOAT64);
-  double *data = static_cast<double *>(PyArray_DATA((PyArrayObject *)np_array));
-  // write field data to numpy array
-  for (size_t i = 0; i < field.size(); ++i) {
-    for (size_t j = 0; j < field[i].size(); ++j) {
-      data[j * field.size() + i] = field[i][j];
+    PyObject* np_array = PyArray_SimpleNew(2, dims, NPY_FLOAT64);
+    double* data = static_cast<double*>(PyArray_DATA((PyArrayObject*)np_array));
+
+    // Schreibe die Daten in das Numpy-Array (korrekte Reihenfolge)
+    for (size_t i = 0; i < field.size(); ++i) {
+        for (size_t j = 0; j < field[i].size(); ++j) {
+            data[i * field[0].size() + j] = field[i][j];  // Korrekte Indizes
+        }
     }
-  }
-  return np_array;
+
+    return np_array;
 }
+
 
 /**
  * @brief Converts a Pyton matrix object to a std::vector vector
