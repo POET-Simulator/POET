@@ -89,6 +89,8 @@ std::vector<double> Eigen_predict_clustered(const EigenModel& model, const Eigen
 std::vector<double> Eigen_predict(const EigenModel& model, std::vector<std::vector<double>> x, int batch_size,
                                   std::mutex* Eigen_model_mutex);
 
+int Python_keras_set_weights(std::string model_name, std::vector<std::vector<std::vector<double>>> weights);
+
 // Otherwise, define the necessary stubs
 #else
 inline void Python_Keras_setup(std::string, std::string){}
@@ -110,6 +112,8 @@ inline std::vector<double> Eigen_predict_clustered(const EigenModel&, const Eige
                                                    std::mutex*, std::vector<int>&){return {};}
 inline std::vector<double> Eigen_predict(const EigenModel&, std::vector<std::vector<double>>, int,
                                          std::mutex*){return {};}
+
+inline int Python_keras_set_weights(std::string model_name, std::vector<std::vector<std::vector<double>>> weights);
 #endif
 } // namespace poet
 
