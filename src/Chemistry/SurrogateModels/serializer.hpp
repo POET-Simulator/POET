@@ -63,5 +63,21 @@ int serializeTrainingData(std::vector<std::vector<double>> *data, char *memory);
  * species with m training elements
  */
 std::vector<std::vector<double>> deserializeTrainingData(char* data);
+
+/**
+ * @brief Serialize the weights and biases of the model into a memory location
+ * to send them via RDMA
+ *
+ * @param model: 3d vector containing the weights and biases of the
+ * model
+ * @param memory: Pointer to the memory location where the serialized data will
+ * be stored
+ * The serialized data looks as follows:
+ * |# layers|# rows of matrix 1|# cols of matrix 1|matrix 1 data|# rows of matrix 2|...
+ * @return int: 0 if the serialization was successful, -1 otherwise
+ */
+int serializeCPPWeights(std::vector<std::vector<std::vector<double>>> &cpp_weights, char* memory);
+
+std::vector<std::vector<std::vector<double>>> deserializeCPPWeights(char* data);
 }
 #endif

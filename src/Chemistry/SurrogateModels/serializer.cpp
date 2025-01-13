@@ -41,6 +41,15 @@ size_t calculateStructSize(void *struct_pointer, char type){
                 struct_size += vector.size() * sizeof(double);
             }
     }
+    else if (type == 'C'){
+        struct_size += sizeof(size_t); // number of layers
+        struct_size += static_cast<std::vector<std::vector<std::vector<double>>>*>(struct_pointer)->size() * 2 * sizeof(size_t); // dimensions of matrices
+        for(const std::vector<std::vector<double>> &matrix : *static_cast<std::vector<std::vector<std::vector<double>>>*>(struct_pointer)){
+            struct_size += matrix.size() * matrix[0].size() * sizeof(double);
+        }
+
+
+    }
 
 return struct_size;
 
@@ -212,5 +221,56 @@ std::vector<std::vector<double>> deserializeTrainingData(char* data){
     return deserialized_data;
 
 }
+
+int serializeCPPWeights(std::vector<std::vector<std::vector<double>>> &cpp_weights, char* memory){
+
+    size_t num_layers = cpp_weights.size();
+    size_t size_counter = 0;
+    std::memcpy(memory, &num_layers, sizeof(size_t));
+    memory += sizeof(size_t);
+
+    for (size_t i=0; i<cpp_weights.size(); i++){
+        size_t rows = cpp_weights[i].size();
+        size_t cols = cpp_weights[i][0].size();
+        fprintf(stdout, "rows: %zu, cols: %zu\n", rows, cols);
+        std::memcpy(memory, &rows, sizeof(size_t));
+        memory += sizeof(size_t);
+        std::memcpy(memory, &cols, sizeof(size_t));
+        memory += sizeof(size_t);
+        for (size_t j=0; j<rows; j++){
+            for (size_t k=0; k<cols; k++){
+                std::memcpy(memory, &cpp_weights[i][j][k], sizeof(double));
+                memory += sizeof(double);
+            }
+        }
+    }
+
+    return 0;
+}
+
+std::vector<std::vector<std::vector<double>>> deserializeCPPWeights(char *data){
+
+    std::vector<std::vector<std::vector<double>>> deserialized_weights;
+    size_t num_layers;
+    std::memcpy(&num_layers, data, sizeof(size_t));
+    data += sizeof(size_t);
+
+    for(size_t i=0; i<num_layers; i++){
+        size_t rows, cols;
+        std::memcpy(&rows, data, sizeof(size_t));
+        data += sizeof(size_t);
+        std::memcpy(&cols, data, sizeof(size_t));
+        data += sizeof(size_t);
+        std::vector<std::vector<double>> weight_matrix(rows, std::vector<double>(cols));
+        for (size_t j = 0; j < rows; j++) {
+          std::memcpy(weight_matrix[j].data(), data, cols * sizeof(double));
+          data += cols * sizeof(double);
+          deserialized_weights.push_back(weight_matrix);
+        }
+    }
+
+    return deserialized_weights;
+}
+    
 
 }
