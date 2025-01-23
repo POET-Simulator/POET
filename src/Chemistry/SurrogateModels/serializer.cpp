@@ -265,8 +265,10 @@ std::vector<std::vector<std::vector<double>>> deserializeCPPWeights(char *data){
         for (size_t j = 0; j < rows; j++) {
           std::memcpy(weight_matrix[j].data(), data, cols * sizeof(double));
           data += cols * sizeof(double);
-          deserialized_weights.push_back(weight_matrix);
         }
+        deserialized_weights.push_back(weight_matrix);
+    
+    
     }
 
     return deserialized_weights;
