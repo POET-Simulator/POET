@@ -18,6 +18,15 @@ target_sources(POETLib
   Chemistry/SurrogateModels/ProximityHashTable.cpp
 )
 
+set(POET_TUG_APPROACH "Implicit" CACHE STRING "tug numerical approach to use")
+set_property(CACHE POET_TUG_APPROACH PROPERTY STRINGS "Implicit" "Explicit")
+
+if (POET_TUG_APPROACH STREQUAL "Implicit")
+  target_compile_definitions(POETLib PRIVATE POET_TUG_BTCS)
+elseif (POET_TUG_APPROACH STREQUAL "Explicit")
+  target_compile_definitions(POETLib PRIVATE POET_TUG_FTCS)
+endif()
+
 target_include_directories(POETLib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(
   POETLib 

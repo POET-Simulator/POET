@@ -81,7 +81,14 @@ void DiffusionModule::simulate(double requested_dt) {
 
   grid.setDomain(param_list.s_rows, param_list.s_cols);
 
+#if defined(POET_TUG_BTCS)
   tug::Simulation<TugType> sim(grid, boundary);
+#elif defined(POET_TUG_FTCS)
+  tug::Simulation<TugType, tug::FTCS_APPROACH> sim(grid, boundary);
+#else
+#error "No valid approach defined"
+#endif
+
   sim.setIterations(1);
 
   for (const auto &sol_name : this->param_list.transport_names) {
