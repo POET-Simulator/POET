@@ -92,16 +92,16 @@ int Python_Keras_load_model(std::string model, std::string model_reactive,
  * @return Numpy representation of the input vector
  */
 PyObject* vector_to_numpy_array(const std::vector<std::vector<double>>& field) {
-    npy_intp dims[2] = {static_cast<npy_intp>(field.size()),  // Zeilenanzahl
-                        static_cast<npy_intp>(field[0].size())};  // Spaltenanzahl
+    npy_intp dims[2] = {static_cast<npy_intp>(field.size()),  // rows
+                        static_cast<npy_intp>(field[0].size())};  // cols
 
     PyObject* np_array = PyArray_SimpleNew(2, dims, NPY_FLOAT64);
     double* data = static_cast<double*>(PyArray_DATA((PyArrayObject*)np_array));
 
-    // Schreibe die Daten in das Numpy-Array (korrekte Reihenfolge)
+    // write data to numpy array
     for (size_t i = 0; i < field.size(); ++i) {
         for (size_t j = 0; j < field[i].size(); ++j) {
-            data[i * field[0].size() + j] = field[i][j];  // Korrekte Indizes
+            data[i * field[0].size() + j] = field[i][j];
         }
     }
 
@@ -666,6 +666,21 @@ void parallel_training(EigenModel *Eigen_model,
   }
 }
 
+void checkSumCppWeights(std::vector<std::vector<std::vector<double>>> cpp_weights, std::string model_name){
+  double checksum_cpp_weights = 0;
+  for(size_t i = 0; i < cpp_weights.size(); i++){
+    for(size_t j = 0; j < cpp_weights[i].size(); j++){
+      for(size_t k = 0; k < cpp_weights[i][j].size(); k++){
+        checksum_cpp_weights += cpp_weights[i][j][k];
+        if(cpp_weights[i][j][k] > 10){
+          fprintf(stdout, "Weight %s: %f\n", model_name.c_str(), cpp_weights[i][j][k]);
+      }
+    }
+  }
+}
+  fprintf(stdout, "Checksum cpp weights %s: %f\n", model_name.c_str(), checksum_cpp_weights);
+}
+
 void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
                   std::mutex *Eigen_model_mutex,
                   TrainingData *training_data_buffer,
@@ -680,7 +695,7 @@ void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
   // initialize models with weights from pretrained keras model
   // declare memory regions for model weights, training and target data
 
-  PyGILState_STATE gstate = PyGILState_Ensure();
+  
   Eigen_model_mutex->lock();
 
   std::vector<std::vector<std::vector<double>>> modelWeight =
@@ -694,7 +709,7 @@ void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
   }
 
   Eigen_model_mutex->unlock();
-  PyGILState_Release(gstate);
+  
 
     // Initialize training data input and targets
   std::vector<std::vector<double>> inputs(
@@ -850,48 +865,6 @@ void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
 
     int res1 = serializeTrainingData(&inputs, serializedTrainingData);
     int res2 = serializeTrainingData(&targets, serializedTargetData);
-    // std::vector<std::vector<double>> deserializedTrainingData = deserializeTrainingData(serializedTrainingData);
-    // std::vector<std::vector<double>> deserializedTargetData = deserializeTrainingData(serializedTargetData);
-  
-    
-    // calculate checksum of inputs
-    // double checksum_inputs = 0;
-    // for (size_t i = 0; i < inputs.size(); i++) {
-    //   for (size_t j = 0; j < inputs[i].size(); j++) {
-    //     checksum_inputs += inputs[i][j];
-    //     // fprintf(stdout, "inputs: %f\n", inputs[i][j]);
-    //   }
-    // }
-
-    // // calculate checksum of inputs
-    // double checksum_targets = 0;
-    // for (size_t i = 0; i < targets.size(); i++) {
-    //   for (size_t j = 0; j < targets[i].size(); j++) {
-    //     checksum_targets += targets[i][j];
-    //     // fprintf(stdout, "inputs: %f\n", inputs[i][j]);
-    //   }
-    // }
-
-    // double checksum_training = 0;
-    // for (size_t i = 0; i < deserializedTrainingData.size(); i++) {
-    //   for (size_t j = 0; j < deserializedTrainingData[i].size(); j++) {
-    //     checksum_training += deserializedTrainingData[i][j];
-    //     // fprintf(stdout, "inputs: %f\n", deserializedTrainingData[i][j]);
-    //   }
-    // }
-
-    // double checksum_testing = 0;
-    // for (size_t i = 0; i < deserializedTargetData.size(); i++) {
-    //   for (size_t j = 0; j < deserializedTargetData[i].size(); j++) {
-    //     checksum_testing += deserializedTargetData[i][j];
-    //     // fprintf(stdout, "inputs: %f\n", deserializedTrainingData[i][j]);
-    //   }
-    // }
-
-    // fprintf(stdout, "Checksum inputs: %f\n", checksum_inputs);
-    // fprintf(stdout, "Checksum training: %f\n", checksum_training);
-    // fprintf(stdout, "Checksum targets: %f\n", checksum_targets);
-    // fprintf(stdout, "Checksum testing: %f\n", checksum_testing);
 
     printf("-- RPC Invocation --\n");
     if (naa_invoke(handle)) {
@@ -922,24 +895,22 @@ void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
       
 
       std::vector<std::vector<std::vector<double>>> cpp_weights =
-          Python_Keras_get_weights(model_name);
-      fprintf(stdout, "size of cpp weights: %zu\n", cpp_weights.size());
-      for(size_t i = 0; i<cpp_weights.size(); i++){
-        fprintf(stdout, "size of cpp weights: %zu\n", cpp_weights[i].size());
-        fprintf(stdout, "size of cpp weights: %zu\n", cpp_weights[i][0].size());
-        }
+          Python_Keras_get_weights("model");
+      checkSumCppWeights(cpp_weights, "before");
 
-        Python_keras_set_weights(model_name, cpp_weights);
-      
-      
+      size_t size_cpp_weights = calculateStructSize(&cpp_weights, 'C');
+      // fprintf(stdout, "size of cpp weight vector: %zu\n", size_cpp_weights);
+      char *serializedCPPData = (char *)calloc(size_cpp_weights, sizeof(char));
+      int res = serializeCPPWeights(cpp_weights, serializedCPPData);
+      std::vector<std::vector<std::vector<double>>> cpp_weights_deserialized =
+          deserializeCPPWeights(serializedCPPData);
+      checkSumCppWeights(cpp_weights_deserialized, "after");
 
-    //  for (int i = 0; i < Eigen_model->weight_matrices[0].rows(); i++) {
-    //    for (int j = 0; j < Eigen_model->weight_matrices[0].cols(); j++) {
-    //      fprintf(stdout, "model: %f, deserializedModel: %f\n",
-    //              Eigen_model->weight_matrices[0](i, j),
-    //              deserializedModel.weight_matrices[0](i, j));
-    //    }
-    //  }
+
+      Python_keras_set_weights(model_name, cpp_weights_deserialized);
+
+      // TODO: switch from EigenModel to cpp_weighta
+      
   }
 
   printf("-- Cleaning Up --\n");
@@ -1160,9 +1131,6 @@ int Python_keras_set_weights(std::string model_name, std::vector<std::vector<std
         PyObject* shape_str = PyObject_Repr(shape);  // Get a string representation of the shape
         PyObject* shape_utf8 = PyUnicode_AsEncodedString(shape_str, "utf-8", "strict");
         const char* shape_bytes = PyBytes_AS_STRING(shape_utf8);
-        
-        // Print the shape
-        std::cout << "Shape of numpy array at index " << i << ": " << shape_bytes << std::endl;
 
         // Clean up
         Py_DECREF(shape);

@@ -12,6 +12,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
+
 include("CMake/POET_Scripts.cmake")
 include(FetchContent)
 
@@ -22,7 +23,7 @@ get_poet_version()
 find_package(MPI REQUIRED)
 find_package(RRuntime REQUIRED)
 
-set(USE_NAA "USE_NAA" ON)
+set(USE_NAA ON)
 FetchContent_Declare(naa-communication-prototype
   GIT_REPOSITORY gfz:naaice/naa-communication-prototype
   GIT_TAG        cmake-version)
@@ -32,6 +33,7 @@ if(USE_NAA)
   set(SOURCE_IP "10.3.10.41")
   set(TARGET_IP "10.3.10.42")
 endif()
+
 
 add_subdirectory(src)
 

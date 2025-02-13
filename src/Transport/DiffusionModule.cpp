@@ -31,6 +31,7 @@
 #include <Eigen/src/Core/util/Constants.h>
 #include <chrono>
 
+#include "poet.hpp"
 #include "tug/Boundary.hpp"
 #include "tug/Grid.hpp"
 #include "tug/Simulation.hpp"

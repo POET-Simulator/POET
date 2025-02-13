@@ -13,6 +13,7 @@ def initiate_model(model_file_path):
 def prediction_step(model, model_reactive, x, cluster_labels, batch_size):
     # Catch input size mismatches
     model_input_shape = model.input_shape[1:]
+    x = np.transpose(x)
     if model_input_shape != x.shape[1:]:
         print(f"Input data size {x.shape[1:]} does not match model input size {model_input_shape}",
               flush=True)        
@@ -33,8 +34,17 @@ def get_weights(model):
     weights = model.get_weights()
     return weights
 
+def set_weights(model, weights):
+    for i in range(len(weights)):
+        weights[i] = np.squeeze(weights[i])
+    model.set_weights(weights)
+    print("Weight succesful set!")
+    return 0
+
 def training_step(model, x, y, batch_size, epochs, 
                   output_file_path):
+    x = np.transpose(x)
+    y = np.transpose(y)
     history = model.fit(x, y, 
                         epochs=epochs,
                         batch_size=batch_size)

@@ -329,17 +329,8 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     Python_Keras_load_model(R["model_file_path"], R["model_reactive_file_path"],
                             params.use_clustering);
   
-    if (!params.disable_training) {
-      MSG("AI: Initialize training thread");
-      // TODO add naa_handle as optional parameter which is NULL per default
 
-      Python_Keras_training_thread(&Eigen_model, &Eigen_model_reactive, 
-                                   &Eigen_model_mutex, &training_data_buffer, 
-                                   &training_data_buffer_mutex,
-                                   &training_data_buffer_full, &start_training,
-                                   &end_training, params, handle);
-    }
-    if (!params.use_Keras_predictions) {
+    if (!params.use_Keras_predictions || params.use_naa) {
       // Initialize Eigen model for custom inference function
       MSG("AI: Use custom C++ prediction function");
       // Get Keras weights from Python
@@ -373,6 +364,17 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
         update_weights(&Eigen_model_reactive, cpp_weights);
       }
     }
+
+    if (!params.disable_training) {
+      MSG("AI: Initialize training thread");
+
+      Python_Keras_training_thread(&Eigen_model, &Eigen_model_reactive, 
+                                   &Eigen_model_mutex, &training_data_buffer, 
+                                   &training_data_buffer_mutex,
+                                   &training_data_buffer_full, &start_training,
+                                   &end_training, params, handle);
+    }
+
     MSG("AI: Surrogate model initialized");
   }
 
@@ -487,6 +489,8 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       std::vector<std::vector<double>> invalid_x = 
         R.parseEval("get_invalid_values(predictors_scaled, validity_vector)");
 
+      
+
       R.parseEval("target_scaled <- preprocess(state_C[ai_surrogate_species])");
       // R.parseEval("print(head(state_C[ai_surrogate_species], 30))");
       std::vector<std::vector<double>> invalid_y = 
@@ -500,6 +504,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       // count buffer size according to the cluster assignments
       int n_cluster_reactive = 0;
       size_t  buffer_size = training_data_buffer.x[0].size();
+      fprintf(stdout, "Buffer size: %zu\n", buffer_size);
       if (params.use_clustering) {
         cluster_labels_append(training_data_buffer.cluster_labels, cluster_labels,
                               R["validity_vector"]);
@@ -512,6 +517,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
          (buffer_size - n_cluster_reactive >= params.training_data_size)) {
         start_training = true;
         training_data_buffer_full.notify_one();
+        fprintf(stdout, "Signaling training thread\n");
       }
       training_data_buffer_mutex.unlock();
     }
@@ -762,7 +768,7 @@ int main(int argc, char *argv[]) {
       }
 
       MSG("Init done on process with rank " + std::to_string(MY_RANK));
-
+      
       Rcpp::List profiling = RunMasterLoop(R, run_params, diffusion, chemistry);
 
       MSG("finished simulation loop");
