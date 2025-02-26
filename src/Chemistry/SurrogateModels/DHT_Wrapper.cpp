@@ -21,8 +21,8 @@
 */
 
 #include "DHT_Wrapper.hpp"
-#include "DHT_ucx/DHT.h"
 #include "HashFunctions.hpp"
+#include "LUCX/DHT.h"
 
 #include <algorithm>
 #include <cassert>
@@ -69,8 +69,12 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
       .bcast_func_args = &ucx_bcast_mpi_args};
   dht_object = DHT_create(&dht_init);
 #else
-  dht_object = DHT_create(dht_comm, buckets_per_process, data_size, key_size,
-                          poet::md5_sum);
+  const DHT_init_t dht_init = {
+      .key_size = static_cast<int>(key_size),
+      .data_size = static_cast<int>(data_size),
+      .bucket_count = static_cast<unsigned int>(buckets_per_process),
+      .hash_func = &poet::md5_sum};
+  dht_object = DHT_create(&dht_init);
 #endif
 
   if (dht_object == nullptr) {
@@ -104,7 +108,7 @@ DHT_Wrapper::~DHT_Wrapper() {
 #ifdef POET_DHT_UCX
   DHT_free(dht_object, NULL, NULL, NULL);
 #else
-  DHT_free(dht_object, NULL, NULL);
+  DHT_free(dht_object, NULL);
 #endif
 }
 auto DHT_Wrapper::checkDHT(WorkPackage &work_package)

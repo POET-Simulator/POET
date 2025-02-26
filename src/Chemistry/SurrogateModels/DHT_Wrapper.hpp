@@ -39,12 +39,7 @@
 #include <utility>
 #include <vector>
 
-#ifdef POET_DHT_UCX
-#include <DHT_ucx/DHT.h>
-#include <DHT_ucx/UCX_bcast_functions.h>
-#else
-#include <DHT_mpi/DHT.h>
-#endif
+#include <LUCX/DHT.h>
 
 #include <mpi.h>
 
