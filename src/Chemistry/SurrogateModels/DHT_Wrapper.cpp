@@ -73,7 +73,8 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
       .key_size = static_cast<int>(key_size),
       .data_size = static_cast<int>(data_size),
       .bucket_count = static_cast<unsigned int>(buckets_per_process),
-      .hash_func = &poet::md5_sum};
+      .hash_func = &poet::md5_sum,
+      .comm = dht_comm};
   dht_object = DHT_create(&dht_init);
 #endif
 
