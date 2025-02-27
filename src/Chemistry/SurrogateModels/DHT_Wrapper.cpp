@@ -140,11 +140,9 @@ auto DHT_Wrapper::checkDHT(WorkPackage &work_package)
       break;
     case DHT_READ_MISS:
       break;
-#if POET_DHT_UCX
     case DHT_READ_CORRUPT:
       this->corrupt_buckets++;
       break;
-#endif
     }
   }
 
