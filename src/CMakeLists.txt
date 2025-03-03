@@ -53,7 +53,7 @@ target_link_libraries(poet_coarse PRIVATE
   PhreeqcRM 
   tug
   OpenSSL::Crypto
-  LMPI_DHT_OLD
+  MPIDHT::coarse
 )
 target_include_directories(poet_coarse PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 install(TARGETS poet_coarse DESTINATION bin)
@@ -66,7 +66,7 @@ target_link_libraries(poet_fine PRIVATE
   PhreeqcRM 
   tug
   OpenSSL::Crypto
-  LFINE_LOCK
+  MPIDHT::fine
 )
 target_include_directories(poet_fine PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 install(TARGETS poet_fine DESTINATION bin)
@@ -79,7 +79,7 @@ target_link_libraries(poet_no PRIVATE
   PhreeqcRM 
   tug
   OpenSSL::Crypto
-  LMPI_DHT
+  MPIDHT::nolock
 )
 target_include_directories(poet_no PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 install(TARGETS poet_no DESTINATION bin)

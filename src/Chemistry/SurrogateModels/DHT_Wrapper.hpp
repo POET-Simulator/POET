@@ -41,6 +41,10 @@
 
 #include <LUCX/DHT.h>
 
+#ifdef POET_DHT_UCX
+#include <LUCX/Bootstrap.h>
+#endif
+
 #include <mpi.h>
 
 namespace poet {

@@ -107,7 +107,7 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
 DHT_Wrapper::~DHT_Wrapper() {
   // free DHT
 #ifdef POET_DHT_UCX
-  DHT_free(dht_object, NULL, NULL, NULL);
+  DHT_free(dht_object, NULL);
 #else
   DHT_free(dht_object, NULL);
 #endif
