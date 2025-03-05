@@ -23,15 +23,21 @@ get_poet_version()
 find_package(MPI REQUIRED)
 find_package(RRuntime REQUIRED)
 
-set(USE_NAA ON)
+option(USE_NAA "Use NAA for communication" OFF)
+
 FetchContent_Declare(naa-communication-prototype
   GIT_REPOSITORY gfz:naaice/naa-communication-prototype
   GIT_TAG        cmake-version)
 
+
+FetchContent_MakeAvailable(naa-communication-prototype)
+set(SOURCE_IP "10.3.10.41")
+set(TARGET_IP "10.3.10.42")
+
 if(USE_NAA)
-  FetchContent_MakeAvailable(naa-communication-prototype)
-  set(SOURCE_IP "10.3.10.41")
-  set(TARGET_IP "10.3.10.42")
+  set(USE_NAA_VALUE true)
+else()
+  set(USE_NAA_VALUE false)
 endif()
 
 
