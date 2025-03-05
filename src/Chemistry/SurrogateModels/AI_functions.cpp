@@ -735,22 +735,28 @@ void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
 
   // initialize models with weights from pretrained keras model
   // declare memory regions for model weights, training and target data
-  Eigen_model_mutex->lock();
-
   std::vector<std::vector<std::vector<double>>> modelWeight =
       Python_Keras_get_weights("model");
-  std::vector<std::vector<std::vector<double>>> modelWeightReactive;
-  update_weights(Eigen_model, modelWeight);
 
-  if(params.use_clustering == true){
-    modelWeightReactive = Python_Keras_get_weights("model_reactive"); // ? correct
-    update_weights(Eigen_model_reactive, modelWeightReactive);
+  checkSumCppWeights(modelWeight, "model");
+
+  // ------- old serialization --------
+  // Eigen_model_mutex->lock();
+
+  // std::vector<std::vector<std::vector<double>>> modelWeight =
+  //     Python_Keras_get_weights("model");
+  // std::vector<std::vector<std::vector<double>>> modelWeightReactive;
+  // update_weights(Eigen_model, modelWeight);
+
+  // if(params.use_clustering == true){
+  //   modelWeightReactive = Python_Keras_get_weights("model_reactive"); // ? correct
+  //   update_weights(Eigen_model_reactive, modelWeightReactive);
   
-      const auto start_t = std::chrono::high_resolution_clock::now();
+  //     const auto start_t = std::chrono::high_resolution_clock::now();
     
-      }
+  //     }
 
-  Eigen_model_mutex->unlock();
+  // Eigen_model_mutex->unlock();
   
 
     // Initialize training data input and targets
@@ -762,10 +768,14 @@ void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
       std::vector<double>(params.training_data_size));
 
   // determine size for required memory regions
-  size_t modelSize = calculateStructSize(Eigen_model, 'E');
-  size_t modelSizeReactive = calculateStructSize(Eigen_model_reactive, 'E');
+  // size_t modelSize = calculateStructSize(Eigen_model, 'E');
+  // size_t modelSizeReactive = calculateStructSize(Eigen_model_reactive, 'E');
 
-  modelSize = modelSize > modelSizeReactive ? modelSize : modelSizeReactive;
+  // TODO: reactive/non-reactive model
+  size_t modelSize = calculateStructSize(&modelWeight, 'C');
+  // size_t modelSizeReactive = calculateStructSize(&modelWeightReactive, 'C');
+
+  // modelSize = modelSize > modelSizeReactive ? modelSize : modelSizeReactive;
 
   size_t trainingDataSize = calculateStructSize(&inputs, 'T');
   size_t targetDataSize = calculateStructSize(&targets, 'T');
@@ -794,7 +804,7 @@ void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
 
   // create memory regions
   struct naa_param_t input_regions[] = {
-      {(void *)serializedModel, modelSize},
+      {(void *)serializedModel, modelSize, false},
       {(void *)serializedTrainingData, trainingDataSize},
       {(void *)serializedTargetData, targetDataSize}};
 
@@ -893,25 +903,42 @@ void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
     // three memory regions: model weights, predicted data, true data
     // model weight region is an input and output memory region
     
+    // ------ old serialization ------
+    // auto start_serialization_weights_t = std::chrono::high_resolution_clock::now();
+    // if(train_cluster == 1){
+    //   int res = serializeModelWeights(Eigen_model_reactive, serializedModel);
+    // } else {
+    //   int res = serializeModelWeights(Eigen_model, serializedModel);
+    // }
+    // auto end_serialization_weights_t = std::chrono::high_resolution_clock::now();
+    // std::chrono::nanoseconds difference_serialization_weights = end_serialization_weights_t - start_serialization_weights_t;
+
+
     auto start_serialization_weights_t = std::chrono::high_resolution_clock::now();
-    if(train_cluster == 1){
-      int res = serializeModelWeights(Eigen_model_reactive, serializedModel);
-    } else {
-      int res = serializeModelWeights(Eigen_model, serializedModel);
-    }
+    // TODO: reactive/non-reactive model
+    // if(train_cluster == 1){
+    //   int res = serializeCPPWeights(modelWeight, serializedModel);
+    // }
+    // else {
+    //   int res = serializeCPPWeights(modelWeightReactive, serializedModel);
+    // }
+    int res = serializeCPPWeights(modelWeight, serializedModel);
     auto end_serialization_weights_t = std::chrono::high_resolution_clock::now();
     std::chrono::nanoseconds difference_serialization_weights = end_serialization_weights_t - start_serialization_weights_t;
 
-    // checksum serializeModel
-    double checksum_model = 0;
-    for(size_t i = 0; i < Eigen_model->weight_matrices.size(); i++){
-        checksum_model += Eigen_model->weight_matrices[i].sum();
-    }
-    for(size_t j=0; j<Eigen_model->biases.size(); j++){
-      checksum_model += Eigen_model->biases[j].sum();
-    }
 
-    fprintf(stdout, "Checksum model: %f\n", checksum_model);
+    // checksum serializeModel
+
+    // ------- old serialization -------
+    // double checksum_model = 0;
+    // for(size_t i = 0; i < Eigen_model->weight_matrices.size(); i++){
+    //     checksum_model += Eigen_model->weight_matrices[i].sum();
+    // }
+    // for(size_t j=0; j<Eigen_model->biases.size(); j++){
+    //   checksum_model += Eigen_model->biases[j].sum();
+    // }
+
+    // fprintf(stdout, "Checksum model: %f\n", checksum_model);
 
     auto start_serialization_data_t = std::chrono::high_resolution_clock::now();
     int res1 = serializeTrainingData(&inputs, serializedTrainingData);
@@ -936,47 +963,61 @@ void naa_training(EigenModel *Eigen_model, EigenModel *Eigen_model_reactive,
            status.bytes_received, status.naa_error);
 
      // update model weights with received weights
-     auto start_deserialization_t = std::chrono::high_resolution_clock::now();
-     EigenModel deserializedModel =
-         deserializeModelWeights(serializedModel, modelSize);
+    // -------- old serialization ---------
+    //  auto start_deserialization_t = std::chrono::high_resolution_clock::now();
+    //  EigenModel deserializedModel =
+    //      deserializeModelWeights(serializedModel, modelSize);
 
-      Eigen_model_mutex->lock();
+    //   Eigen_model_mutex->lock();
 
-      Eigen_model->weight_matrices = deserializedModel.weight_matrices; 
-      Eigen_model->biases = deserializedModel.biases;
+    //   Eigen_model->weight_matrices = deserializedModel.weight_matrices; 
+    //   Eigen_model->biases = deserializedModel.biases;
 
-      Eigen_model_mutex->unlock();
+    //   Eigen_model_mutex->unlock();
 
-      auto end_deserialization_t = std::chrono::high_resolution_clock::now();
-      std::chrono::nanoseconds difference_deserialization_t = end_deserialization_t - start_deserialization_t;
+    //   auto end_deserialization_t = std::chrono::high_resolution_clock::now();
+    //   std::chrono::nanoseconds difference_deserialization_t = end_deserialization_t - start_deserialization_t;
 
-      std::vector<std::vector<std::vector<double>>> cpp_weights =
-          Python_Keras_get_weights("model");
-      checkSumCppWeights(cpp_weights, "before");
+      std::vector<std::vector<std::vector<double>>> modelWeightsDeserialized =
+        deserializeCPPWeights(serializedModel);
 
-      auto start_deserialization2_t = std::chrono::high_resolution_clock::now();
-      size_t size_cpp_weights = calculateStructSize(&cpp_weights, 'C');
-      char *serializedCPPData = (char *)calloc(size_cpp_weights, sizeof(char));
-      int res = serializeCPPWeights(cpp_weights, serializedCPPData);
-      std::vector<std::vector<std::vector<double>>> cpp_weights_deserialized =
-          deserializeCPPWeights(serializedCPPData);
+    checkSumCppWeights(modelWeightsDeserialized, "model after");
+
+      // -------- old serialization ----------
+      // std::vector<std::vector<std::vector<double>>> cpp_weights =
+      //     Python_Keras_get_weights("model");
+      // checkSumCppWeights(cpp_weights, "before");
+
+      // auto start_deserialization2_t = std::chrono::high_resolution_clock::now();
+      // size_t size_cpp_weights = calculateStructSize(&cpp_weights, 'C');
+      // char *serializedCPPData = (char *)calloc(size_cpp_weights, sizeof(char));
+      // int res = serializeCPPWeights(cpp_weights, serializedCPPData);
+      // std::vector<std::vector<std::vector<double>>> cpp_weights_deserialized =
+      //     deserializeCPPWeights(serializedCPPData);
       // checkSumCppWeights(cpp_weights_deserialized, "after");
 
-      Python_keras_set_weights(model_name, cpp_weights_deserialized);
-      auto end_deserialization2_t = std::chrono::high_resolution_clock::now();
-      std::chrono::nanoseconds update_keras_model = end_deserialization2_t - start_deserialization2_t;
+      // auto end_deserialization2_t = std::chrono::high_resolution_clock::now();
+      // std::chrono::nanoseconds update_keras_model = end_deserialization2_t - start_deserialization2_t;
+      
+      Python_keras_set_weights(model_name, modelWeightsDeserialized);
+
+      // TODO reactive/non-reactive
+      
+      Eigen_model_mutex->lock();
+      update_weights(Eigen_model, modelWeightsDeserialized);
+      Eigen_model_mutex->unlock();
 
       #ifdef NAA_MEASUREMENT
-      std::chrono::nanoseconds difference_serialization =
-          difference_calloc + difference_serialization_weights +
-          difference_serialization_data + difference_deserialization_t +
-          update_keras_model;
+      // std::chrono::nanoseconds difference_serialization =
+      //     difference_calloc + difference_serialization_weights +
+      //     difference_serialization_data + difference_deserialization_t +
+      //     update_keras_model;
 
-      fprintf(logfile, "%d, %zu, %zu, %zu, %ld\n", training_data_buffer->n_training_runs, modelSize, trainingDataSize, targetDataSize, difference_serialization.count());
-      if(training_data_buffer->n_training_runs == 10){
-        fclose(logfile);
-        exit(0);
-      }
+      // fprintf(logfile, "%d, %zu, %zu, %zu, %ld\n", training_data_buffer->n_training_runs, modelSize, trainingDataSize, targetDataSize, difference_serialization.count());
+      // if(training_data_buffer->n_training_runs == 10){
+      //   fclose(logfile);
+      //   exit(0);
+      // }
       #endif
   }
 
