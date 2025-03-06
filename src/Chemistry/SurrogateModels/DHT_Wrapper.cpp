@@ -21,6 +21,7 @@
 
 #include "DHT_Wrapper.hpp"
 
+#include "Chemistry/SurrogateModels/HashFunctions.hpp"
 #include "Init/InitialList.hpp"
 #include "Rounding.hpp"
 
@@ -33,6 +34,8 @@
 #include <cstring>
 #include <stdexcept>
 #include <vector>
+
+#include <LUCX/DHT.h>
 
 using namespace std;
 
@@ -48,7 +51,8 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
     : key_count(key_indices.size()), data_count(data_count),
       input_key_elements(key_indices), communicator(dht_comm),
       key_species(key_species), output_names(_output_names), hooks(_hooks),
-      with_interp(_with_interp), has_het_ids(_has_het_ids) {
+      with_interp(_with_interp), has_het_ids(_has_het_ids),
+      dht_object(new DHT) {
   // initialize DHT object
   // key size = count of key elements + timestep
   uint32_t key_size = (key_count + 1) * sizeof(Lookup_Keyelement);
@@ -57,8 +61,9 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
       sizeof(double);
   uint32_t buckets_per_process =
       static_cast<std::uint32_t>(dht_size / (data_size + key_size));
-  dht_object = DHT_create(dht_comm, buckets_per_process, data_size, key_size,
-                          &poet::Murmur2_64A);
+
+  int status = DHT_create(key_size, data_size, buckets_per_process,
+                          &poet::Murmur2_64A, dht_comm, dht_object.get());
 
   dht_signif_vector = key_species.getValues();
 
@@ -82,10 +87,8 @@ DHT_Wrapper::DHT_Wrapper(MPI_Comm dht_comm, std::uint64_t dht_size,
   }
 }
 
-DHT_Wrapper::~DHT_Wrapper() {
-  // free DHT
-  DHT_free(dht_object, NULL, NULL);
-}
+DHT_Wrapper::~DHT_Wrapper() { DHT_free(this->dht_object.get(), NULL); }
+
 auto DHT_Wrapper::checkDHT(WorkPackage &work_package)
     -> const DHT_ResultObject & {
 
@@ -100,8 +103,8 @@ auto DHT_Wrapper::checkDHT(WorkPackage &work_package)
     auto &key_vector = dht_results.keys[i];
 
     // overwrite input with data from DHT, IF value is found in DHT
-    int res =
-        DHT_read(this->dht_object, key_vector.data(), bucket_writer.data());
+    int res = DHT_read(this->dht_object.get(), key_vector.data(),
+                       bucket_writer.data());
 
     switch (res) {
     case DHT_SUCCESS:
@@ -159,7 +162,7 @@ void DHT_Wrapper::fillDHT(const WorkPackage &work_package) {
     // fuzz data (round, logarithm etc.)
 
     // insert simulated data with fuzzed key into DHT
-    int res = DHT_write(this->dht_object, key.data(),
+    int res = DHT_write(this->dht_object.get(), key.data(),
                         const_cast<double *>(data.data()), &proc, &index);
 
     dht_results.locations[i] = {proc, index};
@@ -240,12 +243,12 @@ DHT_Wrapper::ratesToOutput(const std::vector<double> &dht_data,
 // }
 
 int DHT_Wrapper::tableToFile(const char *filename) {
-  int res = DHT_to_file(dht_object, filename);
+  int res = DHT_to_file(dht_object.get(), filename);
   return res;
 }
 
 int DHT_Wrapper::fileToTable(const char *filename) {
-  int res = DHT_from_file(dht_object, filename);
+  int res = DHT_from_file(dht_object.get(), filename);
   if (res != DHT_SUCCESS)
     return res;
 
@@ -259,7 +262,7 @@ int DHT_Wrapper::fileToTable(const char *filename) {
 void DHT_Wrapper::printStatistics() {
   int res;
 
-  res = DHT_print_statistics(dht_object);
+  res = DHT_print_statistics(dht_object.get());
 
   if (res != DHT_SUCCESS) {
     // MPI ERROR ... WHAT TO DO NOW?

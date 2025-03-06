@@ -246,17 +246,6 @@ void poet::ChemistryModule::WorkerPostIter(MPI_Status &prope_status,
           << std::setw(this->file_pad) << iteration << ".pht";
       interp->dumpPHTState(out.str());
     }
-
-    const auto max_mean_idx =
-        DHT_get_used_idx_factor(this->interp->getDHTObject(), 1);
-
-    if (max_mean_idx >= 2) {
-      DHT_flush(this->interp->getDHTObject());
-      DHT_flush(this->dht->getDHT());
-      if (this->comm_rank == 2) {
-        std::cout << "Flushed both DHT and PHT!\n\n";
-      }
-    }
   }
 
   RInsidePOET::getInstance().parseEvalQ("gc()");
