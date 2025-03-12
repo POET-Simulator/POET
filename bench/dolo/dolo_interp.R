@@ -41,36 +41,36 @@ diffusion_setup <- list(
 )
 
 check_sign_cal_dol_dht <- function(old, new) {
-    if ((old["Calcite"] == 0) != (new["Calcite"] == 0)) {
-        return(TRUE)
-    }
-    if ((old["Dolomite"] == 0) != (new["Dolomite"] == 0)) {
-        return(TRUE)
-    }
+    # if ((old["Calcite"] == 0) != (new["Calcite"] == 0)) {
+    #     return(TRUE)
+    # }
+    # if ((old["Dolomite"] == 0) != (new["Dolomite"] == 0)) {
+    #     return(TRUE)
+    # }
     return(FALSE)
 }
 
-fuzz_input_dht_keys <- function(input) {
-    dht_species <- c(
-        "H" = 3,
-        "O" = 3,
-        "Charge" = 3,
-        "C(4)" = 6,
-        "Ca" = 6,
-        "Cl" = 3,
-        "Mg" = 5,
-        "Calcite" = 4,
-        "Dolomite" = 4
-    )
-    return(input[names(dht_species)])
-}
+# fuzz_input_dht_keys <- function(input) {
+#     dht_species <- c(
+#         "H" = 3,
+#         "O" = 3,
+#         "Charge" = 3,
+#         "C" = 6,
+#         "Ca" = 6,
+#         "Cl" = 3,
+#         "Mg" = 5,
+#         "Calcite" = 4,
+#         "Dolomite" = 4
+#     )
+#     return(input[names(dht_species)])
+# }
 
 check_sign_cal_dol_interp <- function(to_interp, data_set) {
     dht_species <- c(
         "H" = 3,
         "O" = 3,
         "Charge" = 3,
-        "C(4)" = 6,
+        "C" = 6,
         "Ca" = 6,
         "Cl" = 3,
         "Mg" = 5,
@@ -95,7 +95,7 @@ check_neg_cal_dol <- function(result) {
 # significant digits)
 
 pht_species <- c(
-    "C(4)" = 3,
+    "C" = 3,
     "Ca" = 3,
     "Mg" = 2,
     "Calcite" = 2,
@@ -107,7 +107,7 @@ chemistry_setup <- list(
         "H" = 3,
         "O" = 3,
         "Charge" = 3,
-        "C(4)" = 6,
+        "C" = 6,
         "Ca" = 6,
         "Cl" = 3,
         "Mg" = 5,
@@ -117,7 +117,7 @@ chemistry_setup <- list(
     pht_species = pht_species,
     hooks = list(
         dht_fill = check_sign_cal_dol_dht,
-        dht_fuzz = fuzz_input_dht_keys,
+        # dht_fuzz = fuzz_input_dht_keys,
         interp_pre = check_sign_cal_dol_interp,
         interp_post = check_neg_cal_dol
     )

@@ -144,7 +144,7 @@ void DHT_Wrapper::fillDHT(const WorkPackage &work_package) {
       NamedVector<double> old_values(output_names, work_package.input[i]);
       NamedVector<double> new_values(output_names, work_package.output[i]);
 
-      if (hooks.dht_fill(old_values, new_values)) {
+      if (Rcpp::as<bool>(hooks.dht_fill(old_values, new_values))) {
         continue;
       }
     }
