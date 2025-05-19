@@ -166,6 +166,8 @@ public:
 
   enum result_status { RES_OK, INSUFFICIENT_DATA, NOT_NEEDED };
 
+  DHT *getDHTObject() { return this->pht->getDHTObject(); }
+
   struct InterpolationResult {
     std::vector<std::vector<double>> results;
     std::vector<result_status> status;

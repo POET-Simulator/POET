@@ -105,6 +105,8 @@ DHT *DHT_create(MPI_Comm comm, uint64_t size, unsigned int data_size,
   object->index_count = 9 - (index_bytes / 8);
   object->index = (uint64_t *)malloc((object->index_count) * sizeof(uint64_t));
   object->mem_alloc = mem_alloc;
+  object->sum_idx = 0;
+  object->cnt_idx = 0;
 
   // if set, initialize dht_stats
 #ifdef DHT_STATISTICS
@@ -188,6 +190,9 @@ int DHT_write_accumulate(DHT *table, const void *send_key, int data_size,
       break;
     }
   }
+
+  table->cnt_idx += 1;
+  table->sum_idx += (i + 1);
 
   if (result == DHT_WRITE_SUCCESS_WITH_EVICTION) {
     memset((char *)table->send_entry + 1 + table->key_size, '\0',
@@ -278,6 +283,9 @@ int DHT_write(DHT *table, void *send_key, void *send_data, uint32_t *proc,
       break;
     }
   }
+
+  table->cnt_idx += 1;
+  table->sum_idx += (i + 1);
 
   // put data to DHT (with last selected index by value i)
   if (MPI_Put(table->send_entry, 1 + table->data_size + table->key_size,
@@ -546,6 +554,41 @@ int DHT_free(DHT *table, int *eviction_counter, int *readerror_counter) {
   free(table->stats);
 #endif
   free(table);
+
+  return DHT_SUCCESS;
+}
+
+float DHT_get_used_idx_factor(DHT *table, int with_reset) {
+  int rank;
+  MPI_Comm_rank(table->communicator, &rank);
+
+  float my_avg_idx = (float)table->sum_idx / (float)table->cnt_idx;
+
+  float max_mean_index;
+
+  MPI_Reduce(&my_avg_idx, &max_mean_index, 1, MPI_FLOAT, MPI_MAX, 0,
+             table->communicator);
+
+  MPI_Bcast(&max_mean_index, 1, MPI_FLOAT, 0, table->communicator);
+
+  if (!!with_reset) {
+    table->sum_idx = 0;
+    table->cnt_idx = 0;
+  }
+
+  return max_mean_index;
+}
+
+int DHT_flush(DHT *table) {
+  // make sure all processes are synchronized
+  MPI_Barrier(table->communicator);
+
+  // wipe local memory with zeros
+  memset(table->mem_alloc, '\0',
+         table->table_size * (1 + table->data_size + table->key_size));
+
+  table->sum_idx = 0;
+  table->cnt_idx = 0;
 
   return DHT_SUCCESS;
 }

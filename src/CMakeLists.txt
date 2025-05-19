@@ -1,7 +1,4 @@
-add_library(POETLib)
-
-target_sources(POETLib 
-  PRIVATE
+add_library(POETLib
   Init/InitialList.cpp 
   Init/GridInit.cpp 
   Init/DiffusionInit.cpp

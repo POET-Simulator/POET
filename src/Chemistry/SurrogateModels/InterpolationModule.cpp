@@ -76,6 +76,11 @@ void InterpolationModule::tryInterpolation(WorkPackage &work_package) {
   const auto dht_results = this->dht_instance.getDHTResults();
 
   for (int wp_i = 0; wp_i < work_package.size; wp_i++) {
+    if (work_package.input[wp_i][0] != 2) {
+      interp_result.status[wp_i] = INSUFFICIENT_DATA;
+      continue;
+    }
+
     if (work_package.mapping[wp_i] != CHEM_PQC) {
       interp_result.status[wp_i] = NOT_NEEDED;
       continue;
@@ -140,7 +145,7 @@ void InterpolationModule::tryInterpolation(WorkPackage &work_package) {
 
     if (hooks.interp_post.isValid()) {
       NamedVector<double> nv_result(this->out_names, work_package.output[wp_i]);
-      if (hooks.interp_post(nv_result)) {
+      if (Rcpp::as<bool>(hooks.interp_post(nv_result))) {
         interp_result.status[wp_i] = INSUFFICIENT_DATA;
         continue;
       }

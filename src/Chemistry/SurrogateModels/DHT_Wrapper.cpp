@@ -133,6 +133,10 @@ void DHT_Wrapper::fillDHT(const WorkPackage &work_package) {
       continue;
     }
 
+    if (work_package.input[i][0] != 2) {
+      continue;
+    }
+
     // check if calcite or dolomite is absent and present, resp.n and vice
     // versa in input/output. If this is the case -> Do not write to DHT!
     // HACK: hardcoded, should be fixed!
@@ -140,7 +144,7 @@ void DHT_Wrapper::fillDHT(const WorkPackage &work_package) {
       NamedVector<double> old_values(output_names, work_package.input[i]);
       NamedVector<double> new_values(output_names, work_package.output[i]);
 
-      if (hooks.dht_fill(old_values, new_values)) {
+      if (Rcpp::as<bool>(hooks.dht_fill(old_values, new_values))) {
         continue;
       }
     }
