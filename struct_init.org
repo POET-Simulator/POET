@@ -1,0 +1,39 @@
+Grid/MemoryOrder (single integer 0=zyx (colmaj); 1=xyz (rowmaj))  
+Grid/Dimensionality (single integer)
+Grid/Cells (uint32_t length=Grid/Dimensionality)
+Grid/Size  (double length=Grid/Dimensionality)
+Grid/ConstantCells (uint32_t array)
+Grid/Porosity/Length  (int 1 (=homog))
+                      (int prod(Grid/Cells))
+Grid/Porosity/Data (double length=Grid/Porosity/Length)
+
+PhreeqcMatrix/Names (string vector)
+PhreeqcMatrix/Data  (double Matrix length(Names)*NumberOfPQC_IDs)
+
+InitialConditions/Names (vector of string (=colnames PhreeqcMatrix))
+InitialConditions/Data  (vector (length Names) of arrays (double length=prod(Cells)))
+
+Diffusion/Names (string vector) transported solutes
+Diffusion/Boundaries/N int matrix N*3=(ind_bound, type, phreeqc_id)  
+Diffusion/Boundaries/W ''
+Diffusion/Boundaries/S ''
+Diffusion/Boundaries/E ''
+Diffusion/Boundaries/T ''
+Diffusion/Boundaries/B ''
+
+Diffusion/InnerBoundaries placeholder
+Diffusion/Alpha
+Diffusion/Alpha/x (double length=1 (=homog))
+                  (double length=prod(Grid/Cells))
+Diffusion/Alpha/y
+Diffusion/Alpha/z
+
+Chemistry
+Chemistry/Database (string)
+Chemistry/Input    (string)
+Chemistry/PhreeqcIDs (int vector)
+Chemistry/Options
+Chemistry/Options/H0O0      (bool)
+Chemistry/Options/WithRedox (bool)
+
+
