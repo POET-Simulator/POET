@@ -74,7 +74,7 @@ usual:
 
 ```sh
 mkdir build && cd build
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
 ```
 
 This will create the directory `build` and processes the CMake files
@@ -118,7 +118,7 @@ $ cd <POET_dir>
 
 # Build process
 $ mkdir build && cd build
-$ cmake -DCMAKE_INSTALL_PREFIX=/home/<user>/poet ..
+$ cmake -DCMAKE_INSTALL_PREFIX=/home/<user>/poet -DCMAKE_BUILD_TYPE=Release ..
 $ make -j<max_numprocs>
 $ make install
 ```
