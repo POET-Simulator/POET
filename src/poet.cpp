@@ -26,6 +26,8 @@
 #include "CLI/CLI.hpp"
 #include "Chemistry/ChemistryModule.hpp"
 #include "DataStructures/Field.hpp"
+#include "IO/Datatypes.hpp"
+#include "IO/HDF5Functions.hpp"
 #include "Init/InitialList.hpp"
 #include "Transport/DiffusionModule.hpp"
 
@@ -402,6 +404,18 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
     // --ignore-results is not given (and thus the R variable
     // store_result is TRUE)
     call_master_iter_end(R, diffusion.getField(), chem.getField());
+
+    // TODO: write checkpoint
+    // checkpoint struct --> field and iteration
+
+    if (iter == 1) {
+      write_checkpoint("checkpoint1.hdf5",
+                       {.field = chem.getField(), .iteration = iter});
+    } else if (iter == 2) {
+      Checkpoint_s checkpoint_read{.field = chem.getField()};
+      read_checkpoint("checkpoint1.hdf5", checkpoint_read);
+      iter = checkpoint_read.iteration;
+    }
 
     diffusion.getField().update(chem.getField());
 
