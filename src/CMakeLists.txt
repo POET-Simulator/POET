@@ -24,7 +24,7 @@ elseif (POET_TUG_APPROACH STREQUAL "Explicit")
   target_compile_definitions(POETLib PRIVATE POET_TUG_FTCS)
 endif()
 
-target_include_directories(POETLib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(POETLib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(
   POETLib 
   PUBLIC RRuntime

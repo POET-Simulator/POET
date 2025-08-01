@@ -12,6 +12,8 @@
 #include "SurrogateModels/DHT_Wrapper.hpp"
 #include "SurrogateModels/Interpolation.hpp"
 
+#include "poet.hpp"
+
 #include "PhreeqcRunner.hpp"
 #include <array>
 #include <cstdint>
@@ -249,6 +251,8 @@ public:
 
   std::vector<int> ai_surrogate_validity_vector;
 
+  RuntimeParameters *runtime_params = nullptr;
+
 protected:
   void initializeDHT(uint32_t size_mb,
                      const NamedVector<std::uint32_t> &key_species,
@@ -275,7 +279,7 @@ protected:
     CHEM_AI_BCAST_VALIDITY
   };
 
-  enum { LOOP_WORK, LOOP_END };
+  enum { LOOP_WORK, LOOP_END, WITH_REL_ERROR };
 
   enum {
     WORKER_PHREEQC,
@@ -316,7 +320,7 @@ protected:
 
   void MasterSendPkgs(worker_list_t &w_list, workpointer_t &work_pointer,
                       int &pkg_to_send, int &count_pkgs, int &free_workers,
-                      double dt, uint32_t iteration,
+                      double dt, uint32_t iteration, uint32_t control_iter,
                       const std::vector<uint32_t> &wp_sizes_vector);
   void MasterRecvPkgs(worker_list_t &w_list, int &pkg_to_recv, bool to_send,
                       int &free_workers);
@@ -373,7 +377,7 @@ protected:
 
   bool ai_surrogate_enabled{false};
 
-  static constexpr uint32_t BUFFER_OFFSET = 5;
+  static constexpr uint32_t BUFFER_OFFSET = 6;
 
   inline void ChemBCast(void *buf, int count, MPI_Datatype datatype) const {
     MPI_Bcast(buf, count, datatype, 0, this->group_comm);

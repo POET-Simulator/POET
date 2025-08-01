@@ -41,6 +41,7 @@ static const inline std::string r_runtime_parameters = "mysetup";
 struct RuntimeParameters {
   std::string out_dir;
   std::vector<double> timesteps;
+  std::vector<double> species_epsilon;
 
   Rcpp::List init_params;
 
@@ -50,6 +51,9 @@ struct RuntimeParameters {
   std::string out_ext;
 
   bool print_progress = false;
+
+  bool control_iteration_active = false;
+  std::uint32_t control_iteration = 25;
 
   static constexpr std::uint32_t WORK_PACKAGE_SIZE_DEFAULT = 32;
   std::uint32_t work_package_size = WORK_PACKAGE_SIZE_DEFAULT;

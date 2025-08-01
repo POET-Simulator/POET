@@ -249,6 +249,10 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
 
     params.timesteps =
         Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("timesteps"));
+    params.control_iteration = 
+        Rcpp::as<int>(global_rt_setup->operator[]("control_iteration"));
+    params.species_epsilon = 
+        Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("species_epsilon"));
 
   } catch (const std::exception &e) {
     ERRMSG("Error while parsing R scripts: " + std::string(e.what()));
@@ -277,7 +281,7 @@ void call_master_iter_end(RInside &R, const Field &trans, const Field &chem) {
   *global_rt_setup = R["setup"];
 }
 
-static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
+static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
                                 DiffusionModule &diffusion,
                                 ChemistryModule &chem) {
 
@@ -291,8 +295,12 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   R["TMP_PROPS"] = Rcpp::wrap(chem.getField().GetProps());
 
   /* SIMULATION LOOP */
+
   double dSimTime{0};
   for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
+
+    params.control_iteration_active = (iter % params.control_iteration == 0);
+    
     double start_t = MPI_Wtime();
 
     const double &dt = params.timesteps[iter - 1];
@@ -307,6 +315,8 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
     /* run transport */
     diffusion.simulate(dt);
+
+    chem.runtime_params = &params;
 
     chem.getField().update(diffusion.getField());
 
