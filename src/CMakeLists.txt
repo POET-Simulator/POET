@@ -22,6 +22,7 @@ add_library(POETLib
   Init/DiffusionInit.cpp
   Init/ChemistryInit.cpp
   IO/checkpoint.cpp
+  IO/StatsIO.cpp
   DataStructures/Field.cpp
   Transport/DiffusionModule.cpp
   Chemistry/ChemistryModule.cpp

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <iomanip>
 #include <mpi.h>
 #include <vector>
 
@@ -171,6 +172,61 @@ std::vector<uint32_t> poet::ChemistryModule::GetWorkerPHTCacheHits() const
            this->group_comm, NULL);
 
   return ret;
+}
+void poet::ChemistryModule::computeStats(const std::vector<double> &pqc_vector,
+                                         const std::vector<double> &sur_vector,
+                                         uint32_t size_per_prop, uint32_t species_count,
+                                         error_stats &stats)
+{
+  for (uint32_t i = 0; i < species_count; i++)
+  {
+    double err_sum = 0.0;
+    double sqr_err_sum = 0.0;
+    int count = 0;
+
+    for (uint32_t j = 0; j < size_per_prop; j++)
+    {
+
+      double pqc_value = pqc_vector[i * size_per_prop + j];
+      double sur_value = sur_vector[i * size_per_prop + j];
+
+if (i == 0 && (j % 10000 == 0)) {
+    std::cout << "i=" << i << ", j=" << j
+              << ", idx=" << i * size_per_prop + j
+              << ", pqc=" << pqc_value
+              << ", sur=" << sur_value
+              << std::endl;
+}
+
+      if (pqc_value != 0)
+      {
+        double rel_err = (pqc_value - sur_value) / pqc_value;
+        err_sum += std::abs(rel_err);
+        sqr_err_sum += rel_err * rel_err;
+        count++;
+      }
+      if (pqc_value == 0 && sur_value != 0)
+      {
+        err_sum += 1.0;
+        sqr_err_sum += 1.0;
+        count++;
+      }
+
+      if (pqc_value == 0 && sur_value == 0)
+      {
+      }
+
+      // else: both cases are zero, skip (no error)
+    }
+    if (i == 0)
+    {
+      std::cout << "computeStats, i==0, err_sum: " << err_sum << std::endl;
+      std::cout << "computeStats, i==0, sqr_err_sum: " << sqr_err_sum << std::endl;
+    }
+    stats.mape[i] = (count > 0) ? (100.0 / count) * err_sum : 0.0;
+    stats.rrsme[i] = (count > 0) ? std::sqrt(sqr_err_sum / count) : 0.0;
+  }
+
 }
 
 inline std::vector<int> shuffleVector(const std::vector<int> &in_vector,
@@ -355,30 +411,21 @@ inline void poet::ChemistryModule::MasterRecvPkgs(worker_list_t &w_list,
         pkg_to_recv -= 1;
         free_workers++;
       }
-      if (probe_status.MPI_TAG == WITH_REL_ERROR)
+      if (probe_status.MPI_TAG == LOOP_CTRL)
       {
         MPI_Get_count(&probe_status, MPI_DOUBLE, &size);
 
-        std::cout << "[Master] Probed rel error from worker " << p
-                  << ", size = " << size << std::endl;
+        // layout of buffer is [phreeqc][surrogate]
+        std::vector<double> recv_buffer(size);
 
-        int half = size/2;
-
-        std::vector<double> rel_err_buffer(size);
-        std::vector<double> rel_error(half);
-        MPI_Recv(rel_err_buffer.data(), size, MPI_DOUBLE, p, WITH_REL_ERROR,
+        MPI_Recv(recv_buffer.data(), size, MPI_DOUBLE, p, LOOP_CTRL,
                  this->group_comm, MPI_STATUS_IGNORE);
 
-        
+        std::copy(recv_buffer.begin(), recv_buffer.begin() + (size / 2),
+                  w_list[p - 1].send_addr);
 
-        std::copy(rel_err_buffer.begin(), rel_err_buffer.begin() + half,
-                w_list[p - 1].send_addr);
-        
-        std::copy(rel_err_buffer.begin() + half, rel_err_buffer.end(), rel_error.begin());
-
-        std::cout << "[Master] Received rel error buffer from worker " << p
-                  << ", first value = " << (rel_err_buffer.empty() ? -1 : rel_err_buffer[0])
-                  << std::endl;
+        sur_shuffled.insert(sur_shuffled.end(), recv_buffer.begin() + (size / 2),
+                            recv_buffer.begin() + size);
 
         w_list[p - 1].has_work = 0;
         pkg_to_recv -= 1;
@@ -461,12 +508,18 @@ void poet::ChemistryModule::MasterRunParallel(double dt)
 
   static uint32_t iteration = 0;
   uint32_t control_iteration = static_cast<uint32_t>(this->runtime_params->control_iteration_active ? 1 : 0);
+  if (control_iteration)
+  {
+    sur_shuffled.clear();
+    sur_shuffled.reserve(this->n_cells * this->prop_count);
+  }
 
   /* start time measurement of sequential part */
   seq_a = MPI_Wtime();
 
   /* shuffle grid */
   // grid.shuffleAndExport(mpi_buffer);
+
   std::vector<double> mpi_buffer =
       shuffleField(chem_field.AsVector(), this->n_cells, this->prop_count,
                    wp_sizes_vector.size());
@@ -507,30 +560,6 @@ void poet::ChemistryModule::MasterRunParallel(double dt)
     // ... and try to receive them from workers who has finished their work
     MasterRecvPkgs(worker_list, pkg_to_recv, pkg_to_send > 0, free_workers);
   }
-  // to do: Statistik
-
-  /* if control_iteration_active is true receive rel. error data and compare with epsilon */
-  if (this->runtime_params->control_iteration_active)
-  {
-
-    // do Statistik
-    /** 
-    int rel_err_offset = size / 2; // or calculate as needed
-
-    for (std::size_t ep_i = 0; ep_i < this->runtime_params->species_epsilon.size(); ep_i++)
-    {
-      if (rel_err_buffer[rel_err_offset + ep_i] > this->runtime_params->species_epsilon[ep_i])
-      {
-        std::cout << "[Master] At least one relative error exceeded epsilon threshold!"
-                  << std::endl;
-        std::cout << "value: " << rel_err_buffer[rel_err_offset + ep_i] << " epsilon: "
-                  << this->runtime_params->species_epsilon[ep_i] << std::endl;
-        break;
-      }
-    }
-      */
-  }
-
 
   // Just to complete the progressbar
   std::cout << std::endl;
@@ -550,6 +579,23 @@ void poet::ChemistryModule::MasterRunParallel(double dt)
   chem_field = out_vec;
 
   /* do master stuff */
+
+  if (control_iteration)
+  {
+    control_iteration_counter++;
+
+    std::vector<double> sur_unshuffled{sur_shuffled};
+
+    unshuffleField(sur_shuffled, this->n_cells, this->prop_count,
+                   wp_sizes_vector.size(), sur_unshuffled);
+
+    error_stats stats(this->prop_count, control_iteration_counter * runtime_params->control_iteration);
+
+    computeStats(out_vec, sur_unshuffled, this->n_cells, this->prop_count, stats);
+    error_stats_history.push_back(stats);
+
+    // to do: control values to epsilon
+  }
 
   /* start time measurement of master chemistry */
   sim_e_chemistry = MPI_Wtime();

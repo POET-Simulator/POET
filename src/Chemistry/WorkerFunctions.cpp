@@ -238,77 +238,48 @@ namespace poet
     phreeqc_time_end = MPI_Wtime();
 
     if (control_iteration_active)
-    {
-      // increase size for relative error
-      std::size_t rel_error_size = s_curr_wp.size * this->prop_count;
-
-      // extend mpi_buffer, for rel. error for every species
-      mpi_buffer.resize(count + rel_error_size);
-      std::size_t offset = count;
-      count += rel_error_size;
-
-      // calc rel. error if phreeqc != surrogate
+    {     
+      std::size_t sur_wp_offset = s_curr_wp.size * this->prop_count;
+ 
+      mpi_buffer.resize(count + sur_wp_offset);
+      
       for (std::size_t wp_i = 0; wp_i < s_curr_wp_pqc.size; wp_i++)
       {
-        const auto &surrogate_result = s_curr_wp.output[wp_i];
-        const auto &phreeqc_result = s_curr_wp_pqc.output[wp_i];
-
-        // std::cout << "surrogate_result.size() " << surrogate_result.size() << ", phreeqc_result " << phreeqc_result.size() << std::endl;
-
-        // fill NaNs
-        if (surrogate_result.size() == 0)
-        {
-          for (std::size_t i = 0; i < this->prop_count; i++)
-          {
-            mpi_buffer[offset++] = std::numeric_limits<double>::quiet_NaN();
-          }
-        }
-
-        // compute rel error
-        if (surrogate_result.size() == phreeqc_result.size())
-        {
-          for (std::size_t i = 0; i < this->prop_count; i++)
-          {
-            double ref = phreeqc_result[i];
-            double surrogate = surrogate_result[i];
-
-            if (std::abs(ref) > 1e-9)
-            {
-              mpi_buffer[offset++] = std::abs((surrogate - ref) / ref);
-            }
-            else
-            {
-              mpi_buffer[offset++] = 0.0;
-            }
-          }
-        }
+        std::copy(s_curr_wp_pqc.output[wp_i].begin(), s_curr_wp_pqc.output[wp_i].end(),
+                  mpi_buffer.begin() + this->prop_count * wp_i);
       }
+
+      // s_curr_wp only contains the interpolated data
+      // copy surrogate output after the the pqc output, mpi_buffer[pqc][interp]
+
+      for (std::size_t wp_i = 0; wp_i < s_curr_wp.size; wp_i++)
+      {
+        std::copy(s_curr_wp.output[wp_i].begin(), s_curr_wp.output[wp_i].end(),
+                  mpi_buffer.begin() + sur_wp_offset + this->prop_count * wp_i);
+      }
+
+      count += sur_wp_offset;
     }
-
-    poet::WorkPackage &s_curr_wp_copy = control_iteration_active ? s_curr_wp_pqc : s_curr_wp;
-
-    for (std::size_t wp_i = 0; wp_i < s_curr_wp_copy.size; wp_i++)
+    else
     {
-      std::copy(s_curr_wp_copy.output[wp_i].begin(), s_curr_wp_copy.output[wp_i].end(),
-                mpi_buffer.begin() + this->prop_count * wp_i);
+      for (std::size_t wp_i = 0; wp_i < s_curr_wp.size; wp_i++)
+      {
+        std::copy(s_curr_wp.output[wp_i].begin(), s_curr_wp.output[wp_i].end(),
+                  mpi_buffer.begin() + this->prop_count * wp_i);
+      }
     }
 
     /* send results to master */
     MPI_Request send_req;
 
-    int mpi_tag = control_iteration_active ? WITH_REL_ERROR : LOOP_WORK;
+    int mpi_tag = control_iteration_active ? LOOP_CTRL : LOOP_WORK;
     MPI_Isend(mpi_buffer.data(), count, MPI_DOUBLE, 0, mpi_tag, MPI_COMM_WORLD, &send_req);
-
-    if (control_iteration_active)
-    {
-      std::cout << "[Worker " << this->comm_rank << "] Sent results." << std::endl;
-    }
 
     if (dht_enabled || interp_enabled)
     {
       /* write results to DHT */
       dht_fill_start = MPI_Wtime();
-      dht->fillDHT(s_curr_wp_copy);
+      dht->fillDHT(control_iteration_active ? s_curr_wp_pqc : s_curr_wp);
       dht_fill_end = MPI_Wtime();
 
       if (interp_enabled)

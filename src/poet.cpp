@@ -28,6 +28,7 @@
 #include "DataStructures/Field.hpp"
 #include "IO/Datatypes.hpp"
 #include "IO/HDF5Functions.hpp"
+#include "IO/StatsIO.hpp"
 #include "Init/InitialList.hpp"
 #include "Transport/DiffusionModule.hpp"
 
@@ -67,7 +68,8 @@ static poet::DEFunc ReadRObj_R;
 static poet::DEFunc SaveRObj_R;
 static poet::DEFunc source_R;
 
-static void init_global_functions(RInside &R) {
+static void init_global_functions(RInside &R)
+{
   R.parseEval(kin_r_library);
   master_init_R = DEFunc("master_init");
   master_iteration_end_R = DEFunc("master_iteration_end");
@@ -90,9 +92,15 @@ static void init_global_functions(RInside &R) {
 //   R.parseEval("mysetup$state_C <- TMP");
 // }
 
-enum ParseRet { PARSER_OK, PARSER_ERROR, PARSER_HELP };
+enum ParseRet
+{
+  PARSER_OK,
+  PARSER_ERROR,
+  PARSER_HELP
+};
 
-int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
+int parseInitValues(int argc, char **argv, RuntimeParameters &params)
+{
 
   CLI::App app{"POET - Potsdam rEactive Transport simulator"};
 
@@ -174,9 +182,12 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
                  "Output directory of the simulation")
       ->required();
 
-  try {
+  try
+  {
     app.parse(argc, argv);
-  } catch (const CLI::ParseError &e) {
+  }
+  catch (const CLI::ParseError &e)
+  {
     app.exit(e);
     return -1;
   }
@@ -188,14 +199,16 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
   if (params.as_qs)
     params.out_ext = "qs";
 
-  if (MY_RANK == 0) {
+  if (MY_RANK == 0)
+  {
     // MSG("Complete results storage is " + BOOL_PRINT(simparams.store_result));
     MSG("Output format/extension is " + params.out_ext);
     MSG("Work Package Size: " + std::to_string(params.work_package_size));
     MSG("DHT is " + BOOL_PRINT(params.use_dht));
     MSG("AI Surrogate is " + BOOL_PRINT(params.use_ai_surrogate));
 
-    if (params.use_dht) {
+    if (params.use_dht)
+    {
       // MSG("DHT strategy is " + std::to_string(simparams.dht_strategy));
       // MDL: these should be outdated (?)
       // MSG("DHT key default digits (ignored if 'signif_vector' is "
@@ -209,7 +222,8 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
       // MSG("DHT load file is " + chem_params.dht_file);
     }
 
-    if (params.use_interp) {
+    if (params.use_interp)
+    {
       MSG("PHT interpolation enabled: " + BOOL_PRINT(params.use_interp));
       MSG("PHT interp-size = " + std::to_string(params.interp_size));
       MSG("PHT interp-min  = " + std::to_string(params.interp_min_entries));
@@ -237,7 +251,8 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
   // // log before rounding?
   // R["dht_log"] = simparams.dht_log;
 
-  try {
+  try
+  {
 
     Rcpp::List init_params_(ReadRObj_R(init_file));
     params.init_params = init_params_;
@@ -251,12 +266,13 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
 
     params.timesteps =
         Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("timesteps"));
-    params.control_iteration = 
-        Rcpp::as<int>(global_rt_setup->operator[]("control_iteration"));
-    params.species_epsilon = 
+    params.control_iteration =
+        Rcpp::as<uint32_t>(global_rt_setup->operator[]("control_iteration"));
+    params.species_epsilon =
         Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("species_epsilon"));
-
-  } catch (const std::exception &e) {
+  }
+  catch (const std::exception &e)
+  {
     ERRMSG("Error while parsing R scripts: " + std::string(e.what()));
     return ParseRet::PARSER_ERROR;
   }
@@ -266,7 +282,8 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
 
 // HACK: this is a step back as the order and also the count of fields is
 // predefined, but it will change in the future
-void call_master_iter_end(RInside &R, const Field &trans, const Field &chem) {
+void call_master_iter_end(RInside &R, const Field &trans, const Field &chem)
+{
   R["TMP"] = Rcpp::wrap(trans.AsVector());
   R["TMP_PROPS"] = Rcpp::wrap(trans.GetProps());
   R.parseEval(std::string("state_T <- setNames(data.frame(matrix(TMP, nrow=" +
@@ -285,13 +302,15 @@ void call_master_iter_end(RInside &R, const Field &trans, const Field &chem) {
 
 static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
                                 DiffusionModule &diffusion,
-                                ChemistryModule &chem) {
+                                ChemistryModule &chem)
+{
 
   /* Iteration Count is dynamic, retrieving value from R (is only needed by
    * master for the following loop) */
   uint32_t maxiter = params.timesteps.size();
 
-  if (params.print_progress) {
+  if (params.print_progress)
+  {
     chem.setProgressBarPrintout(true);
   }
   R["TMP_PROPS"] = Rcpp::wrap(chem.getField().GetProps());
@@ -299,10 +318,11 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
   /* SIMULATION LOOP */
 
   double dSimTime{0};
-  for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
+  for (uint32_t iter = 1; iter < maxiter + 1; iter++)
+  {
 
-    params.control_iteration_active = (iter % params.control_iteration == 0);
-    
+    params.control_iteration_active = (iter % params.control_iteration == 0 && iter != 0);
+
     double start_t = MPI_Wtime();
 
     const double &dt = params.timesteps[iter - 1];
@@ -323,7 +343,8 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
     chem.getField().update(diffusion.getField());
 
     // MSG("Chemistry start");
-    if (params.use_ai_surrogate) {
+    if (params.use_ai_surrogate)
+    {
       double ai_start_t = MPI_Wtime();
       // Save current values from the tug field as predictor for the ai step
       R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
@@ -374,7 +395,8 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
     chem.simulate(dt);
 
     /* AI surrogate iterative training*/
-    if (params.use_ai_surrogate) {
+    if (params.use_ai_surrogate)
+    {
       double ai_start_t = MPI_Wtime();
 
       R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
@@ -408,19 +430,32 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
     // TODO: write checkpoint
     // checkpoint struct --> field and iteration
 
-    if (iter == 1) {
-      write_checkpoint("checkpoint1.hdf5",
-                       {.field = chem.getField(), .iteration = iter});
-    } else if (iter == 2) {
+    /*else if (iter == 2) {
       Checkpoint_s checkpoint_read{.field = chem.getField()};
       read_checkpoint("checkpoint1.hdf5", checkpoint_read);
       iter = checkpoint_read.iteration;
-    }
+    }*/
 
     diffusion.getField().update(chem.getField());
 
     MSG("End of *coupling* iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
+
+    /*
+    if (params.control_iteration_active)
+    {
+      std::string file_path = "checkpoint" + std::to_string(iter) + ".hdf5";
+      write_checkpoint(file_path,
+                       {.field = chem.getField(), .iteration = iter});
+    }
+
+
+    if (iter % params.control_iteration == 0 && iter != 0)
+    {
+      write_checkpoint("checkpoint" + std::to_string(iter) + ".hdf5",
+                       {.field = chem.getField(), .iteration = iter});
+    }
+                        */
     // MSG();
   } // END SIMULATION LOOP
 
@@ -437,7 +472,8 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
   Rcpp::List diffusion_profiling;
   diffusion_profiling["simtime"] = diffusion.getTransportTime();
 
-  if (params.use_dht) {
+  if (params.use_dht)
+  {
     chem_profiling["dht_hits"] = Rcpp::wrap(chem.GetWorkerDHTHits());
     chem_profiling["dht_evictions"] = Rcpp::wrap(chem.GetWorkerDHTEvictions());
     chem_profiling["dht_get_time"] = Rcpp::wrap(chem.GetWorkerDHTGetTimings());
@@ -445,7 +481,8 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
         Rcpp::wrap(chem.GetWorkerDHTFillTimings());
   }
 
-  if (params.use_interp) {
+  if (params.use_interp)
+  {
     chem_profiling["interp_w"] =
         Rcpp::wrap(chem.GetWorkerInterpolationWriteTimings());
     chem_profiling["interp_r"] =
@@ -466,11 +503,14 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
 
   chem.MasterLoopBreak();
 
+  writeStatsToCSV(chem.error_stats_history, chem.getField().GetProps(), "stats_overview");
+
   return profiling;
 }
 
 std::vector<std::string> getSpeciesNames(const Field &&field, int root,
-                                         MPI_Comm comm) {
+                                         MPI_Comm comm)
+{
   std::uint32_t n_elements;
   std::uint32_t n_string_size;
 
@@ -480,11 +520,13 @@ std::vector<std::string> getSpeciesNames(const Field &&field, int root,
   const bool is_master = root == rank;
 
   // first, the master sends all the species names iterative
-  if (is_master) {
+  if (is_master)
+  {
     n_elements = field.GetProps().size();
     MPI_Bcast(&n_elements, 1, MPI_UINT32_T, root, MPI_COMM_WORLD);
 
-    for (std::uint32_t i = 0; i < n_elements; i++) {
+    for (std::uint32_t i = 0; i < n_elements; i++)
+    {
       n_string_size = field.GetProps()[i].size();
       MPI_Bcast(&n_string_size, 1, MPI_UINT32_T, root, MPI_COMM_WORLD);
       MPI_Bcast(const_cast<char *>(field.GetProps()[i].c_str()), n_string_size,
@@ -499,7 +541,8 @@ std::vector<std::string> getSpeciesNames(const Field &&field, int root,
 
   std::vector<std::string> species_names_out(n_elements);
 
-  for (std::uint32_t i = 0; i < n_elements; i++) {
+  for (std::uint32_t i = 0; i < n_elements; i++)
+  {
     MPI_Bcast(&n_string_size, 1, MPI_UINT32_T, root, MPI_COMM_WORLD);
 
     char recv_buf[n_string_size];
@@ -512,7 +555,8 @@ std::vector<std::string> getSpeciesNames(const Field &&field, int root,
   return species_names_out;
 }
 
-std::array<double, 2> getBaseTotals(Field &&field, int root, MPI_Comm comm) {
+std::array<double, 2> getBaseTotals(Field &&field, int root, MPI_Comm comm)
+{
   std::array<double, 2> base_totals;
 
   int rank;
@@ -520,7 +564,8 @@ std::array<double, 2> getBaseTotals(Field &&field, int root, MPI_Comm comm) {
 
   const bool is_master = root == rank;
 
-  if (is_master) {
+  if (is_master)
+  {
     const auto h_col = field["H"];
     const auto o_col = field["O"];
 
@@ -535,7 +580,8 @@ std::array<double, 2> getBaseTotals(Field &&field, int root, MPI_Comm comm) {
   return base_totals;
 }
 
-bool getHasID(Field &&field, int root, MPI_Comm comm) {
+bool getHasID(Field &&field, int root, MPI_Comm comm)
+{
   bool has_id;
 
   int rank;
@@ -543,7 +589,8 @@ bool getHasID(Field &&field, int root, MPI_Comm comm) {
 
   const bool is_master = root == rank;
 
-  if (is_master) {
+  if (is_master)
+  {
     const auto ID_field = field["ID"];
 
     std::set<double> unique_IDs(ID_field.begin(), ID_field.end());
@@ -560,7 +607,8 @@ bool getHasID(Field &&field, int root, MPI_Comm comm) {
   return has_id;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
   int world_size;
 
   MPI_Init(&argc, &argv);
@@ -571,7 +619,8 @@ int main(int argc, char *argv[]) {
 
     RInsidePOET &R = RInsidePOET::getInstance();
 
-    if (MY_RANK == 0) {
+    if (MY_RANK == 0)
+    {
       MSG("Running POET version " + std::string(poet_version));
     }
 
@@ -579,7 +628,8 @@ int main(int argc, char *argv[]) {
 
     RuntimeParameters run_params;
 
-    if (parseInitValues(argc, argv, run_params) != 0) {
+    if (parseInitValues(argc, argv, run_params) != 0)
+    {
       MPI_Finalize();
       return 0;
     }
@@ -621,9 +671,12 @@ int main(int argc, char *argv[]) {
 
     chemistry.masterEnableSurrogates(surr_setup);
 
-    if (MY_RANK > 0) {
+    if (MY_RANK > 0)
+    {
       chemistry.WorkerLoop();
-    } else {
+    }
+    else
+    {
       // R.parseEvalQ("mysetup <- setup");
       // // if (MY_RANK == 0) { // get timestep vector from
       // // grid_init function ... //
@@ -637,7 +690,8 @@ int main(int argc, char *argv[]) {
       R["out_ext"] = run_params.out_ext;
       R["out_dir"] = run_params.out_dir;
 
-      if (run_params.use_ai_surrogate) {
+      if (run_params.use_ai_surrogate)
+      {
         /* Incorporate ai surrogate from R */
         R.parseEvalQ(ai_surrogate_r_library);
         /* Use dht species for model input and output */
@@ -686,7 +740,8 @@ int main(int argc, char *argv[]) {
 
   MPI_Finalize();
 
-  if (MY_RANK == 0) {
+  if (MY_RANK == 0)
+  {
     MSG("done, bye!");
   }
 
