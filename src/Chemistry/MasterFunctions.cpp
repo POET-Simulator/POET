@@ -190,14 +190,6 @@ void poet::ChemistryModule::computeStats(const std::vector<double> &pqc_vector,
       double pqc_value = pqc_vector[i * size_per_prop + j];
       double sur_value = sur_vector[i * size_per_prop + j];
 
-if (i == 0 && (j % 10000 == 0)) {
-    std::cout << "i=" << i << ", j=" << j
-              << ", idx=" << i * size_per_prop + j
-              << ", pqc=" << pqc_value
-              << ", sur=" << sur_value
-              << std::endl;
-}
-
       if (pqc_value != 0)
       {
         double rel_err = (pqc_value - sur_value) / pqc_value;
@@ -211,11 +203,6 @@ if (i == 0 && (j % 10000 == 0)) {
         sqr_err_sum += 1.0;
         count++;
       }
-
-      if (pqc_value == 0 && sur_value == 0)
-      {
-      }
-
       // else: both cases are zero, skip (no error)
     }
     if (i == 0)
