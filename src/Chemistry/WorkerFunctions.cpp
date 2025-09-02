@@ -220,20 +220,20 @@ namespace poet
     /* if control iteration: create copy surrogate results (output and mappings) and then set them to zero,
       give this to phreeqc */
 
-    poet::WorkPackage s_curr_wp_pqc = s_curr_wp;
+    poet::WorkPackage s_curr_wp_control = s_curr_wp;
 
     if (control_iteration_active)
     {
-      for (std::size_t wp_i = 0; wp_i < s_curr_wp_pqc.size; wp_i++)
+      for (std::size_t wp_i = 0; wp_i < s_curr_wp_control.size; wp_i++)
       {
-        s_curr_wp_pqc.output[wp_i] = std::vector<double>(this->prop_count, 0.0);
-        s_curr_wp_pqc.mapping[wp_i] = 0;
+        s_curr_wp_control.output[wp_i] = std::vector<double>(this->prop_count, 0.0);
+        s_curr_wp_control.mapping[wp_i] = 0;
       }
     }
 
     phreeqc_time_start = MPI_Wtime();
 
-    WorkerRunWorkPackage(control_iteration_active ? s_curr_wp_pqc : s_curr_wp, current_sim_time, dt);
+    WorkerRunWorkPackage(control_iteration_active ? s_curr_wp_control : s_curr_wp, current_sim_time, dt);
 
     phreeqc_time_end = MPI_Wtime();
 
@@ -243,9 +243,9 @@ namespace poet
  
       mpi_buffer.resize(count + sur_wp_offset);
       
-      for (std::size_t wp_i = 0; wp_i < s_curr_wp_pqc.size; wp_i++)
+      for (std::size_t wp_i = 0; wp_i < s_curr_wp_control.size; wp_i++)
       {
-        std::copy(s_curr_wp_pqc.output[wp_i].begin(), s_curr_wp_pqc.output[wp_i].end(),
+        std::copy(s_curr_wp_control.output[wp_i].begin(), s_curr_wp_control.output[wp_i].end(),
                   mpi_buffer.begin() + this->prop_count * wp_i);
       }
 
@@ -254,8 +254,17 @@ namespace poet
 
       for (std::size_t wp_i = 0; wp_i < s_curr_wp.size; wp_i++)
       {
+      if (!s_curr_wp.mapping[wp_i] == CHEM_PQC) // only copy if surrogate was used
+      {
         std::copy(s_curr_wp.output[wp_i].begin(), s_curr_wp.output[wp_i].end(),
                   mpi_buffer.begin() + sur_wp_offset + this->prop_count * wp_i);
+      } else 
+      {
+        // if pqc was used, copy pqc results again
+        std::copy(s_curr_wp_control.output[wp_i].begin(), s_curr_wp_control.output[wp_i].end(),
+                  mpi_buffer.begin() + sur_wp_offset + this->prop_count * wp_i);
+      }
+
       }
 
       count += sur_wp_offset;
@@ -279,7 +288,7 @@ namespace poet
     {
       /* write results to DHT */
       dht_fill_start = MPI_Wtime();
-      dht->fillDHT(control_iteration_active ? s_curr_wp_pqc : s_curr_wp);
+      dht->fillDHT(control_iteration_active ? s_curr_wp_control : s_curr_wp);
       dht_fill_end = MPI_Wtime();
 
       if (interp_enabled)
