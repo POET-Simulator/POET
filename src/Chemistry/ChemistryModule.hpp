@@ -347,6 +347,7 @@ namespace poet
     {
       char has_work = 0;
       double *send_addr;
+      double *surrogate_addr;
     };
 
     using worker_list_t = std::vector<struct worker_info_s>;
@@ -355,7 +356,7 @@ namespace poet
     void MasterRunParallel(double dt);
     void MasterRunSequential();
 
-    void MasterSendPkgs(worker_list_t &w_list, workpointer_t &work_pointer,
+    void MasterSendPkgs(worker_list_t &w_list, workpointer_t &work_pointer, workpointer_t &sur_pointer,
                         int &pkg_to_send, int &count_pkgs, int &free_workers,
                         double dt, uint32_t iteration, uint32_t control_iteration,
                         const std::vector<uint32_t> &wp_sizes_vector);

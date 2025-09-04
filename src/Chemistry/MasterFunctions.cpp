@@ -159,6 +159,7 @@ std::vector<uint32_t> poet::ChemistryModule::GetWorkerPHTCacheHits() const {
 
   return ret;
 }
+
 void poet::ChemistryModule::computeStats(const std::vector<double> &pqc_vector,
                                          const std::vector<double> &sur_vector,
                                          uint32_t size_per_prop,
@@ -281,8 +282,9 @@ inline void printProgressbar(int count_pkgs, int n_wp, int barWidth = 70) {
 }
 
 inline void poet::ChemistryModule::MasterSendPkgs(
-    worker_list_t &w_list, workpointer_t &work_pointer, int &pkg_to_send,
-    int &count_pkgs, int &free_workers, double dt, uint32_t iteration,
+    worker_list_t &w_list, workpointer_t &work_pointer,
+    workpointer_t &sur_pointer, int &pkg_to_send, int &count_pkgs,
+    int &free_workers, double dt, uint32_t iteration,
     uint32_t control_iteration, const std::vector<uint32_t> &wp_sizes_vector) {
   /* declare variables */
   int local_work_package_size;
@@ -299,6 +301,7 @@ inline void poet::ChemistryModule::MasterSendPkgs(
 
       /* note current processed work package in workerlist */
       w_list[p].send_addr = work_pointer.base();
+      w_list[p].surrogate_addr = sur_pointer.base();
 
       /* push work pointer to next work package */
       const uint32_t end_of_wp = local_work_package_size * this->prop_count;
@@ -306,6 +309,7 @@ inline void poet::ChemistryModule::MasterSendPkgs(
       std::copy(work_pointer, work_pointer + end_of_wp, send_buffer.begin());
 
       work_pointer += end_of_wp;
+      sur_pointer += end_of_wp;
 
       // fill send buffer starting with work_package ...
       // followed by: work_package_size
@@ -389,9 +393,8 @@ inline void poet::ChemistryModule::MasterRecvPkgs(worker_list_t &w_list,
         std::copy(recv_buffer.begin(), recv_buffer.begin() + (size / 2),
                   w_list[p - 1].send_addr);
 
-        sur_shuffled.insert(sur_shuffled.end(),
-                            recv_buffer.begin() + (size / 2),
-                            recv_buffer.begin() + size);
+        std::copy(recv_buffer.begin() + (size / 2), recv_buffer.begin() + size,
+                  w_list[p - 1].surrogate_addr);
 
         w_list[p - 1].has_work = 0;
         pkg_to_recv -= 1;
@@ -486,11 +489,14 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
       shuffleField(chem_field.AsVector(), this->n_cells, this->prop_count,
                    wp_sizes_vector.size());
 
+  this->sur_shuffled.resize(mpi_buffer.size());
+
   /* setup local variables */
   pkg_to_send = wp_sizes_vector.size();
   pkg_to_recv = wp_sizes_vector.size();
 
   workpointer_t work_pointer = mpi_buffer.begin();
+  workpointer_t sur_pointer = sur_shuffled.begin();
   worker_list_t worker_list(this->comm_size - 1);
 
   free_workers = this->comm_size - 1;
@@ -513,8 +519,8 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
     // while there are still packages to send
     if (pkg_to_send > 0) {
       // send packages to all free workers ...
-      MasterSendPkgs(worker_list, work_pointer, pkg_to_send, i_pkgs,
-                     free_workers, dt, iteration, control_iteration,
+      MasterSendPkgs(worker_list, work_pointer, sur_pointer, pkg_to_send,
+                     i_pkgs, free_workers, dt, iteration, control_iteration,
                      wp_sizes_vector);
     }
     // ... and try to receive them from workers who has finished their work
