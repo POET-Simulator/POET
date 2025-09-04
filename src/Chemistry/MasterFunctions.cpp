@@ -165,49 +165,28 @@ void poet::ChemistryModule::computeStats(const std::vector<double> &pqc_vector,
                                          uint32_t size_per_prop,
                                          uint32_t species_count,
                                          error_stats &stats) {
-  for (uint32_t i = 0; i < species_count; i++) {
+  for (uint32_t i = 0; i < species_count; ++i) {
     double err_sum = 0.0;
     double sqr_err_sum = 0.0;
+    uint32_t base_idx = i * size_per_prop;
 
-    for (uint32_t j = 0; j < size_per_prop; j++) {
+    for (uint32_t j = 0; j < size_per_prop; ++j) {
+      const double pqc_value = pqc_vector[base_idx + j];
+      const double sur_value = sur_vector[base_idx + j];
 
-      const double &pqc_value = pqc_vector[i * size_per_prop + j];
-      const double &sur_value = sur_vector[i * size_per_prop + j];
-
-      if (pqc_value == 0 && sur_value == 0) {
-        //
-      } else if (pqc_value == 0 && sur_value != 0) {
-        std::cout << "NOOOO! pqc = " << pqc_value << ", sur = " << sur_value
-                  << "\n";
-        err_sum += 1.;
-        sqr_err_sum += 1.;
+      if (pqc_value == 0.0) {
+        if (sur_value != 0.0) {
+          err_sum += 1.0;
+          sqr_err_sum += 1.0;
+        }
+        // Both zero: skip
       } else {
-        const double alpha = 1 - (sur_value / pqc_value);
+        double alpha = 1.0 - (sur_value / pqc_value);
         err_sum += std::abs(alpha);
         sqr_err_sum += alpha * alpha;
       }
+    }
 
-      // if (pqc_value != 0)
-      // {
-      //   double rel_err = (pqc_value - sur_value) / pqc_value;
-      //   err_sum += std::abs(rel_err);
-      //   sqr_err_sum += rel_err * rel_err;
-      // }
-      // if (pqc_value == 0 && sur_value != 0)
-      // {
-      //   err_sum += 1.0;
-      //   sqr_err_sum += 1.0;
-      // }
-      // else: both cases are zero, skip (no error)
-      if (i == 6 && (j % 1000 == 0)) {
-        std::cout << "pqc = " << pqc_value << ", sur = " << sur_value << "\n";
-      }
-    }
-    if (i == 0) {
-      std::cout << "computeStats, i==0, err_sum: " << err_sum << std::endl;
-      std::cout << "computeStats, i==0, sqr_err_sum: " << sqr_err_sum
-                << std::endl;
-    }
     stats.mape[i] = 100.0 * (err_sum / size_per_prop);
     stats.rrsme[i] =
         (size_per_prop > 0) ? std::sqrt(sqr_err_sum / size_per_prop) : 0.0;
