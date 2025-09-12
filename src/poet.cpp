@@ -300,6 +300,35 @@ void call_master_iter_end(RInside &R, const Field &trans, const Field &chem)
   *global_rt_setup = R["setup"];
 }
 
+bool checkAndRollback(ChemistryModule &chem, RuntimeParameters &params, uint32_t &iter)
+{
+  for (uint32_t i = 0; i < chem.error_stats_history.size(); i++)
+  {
+    if (iter == chem.error_stats_history[i].iteration)
+    {
+      for (uint32_t j = 0; j < params.species_epsilon.size(); j++)
+      {
+        if (params.species_epsilon[j] < chem.error_stats_history[i].mape[j] && chem.error_stats_history[i].mape[j] != 0 && chem.control_iteration_counter > 1)
+        {
+          uint32_t rollback_iter = iter - params.control_iteration;
+
+          std::cout << chem.getField().GetProps()[j] << " with a MAPE value of " << chem.error_stats_history[i].mape[j] << " exceeds epsilon of "
+                    << params.species_epsilon[j] << "! " << std::endl;
+
+          Checkpoint_s checkpoint_read{.field = chem.getField()};
+          read_checkpoint("checkpoint" + std::to_string(rollback_iter) + ".hdf5", checkpoint_read);
+          iter = checkpoint_read.iteration;
+
+          chem.control_iteration_counter--;
+          
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
                                 DiffusionModule &diffusion,
                                 ChemistryModule &chem)
@@ -441,21 +470,15 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
     MSG("End of *coupling* iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
 
-    /*
-    if (params.control_iteration_active)
+    if (iter % params.control_iteration == 0)
     {
-      std::string file_path = "checkpoint" + std::to_string(iter) + ".hdf5";
-      write_checkpoint(file_path,
-                       {.field = chem.getField(), .iteration = iter});
-    }
+      writeStatsToCSV(chem.error_stats_history, chem.getField().GetProps(), "stats_overview");
 
-
-    if (iter % params.control_iteration == 0 && iter != 0)
-    {
       write_checkpoint("checkpoint" + std::to_string(iter) + ".hdf5",
                        {.field = chem.getField(), .iteration = iter});
+      checkAndRollback(chem, params, iter);
+      
     }
-                        */
     // MSG();
   } // END SIMULATION LOOP
 
@@ -502,8 +525,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
   profiling["diffusion"] = diffusion_profiling;
 
   chem.MasterLoopBreak();
-
-  writeStatsToCSV(chem.error_stats_history, chem.getField().GetProps(), "stats_overview");
 
   return profiling;
 }
