@@ -428,14 +428,23 @@ namespace poet
       {
         to_ignore.push_back(wp_id);
       }
-    }
+
+      // HACK: remove the first element (cell_id) before sending to phreeqc
+      inout_chem[wp_id].erase(
+          inout_chem[wp_id].begin(), inout_chem[wp_id].begin() + 1);     
+  }
+
     this->pqc_runner->run(inout_chem, dTimestep, to_ignore);
 
     for (std::size_t wp_id = 0; wp_id < work_package.size; wp_id++)
     {
       if (work_package.mapping[wp_id] == CHEM_PQC)
       {
-        work_package.output[wp_id] = inout_chem[wp_id];
+          // HACK: as we removed the first element (cell_id) before sending to phreeqc,
+          // copy back with an offset of 1
+          work_package.output[wp_id] = work_package.input[wp_id];
+         std::copy(inout_chem[wp_id].begin(), inout_chem[wp_id].end(),
+                     work_package.output[wp_id].begin() + 1);
       }
     }
   }

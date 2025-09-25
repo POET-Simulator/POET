@@ -60,6 +60,9 @@ pqc_to_grid <- function(pqc_mat, grid) {
     # Convert the result matrix to a data frame
     res_df <- as.data.frame(result_mat)
 
+    # Add cell_ID column to beginning of res_df
+    res_df <- cbind(cell_ID = seq(0, nrow(res_df) - 1), res_df)
+
     # Remove all columns which only contain NaN
     # res_df <- res_df[, colSums(is.na(res_df)) != nrow(res_df)]
 
