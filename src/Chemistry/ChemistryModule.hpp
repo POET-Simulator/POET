@@ -299,6 +299,7 @@ namespace poet
       CHEM_DHT_SIGNIF_VEC,
       CHEM_DHT_SNAPS,
       CHEM_DHT_READ_FILE,
+      CHEM_INTERP,
       CHEM_IP_ENABLE,
       CHEM_IP_MIN_ENTRIES,
       CHEM_IP_SIGNIF_VEC,

@@ -448,6 +448,19 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
   ftype = CHEM_WORK_LOOP;
   PropagateFunctionType(ftype);
 
+  ftype = CHEM_INTERP;
+  PropagateFunctionType(ftype);
+
+  if(this->runtime_params->rollback_simulation){
+    this->interp_enabled = false;
+    int interp_flag = 0;
+    ChemBCast(&interp_flag, 1, MPI_INT);
+  } else {
+    this->interp_enabled = true;
+    int interp_flag = 1;
+    ChemBCast(&interp_flag, 1, MPI_INT);
+  }
+
   MPI_Barrier(this->group_comm);
 
   static uint32_t iteration = 0;

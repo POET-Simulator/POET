@@ -270,6 +270,10 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params)
         Rcpp::as<uint32_t>(global_rt_setup->operator[]("control_iteration"));
     params.species_epsilon =
         Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("species_epsilon"));
+    params.penalty_iteration =
+        Rcpp::as<uint32_t>(global_rt_setup->operator[]("penalty_iteration"));
+    params.max_penalty_iteration = 
+        Rcpp::as<uint32_t>(global_rt_setup->operator[]("max_penalty_iteration"));
   }
   catch (const std::exception &e)
   {
@@ -302,31 +306,50 @@ void call_master_iter_end(RInside &R, const Field &trans, const Field &chem)
 
 bool checkAndRollback(ChemistryModule &chem, RuntimeParameters &params, uint32_t &iter)
 {
-  for (uint32_t i = 0; i < chem.error_stats_history.size(); i++)
+  const std::vector<double> &latest_mape = chem.error_stats_history.back().mape;
+
+  for (uint32_t j = 0; j < params.species_epsilon.size(); j++)
   {
-    if (iter == chem.error_stats_history[i].iteration)
+    if (params.species_epsilon[j] < latest_mape[j] && latest_mape[j] != 0)
     {
-      for (uint32_t j = 0; j < params.species_epsilon.size(); j++)
-      {
-        if (params.species_epsilon[j] < chem.error_stats_history[i].mape[j] && chem.error_stats_history[i].mape[j] != 0 && chem.control_iteration_counter > 1)
-        {
-          uint32_t rollback_iter = iter - params.control_iteration;
+      uint32_t rollback_iter = iter - (iter % params.control_iteration);
 
-          std::cout << chem.getField().GetProps()[j] << " with a MAPE value of " << chem.error_stats_history[i].mape[j] << " exceeds epsilon of "
-                    << params.species_epsilon[j] << "! " << std::endl;
+      std::cout << chem.getField().GetProps()[j] << " with a MAPE value of " << latest_mape[j] << " exceeds epsilon of "
+                << params.species_epsilon[j] << "! " << std::endl;
 
-          Checkpoint_s checkpoint_read{.field = chem.getField()};
-          read_checkpoint("checkpoint" + std::to_string(rollback_iter) + ".hdf5", checkpoint_read);
-          iter = checkpoint_read.iteration;
+      Checkpoint_s checkpoint_read{.field = chem.getField()};
+      read_checkpoint("checkpoint" + std::to_string(rollback_iter) + ".hdf5", checkpoint_read);
+      iter = checkpoint_read.iteration;
 
-          chem.control_iteration_counter--;
-          
-          return true;
-        }
-      }
+      return true;
+    } 
+  }
+  MSG("All spezies are below their threshold values");
+  return false;
+}
+
+void updatePenaltyLogic(RuntimeParameters &params, bool roolback_happend)
+{
+  if (roolback_happend)
+  {
+    params.rollback_simulation = true;
+    params.penalty_counter = params.penalty_iteration;
+    std::cout << "Penalty counter reset to: " << params.penalty_counter << std::endl;
+    MSG("Rollback! Penalty phase started for " + std::to_string(params.penalty_iteration) + " iterations.");
+  }
+  else
+  {
+    if (params.rollback_simulation && params.penalty_counter == 0)
+    {
+      params.rollback_simulation = false;
+      MSG("Penalty phase ended. Interpolation re-enabled.");
+    }
+    else if (!params.rollback_simulation)
+    {
+      params.penalty_iteration = std::min(params.penalty_iteration *= 2, params.max_penalty_iteration);
+      MSG("Stable surrogate phase detected. Penalty iteration doubled to " + std::to_string(params.penalty_iteration) + " iterations.");
     }
   }
-  return false;
 }
 
 static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
@@ -344,13 +367,21 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
   }
   R["TMP_PROPS"] = Rcpp::wrap(chem.getField().GetProps());
 
+  params.next_penalty_check = params.penalty_iteration;
+
   /* SIMULATION LOOP */
 
   double dSimTime{0};
   for (uint32_t iter = 1; iter < maxiter + 1; iter++)
   {
+    // Penalty countdown
+    if (params.rollback_simulation && params.penalty_counter > 0)
+    {
+      params.penalty_counter--;
+      std::cout << "Penalty counter: " << params.penalty_counter << std::endl;
+    }
 
-    params.control_iteration_active = (iter % params.control_iteration == 0 && iter != 0);
+    params.control_iteration_active = (iter % params.control_iteration == 0 /* && iter != 0 */);
 
     double start_t = MPI_Wtime();
 
@@ -459,12 +490,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
     // TODO: write checkpoint
     // checkpoint struct --> field and iteration
 
-    /*else if (iter == 2) {
-      Checkpoint_s checkpoint_read{.field = chem.getField()};
-      read_checkpoint("checkpoint1.hdf5", checkpoint_read);
-      iter = checkpoint_read.iteration;
-    }*/
-
     diffusion.getField().update(chem.getField());
 
     MSG("End of *coupling* iteration " + std::to_string(iter) + "/" +
@@ -473,12 +498,18 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
     if (iter % params.control_iteration == 0)
     {
       writeStatsToCSV(chem.error_stats_history, chem.getField().GetProps(), "stats_overview");
-
       write_checkpoint("checkpoint" + std::to_string(iter) + ".hdf5",
                        {.field = chem.getField(), .iteration = iter});
-      checkAndRollback(chem, params, iter);
-      
     }
+
+    if (iter == params.next_penalty_check)
+    {
+      bool roolback_happend = checkAndRollback(chem, params, iter);
+      updatePenaltyLogic(params, roolback_happend);
+
+      params.next_penalty_check = iter + params.penalty_iteration;
+    }
+
     // MSG();
   } // END SIMULATION LOOP
 

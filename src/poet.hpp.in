@@ -52,6 +52,11 @@ struct RuntimeParameters {
 
   bool print_progress = false;
 
+  std::uint32_t penalty_iteration = 0;
+  std::uint32_t max_penalty_iteration = 0;
+  std::uint32_t penalty_counter = 0;
+  std::uint32_t next_penalty_check = 0;
+  bool rollback_simulation = false;
   bool control_iteration_active = false;
   std::uint32_t control_iteration = 1;
 

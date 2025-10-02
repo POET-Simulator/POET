@@ -34,105 +34,112 @@ namespace poet
     return ret_str;
   }
 
-  void poet::ChemistryModule::WorkerLoop()
-  {
-    struct worker_s timings;
-
-    // HACK: defining the worker iteration count here, which will increment after
-    // each CHEM_ITER_END message
-    uint32_t iteration = 1;
-    bool loop = true;
-
-    while (loop)
+    void poet::ChemistryModule::WorkerLoop()
     {
-      int func_type;
-      PropagateFunctionType(func_type);
+      struct worker_s timings;
 
-      switch (func_type)
+      // HACK: defining the worker iteration count here, which will increment after
+      // each CHEM_ITER_END message
+      uint32_t iteration = 1;
+      bool loop = true;
+
+      while (loop)
       {
-      case CHEM_FIELD_INIT:
-      {
-        ChemBCast(&this->prop_count, 1, MPI_UINT32_T);
-        if (this->ai_surrogate_enabled)
+        int func_type;
+        PropagateFunctionType(func_type);
+
+        switch (func_type)
         {
-          this->ai_surrogate_validity_vector.resize(
-              this->n_cells); // resize statt reserve?
-        }
-        break;
-      }
-      case CHEM_AI_BCAST_VALIDITY:
-      {
-        // Receive the index vector of valid ai surrogate predictions
-        MPI_Bcast(&this->ai_surrogate_validity_vector.front(), this->n_cells,
-                  MPI_INT, 0, this->group_comm);
-        break;
-      }
-      case CHEM_WORK_LOOP:
-      {
-        WorkerProcessPkgs(timings, iteration);
-        break;
-      }
-      case CHEM_PERF:
-      {
-        int type;
-        ChemBCast(&type, 1, MPI_INT);
-        if (type < WORKER_DHT_HITS)
+        case CHEM_FIELD_INIT:
         {
-          WorkerPerfToMaster(type, timings);
+          ChemBCast(&this->prop_count, 1, MPI_UINT32_T);
+          if (this->ai_surrogate_enabled)
+          {
+            this->ai_surrogate_validity_vector.resize(
+                this->n_cells); // resize statt reserve?
+          }
           break;
         }
-        WorkerMetricsToMaster(type);
-        break;
-      }
-      case CHEM_BREAK_MAIN_LOOP:
-      {
-        WorkerPostSim(iteration);
-        loop = false;
-        break;
-      }
-      default:
-      {
-        throw std::runtime_error("Worker received unknown tag from master.");
-      }
+        case CHEM_AI_BCAST_VALIDITY:
+        {
+          // Receive the index vector of valid ai surrogate predictions
+          MPI_Bcast(&this->ai_surrogate_validity_vector.front(), this->n_cells,
+                    MPI_INT, 0, this->group_comm);
+          break;
+        }
+        case CHEM_INTERP:
+        {
+          int interp_flag;
+          ChemBCast(&interp_flag, 1, MPI_INT);
+          this->interp_enabled = (interp_flag == 1);
+          break;
+        }
+        case CHEM_WORK_LOOP:
+        {
+          WorkerProcessPkgs(timings, iteration);
+          break;
+        }
+        case CHEM_PERF:
+        {
+          int type;
+          ChemBCast(&type, 1, MPI_INT);
+          if (type < WORKER_DHT_HITS)
+          {
+            WorkerPerfToMaster(type, timings);
+            break;
+          }
+          WorkerMetricsToMaster(type);
+          break;
+        }
+        case CHEM_BREAK_MAIN_LOOP:
+        {
+          WorkerPostSim(iteration);
+          loop = false;
+          break;
+        }
+        default:
+        {
+          throw std::runtime_error("Worker received unknown tag from master.");
+        }
+        }
       }
     }
-  }
 
-  void poet::ChemistryModule::WorkerProcessPkgs(struct worker_s &timings,
-                                                uint32_t &iteration)
-  {
-    MPI_Status probe_status;
-    bool loop = true;
-
-    MPI_Barrier(this->group_comm);
-
-    while (loop)
+    void poet::ChemistryModule::WorkerProcessPkgs(struct worker_s &timings,
+                                                  uint32_t &iteration)
     {
-      double idle_a = MPI_Wtime();
-      MPI_Probe(0, MPI_ANY_TAG, this->group_comm, &probe_status);
-      double idle_b = MPI_Wtime();
+      MPI_Status probe_status;
+      bool loop = true;
 
-      switch (probe_status.MPI_TAG)
-      {
-      case LOOP_WORK:
-      {
-        timings.idle_t += idle_b - idle_a;
-        int count;
-        MPI_Get_count(&probe_status, MPI_DOUBLE, &count);
+      MPI_Barrier(this->group_comm);
 
-        WorkerDoWork(probe_status, count, timings);
-        break;
-      }
-      case LOOP_END:
+      while (loop)
       {
-        WorkerPostIter(probe_status, iteration);
-        iteration++;
-        loop = false;
-        break;
-      }
+        double idle_a = MPI_Wtime();
+        MPI_Probe(0, MPI_ANY_TAG, this->group_comm, &probe_status);
+        double idle_b = MPI_Wtime();
+
+        switch (probe_status.MPI_TAG)
+        {
+        case LOOP_WORK:
+        {
+          timings.idle_t += idle_b - idle_a;
+          int count;
+          MPI_Get_count(&probe_status, MPI_DOUBLE, &count);
+
+          WorkerDoWork(probe_status, count, timings);
+          break;
+        }
+        case LOOP_END:
+        {
+          WorkerPostIter(probe_status, iteration);
+          iteration++;
+          loop = false;
+          break;
+        }
+        }
       }
     }
-  }
 
   void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
                                            int double_count,
@@ -254,7 +261,7 @@ namespace poet
 
       for (std::size_t wp_i = 0; wp_i < s_curr_wp.size; wp_i++)
       {
-      if (!s_curr_wp.mapping[wp_i] == CHEM_PQC) // only copy if surrogate was used
+      if (s_curr_wp.mapping[wp_i] != CHEM_PQC) // only copy if surrogate was used
       {
         std::copy(s_curr_wp.output[wp_i].begin(), s_curr_wp.output[wp_i].end(),
                   mpi_buffer.begin() + sur_wp_offset + this->prop_count * wp_i);
