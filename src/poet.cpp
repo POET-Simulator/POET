@@ -271,6 +271,8 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params)
         Rcpp::as<uint32_t>(global_rt_setup->operator[]("checkpoint_interval"));
     params.mape_threshold =
         Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("mape_threshold"));
+    params.rrmse_threshold =
+        Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("rrmse_threshold"));
   }
   catch (const std::exception &e)
   {
@@ -303,36 +305,39 @@ void call_master_iter_end(RInside &R, const Field &trans, const Field &chem)
 
 bool triggerRollbackIfExceeded(ChemistryModule &chem, RuntimeParameters &params, uint32_t &current_iteration)
 {
-  const std::vector<double> &mape_values = chem.error_history.back().mape;
+    const auto &mape = chem.error_history.back().mape;
+    const auto &rrmse = chem.error_history.back().rrmse;
+    const auto &props = chem.getField().GetProps();
 
-  for (uint32_t i = 0; i < params.mape_threshold.size(); i++)
-  {
-    // Skip if no meaningful MAPE value
-    if(mape_values[i] == 0){
-      continue;
-    }
-    if (mape_values[i] > params.mape_threshold[i])
+    for (uint32_t i = 0; i < params.mape_threshold.size(); ++i)
     {
-      uint32_t rollback_iteration = ((current_iteration - 1) / params.checkpoint_interval) * params.checkpoint_interval;
+      // Skip invalid entries
+      if ((mape[i] == 0 && rrmse[i] == 0))
+          continue;
 
-      MSG("[THRESHOLD EXCEEDED] " + chem.getField().GetProps()[i] + " has MAPE = " +
-      std::to_string(mape_values[i]) + " exceeding threshold = " + std::to_string(params.mape_threshold[i])  + 
-      " → rolling back to iteration " + std::to_string(rollback_iteration));
+      bool mape_exceeded  = mape[i]  > params.mape_threshold[i];
+      bool rrmse_exceeded = rrmse[i] > params.rrmse_threshold[i];
 
-      Checkpoint_s checkpoint_read{.field = chem.getField()};
-      read_checkpoint("checkpoint" + std::to_string(rollback_iteration) + ".hdf5", checkpoint_read);
-      current_iteration = checkpoint_read.iteration;
+      if (mape_exceeded || rrmse_exceeded)
+      {
+        uint32_t rollback_iter = ((current_iteration - 1) / params.checkpoint_interval) * params.checkpoint_interval;
+        std::string metric = mape_exceeded ? "MAPE" : "RRMSE";
+        double value = mape_exceeded ? mape[i] : rrmse[i];
+        double threshold = mape_exceeded ? params.mape_threshold[i] : params.rrmse_threshold[i];
 
-      // Rollback happend
-      return true;
+        MSG("[THRESHOLD EXCEEDED] " + props[i] + " has " + metric + " = " +
+            std::to_string(value) + " exceeding threshold = " + std::to_string(threshold) +
+            " → rolling back to iteration " + std::to_string(rollback_iter));
+
+        Checkpoint_s checkpoint_read{.field = chem.getField()};
+        read_checkpoint("checkpoint" + std::to_string(rollback_iter) + ".hdf5", checkpoint_read);
+        current_iteration = checkpoint_read.iteration;
+        return true; // rollback happened
+        }
     }
-  }
-
-  MSG("All species are within their error thresholds.");
-  return false;
+    MSG("All species are within their MAPE and RRMSE thresholds.");
+    return false;
 }
-
-
 
 static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
                                 DiffusionModule &diffusion,
