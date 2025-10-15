@@ -266,14 +266,14 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params)
 
     params.timesteps =
         Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("timesteps"));
-    params.control_iteration =
-        Rcpp::as<uint32_t>(global_rt_setup->operator[]("control_iteration"));
-    params.species_epsilon =
-        Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("species_epsilon"));
-    params.penalty_iteration =
-        Rcpp::as<uint32_t>(global_rt_setup->operator[]("penalty_iteration"));
-    params.max_penalty_iteration = 
-        Rcpp::as<uint32_t>(global_rt_setup->operator[]("max_penalty_iteration"));
+    params.control_interval =
+        Rcpp::as<uint32_t>(global_rt_setup->operator[]("control_interval"));
+    params.checkpoint_interval =
+        Rcpp::as<uint32_t>(global_rt_setup->operator[]("checkpoint_interval"));
+    params.mape_threshold =
+        Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("mape_threshold"));
+    params.rrmse_threshold =
+        Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("rrmse_threshold"));
   }
   catch (const std::exception &e)
   {
@@ -306,50 +306,38 @@ void call_master_iter_end(RInside &R, const Field &trans, const Field &chem)
 
 bool checkAndRollback(ChemistryModule &chem, RuntimeParameters &params, uint32_t &iter)
 {
-  const std::vector<double> &latest_mape = chem.error_stats_history.back().mape;
+    const auto &mape = chem.error_history.back().mape;
+    const auto &rrmse = chem.error_history.back().rrmse;
+    const auto &props = chem.getField().GetProps();
 
-  for (uint32_t j = 0; j < params.species_epsilon.size(); j++)
-  {
-    if (params.species_epsilon[j] < latest_mape[j] && latest_mape[j] != 0)
+    for (uint32_t i = 0; i < params.mape_threshold.size(); ++i)
     {
-      uint32_t rollback_iter = iter - (iter % params.control_iteration);
+      // Skip invalid entries
+      if ((mape[i] == 0 && rrmse[i] == 0))
+          continue;
 
-      std::cout << chem.getField().GetProps()[j] << " with a MAPE value of " << latest_mape[j] << " exceeds epsilon of "
-                << params.species_epsilon[j] << "! " << std::endl;
+      bool mape_exceeded  = mape[i]  > params.mape_threshold[i];
+      bool rrmse_exceeded = rrmse[i] > params.rrmse_threshold[i];
 
-      Checkpoint_s checkpoint_read{.field = chem.getField()};
-      read_checkpoint("checkpoint" + std::to_string(rollback_iter) + ".hdf5", checkpoint_read);
-      iter = checkpoint_read.iteration;
+      if (mape_exceeded || rrmse_exceeded)
+      {
+        uint32_t rollback_iter = ((current_iteration - 1) / params.checkpoint_interval) * params.checkpoint_interval;
+        std::string metric = mape_exceeded ? "MAPE" : "RRMSE";
+        double value = mape_exceeded ? mape[i] : rrmse[i];
+        double threshold = mape_exceeded ? params.mape_threshold[i] : params.rrmse_threshold[i];
 
-      return true;
-    } 
-  }
-  MSG("All spezies are below their threshold values");
-  return false;
-}
+        MSG("[THRESHOLD EXCEEDED] " + props[i] + " has " + metric + " = " +
+            std::to_string(value) + " exceeding threshold = " + std::to_string(threshold) +
+            " → rolling back to iteration " + std::to_string(rollback_iter));
 
-void updatePenaltyLogic(RuntimeParameters &params, bool roolback_happend)
-{
-  if (roolback_happend)
-  {
-    params.rollback_simulation = true;
-    params.penalty_counter = params.penalty_iteration;
-    std::cout << "Penalty counter reset to: " << params.penalty_counter << std::endl;
-    MSG("Rollback! Penalty phase started for " + std::to_string(params.penalty_iteration) + " iterations.");
-  }
-  else
-  {
-    if (params.rollback_simulation && params.penalty_counter == 0)
-    {
-      params.rollback_simulation = false;
-      MSG("Penalty phase ended. Interpolation re-enabled.");
+        Checkpoint_s checkpoint_read{.field = chem.getField()};
+        read_checkpoint("checkpoint" + std::to_string(rollback_iter) + ".hdf5", checkpoint_read);
+        current_iteration = checkpoint_read.iteration;
+        return true; // rollback happened
+        }
     }
-    else if (!params.rollback_simulation)
-    {
-      params.penalty_iteration = std::min(params.penalty_iteration *= 2, params.max_penalty_iteration);
-      MSG("Stable surrogate phase detected. Penalty iteration doubled to " + std::to_string(params.penalty_iteration) + " iterations.");
-    }
-  }
+    MSG("All species are within their MAPE and RRMSE thresholds.");
+    return false;
 }
 
 static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
