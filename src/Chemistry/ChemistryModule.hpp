@@ -185,6 +185,13 @@ namespace poet
      */
     auto GetMasterLoopTime() const { return this->send_recv_t; }
 
+
+    auto GetMasterCtrlLogicTime() const { return this->ctrl_t; }
+
+    auto GetMasterCtrlBcastTime() const { return this->bcast_ctrl_t; }
+
+    auto GetMasterRecvCtrlLogicTime() const { return this->recv_ctrl_t; }
+
     /**
      * **Master only** Collect and return all accumulated timings recorded by
      * workers to run Phreeqc simulation.
@@ -213,6 +220,8 @@ namespace poet
      * \return Vector of all accumulated waiting times.
      */
     std::vector<double> GetWorkerIdleTimings() const;
+
+    std::vector<double> GetWorkerControlTimings() const;
 
     /**
      * **Master only** Collect and return DHT hits of all workers.
@@ -262,25 +271,29 @@ namespace poet
     std::vector<int> ai_surrogate_validity_vector;
 
     RuntimeParameters *runtime_params = nullptr;
-    uint32_t control_iteration_counter = 0;
 
-    struct error_stats
+    struct SimulationErrorStats
     {
       std::vector<double> mape;
-      std::vector<double> rrsme;
-      uint32_t iteration;
+      std::vector<double> rrmse;
+      uint32_t iteration;  // iterations in simulation after rollbacks
+      uint32_t rollback_count;
 
-      error_stats(size_t species_count, size_t iter)
-      : mape(species_count, 0.0), rrsme(species_count, 0.0), iteration(iter) {}
+      SimulationErrorStats(size_t species_count, uint32_t iter, uint32_t counter)
+          : mape(species_count, 0.0), 
+          rrmse(species_count, 0.0), 
+          iteration(iter),
+          rollback_count(counter){}
     };
 
-    std::vector<error_stats> error_stats_history;
+    std::vector<SimulationErrorStats> error_history;
 
-    static void computeStats(const std::vector<double> &pqc_vector,
-                      const std::vector<double> &sur_vector,
-                      uint32_t size_per_prop, uint32_t species_count,
-                      error_stats &stats);
-                      
+    static void computeSpeciesErrors(const std::vector<double> &reference_values,
+                                         const std::vector<double> &surrogate_values,
+                                         uint32_t size_per_prop,
+                                         uint32_t species_count,
+                                         SimulationErrorStats &species_error_stats);
+
   protected:
     void initializeDHT(uint32_t size_mb,
                        const NamedVector<std::uint32_t> &key_species,
@@ -319,6 +332,7 @@ namespace poet
     enum
     {
       WORKER_PHREEQC,
+      WORKER_CTRL_ITER,
       WORKER_DHT_GET,
       WORKER_DHT_FILL,
       WORKER_IDLE,
@@ -342,6 +356,7 @@ namespace poet
       double dht_get = 0.;
       double dht_fill = 0.;
       double idle_t = 0.;
+      double ctrl_t = 0.;
     };
 
     struct worker_info_s
@@ -410,6 +425,7 @@ namespace poet
 
     poet::DHT_Wrapper *dht = nullptr;
 
+    bool dht_fill_during_rollback{false};
     bool interp_enabled{false};
     std::unique_ptr<poet::InterpolationModule> interp;
 
@@ -431,6 +447,10 @@ namespace poet
     double seq_t = 0.;
     double send_recv_t = 0.;
 
+    double ctrl_t = 0.;
+    double bcast_ctrl_t = 0.;
+    double recv_ctrl_t = 0.;
+
     std::array<double, 2> base_totals{0};
 
     bool print_progessbar{false};
@@ -449,7 +469,7 @@ namespace poet
 
     std::unique_ptr<PhreeqcRunner> pqc_runner;
 
-    std::vector<double> sur_shuffled;
+     std::vector<double> sur_shuffled;
   };
 } // namespace poet
 

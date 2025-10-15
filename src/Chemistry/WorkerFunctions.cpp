@@ -69,9 +69,14 @@ namespace poet
         }
         case CHEM_INTERP:
         {
-          int interp_flag;
+          int interp_flag = 0;
+          int dht_fill_flag = 0;
+
           ChemBCast(&interp_flag, 1, MPI_INT);
+          ChemBCast(&dht_fill_flag, 1, MPI_INT);
+
           this->interp_enabled = (interp_flag == 1);
+          this->dht_fill_during_rollback = (dht_fill_flag == 1);
           break;
         }
         case CHEM_WORK_LOOP:
@@ -150,13 +155,14 @@ namespace poet
     double dht_get_start, dht_get_end;
     double phreeqc_time_start, phreeqc_time_end;
     double dht_fill_start, dht_fill_end;
+    double ctrl_time_c, ctrl_time_d;
 
     uint32_t iteration;
     double dt;
     double current_sim_time;
     uint32_t wp_start_index;
     int count = double_count;
-    bool control_iteration_active = false;
+    bool control_logic_enabled = false;
     std::vector<double> mpi_buffer(count);
 
     /* receive */
@@ -183,7 +189,7 @@ namespace poet
     // current work package start location in field
     wp_start_index = mpi_buffer[count + 4];
 
-    control_iteration_active = (mpi_buffer[count + 5] == 1);
+    control_logic_enabled = (mpi_buffer[count + 5] == 1);
 
     for (std::size_t wp_i = 0; wp_i < s_curr_wp.size; wp_i++)
     {
@@ -229,7 +235,7 @@ namespace poet
 
     poet::WorkPackage s_curr_wp_control = s_curr_wp;
 
-    if (control_iteration_active)
+    if (control_logic_enabled)
     {
       for (std::size_t wp_i = 0; wp_i < s_curr_wp_control.size; wp_i++)
       {
@@ -240,12 +246,15 @@ namespace poet
 
     phreeqc_time_start = MPI_Wtime();
 
-    WorkerRunWorkPackage(control_iteration_active ? s_curr_wp_control : s_curr_wp, current_sim_time, dt);
+    WorkerRunWorkPackage(control_logic_enabled ? s_curr_wp_control : s_curr_wp, current_sim_time, dt);
 
     phreeqc_time_end = MPI_Wtime();
 
-    if (control_iteration_active)
-    {     
+    if (control_logic_enabled)
+    { 
+      /* start time measurement for copying control workpackage */ 
+      ctrl_time_c = MPI_Wtime();
+
       std::size_t sur_wp_offset = s_curr_wp.size * this->prop_count;
  
       mpi_buffer.resize(count + sur_wp_offset);
@@ -275,6 +284,10 @@ namespace poet
       }
 
       count += sur_wp_offset;
+
+      /* end time measurement for copying control workpackage */ 
+      ctrl_time_d = MPI_Wtime();
+      timings.ctrl_t += ctrl_time_d - ctrl_time_c;
     }
     else
     {
@@ -288,14 +301,14 @@ namespace poet
     /* send results to master */
     MPI_Request send_req;
 
-    int mpi_tag = control_iteration_active ? LOOP_CTRL : LOOP_WORK;
+    int mpi_tag = control_logic_enabled ? LOOP_CTRL : LOOP_WORK;
     MPI_Isend(mpi_buffer.data(), count, MPI_DOUBLE, 0, mpi_tag, MPI_COMM_WORLD, &send_req);
 
-    if (dht_enabled || interp_enabled)
+    if (dht_enabled || interp_enabled || dht_fill_during_rollback)
     {
       /* write results to DHT */
       dht_fill_start = MPI_Wtime();
-      dht->fillDHT(control_iteration_active ? s_curr_wp_control : s_curr_wp);
+      dht->fillDHT(control_logic_enabled ? s_curr_wp_control : s_curr_wp);
       dht_fill_end = MPI_Wtime();
 
       if (interp_enabled)
@@ -306,7 +319,6 @@ namespace poet
     }
 
     timings.phreeqc_t += phreeqc_time_end - phreeqc_time_start;
-
     MPI_Wait(&send_req, MPI_STATUS_IGNORE);
   }
 
@@ -458,6 +470,12 @@ namespace poet
     {
       MPI_Gather(&timings.phreeqc_t, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0,
                  this->group_comm);
+      break;
+    }
+    case WORKER_CTRL_ITER:
+    {
+      MPI_Gather(&timings.ctrl_t, 1, MPI_DOUBLE, NULL, 1, MPI_DOUBLE, 0,
+             this->group_comm);
       break;
     }
     case WORKER_DHT_GET:

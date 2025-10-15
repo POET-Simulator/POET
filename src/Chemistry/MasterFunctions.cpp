@@ -41,6 +41,12 @@ std::vector<double> poet::ChemistryModule::GetWorkerPhreeqcTimings() const {
   return MasterGatherWorkerTimings(WORKER_PHREEQC);
 }
 
+std::vector<double> poet::ChemistryModule::GetWorkerControlTimings() const {
+  int type = CHEM_PERF;
+  MPI_Bcast(&type, 1, MPI_INT, 0, this->group_comm);
+  return MasterGatherWorkerTimings(WORKER_CTRL_ITER);
+}
+
 std::vector<double> poet::ChemistryModule::GetWorkerDHTGetTimings() const {
   int type = CHEM_PERF;
   MPI_Bcast(&type, 1, MPI_INT, 0, this->group_comm);
@@ -160,35 +166,35 @@ std::vector<uint32_t> poet::ChemistryModule::GetWorkerPHTCacheHits() const {
   return ret;
 }
 
-void poet::ChemistryModule::computeStats(const std::vector<double> &pqc_vector,
-                                         const std::vector<double> &sur_vector,
+void poet::ChemistryModule::computeSpeciesErrors(const std::vector<double> &reference_values,
+                                         const std::vector<double> &surrogate_values,
                                          uint32_t size_per_prop,
                                          uint32_t species_count,
-                                         error_stats &stats) {
+                                         SimulationErrorStats &species_error_stats) {
   for (uint32_t i = 0; i < species_count; ++i) {
     double err_sum = 0.0;
     double sqr_err_sum = 0.0;
     uint32_t base_idx = i * size_per_prop;
 
     for (uint32_t j = 0; j < size_per_prop; ++j) {
-      const double pqc_value = pqc_vector[base_idx + j];
-      const double sur_value = sur_vector[base_idx + j];
+      const double ref_value = reference_values[base_idx + j];
+      const double sur_value = surrogate_values[base_idx + j];
 
-      if (pqc_value == 0.0) {
+      if (ref_value == 0.0) {
         if (sur_value != 0.0) {
           err_sum += 1.0;
           sqr_err_sum += 1.0;
         }
         // Both zero: skip
       } else {
-        double alpha = 1.0 - (sur_value / pqc_value);
+        double alpha = 1.0 - (sur_value / ref_value);
         err_sum += std::abs(alpha);
         sqr_err_sum += alpha * alpha;
       }
     }
 
-    stats.mape[i] = 100.0 * (err_sum / size_per_prop);
-    stats.rrsme[i] =
+    species_error_stats.mape[i] = 100.0 * (err_sum / size_per_prop);
+    species_error_stats.rrmse[i] =
         (size_per_prop > 0) ? std::sqrt(sqr_err_sum / size_per_prop) : 0.0;
   }
 }
@@ -264,7 +270,7 @@ inline void poet::ChemistryModule::MasterSendPkgs(
     worker_list_t &w_list, workpointer_t &work_pointer,
     workpointer_t &sur_pointer, int &pkg_to_send, int &count_pkgs,
     int &free_workers, double dt, uint32_t iteration,
-    uint32_t control_iteration, const std::vector<uint32_t> &wp_sizes_vector) {
+    uint32_t control_interval, const std::vector<uint32_t> &wp_sizes_vector) {
   /* declare variables */
   int local_work_package_size;
 
@@ -305,7 +311,7 @@ inline void poet::ChemistryModule::MasterSendPkgs(
                           std::next(wp_sizes_vector.begin(), count_pkgs), 0);
       send_buffer[end_of_wp + 4] = wp_start_index;
       // whether this iteration is a control iteration
-      send_buffer[end_of_wp + 5] = control_iteration;
+      send_buffer[end_of_wp + 5] = control_interval;
 
       /* ATTENTION Worker p has rank p+1 */
       // MPI_Send(send_buffer, end_of_wp + BUFFER_OFFSET, MPI_DOUBLE, p + 1,
@@ -329,6 +335,7 @@ inline void poet::ChemistryModule::MasterRecvPkgs(worker_list_t &w_list,
   int need_to_receive = 1;
   double idle_a, idle_b;
   int p, size;
+  double recv_a, recv_b;                                                  
 
   MPI_Status probe_status;
   // master_recv_a = MPI_Wtime();
@@ -361,6 +368,7 @@ inline void poet::ChemistryModule::MasterRecvPkgs(worker_list_t &w_list,
         free_workers++;
       }
       if (probe_status.MPI_TAG == LOOP_CTRL) {
+        recv_a = MPI_Wtime();
         MPI_Get_count(&probe_status, MPI_DOUBLE, &size);
 
         // layout of buffer is [phreeqc][surrogate]
@@ -378,6 +386,8 @@ inline void poet::ChemistryModule::MasterRecvPkgs(worker_list_t &w_list,
         w_list[p - 1].has_work = 0;
         pkg_to_recv -= 1;
         free_workers++;
+        recv_b = MPI_Wtime();
+        this->recv_ctrl_t += recv_b - recv_a;
       }
     }
   }
@@ -432,6 +442,10 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
   int i_pkgs;
   int ftype;
 
+  double ctrl_a, ctrl_b;
+  double worker_ctrl_a, worker_ctrl_b;
+  double ctrl_bcast_a, ctrl_bcast_b;
+
   const std::vector<uint32_t> wp_sizes_vector =
       CalculateWPSizesVector(this->n_cells, this->wp_size);
 
@@ -445,28 +459,44 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
               MPI_INT);
   }
 
-  ftype = CHEM_WORK_LOOP;
-  PropagateFunctionType(ftype);
+  /* start time measurement of broadcasting interpolation status */
+  ctrl_bcast_a = MPI_Wtime();
 
   ftype = CHEM_INTERP;
   PropagateFunctionType(ftype);
 
-  if(this->runtime_params->rollback_simulation){
+  int interp_flag = 0;
+  int dht_fill_flag = 0;
+
+  if(this->runtime_params->rollback_enabled){
     this->interp_enabled = false;
-    int interp_flag = 0;
-    ChemBCast(&interp_flag, 1, MPI_INT);
-  } else {
+    this->dht_fill_during_rollback = true;
+    interp_flag = 0;
+    dht_fill_flag = 1;
+  } 
+  else {
     this->interp_enabled = true;
-    int interp_flag = 1;
-    ChemBCast(&interp_flag, 1, MPI_INT);
+    this->dht_fill_during_rollback = false;
+    interp_flag = 1;
+    dht_fill_flag = 0;
   }
+  ChemBCast(&interp_flag, 1, MPI_INT);
+  ChemBCast(&dht_fill_flag, 1, MPI_INT);
+
+  /* end time measurement of broadcasting interpolation status */
+  ctrl_bcast_b = MPI_Wtime();
+  this->bcast_ctrl_t += ctrl_bcast_b - ctrl_bcast_a;
+
+  ftype = CHEM_WORK_LOOP;
+  PropagateFunctionType(ftype);
 
   MPI_Barrier(this->group_comm);
 
   static uint32_t iteration = 0;
-  uint32_t control_iteration = static_cast<uint32_t>(
-      this->runtime_params->control_iteration_active ? 1 : 0);
-  if (control_iteration) {
+
+  uint32_t control_logic_enabled = this->runtime_params->control_interval_enabled ? 1 : 0;
+
+  if (control_logic_enabled) {
     sur_shuffled.clear();
     sur_shuffled.reserve(this->n_cells * this->prop_count);
   }
@@ -512,7 +542,7 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
     if (pkg_to_send > 0) {
       // send packages to all free workers ...
       MasterSendPkgs(worker_list, work_pointer, sur_pointer, pkg_to_send,
-                     i_pkgs, free_workers, dt, iteration, control_iteration,
+                     i_pkgs, free_workers, dt, iteration, control_logic_enabled,
                      wp_sizes_vector);
     }
     // ... and try to receive them from workers who has finished their work
@@ -522,39 +552,43 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
   // Just to complete the progressbar
   std::cout << std::endl;
 
-  /* stop time measurement of chemistry time needed for send/recv loop */
-  worker_chemistry_b = MPI_Wtime();
-  this->send_recv_t += worker_chemistry_b - worker_chemistry_a;
+    /* stop time measurement of chemistry time needed for send/recv loop */
+    worker_chemistry_b = MPI_Wtime();
+    this->send_recv_t += worker_chemistry_b - worker_chemistry_a;
 
-  /* start time measurement of sequential part */
-  seq_c = MPI_Wtime();
+    /* start time measurement of sequential part */
+    seq_c = MPI_Wtime();
 
-  /* unshuffle grid */
-  // grid.importAndUnshuffle(mpi_buffer);
-  std::vector<double> out_vec{mpi_buffer};
-  unshuffleField(mpi_buffer, this->n_cells, this->prop_count,
-                 wp_sizes_vector.size(), out_vec);
-  chem_field = out_vec;
+    /* unshuffle grid */
+    // grid.importAndUnshuffle(mpi_buffer);
+    std::vector<double> out_vec{mpi_buffer};
+    unshuffleField(mpi_buffer, this->n_cells, this->prop_count,
+                  wp_sizes_vector.size(), out_vec);
+    chem_field = out_vec;
 
-  /* do master stuff */
+    /* do master stuff */
 
-  if (control_iteration) {
-    control_iteration_counter++;
+    /* start time measurement of control logic */
+    ctrl_a = MPI_Wtime();
 
-    std::vector<double> sur_unshuffled{sur_shuffled};
+    if (control_logic_enabled && !this->runtime_params->rollback_enabled) {
 
-    unshuffleField(sur_shuffled, this->n_cells, this->prop_count,
-                   wp_sizes_vector.size(), sur_unshuffled);
+      std::vector<double> sur_unshuffled{sur_shuffled};;
 
-    error_stats stats(this->prop_count, control_iteration_counter *
-                                            runtime_params->control_iteration);
+      unshuffleField(sur_shuffled, this->n_cells, this->prop_count,
+                    wp_sizes_vector.size(), sur_unshuffled);
 
-    computeStats(out_vec, sur_unshuffled, this->n_cells, this->prop_count,
-                 stats);
-    error_stats_history.push_back(stats);
+      SimulationErrorStats stats(this->prop_count, this->runtime_params->global_iter, this->runtime_params->rollback_counter);
 
-    // to do: control values to epsilon
-  }
+      computeSpeciesErrors(out_vec, sur_unshuffled, this->n_cells, this->prop_count, stats);
+
+      error_history.push_back(stats);
+    }
+
+    /* end time measurement of control logic */
+    ctrl_b = MPI_Wtime();
+    this->ctrl_t += ctrl_b - ctrl_a;
+
 
   /* start time measurement of master chemistry */
   sim_e_chemistry = MPI_Wtime();
