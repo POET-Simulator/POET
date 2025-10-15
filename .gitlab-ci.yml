@@ -49,6 +49,21 @@ pages:
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH || $CI_COMMIT_TAG
 
+push:
+  stage: release
+  variables:
+    GITHUB_REPOSITORY: 'git@github.com:POET-Simulator/POET.git'
+  before_script:
+    # I know that there is this file env variable in gitlab, but somehow it does not work for me (still complaining about white spaces ...)
+    # Therefore, the ssh key is stored as a base64 encoded string
+    - mkdir -p ~/.ssh && echo $GITHUB_SSH_PRIVATE_KEY | base64 -d > ~/.ssh/id_ed25519 && chmod 0600 ~/.ssh/id_ed25519
+    - ssh-keyscan github.com >> ~/.ssh/known_hosts
+    - echo $MIRROR_SCRIPT | base64 -d > mirror.sh && chmod +x mirror.sh
+  script:
+    - if [[-d poet.git ]]; then rm -rf poet.git; fi
+    - git clone --mirror "https://git.gfz-potsdam.de/naaice/poet.git" "poet.git" && cd poet.git
+    - git push --mirror $GITHUB_REPOSITORY
+
 #archive-sources:       # This job runs in the build stage, which runs first.
 #  image: python:3
 #  stage: release
