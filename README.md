@@ -29,7 +29,7 @@ To compile POET you need following software to be installed:
 
 - C/C++ compiler (tested with GCC)
 - MPI-Implementation (tested with OpenMPI and MVAPICH)
-- CMake 3.9+
+- CMake 3.18+
 - Eigen3 3.4+ (required by `tug`)
 - *optional*: `doxygen` with `dot` bindings for documentation
 - R language and environment including headers or `-dev` packages
