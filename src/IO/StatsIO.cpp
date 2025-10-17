@@ -2,15 +2,19 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <iomanip> // for std::setw and std::setprecision
+#include <iomanip> 
+#include <filesystem>
 
 namespace poet
 {
     void writeStatsToCSV(const std::vector<ChemistryModule::SimulationErrorStats> &all_stats,
                          const std::vector<std::string> &species_names,
+                         const std::string &out_dir,
                          const std::string &filename)
     {
-        std::ofstream out(filename);
+        std::filesystem::path full_path = std::filesystem::path(out_dir) / filename;
+
+        std::ofstream out(full_path);
         if (!out.is_open())
         {
             std::cerr << "Could not open " << filename << " !" << std::endl;
@@ -24,7 +28,7 @@ namespace poet
             << std::setw(15) << "MAPE"
             << std::setw(15) << "RRSME" << "\n";
 
-        out << std::string(75, '-') << "\n"; // separator line
+        out << std::string(75, '-') << "\n"; 
 
         // data rows
         for (size_t i = 0; i < all_stats.size(); ++i)
@@ -39,7 +43,7 @@ namespace poet
                     << std::setw(15) << all_stats[i].rrmse[j]
                     << "\n";
             }
-            out << "\n"; // blank line between iterations
+            out << "\n"; 
         }
 
         out.close();

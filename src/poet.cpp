@@ -330,7 +330,7 @@ bool triggerRollbackIfExceeded(ChemistryModule &chem, RuntimeParameters &params,
             " → rolling back to iteration " + std::to_string(rollback_iter));
 
         Checkpoint_s checkpoint_read{.field = chem.getField()};
-        read_checkpoint("checkpoint" + std::to_string(rollback_iter) + ".hdf5", checkpoint_read);
+        read_checkpoint(params.out_dir, "checkpoint" + std::to_string(rollback_iter) + ".hdf5", checkpoint_read);
         current_iteration = checkpoint_read.iteration;
         return true; // rollback happened
         }
@@ -490,13 +490,13 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
 
     if(iter % params.checkpoint_interval == 0){
       MSG("Writing checkpoint of iteration " + std::to_string(iter));
-      write_checkpoint("checkpoint" + std::to_string(iter) + ".hdf5",
+      write_checkpoint(params.out_dir, "checkpoint" + std::to_string(iter) + ".hdf5",
                        {.field = chem.getField(), .iteration = iter});
     }
 
     if (params.control_interval_enabled && !params.rollback_enabled)
     {
-      writeStatsToCSV(chem.error_history, chem.getField().GetProps(), "stats_overview");
+      writeStatsToCSV(chem.error_history, chem.getField().GetProps(), params.out_dir,"stats_overview");
 
       if(triggerRollbackIfExceeded(chem, params, iter)){
         params.rollback_enabled = true;
