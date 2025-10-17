@@ -331,7 +331,7 @@ bool checkAndRollback(ChemistryModule &chem, RuntimeParameters &params, uint32_t
             " → rolling back to iteration " + std::to_string(rollback_iter));
 
         Checkpoint_s checkpoint_read{.field = chem.getField()};
-        read_checkpoint("checkpoint" + std::to_string(rollback_iter) + ".hdf5", checkpoint_read);
+        read_checkpoint(params.out_dir, "checkpoint" + std::to_string(rollback_iter) + ".hdf5", checkpoint_read);
         current_iteration = checkpoint_read.iteration;
         return true; // rollback happened
         }
@@ -483,17 +483,17 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
     MSG("End of *coupling* iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
 
-    if (iter % params.control_iteration == 0)
-    {
-      writeStatsToCSV(chem.error_stats_history, chem.getField().GetProps(), "stats_overview");
-      write_checkpoint("checkpoint" + std::to_string(iter) + ".hdf5",
+    double chk_start = MPI_Wtime();
+
+    if(iter % params.checkpoint_interval == 0){
+      MSG("Writing checkpoint of iteration " + std::to_string(iter));
+      write_checkpoint(params.out_dir, "checkpoint" + std::to_string(iter) + ".hdf5",
                        {.field = chem.getField(), .iteration = iter});
     }
 
     if (iter == params.next_penalty_check)
     {
-      bool roolback_happend = checkAndRollback(chem, params, iter);
-      updatePenaltyLogic(params, roolback_happend);
+      writeStatsToCSV(chem.error_history, chem.getField().GetProps(), params.out_dir,"stats_overview");
 
       params.next_penalty_check = iter + params.penalty_iteration;
     }
