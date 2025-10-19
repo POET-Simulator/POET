@@ -38,8 +38,7 @@ static const inline std::string ai_surrogate_r_library =
     R"(@R_AI_SURROGATE_LIB@)";
 static const inline std::string r_runtime_parameters = "mysetup";
 
-struct RuntimeParameters
-{
+struct RuntimeParameters {
   std::string out_dir;
   std::vector<double> timesteps;
 

@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <iomanip>
 #include <mpi.h>
 #include <vector>
 
@@ -166,39 +165,6 @@ std::vector<uint32_t> poet::ChemistryModule::GetWorkerPHTCacheHits() const {
   return ret;
 }
 
-void poet::ChemistryModule::computeSpeciesErrors(const std::vector<double> &reference_values,
-                                         const std::vector<double> &surrogate_values,
-                                         uint32_t size_per_prop,
-                                         uint32_t species_count,
-                                         SimulationErrorStats &species_error_stats) {
-  for (uint32_t i = 0; i < species_count; ++i) {
-    double err_sum = 0.0;
-    double sqr_err_sum = 0.0;
-    uint32_t base_idx = i * size_per_prop;
-
-    for (uint32_t j = 0; j < size_per_prop; ++j) {
-      const double ref_value = reference_values[base_idx + j];
-      const double sur_value = surrogate_values[base_idx + j];
-
-      if (ref_value == 0.0) {
-        if (sur_value != 0.0) {
-          err_sum += 1.0;
-          sqr_err_sum += 1.0;
-        }
-        // Both zero: skip
-      } else {
-        double alpha = 1.0 - (sur_value / ref_value);
-        err_sum += std::abs(alpha);
-        sqr_err_sum += alpha * alpha;
-      }
-    }
-
-    species_error_stats.mape[i] = 100.0 * (err_sum / size_per_prop);
-    species_error_stats.rrmse[i] =
-        (size_per_prop > 0) ? std::sqrt(sqr_err_sum / size_per_prop) : 0.0;
-  }
-}
-
 inline std::vector<int> shuffleVector(const std::vector<int> &in_vector,
                                       uint32_t size_per_prop,
                                       uint32_t wp_count) {
@@ -269,8 +235,8 @@ inline void printProgressbar(int count_pkgs, int n_wp, int barWidth = 70) {
 inline void poet::ChemistryModule::MasterSendPkgs(
     worker_list_t &w_list, workpointer_t &work_pointer,
     workpointer_t &sur_pointer, int &pkg_to_send, int &count_pkgs,
-    int &free_workers, double dt, uint32_t iteration,
-    uint32_t control_interval, const std::vector<uint32_t> &wp_sizes_vector) {
+    int &free_workers, double dt, uint32_t iteration, uint32_t control_interval,
+    const std::vector<uint32_t> &wp_sizes_vector) {
   /* declare variables */
   int local_work_package_size;
 
@@ -335,7 +301,7 @@ inline void poet::ChemistryModule::MasterRecvPkgs(worker_list_t &w_list,
   int need_to_receive = 1;
   double idle_a, idle_b;
   int p, size;
-  double recv_a, recv_b;                                                  
+  double recv_a, recv_b;
 
   MPI_Status probe_status;
   // master_recv_a = MPI_Wtime();
@@ -461,28 +427,9 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
 
   /* start time measurement of broadcasting interpolation status */
   ctrl_bcast_a = MPI_Wtime();
-
-  ftype = CHEM_INTERP;
+  ftype = CHEM_IP;
   PropagateFunctionType(ftype);
-
-  int interp_flag = 0;
-  int dht_fill_flag = 0;
-
-  if(this->runtime_params->rollback_enabled){
-    this->interp_enabled = false;
-    this->dht_fill_during_rollback = true;
-    interp_flag = 0;
-    dht_fill_flag = 1;
-  } 
-  else {
-    this->interp_enabled = true;
-    this->dht_fill_during_rollback = false;
-    interp_flag = 1;
-    dht_fill_flag = 0;
-  }
-  ChemBCast(&interp_flag, 1, MPI_INT);
-  ChemBCast(&dht_fill_flag, 1, MPI_INT);
-
+  ctrl_module->BCastControlFlags();
   /* end time measurement of broadcasting interpolation status */
   ctrl_bcast_b = MPI_Wtime();
   this->bcast_ctrl_t += ctrl_bcast_b - ctrl_bcast_a;
@@ -494,11 +441,12 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
 
   static uint32_t iteration = 0;
 
-  uint32_t control_logic_enabled = this->runtime_params->control_interval_enabled ? 1 : 0;
+  uint32_t control_logic_enabled =
+      ctrl_module->control_interval_enabled ? 1 : 0;
 
   if (control_logic_enabled) {
-    sur_shuffled.clear();
-    sur_shuffled.reserve(this->n_cells * this->prop_count);
+    ctrl_module->sur_shuffled.clear();
+    ctrl_module->sur_shuffled.reserve(this->n_cells * this->prop_count);
   }
 
   /* start time measurement of sequential part */
@@ -511,14 +459,14 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
       shuffleField(chem_field.AsVector(), this->n_cells, this->prop_count,
                    wp_sizes_vector.size());
 
-  this->sur_shuffled.resize(mpi_buffer.size());
+  ctrl_module->sur_shuffled.resize(mpi_buffer.size());
 
   /* setup local variables */
   pkg_to_send = wp_sizes_vector.size();
   pkg_to_recv = wp_sizes_vector.size();
 
   workpointer_t work_pointer = mpi_buffer.begin();
-  workpointer_t sur_pointer = sur_shuffled.begin();
+  workpointer_t sur_pointer = ctrl_module->sur_shuffled.begin();
   worker_list_t worker_list(this->comm_size - 1);
 
   free_workers = this->comm_size - 1;
@@ -552,43 +500,37 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
   // Just to complete the progressbar
   std::cout << std::endl;
 
-    /* stop time measurement of chemistry time needed for send/recv loop */
-    worker_chemistry_b = MPI_Wtime();
-    this->send_recv_t += worker_chemistry_b - worker_chemistry_a;
+  /* stop time measurement of chemistry time needed for send/recv loop */
+  worker_chemistry_b = MPI_Wtime();
+  this->send_recv_t += worker_chemistry_b - worker_chemistry_a;
 
-    /* start time measurement of sequential part */
-    seq_c = MPI_Wtime();
+  /* start time measurement of sequential part */
+  seq_c = MPI_Wtime();
 
-    /* unshuffle grid */
-    // grid.importAndUnshuffle(mpi_buffer);
-    std::vector<double> out_vec{mpi_buffer};
-    unshuffleField(mpi_buffer, this->n_cells, this->prop_count,
-                  wp_sizes_vector.size(), out_vec);
-    chem_field = out_vec;
+  /* unshuffle grid */
+  // grid.importAndUnshuffle(mpi_buffer);
+  std::vector<double> out_vec{mpi_buffer};
+  unshuffleField(mpi_buffer, this->n_cells, this->prop_count,
+                 wp_sizes_vector.size(), out_vec);
+  chem_field = out_vec;
 
-    /* do master stuff */
+  /* do master stuff */
 
-    /* start time measurement of control logic */
-    ctrl_a = MPI_Wtime();
+  /* start time measurement of control logic */
+  ctrl_a = MPI_Wtime();
 
-    if (control_logic_enabled && !this->runtime_params->rollback_enabled) {
+  if (control_logic_enabled && !ctrl_module->rollback_enabled) {
+    std::cout << "[Master] Control logic enabled for this iteration." << std::endl;
+    std::vector<double> sur_unshuffled{ctrl_module->sur_shuffled};
+    unshuffleField(ctrl_module->sur_shuffled, this->n_cells, this->prop_count,
+                   wp_sizes_vector.size(), sur_unshuffled);
 
-      std::vector<double> sur_unshuffled{sur_shuffled};;
+    ctrl_module->computeSpeciesErrors(out_vec, sur_unshuffled, this->n_cells);
+  }
 
-      unshuffleField(sur_shuffled, this->n_cells, this->prop_count,
-                    wp_sizes_vector.size(), sur_unshuffled);
-
-      SimulationErrorStats stats(this->prop_count, this->runtime_params->global_iter, this->runtime_params->rollback_counter);
-
-      computeSpeciesErrors(out_vec, sur_unshuffled, this->n_cells, this->prop_count, stats);
-
-      error_history.push_back(stats);
-    }
-
-    /* end time measurement of control logic */
-    ctrl_b = MPI_Wtime();
-    this->ctrl_t += ctrl_b - ctrl_a;
-
+  /* end time measurement of control logic */
+  ctrl_b = MPI_Wtime();
+  this->ctrl_t += ctrl_b - ctrl_a;
 
   /* start time measurement of master chemistry */
   sim_e_chemistry = MPI_Wtime();

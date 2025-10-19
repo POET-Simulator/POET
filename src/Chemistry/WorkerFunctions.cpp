@@ -67,7 +67,7 @@ namespace poet
                     MPI_INT, 0, this->group_comm);
           break;
         }
-        case CHEM_INTERP:
+        case CHEM_IP:
         {
           int interp_flag = 0;
           int dht_fill_flag = 0;

@@ -1,9 +1,9 @@
 #include <string>
-#include "Chemistry/ChemistryModule.hpp"
+#include "Control/ControlModule.hpp"
 
 namespace poet
 {
-    void writeStatsToCSV(const std::vector<ChemistryModule::SimulationErrorStats> &all_stats,
+    void writeStatsToCSV(const std::vector<ControlModule::SimulationErrorStats> &all_stats,
                          const std::vector<std::string> &species_names,
                          const std::string &out_dir,
                          const std::string &filename);

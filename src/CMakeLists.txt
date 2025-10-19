@@ -33,6 +33,7 @@ add_library(POETLib
   Chemistry/SurrogateModels/HashFunctions.cpp
   Chemistry/SurrogateModels/InterpolationModule.cpp
   Chemistry/SurrogateModels/ProximityHashTable.cpp
+  Control/ControlModule.cpp
 )
 
 set(POET_TUG_APPROACH "Implicit" CACHE STRING "tug numerical approach to use")
