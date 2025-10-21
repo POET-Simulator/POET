@@ -68,8 +68,7 @@ static poet::DEFunc ReadRObj_R;
 static poet::DEFunc SaveRObj_R;
 static poet::DEFunc source_R;
 
-static void init_global_functions(RInside &R)
-{
+static void init_global_functions(RInside &R) {
   R.parseEval(kin_r_library);
   master_init_R = DEFunc("master_init");
   master_iteration_end_R = DEFunc("master_iteration_end");
@@ -92,15 +91,9 @@ static void init_global_functions(RInside &R)
 //   R.parseEval("mysetup$state_C <- TMP");
 // }
 
-enum ParseRet
-{
-  PARSER_OK,
-  PARSER_ERROR,
-  PARSER_HELP
-};
+enum ParseRet { PARSER_OK, PARSER_ERROR, PARSER_HELP };
 
-int parseInitValues(int argc, char **argv, RuntimeParameters &params)
-{
+int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
 
   CLI::App app{"POET - Potsdam rEactive Transport simulator"};
 
@@ -182,12 +175,9 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params)
                  "Output directory of the simulation")
       ->required();
 
-  try
-  {
+  try {
     app.parse(argc, argv);
-  }
-  catch (const CLI::ParseError &e)
-  {
+  } catch (const CLI::ParseError &e) {
     app.exit(e);
     return -1;
   }
@@ -199,16 +189,14 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params)
   if (params.as_qs)
     params.out_ext = "qs";
 
-  if (MY_RANK == 0)
-  {
+  if (MY_RANK == 0) {
     // MSG("Complete results storage is " + BOOL_PRINT(simparams.store_result));
     MSG("Output format/extension is " + params.out_ext);
     MSG("Work Package Size: " + std::to_string(params.work_package_size));
     MSG("DHT is " + BOOL_PRINT(params.use_dht));
     MSG("AI Surrogate is " + BOOL_PRINT(params.use_ai_surrogate));
 
-    if (params.use_dht)
-    {
+    if (params.use_dht) {
       // MSG("DHT strategy is " + std::to_string(simparams.dht_strategy));
       // MDL: these should be outdated (?)
       // MSG("DHT key default digits (ignored if 'signif_vector' is "
@@ -222,8 +210,7 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params)
       // MSG("DHT load file is " + chem_params.dht_file);
     }
 
-    if (params.use_interp)
-    {
+    if (params.use_interp) {
       MSG("PHT interpolation enabled: " + BOOL_PRINT(params.use_interp));
       MSG("PHT interp-size = " + std::to_string(params.interp_size));
       MSG("PHT interp-min  = " + std::to_string(params.interp_min_entries));
@@ -251,9 +238,7 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params)
   // // log before rounding?
   // R["dht_log"] = simparams.dht_log;
 
-  try
-  {
-
+  try {
     Rcpp::List init_params_(ReadRObj_R(init_file));
     params.init_params = init_params_;
 
@@ -270,13 +255,9 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params)
         Rcpp::as<uint32_t>(global_rt_setup->operator[]("control_interval"));
     params.checkpoint_interval =
         Rcpp::as<uint32_t>(global_rt_setup->operator[]("checkpoint_interval"));
-    params.mape_threshold =
-        Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("mape_threshold"));
-    params.rrmse_threshold =
-        Rcpp::as<std::vector<double>>(global_rt_setup->operator[]("rrmse_threshold"));
-  }
-  catch (const std::exception &e)
-  {
+    params.mape_threshold = Rcpp::as<std::vector<double>>(
+        global_rt_setup->operator[]("mape_threshold"));
+  } catch (const std::exception &e) {
     ERRMSG("Error while parsing R scripts: " + std::string(e.what()));
     return ParseRet::PARSER_ERROR;
   }
@@ -286,8 +267,7 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params)
 
 // HACK: this is a step back as the order and also the count of fields is
 // predefined, but it will change in the future
-void call_master_iter_end(RInside &R, const Field &trans, const Field &chem)
-{
+void call_master_iter_end(RInside &R, const Field &trans, const Field &chem) {
   R["TMP"] = Rcpp::wrap(trans.AsVector());
   R["TMP_PROPS"] = Rcpp::wrap(trans.GetProps());
   R.parseEval(std::string("state_T <- setNames(data.frame(matrix(TMP, nrow=" +
@@ -304,53 +284,50 @@ void call_master_iter_end(RInside &R, const Field &trans, const Field &chem)
   *global_rt_setup = R["setup"];
 }
 
-bool checkAndRollback(ChemistryModule &chem, RuntimeParameters &params, uint32_t &iter)
-{
-    const auto &mape = chem.error_history.back().mape;
-    const auto &rrmse = chem.error_history.back().rrmse;
-    const auto &props = chem.getField().GetProps();
+bool triggerRollbackIfExceeded(ChemistryModule &chem, RuntimeParameters &params,
+                               uint32_t &current_iteration) {
+  const auto &mape = chem.error_history.back().mape;
+  const auto &props = chem.getField().GetProps();
 
-    for (uint32_t i = 0; i < params.mape_threshold.size(); ++i)
-    {
-      // Skip invalid entries
-      if ((mape[i] == 0 && rrmse[i] == 0))
-          continue;
-
-      bool mape_exceeded  = mape[i]  > params.mape_threshold[i];
-      bool rrmse_exceeded = rrmse[i] > params.rrmse_threshold[i];
-
-      if (mape_exceeded || rrmse_exceeded)
-      {
-        uint32_t rollback_iter = ((current_iteration - 1) / params.checkpoint_interval) * params.checkpoint_interval;
-        std::string metric = mape_exceeded ? "MAPE" : "RRMSE";
-        double value = mape_exceeded ? mape[i] : rrmse[i];
-        double threshold = mape_exceeded ? params.mape_threshold[i] : params.rrmse_threshold[i];
-
-        MSG("[THRESHOLD EXCEEDED] " + props[i] + " has " + metric + " = " +
-            std::to_string(value) + " exceeding threshold = " + std::to_string(threshold) +
-            " → rolling back to iteration " + std::to_string(rollback_iter));
-
-        Checkpoint_s checkpoint_read{.field = chem.getField()};
-        read_checkpoint(params.out_dir, "checkpoint" + std::to_string(rollback_iter) + ".hdf5", checkpoint_read);
-        current_iteration = checkpoint_read.iteration;
-        return true; // rollback happened
-        }
+  for (uint32_t i = 0; i < params.mape_threshold.size(); ++i) {
+    // Skip invalid entries
+    if (mape[i] == 0) {
+      continue;
     }
-    MSG("All species are within their MAPE and RRMSE thresholds.");
-    return false;
+
+    bool mape_exceeded = mape[i] > params.mape_threshold[i];
+
+    if (mape_exceeded) {
+      uint32_t rollback_iter =
+          ((current_iteration - 1) / params.checkpoint_interval) *
+          params.checkpoint_interval;
+
+      MSG("[THRESHOLD EXCEEDED] " + props[i] +
+          " has MAPE = " + std::to_string(mape[i]) +
+          " exceeding threshold = " + std::to_string(params.mape_threshold[i]) +
+          " → rolling back to iteration " + std::to_string(rollback_iter));
+
+      Checkpoint_s checkpoint_read{.field = chem.getField()};
+      read_checkpoint(params.out_dir,
+                      "checkpoint" + std::to_string(rollback_iter) + ".hdf5",
+                      checkpoint_read);
+      current_iteration = checkpoint_read.iteration;
+      return true; // rollback happened
+    }
+  }
+  MSG("All species are within their MAPE and RRMSE thresholds.");
+  return false;
 }
 
 static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
                                 DiffusionModule &diffusion,
-                                ChemistryModule &chem)
-{
+                                ChemistryModule &chem) {
 
   /* Iteration Count is dynamic, retrieving value from R (is only needed by
    * master for the following loop) */
   uint32_t maxiter = params.timesteps.size();
 
-  if (params.print_progress)
-  {
+  if (params.print_progress) {
     chem.setProgressBarPrintout(true);
   }
   R["TMP_PROPS"] = Rcpp::wrap(chem.getField().GetProps());
@@ -360,13 +337,19 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
   /* SIMULATION LOOP */
 
   double dSimTime{0};
-  for (uint32_t iter = 1; iter < maxiter + 1; iter++)
-  {
-    // Penalty countdown
-    if (params.rollback_simulation && params.penalty_counter > 0)
-    {
-      params.penalty_counter--;
-      std::cout << "Penalty counter: " << params.penalty_counter << std::endl;
+  double write_chk = 0.0;
+  double write_stats = 0.0;
+  double read_chk = 0.0;
+
+  for (uint32_t iter = 1; iter < maxiter + 1; iter++) {
+    // Rollback countdowm
+    if (params.rollback_enabled) {
+      if (params.sur_disabled_counter > 0) {
+        --params.sur_disabled_counter;
+        MSG("Rollback counter: " + std::to_string(params.sur_disabled_counter));
+      } else {
+        params.rollback_enabled = false;
+      }
     }
 
     params.control_iteration_active = (iter % params.control_iteration == 0 /* && iter != 0 */);
@@ -391,8 +374,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
     chem.getField().update(diffusion.getField());
 
     // MSG("Chemistry start");
-    if (params.use_ai_surrogate)
-    {
+    if (params.use_ai_surrogate) {
       double ai_start_t = MPI_Wtime();
       // Save current values from the tug field as predictor for the ai step
       R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
@@ -443,8 +425,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
     chem.simulate(dt);
 
     /* AI surrogate iterative training*/
-    if (params.use_ai_surrogate)
-    {
+    if (params.use_ai_surrogate) {
       double ai_start_t = MPI_Wtime();
 
       R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
@@ -483,20 +464,41 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
     MSG("End of *coupling* iteration " + std::to_string(iter) + "/" +
         std::to_string(maxiter));
 
-    double chk_start = MPI_Wtime();
+    double write_chk_start, write_chk_end;
+    double write_stats_start, write_stats_end;
+    double read_chk_start, read_chk_end;
 
-    if(iter % params.checkpoint_interval == 0){
+    if (params.control_interval_enabled) {
+
+      write_chk_start = MPI_Wtime();
       MSG("Writing checkpoint of iteration " + std::to_string(iter));
-      write_checkpoint(params.out_dir, "checkpoint" + std::to_string(iter) + ".hdf5",
+      write_checkpoint(params.out_dir,
+                       "checkpoint" + std::to_string(iter) + ".hdf5",
                        {.field = chem.getField(), .iteration = iter});
+      write_chk_end = MPI_Wtime();
+
+      if (!params.rollback_enabled) {
+        write_stats_start = MPI_Wtime();
+        writeStatsToCSV(chem.error_history, chem.getField().GetProps(),
+                        params.out_dir, "stats_overview");
+        write_stats_end = MPI_Wtime();
+
+        read_chk_start = MPI_Wtime();
+        params.rollback_enabled = triggerRollbackIfExceeded(chem, params, iter);
+        read_chk_end = MPI_Wtime();
+
+        if (params.rollback_enabled) {
+          params.rollback_counter++;
+          params.sur_disabled_counter = params.control_interval;
+          MSG("Interpolation disabled for the next " +
+              std::to_string(params.control_interval) + ".");
+        }
+      }
     }
 
-    if (iter == params.next_penalty_check)
-    {
-      writeStatsToCSV(chem.error_history, chem.getField().GetProps(), params.out_dir,"stats_overview");
-
-      params.next_penalty_check = iter + params.penalty_iteration;
-    }
+    write_chk += write_chk_end - write_chk_start;
+    write_stats += write_stats_end - write_stats_start;
+    read_chk += read_chk_end - read_chk_start;
 
     // MSG();
   } // END SIMULATION LOOP
@@ -514,8 +516,17 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
   Rcpp::List diffusion_profiling;
   diffusion_profiling["simtime"] = diffusion.getTransportTime();
 
-  if (params.use_dht)
-  {
+  Rcpp::List ctrl_profiling;
+  ctrl_profiling["write_checkpoint"] = write_chk;
+  ctrl_profiling["read_checkpoint"] = read_chk;
+  ctrl_profiling["write_metrics"] = write_stats;
+  ctrl_profiling["ctrl_logic_master"] = chem.GetMasterCtrlLogicTime();
+  ctrl_profiling["bcast_ctrl_logic_master"] = chem.GetMasterCtrlBcastTime();
+  ctrl_profiling["recv_ctrl_logic_maser"] = chem.GetMasterRecvCtrlLogicTime();
+  ctrl_profiling["ctrl_logic_worker"] =
+      Rcpp::wrap(chem.GetWorkerControlTimings());
+
+  if (params.use_dht) {
     chem_profiling["dht_hits"] = Rcpp::wrap(chem.GetWorkerDHTHits());
     chem_profiling["dht_evictions"] = Rcpp::wrap(chem.GetWorkerDHTEvictions());
     chem_profiling["dht_get_time"] = Rcpp::wrap(chem.GetWorkerDHTGetTimings());
@@ -523,8 +534,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
         Rcpp::wrap(chem.GetWorkerDHTFillTimings());
   }
 
-  if (params.use_interp)
-  {
+  if (params.use_interp) {
     chem_profiling["interp_w"] =
         Rcpp::wrap(chem.GetWorkerInterpolationWriteTimings());
     chem_profiling["interp_r"] =
@@ -542,6 +552,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
   profiling["simtime"] = dSimTime;
   profiling["chemistry"] = chem_profiling;
   profiling["diffusion"] = diffusion_profiling;
+  profiling["ctrl_logic"] = ctrl_profiling;
 
   chem.MasterLoopBreak();
 
@@ -549,8 +560,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, RuntimeParameters &params,
 }
 
 std::vector<std::string> getSpeciesNames(const Field &&field, int root,
-                                         MPI_Comm comm)
-{
+                                         MPI_Comm comm) {
   std::uint32_t n_elements;
   std::uint32_t n_string_size;
 
@@ -560,13 +570,11 @@ std::vector<std::string> getSpeciesNames(const Field &&field, int root,
   const bool is_master = root == rank;
 
   // first, the master sends all the species names iterative
-  if (is_master)
-  {
+  if (is_master) {
     n_elements = field.GetProps().size();
     MPI_Bcast(&n_elements, 1, MPI_UINT32_T, root, MPI_COMM_WORLD);
 
-    for (std::uint32_t i = 0; i < n_elements; i++)
-    {
+    for (std::uint32_t i = 0; i < n_elements; i++) {
       n_string_size = field.GetProps()[i].size();
       MPI_Bcast(&n_string_size, 1, MPI_UINT32_T, root, MPI_COMM_WORLD);
       MPI_Bcast(const_cast<char *>(field.GetProps()[i].c_str()), n_string_size,
@@ -581,8 +589,7 @@ std::vector<std::string> getSpeciesNames(const Field &&field, int root,
 
   std::vector<std::string> species_names_out(n_elements);
 
-  for (std::uint32_t i = 0; i < n_elements; i++)
-  {
+  for (std::uint32_t i = 0; i < n_elements; i++) {
     MPI_Bcast(&n_string_size, 1, MPI_UINT32_T, root, MPI_COMM_WORLD);
 
     char recv_buf[n_string_size];
@@ -595,8 +602,7 @@ std::vector<std::string> getSpeciesNames(const Field &&field, int root,
   return species_names_out;
 }
 
-std::array<double, 2> getBaseTotals(Field &&field, int root, MPI_Comm comm)
-{
+std::array<double, 2> getBaseTotals(Field &&field, int root, MPI_Comm comm) {
   std::array<double, 2> base_totals;
 
   int rank;
@@ -604,8 +610,7 @@ std::array<double, 2> getBaseTotals(Field &&field, int root, MPI_Comm comm)
 
   const bool is_master = root == rank;
 
-  if (is_master)
-  {
+  if (is_master) {
     const auto h_col = field["H"];
     const auto o_col = field["O"];
 
@@ -620,8 +625,7 @@ std::array<double, 2> getBaseTotals(Field &&field, int root, MPI_Comm comm)
   return base_totals;
 }
 
-bool getHasID(Field &&field, int root, MPI_Comm comm)
-{
+bool getHasID(Field &&field, int root, MPI_Comm comm) {
   bool has_id;
 
   int rank;
@@ -629,8 +633,7 @@ bool getHasID(Field &&field, int root, MPI_Comm comm)
 
   const bool is_master = root == rank;
 
-  if (is_master)
-  {
+  if (is_master) {
     const auto ID_field = field["ID"];
 
     std::set<double> unique_IDs(ID_field.begin(), ID_field.end());
@@ -647,8 +650,7 @@ bool getHasID(Field &&field, int root, MPI_Comm comm)
   return has_id;
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   int world_size;
 
   MPI_Init(&argc, &argv);
@@ -659,8 +661,7 @@ int main(int argc, char *argv[])
 
     RInsidePOET &R = RInsidePOET::getInstance();
 
-    if (MY_RANK == 0)
-    {
+    if (MY_RANK == 0) {
       MSG("Running POET version " + std::string(poet_version));
     }
 
@@ -668,8 +669,7 @@ int main(int argc, char *argv[])
 
     RuntimeParameters run_params;
 
-    if (parseInitValues(argc, argv, run_params) != 0)
-    {
+    if (parseInitValues(argc, argv, run_params) != 0) {
       MPI_Finalize();
       return 0;
     }
@@ -711,12 +711,9 @@ int main(int argc, char *argv[])
 
     chemistry.masterEnableSurrogates(surr_setup);
 
-    if (MY_RANK > 0)
-    {
+    if (MY_RANK > 0) {
       chemistry.WorkerLoop();
-    }
-    else
-    {
+    } else {
       // R.parseEvalQ("mysetup <- setup");
       // // if (MY_RANK == 0) { // get timestep vector from
       // // grid_init function ... //
@@ -730,8 +727,7 @@ int main(int argc, char *argv[])
       R["out_ext"] = run_params.out_ext;
       R["out_dir"] = run_params.out_dir;
 
-      if (run_params.use_ai_surrogate)
-      {
+      if (run_params.use_ai_surrogate) {
         /* Incorporate ai surrogate from R */
         R.parseEvalQ(ai_surrogate_r_library);
         /* Use dht species for model input and output */
@@ -780,8 +776,7 @@ int main(int argc, char *argv[])
 
   MPI_Finalize();
 
-  if (MY_RANK == 0)
-  {
+  if (MY_RANK == 0) {
     MSG("done, bye!");
   }
 

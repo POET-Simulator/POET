@@ -52,13 +52,14 @@ struct RuntimeParameters {
 
   bool print_progress = false;
 
-  std::uint32_t penalty_iteration = 0;
-  std::uint32_t max_penalty_iteration = 0;
-  std::uint32_t penalty_counter = 0;
-  std::uint32_t next_penalty_check = 0;
-  bool rollback_simulation = false;
-  bool control_iteration_active = false;
-  std::uint32_t control_iteration = 1;
+  bool rollback_enabled = false;
+  bool control_interval_enabled = false;
+  std::uint32_t global_iter = 0;
+  std::uint32_t sur_disabled_counter = 0;
+  std::uint32_t rollback_counter = 0;
+  std::uint32_t checkpoint_interval = 0;
+  std::uint32_t control_interval = 0;
+  std::vector<double> mape_threshold;
 
   static constexpr std::uint32_t WORK_PACKAGE_SIZE_DEFAULT = 32;
   std::uint32_t work_package_size = WORK_PACKAGE_SIZE_DEFAULT;

@@ -274,7 +274,13 @@ namespace poet
       : mape(species_count, 0.0), rrsme(species_count, 0.0), iteration(iter) {}
     };
 
-    std::vector<error_stats> error_stats_history;
+    std::vector<SimulationErrorStats> error_history;
+
+    void computeSpeciesErrors(const std::vector<double> &reference_values,
+                                         const std::vector<double> &surrogate_values,
+                                         uint32_t size_per_prop,
+                                         uint32_t species_count,
+                                         SimulationErrorStats &species_error_stats);
 
     static void computeStats(const std::vector<double> &pqc_vector,
                       const std::vector<double> &sur_vector,
@@ -410,6 +416,7 @@ namespace poet
 
     poet::DHT_Wrapper *dht = nullptr;
 
+    bool ht_fill{false};
     bool interp_enabled{false};
     std::unique_ptr<poet::InterpolationModule> interp;
 
