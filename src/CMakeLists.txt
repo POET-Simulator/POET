@@ -1,8 +1,27 @@
+include(FetchContent)
+FetchContent_Declare(
+  cli11
+  QUIET 
+  GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+  GIT_TAG v2.4.2
+)
+
+FetchContent_Declare(
+  highfive
+  QUIET
+  GIT_REPOSITORY https://github.com/highfive-devs/highfive.git
+  GIT_TAG v3.0.0
+)
+
+FetchContent_MakeAvailable(cli11)
+FetchContent_MakeAvailable(highfive)
+
 add_library(POETLib
   Init/InitialList.cpp 
   Init/GridInit.cpp 
   Init/DiffusionInit.cpp
   Init/ChemistryInit.cpp
+  IO/checkpoint.cpp
   DataStructures/Field.cpp
   Transport/DiffusionModule.cpp
   Chemistry/ChemistryModule.cpp
@@ -30,18 +49,10 @@ target_link_libraries(
   PUBLIC RRuntime
   PUBLIC IPhreeqcPOET
   PUBLIC tug
-  PUBLIC MPI::MPI_C
+  PUBLIC MPI::MPI_C 
+  PUBLIC HighFive::HighFive
 )
 
-include(FetchContent)
-FetchContent_Declare(
-  cli11
-  QUIET 
-  GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-  GIT_TAG v2.4.2
-)
-
-FetchContent_MakeAvailable(cli11)
 
 # add_library(poetlib
 #   Base/Grid.cpp
