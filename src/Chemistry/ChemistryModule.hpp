@@ -2,15 +2,16 @@
 #ifndef CHEMISTRYMODULE_H_
 #define CHEMISTRYMODULE_H_
 
+#include "ChemistryDefs.hpp"
 #include "DataStructures/Field.hpp"
 #include "DataStructures/NamedVector.hpp"
 #include "ChemistryDefs.hpp"
 #include "Control/ControlModule.hpp"
 #include "Init/InitialList.hpp"
 #include "NameDouble.h"
+#include "PhreeqcRunner.hpp"
 #include "SurrogateModels/DHT_Wrapper.hpp"
 #include "SurrogateModels/Interpolation.hpp"
-#include "PhreeqcRunner.hpp"
 
 #include <array>
 #include <cstdint>
@@ -174,12 +175,6 @@ public:
    */
   auto GetMasterLoopTime() const { return this->send_recv_t; }
 
-  auto GetMasterCtrlLogicTime() const { return this->ctrl_t; }
-
-  auto GetMasterCtrlBcastTime() const { return this->bcast_ctrl_t; }
-
-  auto GetMasterRecvCtrlLogicTime() const { return this->recv_ctrl_t; }
-
   /**
    * **Master only** Collect and return all accumulated timings recorded by
    * workers to run Phreeqc simulation.
@@ -257,6 +252,8 @@ public:
 
   std::vector<int> ai_surrogate_validity_vector;
 
+  void setControlModule(poet::ControlModule *ctrl) { control_module = ctrl; }
+
 protected:
   void initializeDHT(uint32_t size_mb,
                      const NamedVector<std::uint32_t> &key_species,
@@ -274,7 +271,8 @@ protected:
     CHEM_DHT_SIGNIF_VEC,
     CHEM_DHT_SNAPS,
     CHEM_DHT_READ_FILE,
-    CHEM_IP,  // Control Flag
+    //CHEM_IP,   // Control flag
+    CHEM_CTRL, // Control flag
     CHEM_IP_ENABLE,
     CHEM_IP_MIN_ENTRIES,
     CHEM_IP_SIGNIF_VEC,
@@ -329,7 +327,7 @@ protected:
   void MasterSendPkgs(worker_list_t &w_list, workpointer_t &work_pointer,
                       workpointer_t &sur_pointer, int &pkg_to_send,
                       int &count_pkgs, int &free_workers, double dt,
-                      uint32_t iteration, uint32_t control_iteration,
+                      uint32_t iteration,
                       const std::vector<uint32_t> &wp_sizes_vector);
   void MasterRecvPkgs(worker_list_t &w_list, int &pkg_to_recv, bool to_send,
                       int &free_workers);
@@ -367,6 +365,10 @@ protected:
 
   void BCastStringVec(std::vector<std::string> &io);
 
+  int packResultsIntoBuffer(std::vector<double> &mpi_buffer, int base_count,
+                            const WorkPackage &wp,
+                            const WorkPackage &wp_control);
+
   int comm_size, comm_rank;
   MPI_Comm group_comm;
 
@@ -380,13 +382,12 @@ protected:
 
   poet::DHT_Wrapper *dht = nullptr;
 
-  bool dht_fill_during_rollback{false};
   bool interp_enabled{false};
   std::unique_ptr<poet::InterpolationModule> interp;
 
   bool ai_surrogate_enabled{false};
 
-  static constexpr uint32_t BUFFER_OFFSET = 6;
+  static constexpr uint32_t BUFFER_OFFSET = 5;
 
   inline void ChemBCast(void *buf, int count, MPI_Datatype datatype) const {
     MPI_Bcast(buf, count, datatype, 0, this->group_comm);
@@ -399,10 +400,6 @@ protected:
   double idle_t = 0.;
   double seq_t = 0.;
   double send_recv_t = 0.;
-
-  double ctrl_t = 0.;
-  double bcast_ctrl_t = 0.;
-  double recv_ctrl_t = 0.;
 
   std::array<double, 2> base_totals{0};
 
@@ -422,9 +419,11 @@ protected:
 
   std::unique_ptr<PhreeqcRunner> pqc_runner;
 
-  std::unique_ptr<poet::ControlModule> ctrl_module;
+  poet::ControlModule *control_module = nullptr;
 
-  //std::vector<double> sur_shuffled;
+  bool control_enabled{false};
+
+  // std::vector<double> sur_shuffled;
 };
 } // namespace poet
 

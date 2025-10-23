@@ -51,15 +51,9 @@ struct RuntimeParameters {
 
   bool print_progress = false;
 
-  bool rollback_enabled = false;
-  bool control_interval_enabled = false;
-  std::uint32_t global_iter = 0;
-  std::uint32_t sur_disabled_counter = 0;
-  std::uint32_t rollback_counter = 0;
   std::uint32_t checkpoint_interval = 0;
   std::uint32_t control_interval = 0;
   std::vector<double> mape_threshold;
-  std::vector<double> rrmse_threshold;
 
   static constexpr std::uint32_t WORK_PACKAGE_SIZE_DEFAULT = 32;
   std::uint32_t work_package_size = WORK_PACKAGE_SIZE_DEFAULT;

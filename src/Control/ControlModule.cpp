@@ -4,15 +4,23 @@
 #include "IO/StatsIO.hpp"
 #include <cmath>
 
-bool poet::ControlModule::isControlIteration(uint32_t iter) {
+void poet::ControlModule::updateControlIteration(const uint32_t iter) {
+
+  global_iteration = iter;
+
+  if (control_interval == 0) {
+    control_interval_enabled = false;
+    return;
+  }
+
   control_interval_enabled = (iter % control_interval == 0);
   if (control_interval_enabled) {
-    MSG("[Control] Control interval triggered at iteration " +
+    MSG("[Control] Control interval enabled at iteration " +
         std::to_string(iter));
   }
-  return control_interval_enabled;
 }
 
+/*
 void poet::ControlModule::beginIteration() {
   if (rollback_enabled) {
     if (sur_disabled_counter > 0) {
@@ -23,19 +31,23 @@ void poet::ControlModule::beginIteration() {
     }
   }
 }
+*/
 
-void poet::ControlModule::endIteration(uint32_t iter) {
+void poet::ControlModule::endIteration(const uint32_t iter) {
+
+  if (!control_interval_enabled) {
+    return;
+  }
   /* Writing a checkpointing */
-  if (checkpoint_interval > 0 && iter % checkpoint_interval == 0) {
+  /* Control Logic*/
+  if (control_interval_enabled &&
+      checkpoint_interval > 0 /*&& !rollback_enabled*/) {
     MSG("Writing checkpoint of iteration " + std::to_string(iter));
     write_checkpoint(out_dir, "checkpoint" + std::to_string(iter) + ".hdf5",
                      {.field = chem->getField(), .iteration = iter});
-  }
+    writeStatsToCSV(error_history, species_names, out_dir, "stats_overview");
 
-  /* Control Logic*/
-  if (control_interval_enabled && !rollback_enabled) {
-    writeStatsToCSV(error_history, species_names, out_dir,
-                    "stats_overview");
+    /*
 
     if (triggerRollbackIfExceeded(*chem, *params, iter)) {
       rollback_enabled = true;
@@ -44,9 +56,12 @@ void poet::ControlModule::endIteration(uint32_t iter) {
       MSG("Interpolation disabled for the next " +
           std::to_string(control_interval) + ".");
     }
+
+    */
   }
 }
 
+/*
 void poet::ControlModule::BCastControlFlags() {
   int interp_flag = rollback_enabled ? 0 : 1;
   int dht_fill_flag = rollback_enabled ? 1 : 0;
@@ -54,6 +69,9 @@ void poet::ControlModule::BCastControlFlags() {
   chem->ChemBCast(&dht_fill_flag, 1, MPI_INT);
 }
 
+*/
+
+/*
 bool poet::ControlModule::triggerRollbackIfExceeded(ChemistryModule &chem,
                                                     RuntimeParameters &params,
                                                     uint32_t &iter) {
@@ -91,17 +109,20 @@ bool poet::ControlModule::triggerRollbackIfExceeded(ChemistryModule &chem,
     }
   }
   MSG("All species are within their MAPE and RRMSE thresholds.");
-  return false;
-}
+  return
 
+  false;
+}
+*/
 void poet::ControlModule::computeSpeciesErrors(
     const std::vector<double> &reference_values,
-    const std::vector<double> &surrogate_values, uint32_t size_per_prop) {
+    const std::vector<double> &surrogate_values, const uint32_t size_per_prop) {
 
-  SimulationErrorStats species_error_stats(species_count, params->global_iter,
-                                           rollback_counter);
+  SimulationErrorStats species_error_stats(this->species_names.size(),
+                                           global_iteration,
+                                           /*rollback_counter*/ 0);
 
-  for (uint32_t i = 0; i < species_count; ++i) {
+  for (uint32_t i = 0; i < this->species_names.size(); ++i) {
     double err_sum = 0.0;
     double sqr_err_sum = 0.0;
     uint32_t base_idx = i * size_per_prop;

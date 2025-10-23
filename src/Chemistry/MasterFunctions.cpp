@@ -235,7 +235,7 @@ inline void printProgressbar(int count_pkgs, int n_wp, int barWidth = 70) {
 inline void poet::ChemistryModule::MasterSendPkgs(
     worker_list_t &w_list, workpointer_t &work_pointer,
     workpointer_t &sur_pointer, int &pkg_to_send, int &count_pkgs,
-    int &free_workers, double dt, uint32_t iteration, uint32_t control_interval,
+    int &free_workers, double dt, uint32_t iteration,
     const std::vector<uint32_t> &wp_sizes_vector) {
   /* declare variables */
   int local_work_package_size;
@@ -276,14 +276,23 @@ inline void poet::ChemistryModule::MasterSendPkgs(
           std::accumulate(wp_sizes_vector.begin(),
                           std::next(wp_sizes_vector.begin(), count_pkgs), 0);
       send_buffer[end_of_wp + 4] = wp_start_index;
-      // whether this iteration is a control iteration
-      send_buffer[end_of_wp + 5] = control_interval;
 
       /* ATTENTION Worker p has rank p+1 */
       // MPI_Send(send_buffer, end_of_wp + BUFFER_OFFSET, MPI_DOUBLE, p + 1,
       //          LOOP_WORK, this->group_comm);
       MPI_Send(send_buffer.data(), send_buffer.size(), MPI_DOUBLE, p + 1,
                LOOP_WORK, this->group_comm);
+      
+            /* ---- DEBUG LOG (Sender side) ---- */
+      std::cout << "[DEBUG][rank=" << p+1
+                << "] sending WP " << (count_pkgs - 1)
+                << " to worker rank " << (p + 1)
+                << " | len=" << send_buffer.size()
+                << " | start index=" << wp_start_index
+                << " | second element=" << send_buffer[1]
+                << " | pkg size=" << local_work_package_size
+                << std::endl;
+      /* -------------------------------- */
 
       /* Mark that worker has work to do */
       w_list[p].has_work = 1;
@@ -301,8 +310,9 @@ inline void poet::ChemistryModule::MasterRecvPkgs(worker_list_t &w_list,
   int need_to_receive = 1;
   double idle_a, idle_b;
   int p, size;
-  double recv_a, recv_b;
+  std::vector<double> recv_buffer;
 
+  recv_buffer.reserve(wp_size * prop_count * 2);
   MPI_Status probe_status;
   // master_recv_a = MPI_Wtime();
   /* start to loop as long there are packages to recv and the need to receive
@@ -320,41 +330,48 @@ inline void poet::ChemistryModule::MasterRecvPkgs(worker_list_t &w_list,
       idle_b = MPI_Wtime();
       this->idle_t += idle_b - idle_a;
     }
-
+    if (!need_to_receive) {
+      continue;
+    }
     /* if need_to_receive was set to true above, so there is a message to
      * receive */
-    if (need_to_receive) {
-      p = probe_status.MPI_SOURCE;
-      if (probe_status.MPI_TAG == LOOP_WORK) {
-        MPI_Get_count(&probe_status, MPI_DOUBLE, &size);
-        MPI_Recv(w_list[p - 1].send_addr, size, MPI_DOUBLE, p, LOOP_WORK,
-                 this->group_comm, MPI_STATUS_IGNORE);
-        w_list[p - 1].has_work = 0;
-        pkg_to_recv -= 1;
-        free_workers++;
-      }
-      if (probe_status.MPI_TAG == LOOP_CTRL) {
-        recv_a = MPI_Wtime();
-        MPI_Get_count(&probe_status, MPI_DOUBLE, &size);
+    p = probe_status.MPI_SOURCE;
+    bool handled = false;
 
-        // layout of buffer is [phreeqc][surrogate]
-        std::vector<double> recv_buffer(size);
+    switch (probe_status.MPI_TAG) {
+    case LOOP_WORK: {
+      MPI_Get_count(&probe_status, MPI_DOUBLE, &size);
+      MPI_Recv(w_list[p - 1].send_addr, size, MPI_DOUBLE, p, LOOP_WORK,
+               this->group_comm, MPI_STATUS_IGNORE);
+      handled = true;
+      break;
+    }
+    case LOOP_CTRL: {
+      /* layout of buffer is [phreeqc][surrogate] */
+      MPI_Get_count(&probe_status, MPI_DOUBLE, &size);
+      recv_buffer.resize(size);
+      MPI_Recv(recv_buffer.data(), size, MPI_DOUBLE, p, LOOP_CTRL,
+               this->group_comm, MPI_STATUS_IGNORE);
 
-        MPI_Recv(recv_buffer.data(), size, MPI_DOUBLE, p, LOOP_CTRL,
-                 this->group_comm, MPI_STATUS_IGNORE);
+      int half = size / 2;
+      std::copy(recv_buffer.begin(), recv_buffer.begin() + half,
+                w_list[p - 1].send_addr);
 
-        std::copy(recv_buffer.begin(), recv_buffer.begin() + (size / 2),
-                  w_list[p - 1].send_addr);
+      std::copy(recv_buffer.begin() + (size / 2), recv_buffer.begin() + size,
+                w_list[p - 1].surrogate_addr);
 
-        std::copy(recv_buffer.begin() + (size / 2), recv_buffer.begin() + size,
-                  w_list[p - 1].surrogate_addr);
-
-        w_list[p - 1].has_work = 0;
-        pkg_to_recv -= 1;
-        free_workers++;
-        recv_b = MPI_Wtime();
-        this->recv_ctrl_t += recv_b - recv_a;
-      }
+      handled = true;
+      break;
+    }
+    default: {
+      throw std::runtime_error("Master received unknown MPI tag: " +
+                               std::to_string(probe_status.MPI_TAG));
+    }
+    }
+    if (handled) {
+      w_list[p - 1].has_work = 0;
+      pkg_to_recv -= 1;
+      free_workers++;
     }
   }
 }
@@ -408,10 +425,6 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
   int i_pkgs;
   int ftype;
 
-  double ctrl_a, ctrl_b;
-  double worker_ctrl_a, worker_ctrl_b;
-  double ctrl_bcast_a, ctrl_bcast_b;
-
   const std::vector<uint32_t> wp_sizes_vector =
       CalculateWPSizesVector(this->n_cells, this->wp_size);
 
@@ -425,15 +438,18 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
               MPI_INT);
   }
 
-  /* start time measurement of broadcasting interpolation status */
-  ctrl_bcast_a = MPI_Wtime();
+  uint32_t control_flag = control_module->GetControlIntervalEnabled();
+  if (control_flag) {
+    ftype = CHEM_CTRL;
+    PropagateFunctionType(ftype);
+    ChemBCast(&control_flag, 1, MPI_INT);
+  }
+
+  /*
   ftype = CHEM_IP;
   PropagateFunctionType(ftype);
   ctrl_module->BCastControlFlags();
-  /* end time measurement of broadcasting interpolation status */
-  ctrl_bcast_b = MPI_Wtime();
-  this->bcast_ctrl_t += ctrl_bcast_b - ctrl_bcast_a;
-
+*/
   ftype = CHEM_WORK_LOOP;
   PropagateFunctionType(ftype);
 
@@ -441,32 +457,23 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
 
   static uint32_t iteration = 0;
 
-  uint32_t control_logic_enabled =
-      ctrl_module->control_interval_enabled ? 1 : 0;
-
-  if (control_logic_enabled) {
-    ctrl_module->sur_shuffled.clear();
-    ctrl_module->sur_shuffled.reserve(this->n_cells * this->prop_count);
-  }
-
   /* start time measurement of sequential part */
   seq_a = MPI_Wtime();
 
   /* shuffle grid */
   // grid.shuffleAndExport(mpi_buffer);
-
   std::vector<double> mpi_buffer =
       shuffleField(chem_field.AsVector(), this->n_cells, this->prop_count,
                    wp_sizes_vector.size());
 
-  ctrl_module->sur_shuffled.resize(mpi_buffer.size());
+  std::vector<double> mpi_surr_buffer{mpi_buffer};
 
   /* setup local variables */
   pkg_to_send = wp_sizes_vector.size();
   pkg_to_recv = wp_sizes_vector.size();
 
   workpointer_t work_pointer = mpi_buffer.begin();
-  workpointer_t sur_pointer = ctrl_module->sur_shuffled.begin();
+  workpointer_t sur_pointer = mpi_surr_buffer.begin();
   worker_list_t worker_list(this->comm_size - 1);
 
   free_workers = this->comm_size - 1;
@@ -490,8 +497,7 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
     if (pkg_to_send > 0) {
       // send packages to all free workers ...
       MasterSendPkgs(worker_list, work_pointer, sur_pointer, pkg_to_send,
-                     i_pkgs, free_workers, dt, iteration, control_logic_enabled,
-                     wp_sizes_vector);
+                     i_pkgs, free_workers, dt, iteration, wp_sizes_vector);
     }
     // ... and try to receive them from workers who has finished their work
     MasterRecvPkgs(worker_list, pkg_to_recv, pkg_to_send > 0, free_workers);
@@ -516,21 +522,16 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
 
   /* do master stuff */
 
-  /* start time measurement of control logic */
-  ctrl_a = MPI_Wtime();
-
-  if (control_logic_enabled && !ctrl_module->rollback_enabled) {
-    std::cout << "[Master] Control logic enabled for this iteration." << std::endl;
-    std::vector<double> sur_unshuffled{ctrl_module->sur_shuffled};
-    unshuffleField(ctrl_module->sur_shuffled, this->n_cells, this->prop_count,
+  if (control_flag) {
+    std::cout << "[Master] Control logic enabled for this iteration."
+              << std::endl;
+    std::vector<double> sur_unshuffled{mpi_surr_buffer};
+    unshuffleField(mpi_surr_buffer, this->n_cells, this->prop_count,
                    wp_sizes_vector.size(), sur_unshuffled);
 
-    ctrl_module->computeSpeciesErrors(out_vec, sur_unshuffled, this->n_cells);
+    control_module->computeSpeciesErrors(out_vec, sur_unshuffled,
+                                         this->n_cells);
   }
-
-  /* end time measurement of control logic */
-  ctrl_b = MPI_Wtime();
-  this->ctrl_t += ctrl_b - ctrl_a;
 
   /* start time measurement of master chemistry */
   sim_e_chemistry = MPI_Wtime();
