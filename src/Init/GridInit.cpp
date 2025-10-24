@@ -147,7 +147,7 @@ PhreeqcMatrix InitialList::prepareGrid(const Rcpp::List &grid_input) {
   PhreeqcMatrix pqc_mat =
       PhreeqcMatrix(database, script, with_h0_o0, with_redox);
 
-  this->transport_names = pqc_mat.getSolutionNames();
+  this->transport_names = pqc_mat.getMatrixTransported();
 
   Rcpp::Function unique_R("unique");
   Rcpp::Function sort_R("sort");

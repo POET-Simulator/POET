@@ -26,48 +26,12 @@
 #include "Base/Macros.hpp"
 #include "Init/InitialList.hpp"
 
-#include <Eigen/src/Core/Map.h>
-#include <Eigen/src/Core/Matrix.h>
-#include <Eigen/src/Core/util/Constants.h>
 #include <chrono>
-
-#include "tug/Boundary.hpp"
-#include "tug/Grid.hpp"
-#include "tug/Simulation.hpp"
-
 #include <string>
-#include <vector>
+#include <tug/Boundary.hpp>
+#include <tug/Diffusion.hpp>
 
 using namespace poet;
-
-static inline std::vector<TugType>
-MatrixToVec(const Eigen::MatrixX<TugType> &mat) {
-  std::vector<TugType> vec(mat.rows() * mat.cols());
-
-  for (std::uint32_t i = 0; i < mat.cols(); i++) {
-    for (std::uint32_t j = 0; j < mat.rows(); j++) {
-      vec[j * mat.cols() + i] = mat(j, i);
-    }
-  }
-
-  return vec;
-}
-
-static inline Eigen::MatrixX<TugType>
-VecToMatrix(const std::vector<TugType> &vec, std::uint32_t n_rows,
-            std::uint32_t n_cols) {
-  Eigen::MatrixX<TugType> mat(n_rows, n_cols);
-
-  for (std::uint32_t i = 0; i < n_cols; i++) {
-    for (std::uint32_t j = 0; j < n_rows; j++) {
-      mat(j, i) = vec[j * n_cols + i];
-    }
-  }
-
-  return mat;
-}
-
-// static constexpr double ZERO_MULTIPLICATOR = 10E-14;
 
 void DiffusionModule::simulate(double requested_dt) {
   // MSG("Starting diffusion ...");
@@ -76,29 +40,26 @@ void DiffusionModule::simulate(double requested_dt) {
   const auto &n_rows = this->param_list.n_rows;
   const auto &n_cols = this->param_list.n_cols;
 
-  tug::Grid<TugType> grid(param_list.n_rows, param_list.n_cols);
-  tug::Boundary boundary(grid);
-
-  grid.setDomain(param_list.s_rows, param_list.s_cols);
-
+  for (const auto &sol_name : this->param_list.transport_names) {
 #if defined(POET_TUG_BTCS)
-  tug::Simulation<TugType> sim(grid, boundary);
+    tug::Diffusion<TugType> diffusion_solver(
+        this->transport_field[sol_name].data(), n_rows, n_cols);
 #elif defined(POET_TUG_FTCS)
-  tug::Simulation<TugType, tug::FTCS_APPROACH> sim(grid, boundary);
+    tug::Diffusion<TugType, tug::FTCS_APPROACH> diffusion_solver(
+        this->transport_field[sol_name].data(), n_rows, n_cols);
 #else
 #error "No valid approach defined"
 #endif
 
-  sim.setIterations(1);
+    tug::RowMajMatMap<TugType> alpha_x_map(
+        this->param_list.alpha_x[sol_name].data(), n_rows, n_cols);
+    tug::RowMajMatMap<TugType> alpha_y_map(
+        this->param_list.alpha_y[sol_name].data(), n_rows, n_cols);
 
-  for (const auto &sol_name : this->param_list.transport_names) {
-    auto &species_conc = this->transport_field[sol_name];
+    diffusion_solver.setAlphaX(alpha_x_map);
+    diffusion_solver.setAlphaY(alpha_y_map);
 
-    Eigen::MatrixX<TugType> conc = VecToMatrix(species_conc, n_rows, n_cols);
-    Eigen::MatrixX<TugType> alpha_x =
-        VecToMatrix(this->param_list.alpha_x[sol_name], n_rows, n_cols);
-    Eigen::MatrixX<TugType> alpha_y =
-        VecToMatrix(this->param_list.alpha_y[sol_name], n_rows, n_cols);
+    auto &boundary = diffusion_solver.getBoundaryConditions();
 
     boundary.deserialize(this->param_list.boundaries[sol_name]);
 
@@ -106,14 +67,8 @@ void DiffusionModule::simulate(double requested_dt) {
       boundary.setInnerBoundaries(this->param_list.inner_boundaries[sol_name]);
     }
 
-    grid.setAlpha(alpha_x, alpha_y);
-    grid.setConcentrations(conc);
-
-    sim.setTimestep(requested_dt);
-
-    sim.run();
-
-    species_conc = MatrixToVec(grid.getConcentrations());
+    diffusion_solver.setTimestep(requested_dt);
+    diffusion_solver.run();
   }
 
   const auto end_diffusion_t = std::chrono::high_resolution_clock::now();
