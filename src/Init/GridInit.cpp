@@ -1,3 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * GridInit.cpp - Implementation of grid initialization
+ * Copyright (C) 2024-2025 Max Luebke (University of Potsdam)
+ */
+
 #include "InitialList.hpp"
 
 #include "PhreeqcMatrix.hpp"
