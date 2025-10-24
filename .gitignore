@@ -144,3 +144,9 @@ build/
 
 .vscode
 .codechecker
+
+# Prevent upload of local installations
+bin/
+share/
+lib/
+include/
