@@ -15,9 +15,7 @@
 #include <string>
 #include <utility>
 
-extern "C" {
-#include "DHT.h"
-}
+#include <LUCX/PHT.h>
 
 #include <cstdint>
 #include <unordered_map>
@@ -71,9 +69,9 @@ public:
   void getEntriesFromLocation(const PHT_Result &locations,
                               const std::vector<uint32_t> &signif);
 
-  void writeStats() { DHT_print_statistics(this->prox_ht); }
+  void writeStats() { PHT_print_statistics(this->prox_ht.get()); }
 
-  DHT *getDHTObject() { return this->prox_ht; }
+  PHT *getDHTObject() { return this->prox_ht.get(); }
 
   auto getPHTWriteTime() const -> double { return this->pht_write_t; };
   auto getPHTReadTime() const -> double { return this->pht_read_t; };
@@ -104,7 +102,7 @@ private:
   static bool similarityCheck(const LookupKey &fine, const LookupKey &coarse,
                               const std::vector<uint32_t> &signif);
 
-  char *bucket_store;
+  std::unique_ptr<char[]> bucket_store;
 
   class Cache
       : private std::unordered_map<LookupKey, PHT_Result, LookupKeyHasher> {
@@ -127,7 +125,7 @@ private:
   };
 
   Cache localCache;
-  DHT *prox_ht;
+  std::unique_ptr<PHT> prox_ht;
 
   std::uint32_t dht_evictions = 0;
 
@@ -166,7 +164,7 @@ public:
 
   enum result_status { RES_OK, INSUFFICIENT_DATA, NOT_NEEDED };
 
-  DHT *getDHTObject() { return this->pht->getDHTObject(); }
+  PHT *getDHTObject() { return this->pht->getDHTObject(); }
 
   struct InterpolationResult {
     std::vector<std::vector<double>> results;
@@ -211,7 +209,7 @@ public:
 
   void writePHTStats() { this->pht->writeStats(); }
   void dumpPHTState(const std::string &filename) {
-    DHT_to_file(this->pht->getDHTObject(), filename.c_str());
+    PHT_to_file(this->pht->getDHTObject(), filename.c_str());
   }
 
   static constexpr std::uint32_t COARSE_DIFF = 2;

@@ -3,31 +3,24 @@
 
 #include "DHT_Wrapper.hpp"
 #include "DataStructures/NamedVector.hpp"
-#include "HashFunctions.hpp"
 #include "LookupKey.hpp"
-#include "Rounding.hpp"
 
 #include <Rcpp.h>
 #include <Rcpp/proxy/ProtectedProxy.h>
 #include <Rinternals.h>
 
 #include <algorithm>
-#include <array>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <iterator>
 #include <memory>
 #include <mpi.h>
 #include <string>
-#include <utility>
 #include <vector>
 
-extern "C" {
-#include "DHT.h"
-}
+#include <LUCX/PHT.h>
 
 namespace poet {
 

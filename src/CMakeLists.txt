@@ -9,7 +9,6 @@ add_library(POETLib
   Chemistry/MasterFunctions.cpp
   Chemistry/WorkerFunctions.cpp
   Chemistry/SurrogateModels/DHT_Wrapper.cpp
-  Chemistry/SurrogateModels/DHT.c
   Chemistry/SurrogateModels/HashFunctions.cpp
   Chemistry/SurrogateModels/InterpolationModule.cpp
   Chemistry/SurrogateModels/ProximityHashTable.cpp
@@ -31,6 +30,8 @@ target_link_libraries(
   PUBLIC IPhreeqcPOET
   PUBLIC tug
   PUBLIC MPI::MPI_C
+  PUBLIC LUCX::PHT 
+  PUBLIC LUCX::nolock
 )
 
 include(FetchContent)

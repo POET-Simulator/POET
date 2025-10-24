@@ -30,6 +30,7 @@
 #include "Init/InitialList.hpp"
 #include "LookupKey.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <limits>
@@ -37,9 +38,7 @@
 #include <utility>
 #include <vector>
 
-extern "C" {
-#include "DHT.h"
-}
+#include <LUCX/DHT.h>
 
 #include <mpi.h>
 
@@ -194,7 +193,7 @@ public:
 
   auto getDataCount() { return this->data_count; }
   auto getCommunicator() { return this->communicator; }
-  DHT *getDHT() { return this->dht_object; };
+  DHT *getDHT() { return this->dht_object.get(); };
 
   DHT_ResultObject &getDHTResults() { return this->dht_results; }
 
@@ -227,7 +226,8 @@ private:
   uint32_t key_count;
   uint32_t data_count;
 
-  DHT *dht_object;
+  std::unique_ptr<DHT> dht_object;
+
   MPI_Comm communicator;
 
   LookupKey fuzzForDHT(const std::vector<double> &cell, double dt);

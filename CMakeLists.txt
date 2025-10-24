@@ -19,8 +19,6 @@ find_package(MPI REQUIRED)
 
 find_package(RRuntime REQUIRED)
 
-add_subdirectory(src)
-
 option(POET_PREPROCESS_BENCHS "Preprocess benchmarks" ON)
 
 if (POET_PREPROCESS_BENCHS)
@@ -32,6 +30,9 @@ set(TUG_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(ext/tug EXCLUDE_FROM_ALL)
 add_subdirectory(ext/iphreeqc EXCLUDE_FROM_ALL)
+add_subdirectory(ext/dht EXCLUDE_FROM_ALL)
+
+add_subdirectory(src)
 
 option(POET_ENABLE_TESTING "Build test suite for POET" OFF)
 
