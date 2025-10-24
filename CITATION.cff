@@ -1,0 +1,51 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: 'POET: POtsdam rEactive Transport'
+message: >-
+  If you use this software, please cite it using these
+  metadata.
+type: software
+authors:
+  - given-names: Max
+    family-names: Lübke
+    email: mluebke@uni-potsdam.de
+    affiliation: University of Potsdam
+    orcid: 'https://orcid.org/0009-0008-9773-3038'
+  - given-names: Marco
+    family-names: De Lucia
+    email: delucia@gfz.de
+    affiliation: GFZ Helmholtz Centre for Geosciences
+    orcid: 'https://orcid.org/0000-0002-1186-4491'
+  - given-names: Alexander
+    family-names: Lindemann
+  - given-names: Hannes
+    family-names: Signer
+    email: signer@uni-potsdam.de
+    orcid: 'https://orcid.org/0009-0000-3058-8472'
+  - given-names: Bettina
+    family-names: Schnor
+    email: schnor@cs.uni-potsdam.de
+    affiliation: University of Potsdam
+    orcid: 'https://orcid.org/0000-0001-7369-8057'
+  - given-names: Hans
+    family-names: Straile
+identifiers:
+  - type: doi
+    value: 10.5194/gmd-14-7391-2021
+    description: >-
+      POET (v0.1): speedup of many-core parallel reactive
+      transport simulations with fast DHT lookups
+repository-code: 'https://git.gfz-potsdam.de/naaice/poet'
+abstract: >-
+  Massively parallel reactive transport simulator exploring
+  acceleration strategies such as embedding of AI/ML and
+  cache of results in Distributed Hash Tables. Developed in
+  cooperation with computer scientists of University of
+  Potsdam.
+keywords:
+  - Reactive Transport
+  - Geochemistry
+  - AI/ML Surrogate Modelling
+license: GPL-2.0
