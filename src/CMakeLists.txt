@@ -38,7 +38,7 @@ FetchContent_Declare(
   cli11
   QUIET 
   GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-  GIT_TAG v2.4.2
+  GIT_TAG v2.5.0
 )
 
 FetchContent_MakeAvailable(cli11)
