@@ -5,3 +5,12 @@
 [submodule "ext/iphreeqc"]
 	path = ext/iphreeqc
 	url = ../iphreeqc.git
+[submodule "ext/ext/ai-surroagate"]
+	path = ext/ext/ai-surroagate
+	url = git@git.gfz-potsdam.de:naaice/ai-surrogate-poet.git
+[submodule "ext/ai-surroagate"]
+	path = ext/ai-surroagate
+	url = git@git.gfz-potsdam.de:naaice/ai-surrogate-poet.git
+[submodule "ext/ai-benchmarks-utils"]
+	path = ext/ai-benchmarks-utils
+	url = git@git.gfz-potsdam.de:naaice/ai-benchmarks-utils.git
