@@ -1,18 +1,5 @@
-## Time-stamp: "Last modified 2024-05-30 13:27:06 delucia"
 
-## load a pretrained model from tensorflow file
-## Use the global variable "ai_surrogate_base_path" when using file paths
-## relative to the input script
-initiate_model <- function() {
-    require(keras3)
-    require(tensorflow)
-    init_model <- normalizePath(paste0(ai_surrogate_base_path,
-                                       "barite_50ai_all.keras"))
-    Model <- keras3::load_model(init_model)
-    msgm("Loaded model:")
-    print(str(Model))
-    return(Model)
-}
+
 
 scale_min_max <- function(x, min, max, backtransform) {
     if (backtransform) {
@@ -22,6 +9,22 @@ scale_min_max <- function(x, min, max, backtransform) {
     }
 }
 
+scale_standardizer <- function(x, mean, scale, backtransform) {
+    if(backtransform){
+        return(x * scale + mean)
+    }
+    else{
+        return((x-mean) / scale)
+    }
+}
+
+standard <- list(mean = c(H = 111.01243361730982, O= 55.50673140754027, Ba= 0.0016161137065825058,
+                         Cl= 0.0534503766678322, S=0.00012864849674669584, Sr=0.0252377348949622, 
+                         Barite_kin=0.05292312117000998, Celestite_kin=0.9475491659328229), 
+                scale = c(H=1.0, O=0.00048139729680698453, Ba=0.008945717576237102, Cl=0.03587363709464328,
+                         S=0.00012035100591827131, Sr=0.01523052668095922, Barite_kin=0.21668648247230615,
+                         Celestite_kin=0.21639449682671968))
+
 minmax <- list(min = c(H = 111.012433592824, O = 55.5062185549492, Charge = -3.1028354471876e-08, 
                        Ba = 1.87312878574393e-141, Cl = 0, `S(6)` = 4.24227510643685e-07, 
                        Sr = 0.00049382996130541, Barite = 0.000999542409828586, Celestite = 0.244801877115968),
@@ -30,14 +33,19 @@ minmax <- list(min = c(H = 111.012433592824, O = 55.5062185549492, Charge = -3.1
                        Sr = 0.0558680070692722, Barite = 0.756779139057097, Celestite = 1.00075422160624
                        ))
 
+ai_surrogate_species_input = c("H", "O", "Ba", "Cl", "S", "Sr", "Barite_kin", "Celestite_kin")
+ai_surrogate_species_output = c("O", "Ba", "S", "Sr", "Barite_kin", "Celestite_kin")
+
+
+
 preprocess <- function(df) {
     if (!is.data.frame(df))
         df <- as.data.frame(df, check.names = FALSE)
     
     as.data.frame(lapply(colnames(df),
-                         function(x) scale_min_max(x=df[x],
-                                                   min=minmax$min[x],
-                                                   max=minmax$max[x],
+                         function(x) scale_standardizer(x=df[x],
+                                                   mean=standard$mean[x],
+                                                   scale=standard$scale[x],
                                                    backtransform=FALSE)),
                   check.names = FALSE)
 }
@@ -47,23 +55,25 @@ postprocess <- function(df) {
         df <- as.data.frame(df, check.names = FALSE)
     
     as.data.frame(lapply(colnames(df),
-                         function(x) scale_min_max(x=df[x],
-                                                   min=minmax$min[x],
-                                                   max=minmax$max[x],
+                         function(x) scale_standardizer(x=df[x],
+                                                   mean=standard$mean[x],
+                                                   scale=standard$scale[x],
                                                    backtransform=TRUE)),
                   check.names = FALSE)
 }
 
 mass_balance <- function(predictors, prediction) {
-    dBa <- abs(prediction$Ba + prediction$Barite -
-               predictors$Ba - predictors$Barite)
-    dSr <- abs(prediction$Sr + prediction$Celestite -
-               predictors$Sr - predictors$Celestite)
-    return(dBa + dSr)
+    dBa <- abs(prediction$Ba + prediction$Barite_kin -
+               predictors$Ba - predictors$Barite_kin)
+    dSr <- abs(prediction$Sr + prediction$Celestite_kin -
+               predictors$Sr - predictors$Celestite_kin)
+    dS <- abs(prediction$S + prediction$Celestite_kin + prediction$Barite_kin - 
+              predictors$S - predictors$Celestite_kin - predictors$Barite_kin)
+    return(dBa + dSr + dS)
 }
 
 validate_predictions <- function(predictors, prediction) {
-    epsilon <- 1E-7
+    epsilon <- 1E-5
     mb <- mass_balance(predictors, prediction)
     msgm("Mass balance mean:", mean(mb))
     msgm("Mass balance variance:", var(mb))
@@ -71,20 +81,4 @@ validate_predictions <- function(predictors, prediction) {
     msgm("Rows where mass balance meets threshold", epsilon, ":",
          sum(ret))
     return(ret)
-}
-
-training_step <- function(model, predictor, target, validity) {
-  msgm("Starting incremental training:")
-
-  ## x <- as.matrix(predictor)
-  ## y <- as.matrix(target[colnames(x)])
-
-  history <- model %>% keras3::fit(x = data.matrix(predictor),
-                                   y = data.matrix(target),
-                                   epochs = 10, verbose=1)
-
-  keras3::save_model(model,
-                     filepath = paste0(out_dir, "/current_model.keras"),
-                     overwrite=TRUE)
-  return(model)
 }
