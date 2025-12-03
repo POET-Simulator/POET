@@ -1,8 +1,11 @@
+
 SOLUTION 1
   units	mol/kgw
   water	1
   temperature	25
   pH	7
+  Ba 1E-12
+  Cl 1E-12
 PURE 1 
   Celestite 0.0 1
 END
@@ -28,5 +31,5 @@ SOLUTION 3
   water 1
   temperature 25
   Ba 0.1
-  Cl 0.2
+  Cl 0.2 charge
 END
