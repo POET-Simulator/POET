@@ -1,9 +1,11 @@
 SOLUTION 1
-    units	mol/kgw
-    water	1
-    temperature	25
-    pH	7
-    pe	4
+  units	mol/kgw
+  water 1
+  temperature  25
+  pH    7
+  pe    4
+  Mg    1E-12
+  Cl    2E-12
 PURE 1
     Calcite 0.0 1
 END
@@ -41,3 +43,8 @@ SOLUTION 4
     Mg 0.002
     Cl 0.004
 END
+
+RUN_CELLS 
+    -cells 2 3 4
+END 
+
