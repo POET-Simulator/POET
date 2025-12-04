@@ -1,10 +1,8 @@
 set(bench_files
-    dolo_inner_large.R
     dolo_interp.R
 )
 
 set(runtime_files
-    dolo_inner_large_rt.R
     dolo_interp_rt.R
 )
 

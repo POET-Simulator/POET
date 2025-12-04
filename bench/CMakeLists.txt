@@ -40,4 +40,3 @@ add_custom_target(${BENCHTARGET} ALL)
 
 add_subdirectory(barite)
 add_subdirectory(dolo)
-add_subdirectory(surfex)
