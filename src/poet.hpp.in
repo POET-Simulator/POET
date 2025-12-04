@@ -22,11 +22,20 @@
 
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <string>
 #include <vector>
 
+#include <MetaParameter.hpp>
+#include <Model.hpp>
+#include <Standardizer.hpp>
+#include <TrainingBackend.hpp>
+#include <TrainingData.hpp>
+
 #include <Rcpp.h>
+
+using ai_type_t = float;
 
 static const char *poet_version = "@POET_VERSION@";
 
@@ -37,6 +46,8 @@ static const inline std::string init_r_library = R"(@R_INIT_LIB@)";
 static const inline std::string ai_surrogate_r_library =
     R"(@R_AI_SURROGATE_LIB@)";
 static const inline std::string r_runtime_parameters = "mysetup";
+
+enum BACKEND_TYPE { PYTHON_BACKEND = 1, NAA_BACKEND, CUDA_BACKEND };
 
 struct RuntimeParameters {
   std::string out_dir;
@@ -68,5 +79,27 @@ struct RuntimeParameters {
   static constexpr std::uint32_t INTERP_BUCKET_ENTRIES_DEFAULT = 20;
   std::uint32_t interp_bucket_entries = INTERP_BUCKET_ENTRIES_DEFAULT;
 
-  bool use_ai_surrogate = false;
+  // configuration for ai surrogate approach
+  bool ai = false;
+  bool disable_retraining = false;
+  static constexpr std::uint8_t AI_BACKEND_DEFAULT = 1;
+  std::uint8_t ai_backend = 1; // 1 - python, 2 - naa, 3 - cuda
+  bool train_only_invalid = true;
+  int batch_size = 1000;
+};
+
+struct AIContext {
+  TrainingData<ai_type_t> design_buffer;
+  TrainingData<ai_type_t> results_buffer;
+  Model<ai_type_t> model;
+  MetaParameter<ai_type_t> meta_params;
+  Standardizer<ai_type_t> scaler;
+
+  std::binary_semaphore data_semaphore_write{1};
+  std::binary_semaphore data_semaphore_read{0};
+  std::binary_semaphore model_semaphore{1};
+  std::atomic_bool training_is_running = false;
+  std::unique_ptr<TrainingBackend<ai_type_t>> training_backend;
+
+  AIContext(const std::string &weights_path) : model(weights_path) {}
 };

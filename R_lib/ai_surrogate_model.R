@@ -63,6 +63,11 @@ set_valid_predictions <- function(temp_field, prediction, validity) {
   return(temp_field)
 }
 
+get_invalid_values <- function(df, validity) {
+  return(df[validity == 0, ])
+}
+
+
 training_step <- function(model, predictor, target, validity) {
   msgm("Training:")
 

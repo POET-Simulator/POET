@@ -33,6 +33,11 @@ set(TUG_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 add_subdirectory(ext/tug EXCLUDE_FROM_ALL)
 add_subdirectory(ext/iphreeqc EXCLUDE_FROM_ALL)
 
+# AI/NAA specific includes TODO: add option flags
+add_subdirectory(ext/ai-surrogate EXCLUDE_FROM_ALL)
+
+
+
 option(POET_ENABLE_TESTING "Build test suite for POET" OFF)
 
 if (POET_ENABLE_TESTING)
