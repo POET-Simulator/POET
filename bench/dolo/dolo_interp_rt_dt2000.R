@@ -1,7 +1,7 @@
 iterations <- 2000
-dt <- 200
+dt <- 2000
 
-out_save <- c(1, 5, 10, seq(20, iterations, by = 20))
+out_save <- c(1, 10, 20, seq(40, iterations, by = 40))
 
 list(
     timesteps = rep(dt, iterations),
