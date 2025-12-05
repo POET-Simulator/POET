@@ -3,7 +3,7 @@ set(bench_files
 )
 
 set(runtime_files
-    dolo_interp_rt.R
+    dolo_interp_rt_dt2000.R
 )
 
 ADD_BENCH_TARGET(
