@@ -36,6 +36,7 @@
 #include <Rcpp/vector/instantiation.h>
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
@@ -161,6 +162,9 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
                    "Desired ai backend (0: python (keras), 1: naa, 2: cuda)")
       ->check(CLI::PositiveNumber)
       ->default_val(RuntimeParameters::AI_BACKEND_DEFAULT);
+
+  app.add_flag("-c,--copy-non-reactive", params.copy_non_reactive_regions,
+               "Copy non-reactive regions instead of computing them");
 
   app.add_flag("--rds", params.as_rds,
                "Save output as .rds file instead of default .qs2");
@@ -322,11 +326,12 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     // initialzie training backens only if retraining is desired
     if (params.ai_backend == PYTHON_BACKEND) {
       MSG("AI Surrogate with Python/keras backend enabled.")
-      // auto model = Python<ai_type_t>();
+      ai_ctx->training_backend =
+          std::make_unique<PythonBackend<ai_type_t>>(4 * params.batch_size);
     } else if (params.ai_backend == NAA_BACKEND) {
       MSG("AI Surrogate with NAA backend enabled.")
       ai_ctx->training_backend =
-          std::make_unique<NAABackend<ai_type_t>>(20 * params.batch_size);
+          std::make_unique<NAABackend<ai_type_t>>(4 * params.batch_size);
     }
 
     if (!params.disable_retraining) {
@@ -356,27 +361,49 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     /* run transport */
     diffusion.simulate(dt);
 
-    chem.getField().update(diffusion.getField());
+    if (params.ai || params.copy_non_reactive_regions) {
+
+      chem.getField().update(diffusion.getField());
+
+      R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
+      R.parseEval(
+          std::string("field <- setNames(data.frame(matrix(TMP, nrow=" +
+                      std::to_string(chem.getField().GetRequestedVecSize()) +
+                      ")), TMP_PROPS)"));
+
+      R.parseEval("validity_vector <- rep(FALSE, nrow(field))");
+
+      if (params.copy_non_reactive_regions) {
+        R.parseEval("validity_vector <- field$Cl < 1e-14");
+      }
+    }
 
     // MSG("Chemistry start");
     if (params.ai) {
       double ai_start_t = MPI_Wtime();
-      // Save current values from the tug field as predictor for the ai step
-      R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
-      R.parseEval(
-          std::string("predictors <- setNames(data.frame(matrix(TMP, nrow=" +
-                      std::to_string(chem.getField().GetRequestedVecSize()) +
-                      ")), TMP_PROPS)"));
 
+      // deep copy field
+      R.parseEval("predictors <- data.frame(field)");
+      // get only ai related species
       R.parseEval("predictors <- predictors[ai_surrogate_species_input]");
 
+      // remove already copied values
+      R.parseEval("predictors <- predictors[!validity_vector,]");
+
+      R.parseEval(
+          "print(paste('Length of predictors:', length(predictors$H)))");
+
+      // store row names of predictors
+      R.parseEval("predictor_idx <- row.names(predictors)");
+
+      R.parseEval("print(head(predictors))");
       R.parseEval("predictors_scaled <- preprocess(predictors)");
       std::vector<std::vector<float>> predictors_scaled =
           R["predictors_scaled"];
 
-      // FIXME: double/float conversion
-      std::vector<float> predictions_scaled = ai_ctx->model.predict(
-          predictors_scaled, params.batch_size, ai_ctx->model_semaphore);
+      std::vector<float> predictions_scaled =
+          ai_ctx->model.predict(predictors_scaled, params.batch_size,
+                                ai_ctx->model_semaphore); // features per cell
 
       int n_samples = R.parseEval("nrow(predictors)");
       int n_output_features = ai_ctx->model.weight_matrices.back().cols();
@@ -396,36 +423,48 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
       MSG("AI Validation");
 
-      // FIXME: (mass balance plausible?)
-      R.parseEval("validity_vector <- validate_predictions(predictors, "
+      R.parseEval("ai_validity_vector <- validate_predictions(predictors, "
                   "predictions) ");
+
+      R.parseEval("print(length(predictor_idx))");
+      R.parseEval("print(length(ai_validity_vector))");
+
+      // get only indices where prediction was valid
+      R.parseEval("predictor_idx <- predictor_idx[ai_validity_vector]");
+
+      // set in global validity vector all elements to true, where prediction
+      // was possible
+      R.parseEval("validity_vector[predictor_idx] <- TRUE");
 
       R.parseEval("print(head(validity_vector))");
 
-      MSG("AI Marking accepted");
-      chem.set_ai_surrogate_validity_vector(R.parseEval("validity_vector"));
-
       MSG("AI TempField");
-      R.parseEval("print(ai_surrogate_species_output)");
-      // R.parseEval("print(head(predictors))");
-      std::vector<std::vector<double>> RTempField = R.parseEval(
-          "set_valid_predictions(predictors[ai_surrogate_species_output],\
-                       predictions,\
-                       validity_vector)");
+      // maybe row.names was overwritten by function calls ??
+      R.parseEval("row.names(predictions) <- row.names(predictors)");
+      // subset predictions to ai_validity_vector == TRUE
+      R.parseEval("predictions <- predictions[ai_validity_vector,]");
+      // merge predicted values into field stored in R
+      R.parseEval("field[row.names(predictions),ai_surrogate_species_output] "
+                  "<- predictions");
 
       MSG("AI Set Field");
       Field predictions_field = Field(
-          R.parseEval("nrow(predictors)"), RTempField,
-          R.parseEval(
-              "colnames(predictors[ai_surrogate_species_output])")); // FIXME:
-                                                                     // is this
-                                                                     // correct?
+          R.parseEval("nrow(field)"),
+          Rcpp::as<std::vector<std::vector<double>>>(R.parseEval("field")),
+          R.parseEval("colnames(field)"));
 
-      MSG("AI Update");
       chem.getField().update(predictions_field);
 
       double ai_end_t = MPI_Wtime();
       R["ai_prediction_time"] = ai_end_t - ai_start_t;
+    }
+
+    if (params.copy_non_reactive_regions || params.ai) {
+      MSG("Set copied or predicted values for the workers");
+
+      R.parseEval(
+          "print(paste('Number of valid cells:', sum(validity_vector)))");
+      chem.set_ai_surrogate_validity_vector(R.parseEval("validity_vector"));
     }
 
     chem.simulate(dt);
@@ -441,10 +480,15 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
                       ")), TMP_PROPS)"));
 
       R.parseEval("predictors_retraining <- "
-                  "get_invalid_values(predictors_scaled, validity_vector)");
+                  "get_invalid_values(predictors_scaled, ai_validity_vector)");
+      R.parseEval("print(head(predictors_retraining))");
+      R.parseEval("targets <- targets[predictor_idx, ]");
       R.parseEval("targets_retraining <- "
                   "get_invalid_values(targets[ai_surrogate_species_output], "
-                  "validity_vector)");
+                  "ai_validity_vector)");
+      R.parseEval("print(length(predictors_scaled$H))");
+      R.parseEval("print(length(ai_validity_vector))");
+
       R.parseEval("targets_retraining <- preprocess(targets_retraining)");
 
       std::vector<std::vector<float>> predictors_retraining =
@@ -476,15 +520,12 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       std::cout << "results_buffer_size: " << elements_results_buffer
                 << std::endl;
 
-      if (elements_design_buffer >= 20 * params.batch_size &&
+      if (elements_design_buffer >=
+              20 * params.batch_size && // TODO: change to 4 * grid_size
           elements_results_buffer >= 20 * params.batch_size &&
           ai_ctx->training_is_running == false) {
         ai_ctx->data_semaphore_read.release();
-      } else if (ai_ctx->training_is_running == true) {
-        MSG("Training is currently running");
-        ai_ctx->data_semaphore_write.release();
       } else {
-        MSG("Not enough data for retraining");
         ai_ctx->data_semaphore_write.release();
       }
 
@@ -707,7 +748,8 @@ int main(int argc, char *argv[]) {
         run_params.interp_bucket_entries,
         run_params.interp_size,
         run_params.interp_min_entries,
-        run_params.ai};
+        run_params.ai,
+        run_params.copy_non_reactive_regions};
 
     chemistry.masterEnableSurrogates(surr_setup);
 

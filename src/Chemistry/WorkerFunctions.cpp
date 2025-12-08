@@ -46,7 +46,7 @@ void poet::ChemistryModule::WorkerLoop() {
     switch (func_type) {
     case CHEM_FIELD_INIT: {
       ChemBCast(&this->prop_count, 1, MPI_UINT32_T);
-      if (this->ai_surrogate_enabled) {
+      if (this->ai_surrogate_enabled || this->copy_non_reactive) {
         this->ai_surrogate_validity_vector.resize(
             this->n_cells); // resize statt reserve?
       }
@@ -179,7 +179,7 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
     interp->tryInterpolation(s_curr_wp);
   }
 
-  if (this->ai_surrogate_enabled) {
+  if (this->ai_surrogate_enabled || this->copy_non_reactive) {
     // Map valid predictions from the ai surrogate in the workpackage
     for (int i = 0; i < s_curr_wp.size; i++) {
       if (this->ai_surrogate_validity_vector[wp_start_index + i] == 1) {

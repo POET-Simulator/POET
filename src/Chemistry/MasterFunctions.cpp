@@ -262,9 +262,10 @@ inline void poet::ChemistryModule::MasterSendPkgs(
       // current time of simulation (age) in seconds
       send_buffer[end_of_wp + 3] = this->simtime;
       // current work package start location in field
-      uint32_t wp_start_index = std::accumulate(wp_sizes_vector.begin(), std::next(wp_sizes_vector.begin(), count_pkgs), 0);
+      uint32_t wp_start_index =
+          std::accumulate(wp_sizes_vector.begin(),
+                          std::next(wp_sizes_vector.begin(), count_pkgs), 0);
       send_buffer[end_of_wp + 4] = wp_start_index;
-
 
       /* ATTENTION Worker p has rank p+1 */
       // MPI_Send(send_buffer, end_of_wp + BUFFER_OFFSET, MPI_DOUBLE, p + 1,
@@ -373,14 +374,15 @@ void poet::ChemistryModule::MasterRunParallel(double dt) {
   const std::vector<uint32_t> wp_sizes_vector =
       CalculateWPSizesVector(this->n_cells, this->wp_size);
 
-  if (this->ai_surrogate_enabled) {
+  if (this->ai_surrogate_enabled || this->copy_non_reactive) {
     ftype = CHEM_AI_BCAST_VALIDITY;
     PropagateFunctionType(ftype);
-    this->ai_surrogate_validity_vector = shuffleVector(this->ai_surrogate_validity_vector,
-                                                       this->n_cells, 
-                                                       wp_sizes_vector.size());
-    ChemBCast(&this->ai_surrogate_validity_vector.front(), this->n_cells, MPI_INT);
-  }  
+    this->ai_surrogate_validity_vector =
+        shuffleVector(this->ai_surrogate_validity_vector, this->n_cells,
+                      wp_sizes_vector.size());
+    ChemBCast(&this->ai_surrogate_validity_vector.front(), this->n_cells,
+              MPI_INT);
+  }
 
   ftype = CHEM_WORK_LOOP;
   PropagateFunctionType(ftype);
