@@ -1,5 +1,5 @@
 iterations <- 2000
-dt <- 200
+dt <- 2000
 
 out_save <- c(1, 10, 20, seq(40, iterations, by = 40))
 
