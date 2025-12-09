@@ -34,7 +34,7 @@ add_subdirectory(ext/tug EXCLUDE_FROM_ALL)
 add_subdirectory(ext/iphreeqc EXCLUDE_FROM_ALL)
 
 # AI/NAA specific includes TODO: add option flags
-add_subdirectory(ext/ai-surrogate EXCLUDE_FROM_ALL)
+add_subdirectory(ext/ai-surrogate-poet EXCLUDE_FROM_ALL)
 
 
 

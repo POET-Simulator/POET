@@ -37,6 +37,7 @@ ai_surrogate_species_input = c("H", "O", "Ba", "Cl", "S", "Sr", "Barite_kin", "C
 ai_surrogate_species_output = c("O", "Ba", "S", "Sr", "Barite_kin", "Celestite_kin")
 
 
+threshold <- list(species = "Cl", value = 1E-10)
 
 preprocess <- function(df) {
     if (!is.data.frame(df))

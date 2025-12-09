@@ -89,6 +89,7 @@ public:
     std::uint32_t interp_size_mb;
     std::uint32_t interp_min_entries;
     bool ai_surrogate_enabled;
+    bool copy_non_reactive;
   };
 
   void masterEnableSurrogates(const SurrogateSetup &setup) {
@@ -99,6 +100,7 @@ public:
     this->dht_enabled = setup.dht_enabled;
     this->interp_enabled = setup.interp_enabled;
     this->ai_surrogate_enabled = setup.ai_surrogate_enabled;
+    this->copy_non_reactive = setup.copy_non_reactive;
 
     this->base_totals = setup.base_totals;
 
@@ -372,6 +374,7 @@ protected:
   std::unique_ptr<poet::InterpolationModule> interp;
 
   bool ai_surrogate_enabled{false};
+  bool copy_non_reactive{false};
 
   static constexpr uint32_t BUFFER_OFFSET = 5;
 
