@@ -7,11 +7,15 @@ set(runtime_files
     barite_200_rt.R
 )
 
+set(model_weights
+    barite_trained.weights.h5)
+
 # add_custom_target(barite_bench DEPENDS ${bench_files} ${runtime_files})
 
 ADD_BENCH_TARGET(barite_bench 
     bench_files 
-    runtime_files 
+    runtime_files
+    model_weights
     "barite"
 )
 
