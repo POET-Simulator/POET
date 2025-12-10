@@ -316,11 +316,9 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   if (params.ai) {
 
     if (params.function_code == 1) {
-      ai_ctx = std::make_unique<AIContext>(
-          "./bench/barite/barite_trained.weights.h5");
+      ai_ctx = std::make_unique<AIContext>("./barite_trained.weights.h5");
     } else if (params.function_code == 2) {
-      ai_ctx = std::make_unique<AIContext>(
-          "./bench/dolo/dolomite_trained.weights.h5");
+      ai_ctx = std::make_unique<AIContext>("./dolomite_trained.weights.h5");
     }
 
     R.parseEval(
