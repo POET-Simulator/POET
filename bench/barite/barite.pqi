@@ -5,7 +5,7 @@ SOLUTION 1
   temperature	25
   pH	7
   Ba 1E-12
-  Cl 1E-12
+  Cl 2E-12
 PURE 1 
   Celestite 0.0 1
 END
