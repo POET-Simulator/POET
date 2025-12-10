@@ -84,9 +84,11 @@ struct RuntimeParameters {
   bool ai = false;
   bool disable_retraining = false;
   static constexpr std::uint8_t AI_BACKEND_DEFAULT = 1;
-  std::uint8_t ai_backend = 1; // 1 - python, 2 - naa
+  std::uint8_t ai_backend = AI_BACKEND_DEFAULT; // 1 - python, 2 - naa
   bool train_only_invalid = true;
-  int batch_size = 1000;
+  int batch_size = 200 * 200;
+  static constexpr std::uint8_t DEFAULT_FUNCTION_CODE = 0;
+  std::uint8_t function_code = DEFAULT_FUNCTION_CODE;
 
   static constexpr bool COPY_NON_REACTIVE_REGIONS = false;
   bool copy_non_reactive_regions = COPY_NON_REACTIVE_REGIONS;
