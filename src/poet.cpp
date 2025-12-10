@@ -397,13 +397,10 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
           std::string("field <- setNames(data.frame(matrix(TMP, nrow=" +
                       std::to_string(chem.getField().GetRequestedVecSize()) +
                       ")), TMP_PROPS)"));
-      R.parseEval("print(head(field))");
 
       R.parseEval("validity_vector <- rep(FALSE, nrow(field))");
 
       R.parseEval("length(validity_vector)");
-
-      R.parseEval("print(length(validity_vector))");
 
       if (params.copy_non_reactive_regions) {
         R.parseEval(
@@ -418,8 +415,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       // deep copy field
       R.parseEval("predictors <- field");
       // get only ai related species
-      R.parseEval("print(head(predictors))");
-      R.parseEval("print(ai_surrogate_species_input)");
       R.parseEval("predictors <- predictors[ai_surrogate_species_input]");
 
       // remove already copied values
@@ -430,7 +425,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
       R.parseEval("predictors_scaled <- preprocess(predictors)");
 
-      R.parseEval("print(head(predictors_scaled))");
       std::vector<std::vector<float>> predictors_scaled =
           R["predictors_scaled"];
 
@@ -442,13 +436,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       std::vector<double> predictions_scaled_double(predictions_scaled.begin(),
                                                     predictions_scaled.end());
 
-      std::cout << "First elements of predictions_scaled_double: ";
-      for (size_t i = 0;
-           i < std::min(size_t(10), predictions_scaled_double.size()); i++) {
-        std::cout << predictions_scaled_double[i] << " ";
-      }
-      std::cout << std::endl;
-
       R["TMP"] = predictions_scaled_double;
       R["n_samples"] = n_samples;
       R["n_output"] = n_output_features;
@@ -456,8 +443,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       R.parseEval("predictions_scaled <- setNames(data.frame(matrix(TMP, "
                   "nrow=n_samples, ncol=n_output, byrow=TRUE)), "
                   "ai_surrogate_species_output)");
-      // R.parseEval("print(head(predictions_scaled))");
-      // R.parseEval("print(head(predictions_scaled))");
+
       R.parseEval("predictions <- postprocess(predictions_scaled)");
 
       MSG("AI Validation");
@@ -465,16 +451,12 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       R.parseEval("ai_validity_vector <- validate_predictions(predictors, "
                   "predictions) ");
 
-      R.parseEval("print(length(ai_validity_vector))");
-
       // get only indices where prediction was valid
       R.parseEval("predictor_idx <- predictor_idx[ai_validity_vector]");
 
       // set in global validity vector all elements to true, where prediction
       // was possible
       R.parseEval("validity_vector[as.numeric(predictor_idx)] <- TRUE");
-
-      R.parseEval("print(length(validity_vector))");
 
       MSG("AI TempField");
       // maybe row.names was overwritten by function calls ??
@@ -502,7 +484,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       MSG("Set copied or predicted values for the workers");
       R.parseEval(
           "print(paste('Number of valid cells:', sum(validity_vector)))");
-      R.parseEval("print(head(validity_vector))");
       chem.set_ai_surrogate_validity_vector(R.parseEval("validity_vector"));
     }
 
@@ -517,21 +498,14 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
           std::string("targets <- setNames(data.frame(matrix(TMP, nrow=" +
                       std::to_string(chem.getField().GetRequestedVecSize()) +
                       ")), TMP_PROPS)"));
-      R.parseEval("print(paste('Length of validity_vector:', "
-                  "length(ai_validity_vector)))");
+
       R.parseEval("predictors_retraining <- "
                   "get_invalid_values(predictors_scaled, ai_validity_vector)");
       R.parseEval("targets <- "
                   "targets[as.numeric(row.names(predictors_retraining)), "
                   "ai_surrogate_species_output]");
 
-      R.parseEval("print(length(predictors_scaled$H))");
-      R.parseEval("print(length(ai_validity_vector))");
-
       R.parseEval("targets_retraining <- preprocess(targets)");
-
-      R.parseEval("print(head(predictors_retraining))");
-      R.parseEval("print(head(targets_retraining))");
 
       std::vector<std::vector<float>> predictors_retraining =
           R["predictors_retraining"];
@@ -539,11 +513,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
           R["targets_retraining"];
 
       MSG("AI: add invalid data to buffer");
-
-      std::cout << "size of predictors " << predictors_retraining[0].size()
-                << std::endl;
-      std::cout << "size of targets " << targets_retraining[0].size()
-                << std::endl;
 
       ai_ctx->data_semaphore_write.acquire();
 
