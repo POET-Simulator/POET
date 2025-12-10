@@ -1,7 +1,6 @@
-function(ADD_BENCH_TARGET TARGET POET_BENCH_LIST RT_FILES OUT_PATH)
+function(ADD_BENCH_TARGET TARGET POET_BENCH_LIST RT_FILES WEIGHT_FILES OUT_PATH)
     set(bench_install_dir share/poet/${OUT_PATH})
 
-    # create empty list 
     set(OUT_FILES_LIST "")
 
     foreach(BENCH_FILE ${${POET_BENCH_LIST}})
@@ -28,16 +27,15 @@ function(ADD_BENCH_TARGET TARGET POET_BENCH_LIST RT_FILES OUT_PATH)
             
     install(FILES ${OUT_FILES_LIST} DESTINATION ${bench_install_dir})
 
-    # install all ADD_FILES to the same location
     install(FILES ${${RT_FILES}} DESTINATION ${bench_install_dir})
+    
+    install(FILES ${${WEIGHT_FILES}} DESTINATION ${bench_install_dir})
 endfunction()
 
 
-# define target name 
 set(BENCHTARGET benchmarks)
 
 add_custom_target(${BENCHTARGET} ALL)
 
 add_subdirectory(barite)
 add_subdirectory(dolo)
-add_subdirectory(surfex)
