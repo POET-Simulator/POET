@@ -122,7 +122,7 @@ chemistry_setup <- list(
         interp_pre = check_sign_cal_dol_interp,
         interp_post = check_neg_cal_dol
     ),
-    ai_surrogate_input_script = "./dolo_surrogate_input_script.R"
+    ai_surrogate_input_script = "./dolo_ai_surrogate_input_script.R"
 )
 
 ## Define a setup list for simulation configuration
