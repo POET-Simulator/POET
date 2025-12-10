@@ -310,6 +310,8 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
   R["TMP_PROPS"] = Rcpp::wrap(chem.getField().GetProps());
 
   std::unique_ptr<AIContext> ai_ctx = nullptr;
+  size_t retrain_counter = 0;
+  size_t field_size = 0;
 
   if (params.ai) {
 
@@ -329,6 +331,9 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     std::vector<float> mean = R["mean"];
     std::vector<float> scale = R["scale"];
 
+    field_size = chem.getField().GetRequestedVecSize();
+    std::cout << field_size << std::endl;
+
     ai_ctx->scaler.set_scaler(mean, scale);
 
     // initialzie training backens only if retraining is desired
@@ -338,7 +343,7 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     } else if (params.ai_backend == NAA_BACKEND) {
       MSG("AI Surrogate with NAA backend enabled.")
       ai_ctx->training_backend =
-          std::make_unique<NAABackend<ai_type_t>>(4 * params.batch_size);
+          std::make_unique<NAABackend<ai_type_t>>(4 * field_size);
     }
 
     if (!params.disable_retraining) {
@@ -535,15 +540,15 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
       MSG("AI: add invalid data to buffer");
 
-      ai_ctx->data_semaphore_write.acquire();
-
       std::cout << "size of predictors " << predictors_retraining[0].size()
                 << std::endl;
       std::cout << "size of targets " << targets_retraining[0].size()
                 << std::endl;
 
+      ai_ctx->data_semaphore_write.acquire();
+
       if (predictors_retraining[0].size() > 0 &&
-          targets_retraining[0].size() > 0) {
+          targets_retraining[0].size() > 0 && retrain_counter == 0) {
         ai_ctx->design_buffer.addData(predictors_retraining);
         ai_ctx->results_buffer.addData(targets_retraining);
       }
@@ -559,10 +564,11 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
       std::cout << "results_buffer_size: " << elements_results_buffer
                 << std::endl;
 
-      if (elements_design_buffer >= 4 * params.batch_size &&
-          elements_results_buffer >= 4 * params.batch_size &&
-          ai_ctx->training_is_running == false) {
+      if (elements_design_buffer >= 4 * field_size &&
+          elements_results_buffer >= 4 * field_size &&
+          ai_ctx->training_is_running == false && retrain_counter == 0) {
         ai_ctx->data_semaphore_read.release();
+        retrain_counter++;
       } else {
         ai_ctx->data_semaphore_write.release();
       }
