@@ -7,6 +7,7 @@ grid_def <- matrix(2, nrow = rows, ncol = cols)
 grid_setup <- list(
     pqc_in_file = "./dol.pqi",
     pqc_db_file = "./phreeqc_kin.dat",
+    pqc_with_redox = TRUE,
     grid_def = grid_def,
     grid_size = c(5, 2.5),
     constant_cells = c()
@@ -120,7 +121,8 @@ chemistry_setup <- list(
         ## dht_fuzz = fuzz_input_dht_keys,
         interp_pre = check_sign_cal_dol_interp,
         interp_post = check_neg_cal_dol
-    )
+    ),
+    ai_surrogate_input_script = "./dolo_surrogate_input_script.R"
 )
 
 ## Define a setup list for simulation configuration
