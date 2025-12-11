@@ -7,6 +7,7 @@ grid_def <- matrix(2, nrow = rows, ncol = cols)
 grid_setup <- list(
     pqc_in_file = "./dol.pqi",
     pqc_db_file = "./phreeqc_kin.dat",
+    pqc_with_redox = TRUE,
     grid_def = grid_def,
     grid_size = c(5, 2.5),
     constant_cells = c()
