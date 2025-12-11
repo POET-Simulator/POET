@@ -398,8 +398,6 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
 
       R.parseEval("validity_vector <- rep(FALSE, nrow(field))");
 
-      R.parseEval("length(validity_vector)");
-
       if (params.copy_non_reactive_regions) {
         R.parseEval(
             "validity_vector <- field[[threshold$species]] < threshold$value");
