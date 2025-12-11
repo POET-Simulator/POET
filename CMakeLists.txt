@@ -16,7 +16,7 @@ list(APPEND CMAKE_MODULE_PATH "${POET_SOURCE_DIR}/CMake")
 get_poet_version()
 
 find_package(MPI REQUIRED)
-
+find_package(HDF5 REQUIRED)
 find_package(RRuntime REQUIRED)
 
 add_subdirectory(src)

@@ -91,7 +91,7 @@ file(READ "${PROJECT_SOURCE_DIR}/R_lib/ai_surrogate_model.R" R_AI_SURROGATE_LIB)
 configure_file(poet.hpp.in poet.hpp @ONLY)
 include_directories("${CMAKE_SOURCE_DIR}/ext/ai-surrogate-poet/include")
 add_executable(poet poet.cpp)
-target_link_libraries(poet PRIVATE POETLib MPI::MPI_C RRuntime CLI11::CLI11 ai naaice::middleware)
+target_link_libraries(poet PRIVATE POETLib MPI::MPI_C RRuntime CLI11::CLI11 ai naaice::middleware HDF5::HDF5)
 target_include_directories(poet PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_executable(poet_init initializer.cpp)
