@@ -158,7 +158,7 @@ int parseInitValues(int argc, char **argv, RuntimeParameters &params) {
                             "Enable AI surrogate for chemistry module");
   ai_option_group
       ->add_option("--ai-backend", params.ai_backend,
-                   "Desired ai backend (0: python (keras), 1: naa, 2: cuda)")
+                   "Desired ai backend (1: python (keras), 2: naa)")
       ->check(CLI::PositiveNumber)
       ->default_val(RuntimeParameters::AI_BACKEND_DEFAULT);
 
