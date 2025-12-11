@@ -386,9 +386,9 @@ static Rcpp::List RunMasterLoop(RInsidePOET &R, const RuntimeParameters &params,
     //    data frame with elements that are used as ai outputs for the
     //    retraining step.
 
-    if (params.ai || params.copy_non_reactive_regions) {
+    chem.getField().update(diffusion.getField());
 
-      chem.getField().update(diffusion.getField());
+    if (params.ai || params.copy_non_reactive_regions) {
 
       R["TMP"] = Rcpp::wrap(chem.getField().AsVector());
       R.parseEval(
