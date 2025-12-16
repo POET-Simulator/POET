@@ -26,8 +26,8 @@ void InitialList::importList(const Rcpp::List &setup, bool minimal) {
 
   Rcpp::NumericVector spatial =
       setup[static_cast<int>(ExportList::GRID_SPATIAL)];
-  this->s_rows = spatial[0];
-  this->s_cols = spatial[1];
+  this->s_y = spatial[0];
+  this->s_x = spatial[1];
 
   this->constant_cells = Rcpp::as<std::vector<uint32_t>>(
       setup[static_cast<int>(ExportList::GRID_CONSTANT)]);
@@ -88,7 +88,8 @@ void InitialList::importList(const Rcpp::List &setup, bool minimal) {
   this->chem_hooks =
       Rcpp::as<Rcpp::List>(setup[static_cast<int>(ExportList::CHEM_HOOKS)]);
 
-  this->ai_surrogate_input_script = Rcpp::as<std::string>(setup[static_cast<int>(ExportList::AI_SURROGATE_INPUT_SCRIPT)]);
+  this->ai_surrogate_input_script = Rcpp::as<std::string>(
+      setup[static_cast<int>(ExportList::AI_SURROGATE_INPUT_SCRIPT)]);
 }
 
 Rcpp::List InitialList::exportList() {
@@ -98,7 +99,7 @@ Rcpp::List InitialList::exportList() {
   out[static_cast<int>(ExportList::GRID_SPECS)] =
       Rcpp::NumericVector::create(this->n_rows, this->n_cols);
   out[static_cast<int>(ExportList::GRID_SPATIAL)] =
-      Rcpp::NumericVector::create(this->s_rows, this->s_cols);
+      Rcpp::NumericVector::create(this->s_y, this->s_x);
   out[static_cast<int>(ExportList::GRID_CONSTANT)] =
       Rcpp::wrap(this->constant_cells);
   out[static_cast<int>(ExportList::GRID_POROSITY)] = Rcpp::wrap(this->porosity);
@@ -140,7 +141,8 @@ Rcpp::List InitialList::exportList() {
   out[static_cast<int>(ExportList::CHEM_INTERP_SPECIES)] =
       Rcpp::wrap(this->interp_species);
   out[static_cast<int>(ExportList::CHEM_HOOKS)] = this->chem_hooks;
-  out[static_cast<int>(ExportList::AI_SURROGATE_INPUT_SCRIPT)] = this->ai_surrogate_input_script;
+  out[static_cast<int>(ExportList::AI_SURROGATE_INPUT_SCRIPT)] =
+      this->ai_surrogate_input_script;
 
   return out;
 }

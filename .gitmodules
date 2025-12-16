@@ -7,7 +7,10 @@
 	url = ../iphreeqc.git
 [submodule "ext/ai-benchmarks-utils"]
 	path = ext/ai-benchmarks-utils
-	url = git@git.gfz-potsdam.de:naaice/ai-benchmarks-utils.git
+    url = git@git.gfz-potsdam.de:naaice/ai-benchmarks-utils.git
 [submodule "ext/ai-surrogate-poet"]
 	path = ext/ai-surrogate-poet
 	url = git@git.gfz-potsdam.de:naaice/ai-surrogate-poet.git
+[submodule "ext/litephreeqc"]
+	path = ext/litephreeqc
+	url = ../litephreeqc.git

@@ -396,8 +396,8 @@ InitialList::DiffusionInit InitialList::getDiffusionInit() const {
   diff_init.n_cols = this->n_cols;
   diff_init.n_rows = this->n_rows;
 
-  diff_init.s_cols = this->s_cols;
-  diff_init.s_rows = this->s_rows;
+  diff_init.s_x = this->s_x;
+  diff_init.s_y = this->s_y;
 
   diff_init.constant_cells = this->constant_cells;
   diff_init.transport_names = this->transport_names;

@@ -8,6 +8,16 @@ project(POET
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+set(DEFAULT_BUILD_TYPE "Release")
+if(NOT CMAKE_BUILD_TYPE)
+  message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}'.")
+  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE
+    STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+    "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 include("CMake/POET_Scripts.cmake")
@@ -31,7 +41,7 @@ endif()
 set(TUG_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(ext/tug EXCLUDE_FROM_ALL)
-add_subdirectory(ext/iphreeqc EXCLUDE_FROM_ALL)
+add_subdirectory(ext/litephreeqc EXCLUDE_FROM_ALL)
 
 # AI/NAA specific includes TODO: add option flags
 add_subdirectory(ext/ai-surrogate-poet EXCLUDE_FROM_ALL)

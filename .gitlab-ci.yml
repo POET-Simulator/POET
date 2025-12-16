@@ -63,6 +63,7 @@ push:
     - if [[-d poet.git ]]; then rm -rf poet.git; fi
     - git clone --mirror "https://git.gfz-potsdam.de/naaice/poet.git" "poet.git" && cd poet.git
     - git push --mirror $GITHUB_REPOSITORY
+  allow_failure: true
 
 #archive-sources:       # This job runs in the build stage, which runs first.
 #  image: python:3
