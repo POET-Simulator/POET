@@ -1,7 +1,7 @@
 function(ADD_BENCH_TARGET TARGET POET_BENCH_LIST RT_FILES OUT_PATH)
     set(bench_install_dir share/poet/${OUT_PATH})
 
-    # create empty list 
+    # create empty list
     set(OUT_FILES_LIST "")
 
     foreach(BENCH_FILE ${${POET_BENCH_LIST}})
@@ -11,9 +11,9 @@ function(ADD_BENCH_TARGET TARGET POET_BENCH_LIST RT_FILES OUT_PATH)
 
         add_custom_command(
             OUTPUT ${OUT_FILE_EXT}
-            COMMAND $<TARGET_FILE:poet_init> -n ${OUT_FILE} -s ${CMAKE_CURRENT_SOURCE_DIR}/${BENCH_FILE}
+            COMMAND $<TARGET_FILE:poet_init> -n ${OUT_FILE} -s ${BENCH_FILE}
             COMMENT "Running poet_init on ${BENCH_FILE}"
-            DEPENDS poet_init ${CMAKE_CURRENT_SOURCE_DIR}/${BENCH_FILE}
+            DEPENDS poet_init ${BENCH_FILE}
             VERBATIM
             COMMAND_EXPAND_LISTS
         )
@@ -21,11 +21,11 @@ function(ADD_BENCH_TARGET TARGET POET_BENCH_LIST RT_FILES OUT_PATH)
         list(APPEND OUT_FILES_LIST ${OUT_FILE_EXT})
 
     endforeach(BENCH_FILE ${${POET_BENCH_LIST}})
-        
+
     add_custom_target(
         ${TARGET}
         DEPENDS ${OUT_FILES_LIST})
-            
+
     install(FILES ${OUT_FILES_LIST} DESTINATION ${bench_install_dir})
 
     # install all ADD_FILES to the same location
@@ -33,10 +33,10 @@ function(ADD_BENCH_TARGET TARGET POET_BENCH_LIST RT_FILES OUT_PATH)
 endfunction()
 
 
-# define target name 
+# define target name
 set(BENCHTARGET benchmarks)
 
 add_custom_target(${BENCHTARGET} ALL)
 
 add_subdirectory(barite)
-add_subdirectory(dolo)
+# add_subdirectory(dolo)

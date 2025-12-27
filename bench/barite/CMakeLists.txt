@@ -1,17 +1,19 @@
-# Create a list of files 
+# Create a list of files
 set(bench_files
-    barite_200.R
+    ${PROJECT_SOURCE_DIR}/ext/ai-benchmarks-utils/data/barite/abschluss/barite_200_abschluss.R
 )
 
 set(runtime_files
-    barite_200_rt.R
+    ${PROJECT_SOURCE_DIR}/ext/ai-benchmarks-utils/data/barite/abschluss/runtime_barite_200_abschluss.R
 )
+
+message("Project source: ${PROJECT_SOURCE_DIR}")
 
 # add_custom_target(barite_bench DEPENDS ${bench_files} ${runtime_files})
 
-ADD_BENCH_TARGET(barite_bench 
-    bench_files 
-    runtime_files 
+ADD_BENCH_TARGET(barite_bench
+    bench_files
+    runtime_files
     "barite"
 )
 

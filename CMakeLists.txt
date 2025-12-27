@@ -10,11 +10,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(DEFAULT_BUILD_TYPE "Release")
 if(NOT CMAKE_BUILD_TYPE)
-  message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}'.")
-  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE
+    message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}'.")
+    set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE
     STRING "Choose the type of build." FORCE)
-  # Set the possible values of build type for cmake-gui
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+    # Set the possible values of build type for cmake-gui
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
     "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
@@ -34,7 +34,7 @@ add_subdirectory(src)
 option(POET_PREPROCESS_BENCHS "Preprocess benchmarks" ON)
 
 if (POET_PREPROCESS_BENCHS)
-  add_subdirectory(bench)
+    add_subdirectory(bench)
 endif()
 
 # as tug will also pull in doctest as a dependency
@@ -46,7 +46,7 @@ add_subdirectory(ext/litephreeqc EXCLUDE_FROM_ALL)
 option(POET_ENABLE_TESTING "Build test suite for POET" OFF)
 
 if (POET_ENABLE_TESTING)
-  add_subdirectory(test)
+    add_subdirectory(test)
 endif()
 
 option(BUILD_DOC "Build documentation with doxygen" OFF)
