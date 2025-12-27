@@ -108,8 +108,8 @@ PhreeqcMatrix InitialList::prepareGrid(const Rcpp::List &grid_input) {
   this->n_rows = grid_def.nrow();
   this->n_cols = grid_def.ncol();
 
-  this->s_cols = grid_size[0];
-  this->s_rows = grid_size[1];
+  this->s_x = grid_size[0];
+  this->s_y = grid_size[1];
 
   this->dim = n_cols == 1 ? 1 : 2;
 
@@ -124,7 +124,7 @@ PhreeqcMatrix InitialList::prepareGrid(const Rcpp::List &grid_input) {
         "Dimensions of grid does not match the dimension of grid definition.");
   }
 
-  if (this->s_rows <= 0 || this->s_cols <= 0) {
+  if (this->s_y <= 0 || this->s_x <= 0) {
     throw std::runtime_error("Grid size must be positive.");
   }
 

@@ -2,6 +2,6 @@
 	path = ext/tug
 	url = ../tug.git
 
-[submodule "ext/iphreeqc"]
-	path = ext/iphreeqc
-	url = ../iphreeqc.git
+[submodule "ext/litephreeqc"]
+	path = ext/litephreeqc
+	url = ../litephreeqc.git

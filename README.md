@@ -1,5 +1,10 @@
 # POET
 
+**NOTE: GFZ is migrating its domain from <gfz-potsdam.de> to <gfz.de>.
+This should be finalized by the end of 2025. We adopt the NEW domain
+in all the links given below. If you encounter 'unreachable address'
+try the OLD domain.**
+
 [POET](https://doi.org/10.5281/zenodo.4757913) is a coupled reactive
 transport simulator implementing a parallel architecture and a fast,
 original MPI-based Distributed Hash Table.
@@ -16,9 +21,9 @@ pages](https://naaice.git-pages.gfz.de/poet).
 The following external libraries are shipped with POET:
 
 - **CLI11** - <https://github.com/CLIUtils/CLI11>
-- **IPhreeqc** with patches from GFZ/UP -
-  <https://github.com/usgs-coupled/iphreeqc> -
-  <https://git.gfz.de/naaice/iphreeqc>
+- **litephreeqc**: IPhreeqc
+   (<https://github.com/usgs-coupled/iphreeqc>) with patches from
+   GFZ/UP: <https://git.gfz.de/naaice/litephreeqc>
 - **tug** - <https://git.gfz.de/naaice/tug>
 
 ## Installation

@@ -34,6 +34,8 @@ void DiffusionModule::simulate(double requested_dt) {
 #error "No valid approach defined"
 #endif
 
+    diffusion_solver.setDomain(this->param_list.s_y, this->param_list.s_x);
+
     tug::RowMajMatMap<TugType> alpha_x_map(
         this->param_list.alpha_x[sol_name].data(), n_rows, n_cols);
     tug::RowMajMatMap<TugType> alpha_y_map(
