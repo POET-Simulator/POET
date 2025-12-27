@@ -1,14 +1,14 @@
 set(bench_files
-    dolo_interp.R
+    ${PROJECT_SOURCE_DIR}/ext/ai-benchmarks-utils/data/dolomite/abschluss/
 )
 
 set(runtime_files
-    dolo_interp_rt_dt2000.R
+    ${PROJECT_SOURCE_DIR}/ext/ai-benchmarks-utils/data/dolomite/abschluss/
 )
 
 ADD_BENCH_TARGET(
     dolo_bench
-    bench_files 
+    bench_files
     runtime_files
     "dolo"
 )
