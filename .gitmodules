@@ -1,7 +1,6 @@
 [submodule "ext/tug"]
 	path = ext/tug
 	url = ../tug.git
-
 [submodule "ext/litephreeqc"]
 	path = ext/litephreeqc
 	url = ../litephreeqc.git
