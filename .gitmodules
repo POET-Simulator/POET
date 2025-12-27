@@ -5,9 +5,6 @@
 [submodule "ext/litephreeqc"]
 	path = ext/litephreeqc
 	url = ../litephreeqc.git
-[submodule "ext/--force"]
-	path = ext/--force
-	url = git@git.gfz-potsdam.de:naaice/ai-benchmarks-utils.git
 [submodule "ext/ai-benchmarks-utils"]
 	path = ext/ai-benchmarks-utils
 	url = git@git.gfz-potsdam.de:naaice/ai-benchmarks-utils.git
