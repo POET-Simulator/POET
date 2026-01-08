@@ -195,6 +195,11 @@ void poet::ChemistryModule::WorkerDoWork(MPI_Status &probe_status,
   phreeqc_time_end = MPI_Wtime();
 
   for (std::size_t wp_i = 0; wp_i < s_curr_wp.size; wp_i++) {
+    // NOTE: Skip copying if surrogate model was used, as the input (in
+    // mpi_buffer) is reused as output
+    if (s_curr_wp.mapping[wp_i] == CHEM_AISURR) {
+      continue;
+    }
     std::copy(s_curr_wp.output[wp_i].begin(), s_curr_wp.output[wp_i].end(),
               mpi_buffer.begin() + this->prop_count * wp_i);
   }
