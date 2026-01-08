@@ -240,6 +240,13 @@ inline void poet::ChemistryModule::MasterSendPkgs(
        * work_package_size to pre-calculated work package size vector */
 
       local_work_package_size = (int)wp_sizes_vector[count_pkgs];
+
+      // Calculate work package start index BEFORE incrementing count_pkgs
+      // to get the correct offset in the shuffled validity vector
+      uint32_t wp_start_index =
+          std::accumulate(wp_sizes_vector.begin(),
+                          std::next(wp_sizes_vector.begin(), count_pkgs), 0);
+
       count_pkgs++;
 
       /* note current processed work package in workerlist */
@@ -262,9 +269,6 @@ inline void poet::ChemistryModule::MasterSendPkgs(
       // current time of simulation (age) in seconds
       send_buffer[end_of_wp + 3] = this->simtime;
       // current work package start location in field
-      uint32_t wp_start_index =
-          std::accumulate(wp_sizes_vector.begin(),
-                          std::next(wp_sizes_vector.begin(), count_pkgs), 0);
       send_buffer[end_of_wp + 4] = wp_start_index;
 
       /* ATTENTION Worker p has rank p+1 */
